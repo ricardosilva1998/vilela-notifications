@@ -4,14 +4,20 @@ const required = [
   'TWITCH_CLIENT_ID',
   'TWITCH_CLIENT_SECRET',
   'TWITCH_USERNAME',
-  'YOUTUBE_CHANNEL_ID',
-  'YOUTUBE_API_KEY',
 ];
 
 const missing = required.filter((key) => !process.env[key]);
 if (missing.length > 0) {
   console.error(`Missing required environment variables:\n  ${missing.join('\n  ')}`);
   process.exit(1);
+}
+
+const youtubeEnabled = !!(process.env.YOUTUBE_CHANNEL_ID);
+
+if (youtubeEnabled) {
+  console.log('YouTube monitoring enabled');
+} else {
+  console.log('YouTube monitoring disabled (YOUTUBE_CHANNEL_ID not set)');
 }
 
 module.exports = {
@@ -25,6 +31,7 @@ module.exports = {
     username: process.env.TWITCH_USERNAME,
   },
   youtube: {
+    enabled: youtubeEnabled,
     channelId: process.env.YOUTUBE_CHANNEL_ID,
     apiKey: process.env.YOUTUBE_API_KEY,
   },
