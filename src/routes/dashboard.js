@@ -219,4 +219,28 @@ router.post('/guild/:guildId/youtube/:channelId/remove', (req, res) => {
   res.redirect(`/dashboard/guild/${guildId}/youtube?msg=removed`);
 });
 
+// --- Report an Issue ---
+
+router.get('/report', (req, res) => {
+  res.render('report-issue', { streamer: req.streamer, msg: req.query.msg });
+});
+
+router.post('/report', (req, res) => {
+  const subject = (req.body.subject || '').trim();
+  const description = (req.body.description || '').trim();
+
+  if (!subject || !description) {
+    return res.redirect('/dashboard/report?msg=missing_fields');
+  }
+
+  db.createIssue(
+    req.streamer.id,
+    req.streamer.discord_display_name || req.streamer.discord_username,
+    subject,
+    description
+  );
+  console.log(`[Dashboard] Issue reported by ${req.streamer.discord_username}: ${subject}`);
+  res.redirect('/dashboard/report?msg=submitted');
+});
+
 module.exports = router;

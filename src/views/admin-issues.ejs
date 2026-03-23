@@ -1,0 +1,59 @@
+<%- include('header', { title: 'Reported Issues', streamer: null }) %>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+  <h2>Reported Issues</h2>
+  <div>
+    <a href="/admin/dashboard" class="btn btn-secondary">Dashboard</a>
+    <a href="/admin/streamers" class="btn btn-secondary" style="margin-left: 8px;">Streamers</a>
+    <a href="/admin/logout" class="btn btn-secondary" style="margin-left: 8px;">Logout</a>
+  </div>
+</div>
+
+<% if (msg === 'updated') { %>
+  <div class="alert alert-success">Issue updated.</div>
+<% } %>
+
+<% if (issues.length === 0) { %>
+  <div class="card" style="text-align: center; padding: 40px; color: #adadb8;">
+    <p>No issues reported yet.</p>
+  </div>
+<% } else { %>
+  <% for (const issue of issues) { %>
+    <div class="card" style="border-left: 3px solid <%= issue.status === 'open' ? '#e74c3c' : issue.status === 'in_progress' ? '#f39c12' : '#00b894' %>;">
+      <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+        <div>
+          <h3 style="font-size: 16px; margin-bottom: 4px;"><%= issue.subject %></h3>
+          <p style="font-size: 12px; color: #666;">By <%= issue.discord_username || 'Unknown' %> &middot; <%= issue.created_at %></p>
+        </div>
+        <span style="font-size: 12px; padding: 2px 8px; border-radius: 4px; background: <%= issue.status === 'open' ? '#e74c3c33' : issue.status === 'in_progress' ? '#f39c1233' : '#00b89433' %>; color: <%= issue.status === 'open' ? '#e74c3c' : issue.status === 'in_progress' ? '#f39c12' : '#00b894' %>;"><%= issue.status %></span>
+      </div>
+      <p style="color: #adadb8; font-size: 14px; margin-bottom: 12px; white-space: pre-wrap;"><%= issue.description %></p>
+
+      <% if (issue.admin_reply) { %>
+        <div style="background: #0e0e10; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+          <p style="font-size: 12px; color: #666; margin-bottom: 4px;">Admin reply:</p>
+          <p style="color: #adadb8; font-size: 14px;"><%= issue.admin_reply %></p>
+        </div>
+      <% } %>
+
+      <form method="POST" action="/admin/issues/<%= issue.id %>" style="display: flex; gap: 8px; align-items: end; flex-wrap: wrap;">
+        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+          <label style="font-size: 12px;">Reply</label>
+          <input type="text" name="admin_reply" value="<%= issue.admin_reply || '' %>" placeholder="Write a reply...">
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 12px;">Status</label>
+          <select name="status" style="padding: 10px;">
+            <option value="open" <%= issue.status === 'open' ? 'selected' : '' %>>Open</option>
+            <option value="in_progress" <%= issue.status === 'in_progress' ? 'selected' : '' %>>In Progress</option>
+            <option value="resolved" <%= issue.status === 'resolved' ? 'selected' : '' %>>Resolved</option>
+            <option value="closed" <%= issue.status === 'closed' ? 'selected' : '' %>>Closed</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="padding: 10px 16px;">Update</button>
+      </form>
+    </div>
+  <% } %>
+<% } %>
+
+<%- include('footer') %>

@@ -76,4 +76,20 @@ router.post('/streamers/:id/remove', requireAdmin, (req, res) => {
   res.redirect('/admin/streamers');
 });
 
+// Issues list
+router.get('/issues', requireAdmin, (req, res) => {
+  const issues = db.getAllIssues();
+  res.render('admin-issues', { streamer: null, title: 'Reported Issues', issues, msg: req.query.msg });
+});
+
+// Update issue
+router.post('/issues/:id', requireAdmin, (req, res) => {
+  const issue = db.getIssueById(parseInt(req.params.id));
+  if (!issue) return res.redirect('/admin/issues');
+
+  db.updateIssueStatus(issue.id, req.body.status || 'open', req.body.admin_reply);
+  console.log(`[Admin] Issue ${issue.id} updated to ${req.body.status}`);
+  res.redirect('/admin/issues?msg=updated');
+});
+
 module.exports = router;

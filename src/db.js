@@ -129,6 +129,18 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_notification_log_streamer ON notification_log(streamer_id);
   CREATE INDEX IF NOT EXISTS idx_notification_log_created ON notification_log(created_at);
 
+  CREATE TABLE IF NOT EXISTS issues (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    streamer_id INTEGER REFERENCES streamers(id) ON DELETE SET NULL,
+    discord_username TEXT,
+    subject TEXT NOT NULL,
+    description TEXT NOT NULL,
+    status TEXT DEFAULT 'open',
+    admin_reply TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS watched_channels (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guild_id TEXT NOT NULL,
@@ -584,6 +596,29 @@ function updateYoutubeChannelState(ytChannelId, updates) {
   );
 }
 
+// --- Issues ---
+
+const _createIssue = db.prepare('INSERT INTO issues (streamer_id, discord_username, subject, description) VALUES (?, ?, ?, ?)');
+const _getAllIssues = db.prepare('SELECT * FROM issues ORDER BY created_at DESC');
+const _getIssueById = db.prepare('SELECT * FROM issues WHERE id = ?');
+const _updateIssueStatus = db.prepare('UPDATE issues SET status = ?, admin_reply = ?, updated_at = datetime(\'now\') WHERE id = ?');
+
+function createIssue(streamerId, discordUsername, subject, description) {
+  return _createIssue.run(streamerId, discordUsername, subject, description);
+}
+
+function getAllIssues() {
+  return _getAllIssues.all();
+}
+
+function getIssueById(id) {
+  return _getIssueById.get(id);
+}
+
+function updateIssueStatus(id, status, adminReply) {
+  _updateIssueStatus.run(status, adminReply || null, id);
+}
+
 module.exports = {
   db,
   getStreamerByDiscordId,
@@ -630,4 +665,8 @@ module.exports = {
   getYoutubeWatchersForChannel,
   getYoutubeChannelState,
   updateYoutubeChannelState,
+  createIssue,
+  getAllIssues,
+  getIssueById,
+  updateIssueStatus,
 };
