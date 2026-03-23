@@ -31,6 +31,9 @@
 <% if (msg === 'channel_limit') { %>
   <div class="alert alert-warning">You've reached the channel limit for your plan. <a href="/pricing">Upgrade</a> to add more.</div>
 <% } %>
+<% if (msg === 'yt_not_found') { %>
+  <div class="alert alert-danger">YouTube channel not found. Please check the @username or channel ID and try again.</div>
+<% } %>
 
 <!-- Tab Bar -->
 <div class="tab-bar animate-in animate-in-delay-1">
@@ -177,19 +180,12 @@
   <div class="card animate-in">
     <h3>Add a YouTube Channel</h3>
     <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">
-      Enter a YouTube Channel ID (starts with <code>UC</code>) to get notified about new videos, shorts, and live streams.
-      Find any channel ID at <a href="https://commentpicker.com/youtube-channel-id.php" target="_blank">commentpicker.com</a>.
+      Enter a YouTube @username or channel ID to get notified about new videos, shorts, and live streams.
     </p>
     <form method="POST" action="/dashboard/guild/<%= guildId %>/youtube">
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-        <div class="form-group">
-          <label>YouTube Channel ID</label>
-          <input type="text" name="youtube_channel_id" placeholder="UCxxxxxxxxxxxxxxxxxxxxxxxx" required>
-        </div>
-        <div class="form-group">
-          <label>Channel Name (optional)</label>
-          <input type="text" name="youtube_channel_name" placeholder="e.g. PewDiePie">
-        </div>
+      <div class="form-group">
+        <label>YouTube Channel</label>
+        <input type="text" name="youtube_channel" placeholder="@username or UCxxxxxxxxxxxxxxxxxxxxxxxx" required>
       </div>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
         <div class="form-group">

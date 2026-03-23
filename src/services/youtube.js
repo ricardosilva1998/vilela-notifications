@@ -63,4 +63,37 @@ async function checkLiveStatus(videoIds, apiKey) {
   return null;
 }
 
-module.exports = { getLatestVideos, checkLiveStatus };
+async function resolveChannelId(input) {
+  // If already a channel ID (starts with UC), return as-is
+  if (input.startsWith('UC') && input.length >= 20) return { channelId: input, channelName: null };
+
+  // Strip @ if present
+  const handle = input.startsWith('@') ? input : `@${input}`;
+
+  // Fetch the YouTube channel page and extract the channel ID from meta tags
+  try {
+    const res = await fetch(`https://www.youtube.com/${handle}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Bot/1.0)' },
+      redirect: 'follow',
+    });
+    if (!res.ok) return null;
+
+    const html = await res.text();
+
+    // Extract channel ID from <link rel="canonical" href="https://www.youtube.com/channel/UCxxxx">
+    const canonicalMatch = html.match(/https:\/\/www\.youtube\.com\/channel\/(UC[a-zA-Z0-9_-]+)/);
+    const channelId = canonicalMatch?.[1];
+    if (!channelId) return null;
+
+    // Try to extract channel name from <title>
+    const titleMatch = html.match(/<title>([^<]+)<\/title>/);
+    const channelName = titleMatch?.[1]?.replace(' - YouTube', '').trim() || null;
+
+    return { channelId, channelName };
+  } catch (e) {
+    console.error(`[YouTube] Failed to resolve handle ${handle}: ${e.message}`);
+    return null;
+  }
+}
+
+module.exports = { getLatestVideos, checkLiveStatus, resolveChannelId };

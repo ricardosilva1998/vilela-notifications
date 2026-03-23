@@ -936,6 +936,10 @@ const _upsertYoutubeChannelState = db.prepare(`
   INSERT INTO youtube_channel_state (youtube_channel_id) VALUES (?)
   ON CONFLICT(youtube_channel_id) DO NOTHING
 `);
+const _upsertYoutubeChannelStateWithVideos = db.prepare(`
+  INSERT INTO youtube_channel_state (youtube_channel_id, known_video_ids) VALUES (?, ?)
+  ON CONFLICT(youtube_channel_id) DO NOTHING
+`);
 const _updateYoutubeChannelState = db.prepare(`
   UPDATE youtube_channel_state SET
     known_video_ids = COALESCE(?, known_video_ids),
@@ -944,9 +948,13 @@ const _updateYoutubeChannelState = db.prepare(`
   WHERE youtube_channel_id = ?
 `);
 
-function addWatchedYoutubeChannel(guildId, streamerId, ytChannelId, ytChannelName, videosChannelId, liveChannelId) {
+function addWatchedYoutubeChannel(guildId, streamerId, ytChannelId, ytChannelName, videosChannelId, liveChannelId, knownVideoIds) {
   _addWatchedYoutubeChannel.run(guildId, streamerId, ytChannelId, ytChannelName || null, videosChannelId || null, liveChannelId || null, videosChannelId ? 1 : 0, liveChannelId ? 1 : 0);
-  _upsertYoutubeChannelState.run(ytChannelId);
+  if (knownVideoIds) {
+    _upsertYoutubeChannelStateWithVideos.run(ytChannelId, knownVideoIds);
+  } else {
+    _upsertYoutubeChannelState.run(ytChannelId);
+  }
 }
 
 function removeWatchedYoutubeChannel(id, streamerId) {

@@ -3,6 +3,7 @@ const config = require('../config');
 const db = require('../db');
 const { client } = require('../discord');
 const { getUserProfile } = require('../services/twitch');
+const { resolveChannelId, getLatestVideos } = require('../services/youtube');
 
 const router = Router();
 
@@ -300,7 +301,7 @@ router.get('/guild/:guildId/youtube', (req, res) => {
   res.redirect(`/dashboard/guild/${req.params.guildId}?tab=youtube`);
 });
 
-router.post('/guild/:guildId/youtube', (req, res) => {
+router.post('/guild/:guildId/youtube', async (req, res) => {
   const { guildId } = req.params;
   if (!db.getGuildConfig(guildId, req.streamer.id)) return res.redirect('/dashboard');
 
@@ -309,13 +310,26 @@ router.post('/guild/:guildId/youtube', (req, res) => {
     return res.redirect(`/dashboard/guild/${guildId}?tab=youtube&msg=upgrade_youtube`);
   }
 
-  const ytChannelId = (req.body.youtube_channel_id || '').trim();
-  const ytChannelName = (req.body.youtube_channel_name || '').trim();
+  const input = (req.body.youtube_channel || '').trim();
   const videosChannelId = req.body.videos_channel_id;
   const liveChannelId = req.body.live_channel_id;
 
-  if (!ytChannelId || (!videosChannelId && !liveChannelId)) {
+  if (!input || (!videosChannelId && !liveChannelId)) {
     return res.redirect(`/dashboard/guild/${guildId}?tab=youtube&msg=missing_fields`);
+  }
+
+  // Resolve @handle or channel ID
+  let ytChannelId, ytChannelName;
+  try {
+    const resolved = await resolveChannelId(input);
+    if (!resolved) {
+      return res.redirect(`/dashboard/guild/${guildId}?tab=youtube&msg=yt_not_found`);
+    }
+    ytChannelId = resolved.channelId;
+    ytChannelName = resolved.channelName || input;
+  } catch (e) {
+    console.error(`[Dashboard] YouTube resolve error: ${e.message}`);
+    return res.redirect(`/dashboard/guild/${guildId}?tab=youtube&msg=yt_not_found`);
   }
 
   // Check max YouTube channels
@@ -326,8 +340,19 @@ router.post('/guild/:guildId/youtube', (req, res) => {
     }
   }
 
-  db.addWatchedYoutubeChannel(guildId, req.streamer.id, ytChannelId, ytChannelName, videosChannelId, liveChannelId);
-  console.log(`[Dashboard] Added YouTube channel ${ytChannelId} for guild ${guildId}`);
+  // Pre-populate known videos to avoid notifying about old content
+  let knownVideoIds = null;
+  try {
+    const existingVideos = await getLatestVideos(ytChannelId);
+    if (existingVideos.length > 0) {
+      knownVideoIds = JSON.stringify(existingVideos.map(v => v.id));
+    }
+  } catch (e) {
+    console.warn(`[Dashboard] Failed to fetch initial videos for ${ytChannelId}: ${e.message}`);
+  }
+
+  db.addWatchedYoutubeChannel(guildId, req.streamer.id, ytChannelId, ytChannelName, videosChannelId, liveChannelId, knownVideoIds);
+  console.log(`[Dashboard] Added YouTube channel ${ytChannelId} (${ytChannelName}) for guild ${guildId}`);
   res.redirect(`/dashboard/guild/${guildId}?tab=youtube&msg=added`);
 });
 
