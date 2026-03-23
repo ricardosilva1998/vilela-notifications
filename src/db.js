@@ -116,6 +116,27 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_notification_log_streamer ON notification_log(streamer_id);
   CREATE INDEX IF NOT EXISTS idx_notification_log_created ON notification_log(created_at);
+
+  CREATE TABLE IF NOT EXISTS watched_channels (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    streamer_id INTEGER NOT NULL REFERENCES streamers(id) ON DELETE CASCADE,
+    twitch_username TEXT NOT NULL,
+    twitch_broadcaster_id TEXT,
+    discord_channel_id TEXT NOT NULL,
+    notify_live INTEGER DEFAULT 1,
+    notify_clips INTEGER DEFAULT 1,
+    enabled INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(guild_id, streamer_id, twitch_username)
+  );
+
+  CREATE TABLE IF NOT EXISTS channel_state (
+    twitch_username TEXT PRIMARY KEY,
+    twitch_broadcaster_id TEXT,
+    is_live INTEGER DEFAULT 0,
+    last_clip_created_at TEXT
+  );
 `);
 
 // --- Streamers ---
@@ -393,6 +414,70 @@ function getRecentNotifications() {
   return _getRecentNotifications.all();
 }
 
+// --- Watched Channels ---
+
+const _addWatchedChannel = db.prepare(`
+  INSERT OR IGNORE INTO watched_channels (guild_id, streamer_id, twitch_username, discord_channel_id, notify_live, notify_clips)
+  VALUES (?, ?, ?, ?, ?, ?)
+`);
+const _removeWatchedChannel = db.prepare('DELETE FROM watched_channels WHERE id = ? AND streamer_id = ?');
+const _getWatchedChannelsForGuild = db.prepare('SELECT * FROM watched_channels WHERE guild_id = ? AND streamer_id = ?');
+const _getAllUniqueWatchedChannels = db.prepare('SELECT DISTINCT twitch_username FROM watched_channels WHERE enabled = 1');
+const _getWatchersForChannel = db.prepare(`
+  SELECT wc.*, s.id AS owner_id, s.enabled AS streamer_enabled
+  FROM watched_channels wc
+  JOIN streamers s ON wc.streamer_id = s.id
+  WHERE wc.twitch_username = ? AND wc.enabled = 1 AND s.enabled = 1
+`);
+const _getChannelState = db.prepare('SELECT * FROM channel_state WHERE twitch_username = ?');
+const _upsertChannelState = db.prepare(`
+  INSERT INTO channel_state (twitch_username) VALUES (?)
+  ON CONFLICT(twitch_username) DO NOTHING
+`);
+const _updateChannelState = db.prepare(`
+  UPDATE channel_state SET
+    twitch_broadcaster_id = COALESCE(?, twitch_broadcaster_id),
+    is_live = COALESCE(?, is_live),
+    last_clip_created_at = COALESCE(?, last_clip_created_at)
+  WHERE twitch_username = ?
+`);
+
+function addWatchedChannel(guildId, streamerId, twitchUsername, discordChannelId, notifyLive, notifyClips) {
+  _addWatchedChannel.run(guildId, streamerId, twitchUsername.toLowerCase(), discordChannelId, notifyLive ? 1 : 0, notifyClips ? 1 : 0);
+  // Ensure channel_state row exists
+  _upsertChannelState.run(twitchUsername.toLowerCase());
+}
+
+function removeWatchedChannel(id, streamerId) {
+  _removeWatchedChannel.run(id, streamerId);
+}
+
+function getWatchedChannelsForGuild(guildId, streamerId) {
+  return _getWatchedChannelsForGuild.all(guildId, streamerId);
+}
+
+function getAllUniqueWatchedChannels() {
+  return _getAllUniqueWatchedChannels.all();
+}
+
+function getWatchersForChannel(twitchUsername) {
+  return _getWatchersForChannel.all(twitchUsername.toLowerCase());
+}
+
+function getChannelState(twitchUsername) {
+  _upsertChannelState.run(twitchUsername.toLowerCase());
+  return _getChannelState.get(twitchUsername.toLowerCase());
+}
+
+function updateChannelState(twitchUsername, updates) {
+  _updateChannelState.run(
+    updates.twitch_broadcaster_id ?? null,
+    updates.is_live ?? null,
+    updates.last_clip_created_at ?? null,
+    twitchUsername.toLowerCase()
+  );
+}
+
 module.exports = {
   db,
   getStreamerByDiscordId,
@@ -424,4 +509,11 @@ module.exports = {
   getAllStreamersAdmin,
   getGlobalStats,
   getRecentNotifications,
+  addWatchedChannel,
+  removeWatchedChannel,
+  getWatchedChannelsForGuild,
+  getAllUniqueWatchedChannels,
+  getWatchersForChannel,
+  getChannelState,
+  updateChannelState,
 };

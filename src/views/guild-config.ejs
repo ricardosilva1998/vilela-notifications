@@ -1,56 +1,29 @@
-<%- include('header', { title: guildName + ' - Config', streamer: streamer }) %>
+<%- include('header', { title: guildName + ' - Settings', streamer: streamer }) %>
 
 <a href="/dashboard" style="color: #adadb8; font-size: 14px;">&larr; Back to Dashboard</a>
 <h2 style="margin: 12px 0 20px;"><%= guildName %></h2>
 
 <% if (typeof saved !== 'undefined' && saved) { %>
-  <div class="alert alert-success">Configuration saved!</div>
+  <div class="alert alert-success">Settings saved!</div>
 <% } %>
+
+<!-- Navigation -->
+<div style="display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap;">
+  <a href="/dashboard/guild/<%= guild.guild_id %>/channels" class="btn btn-primary" style="display: flex; align-items: center; gap: 6px;">
+    📡 Manage Twitch Channels (<%= typeof watchedCount !== 'undefined' ? watchedCount : 0 %>)
+  </a>
+</div>
 
 <form method="POST" action="/dashboard/guild/<%= guild.guild_id %>">
 
   <div class="card">
-    <h3>Twitch Live Notifications</h3>
-    <div class="toggle">
-      <input type="checkbox" name="twitch_live_enabled" id="twitch_live_enabled" <%= guild.twitch_live_enabled ? 'checked' : '' %>>
-      <label for="twitch_live_enabled">Enable live notifications</label>
-    </div>
-    <div class="form-group">
-      <label>Channel</label>
-      <select name="twitch_live_channel_id">
-        <option value="">-- Select channel --</option>
-        <% for (const c of channels) { %>
-          <option value="<%= c.id %>" <%= guild.twitch_live_channel_id === c.id ? 'selected' : '' %>>#<%= c.name %></option>
-        <% } %>
-      </select>
-    </div>
-  </div>
-
-  <div class="card">
-    <h3>Twitch Clip Notifications</h3>
-    <div class="toggle">
-      <input type="checkbox" name="twitch_clips_enabled" id="twitch_clips_enabled" <%= guild.twitch_clips_enabled ? 'checked' : '' %>>
-      <label for="twitch_clips_enabled">Enable clip notifications</label>
-    </div>
-    <div class="form-group">
-      <label>Channel</label>
-      <select name="twitch_clips_channel_id">
-        <option value="">-- Select channel --</option>
-        <% for (const c of channels) { %>
-          <option value="<%= c.id %>" <%= guild.twitch_clips_channel_id === c.id ? 'selected' : '' %>>#<%= c.name %></option>
-        <% } %>
-      </select>
-    </div>
-  </div>
-
-  <div class="card">
-    <h3>YouTube Notifications</h3>
+    <h3>🎬 YouTube Notifications</h3>
     <div class="toggle">
       <input type="checkbox" name="youtube_enabled" id="youtube_enabled" <%= guild.youtube_enabled ? 'checked' : '' %>>
       <label for="youtube_enabled">Enable YouTube notifications</label>
     </div>
     <div class="form-group">
-      <label>Channel</label>
+      <label>Send to channel</label>
       <select name="youtube_channel_id">
         <option value="">-- Select channel --</option>
         <% for (const c of channels) { %>
@@ -64,13 +37,13 @@
   </div>
 
   <div class="card">
-    <h3>Welcome Message</h3>
+    <h3>👋 Welcome Message</h3>
     <div class="toggle">
       <input type="checkbox" name="welcome_enabled" id="welcome_enabled" <%= guild.welcome_enabled ? 'checked' : '' %>>
       <label for="welcome_enabled">Enable welcome messages</label>
     </div>
     <div class="form-group">
-      <label>Channel</label>
+      <label>Send to channel</label>
       <select name="welcome_channel_id">
         <option value="">-- Select channel --</option>
         <% for (const c of channels) { %>
@@ -85,7 +58,7 @@
   </div>
 
   <div class="card">
-    <h3>Subscriber Role Sync</h3>
+    <h3>⭐ Subscriber Role Sync</h3>
     <div class="toggle">
       <input type="checkbox" name="sub_sync_enabled" id="sub_sync_enabled" <%= guild.sub_sync_enabled ? 'checked' : '' %>>
       <label for="sub_sync_enabled">Enable subscriber role sync</label>
@@ -104,7 +77,13 @@
     <% } %>
   </div>
 
-  <button type="submit" class="btn btn-success" style="width: 100%; padding: 14px; font-size: 16px;">Save Configuration</button>
+  <!-- Hidden fields to preserve existing twitch channel settings -->
+  <input type="hidden" name="twitch_live_channel_id" value="<%= guild.twitch_live_channel_id || '' %>">
+  <input type="hidden" name="twitch_clips_channel_id" value="<%= guild.twitch_clips_channel_id || '' %>">
+  <input type="hidden" name="twitch_live_enabled" value="on">
+  <input type="hidden" name="twitch_clips_enabled" value="on">
+
+  <button type="submit" class="btn btn-success" style="width: 100%; padding: 14px; font-size: 16px;">Save Settings</button>
 </form>
 
 <div class="card" style="margin-top: 24px; border-color: #e74c3c44;">

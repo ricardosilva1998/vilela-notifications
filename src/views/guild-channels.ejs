@@ -1,0 +1,79 @@
+<%- include('header', { title: guildName + ' - Twitch Channels', streamer: streamer }) %>
+
+<a href="/dashboard/guild/<%= guildId %>" style="color: #adadb8; font-size: 14px;">&larr; Back to Server Settings</a>
+<h2 style="margin: 12px 0 20px;"><%= guildName %> — Twitch Channels</h2>
+
+<% if (msg === 'added') { %>
+  <div class="alert alert-success">Channel added! Notifications will start within a minute.</div>
+<% } %>
+<% if (msg === 'removed') { %>
+  <div class="alert alert-success">Channel removed.</div>
+<% } %>
+<% if (msg === 'missing_fields') { %>
+  <div class="alert" style="background: #e74c3c33; border: 1px solid #e74c3c;">Please fill in all fields.</div>
+<% } %>
+
+<div class="card">
+  <h3>Add a Twitch Channel</h3>
+  <p style="color: #adadb8; font-size: 14px; margin-bottom: 16px;">
+    Enter any Twitch username to get notified when they go live or get clipped.
+  </p>
+  <form method="POST" action="/dashboard/guild/<%= guildId %>/channels">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div class="form-group">
+        <label>Twitch Username</label>
+        <input type="text" name="twitch_username" placeholder="e.g. shroud" required>
+      </div>
+      <div class="form-group">
+        <label>Send Notifications To</label>
+        <select name="discord_channel_id" required>
+          <option value="">-- Select channel --</option>
+          <% for (const c of channels) { %>
+            <option value="<%= c.id %>">#<%= c.name %></option>
+          <% } %>
+        </select>
+      </div>
+    </div>
+    <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+      <label style="display: flex; align-items: center; gap: 6px; font-size: 14px; color: #adadb8;">
+        <input type="checkbox" name="notify_live" checked style="accent-color: #9146ff;"> Live notifications
+      </label>
+      <label style="display: flex; align-items: center; gap: 6px; font-size: 14px; color: #adadb8;">
+        <input type="checkbox" name="notify_clips" checked style="accent-color: #9146ff;"> Clip notifications
+      </label>
+    </div>
+    <button type="submit" class="btn btn-primary">Add Channel</button>
+  </form>
+</div>
+
+<h3 class="section-title" style="margin-top: 24px;">Watched Channels (<%= watchedChannels.length %>)</h3>
+
+<% if (watchedChannels.length === 0) { %>
+  <div class="card" style="text-align: center; padding: 32px; color: #adadb8;">
+    <p style="font-size: 24px; margin-bottom: 8px;">📡</p>
+    <p>No channels being watched yet. Add one above!</p>
+  </div>
+<% } else { %>
+  <% for (const wc of watchedChannels) { %>
+    <div class="card" style="display: flex; align-items: center; gap: 16px;">
+      <div style="flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; background: #9146ff33; display: flex; align-items: center; justify-content: center;">
+        <span style="color: #9146ff; font-weight: 700; font-size: 16px;"><%= wc.twitch_username.charAt(0).toUpperCase() %></span>
+      </div>
+      <div style="flex: 1;">
+        <div style="font-weight: 600;">
+          <a href="https://twitch.tv/<%= wc.twitch_username %>" target="_blank" style="color: #efeff1;"><%= wc.twitch_username %></a>
+        </div>
+        <div style="font-size: 12px; color: #adadb8;">
+          <% if (wc.notify_live) { %>Live<% } %>
+          <% if (wc.notify_live && wc.notify_clips) { %> &middot; <% } %>
+          <% if (wc.notify_clips) { %>Clips<% } %>
+        </div>
+      </div>
+      <form method="POST" action="/dashboard/guild/<%= guildId %>/channels/<%= wc.id %>/remove" style="margin: 0;">
+        <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;">Remove</button>
+      </form>
+    </div>
+  <% } %>
+<% } %>
+
+<%- include('footer') %>

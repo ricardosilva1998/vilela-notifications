@@ -1,20 +1,20 @@
 const { getClips, getUserId } = require('../services/twitch');
 const { buildEmbed } = require('../discord');
 
-async function check(streamer, pollerState) {
-  let broadcasterId = pollerState.twitch_broadcaster_id;
+async function check(twitchUsername, channelState) {
+  let broadcasterId = channelState.twitch_broadcaster_id;
 
   if (!broadcasterId) {
-    broadcasterId = await getUserId(streamer.twitch_username);
+    broadcasterId = await getUserId(twitchUsername);
     if (!broadcasterId) return null;
-    return { notify: false, stateUpdate: { twitch_broadcaster_id: broadcasterId }, clips: [] };
+    return { notify: false, stateUpdate: { twitch_broadcaster_id: broadcasterId } };
   }
 
-  const since = pollerState.last_clip_created_at || new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const since = channelState.last_clip_created_at || new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const clips = await getClips(broadcasterId, since);
 
   const newClips = clips.filter(
-    (clip) => !pollerState.last_clip_created_at || clip.created_at > pollerState.last_clip_created_at
+    (clip) => !channelState.last_clip_created_at || clip.created_at > channelState.last_clip_created_at
   );
 
   if (newClips.length === 0) return null;
@@ -39,7 +39,7 @@ async function check(streamer, pollerState) {
 
   return {
     notify: true,
-    embeds, // multiple embeds (one per clip)
+    embeds,
     stateUpdate: { last_clip_created_at: newest.created_at },
   };
 }

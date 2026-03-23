@@ -5,33 +5,26 @@ function formatThumbnail(url) {
   return url.replace('{width}', '1280').replace('{height}', '720');
 }
 
-async function check(streamer, pollerState) {
-  const stream = await getStream(streamer.twitch_username);
+async function check(twitchUsername, channelState) {
+  const stream = await getStream(twitchUsername);
 
-  if (stream && !pollerState.twitch_is_live) {
+  if (stream && !channelState.is_live) {
     const embed = buildEmbed({
       color: 0x9146ff,
-      author: { name: `${streamer.twitch_display_name || streamer.twitch_username} is live on Twitch!` },
+      author: { name: `${stream.user_name || twitchUsername} is live on Twitch!` },
       title: stream.title,
-      url: `https://twitch.tv/${streamer.twitch_username}`,
+      url: `https://twitch.tv/${twitchUsername}`,
       description: `Playing **${stream.game_name || 'Unknown'}**`,
       image: formatThumbnail(stream.thumbnail_url),
       footer: { text: 'Twitch' },
       timestamp: new Date(),
     });
 
-    return {
-      notify: true,
-      embed,
-      stateUpdate: { twitch_is_live: 1 },
-    };
+    return { notify: true, embed, stateUpdate: { is_live: 1 } };
   }
 
-  if (!stream && pollerState.twitch_is_live) {
-    return {
-      notify: false,
-      stateUpdate: { twitch_is_live: 0 },
-    };
+  if (!stream && channelState.is_live) {
+    return { notify: false, stateUpdate: { is_live: 0 } };
   }
 
   return null;
