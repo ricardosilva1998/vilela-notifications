@@ -36,7 +36,10 @@
   </a>
 </div>
 
-<h3 class="section-title animate-in animate-in-delay-2"><%= t('dashboard.yourServers') %> (<%= guilds.length %>)</h3>
+<h3 class="section-title animate-in animate-in-delay-2" style="display: flex; align-items: center; gap: 10px;">
+  <%= t('dashboard.yourServers') %>
+  <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; padding: 0 8px; border-radius: 12px; background: var(--accent); color: white; font-size: 12px; font-weight: 700; font-family: var(--font-display);"><%= guilds.length %></span>
+</h3>
 
 <% if (guilds.length === 0 && unclaimedGuilds.length === 0) { %>
   <div class="card animate-in animate-in-delay-3" style="text-align: center; padding: 48px 24px;">
@@ -228,7 +231,10 @@
 </div>
 
 <% if (unclaimedGuilds.length > 0) { %>
-  <h3 class="section-title" style="margin-top: 28px;"><%= t('dashboard.availableServers') %></h3>
+  <h3 class="section-title" style="margin-top: 28px; display: flex; align-items: center; gap: 10px;">
+    <%= t('dashboard.availableServers') %>
+    <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; padding: 0 8px; border-radius: 12px; background: var(--bg-elevated); color: var(--text-secondary); font-size: 12px; font-weight: 700; font-family: var(--font-display); border: 1px solid var(--border);"><%= unclaimedGuilds.length %></span>
+  </h3>
   <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 14px;"><%= t('dashboard.availableServersDesc') %></p>
   <div class="guild-list">
     <% unclaimedGuilds.forEach(function(g, i) { %>
