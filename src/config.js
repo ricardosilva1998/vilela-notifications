@@ -27,12 +27,18 @@ module.exports = {
     twitchLiveChannelId: process.env.DISCORD_TWITCH_LIVE_CHANNEL_ID,
     twitchClipsChannelId: process.env.DISCORD_TWITCH_CLIPS_CHANNEL_ID,
     welcomeChannelId: process.env.DISCORD_WELCOME_CHANNEL_ID,
+    subRoleId: process.env.DISCORD_SUB_ROLE_ID,
     youtubeChannelId: process.env.DISCORD_YOUTUBE_CHANNEL_ID,
   },
   twitch: {
     clientId: process.env.TWITCH_CLIENT_ID,
     clientSecret: process.env.TWITCH_CLIENT_SECRET,
     username: process.env.TWITCH_USERNAME,
+    broadcasterId: process.env.TWITCH_BROADCASTER_ID,
+  },
+  app: {
+    url: process.env.APP_URL || 'http://localhost:3000',
+    port: parseInt(process.env.PORT) || 3000,
   },
   youtube: {
     enabled: youtubeEnabled,
@@ -44,5 +50,6 @@ module.exports = {
     twitchClips: parseInt(process.env.TWITCH_CLIPS_INTERVAL) || 300_000,
     youtubeFeed: parseInt(process.env.YOUTUBE_FEED_INTERVAL) || 300_000,
     youtubeLive: parseInt(process.env.YOUTUBE_LIVE_INTERVAL) || 120_000,
+    subSync: parseInt(process.env.SUB_SYNC_INTERVAL) || 600_000,
   },
 };

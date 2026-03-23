@@ -4,6 +4,9 @@ const { client } = require('./discord');
 const twitchLive = require('./pollers/twitchLive');
 const twitchClips = require('./pollers/twitchClips');
 const welcome = require('./welcome');
+const server = require('./server');
+const commands = require('./commands');
+const subSync = require('./pollers/subSync');
 
 let appState = state.load();
 
@@ -37,6 +40,14 @@ client.once('ready', async () => {
     twitchLive.start(appState);
     twitchClips.start(appState);
     welcome.start();
+    subSync.start();
+
+    // Register slash commands and start listening
+    await commands.registerCommands();
+    commands.start();
+
+    // Start web server for OAuth
+    server.start();
 
     console.log('All pollers running');
   } catch (error) {
