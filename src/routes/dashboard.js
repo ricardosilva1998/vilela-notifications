@@ -78,11 +78,17 @@ router.get('/', (req, res) => {
 
   const enrichedGuilds = guilds.map((g) => {
     const discordGuild = client.guilds.cache.get(g.guild_id);
+    const stats = db.getGuildNotificationStats(req.streamer.id, g.guild_id);
+    const twitchCount = db.getWatchedChannelsForGuild(g.guild_id, req.streamer.id).length;
+    const youtubeCount = db.getWatchedYoutubeChannelsForGuild(g.guild_id, req.streamer.id).length;
     return {
       ...g,
       name: discordGuild?.name || g.guild_name || 'Unknown Server',
       icon: discordGuild?.iconURL({ size: 64 }) || null,
       botPresent: !!discordGuild,
+      stats,
+      twitchCount,
+      youtubeCount,
     };
   });
 

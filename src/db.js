@@ -546,6 +546,24 @@ function getStreamerNotificationsByType(streamerId) {
   return _getStreamerNotificationsByType.all(streamerId);
 }
 
+const _getGuildNotificationStats = db.prepare(`
+  SELECT
+    COALESCE(SUM(CASE WHEN type = 'twitch_live' THEN 1 ELSE 0 END), 0) AS live_count,
+    COALESCE(SUM(CASE WHEN type = 'twitch_clip' THEN 1 ELSE 0 END), 0) AS clip_count,
+    COALESCE(SUM(CASE WHEN type = 'twitch_recap' THEN 1 ELSE 0 END), 0) AS recap_count,
+    COALESCE(SUM(CASE WHEN type = 'youtube_video' THEN 1 ELSE 0 END), 0) AS youtube_video_count,
+    COALESCE(SUM(CASE WHEN type = 'youtube_live' THEN 1 ELSE 0 END), 0) AS youtube_live_count,
+    COALESCE(SUM(CASE WHEN type = 'twitch_milestone' THEN 1 ELSE 0 END), 0) AS milestone_count,
+    COALESCE(SUM(CASE WHEN type = 'weekly_digest' THEN 1 ELSE 0 END), 0) AS digest_count,
+    COUNT(*) AS total,
+    COALESCE(SUM(CASE WHEN created_at > datetime('now', '-7 days') THEN 1 ELSE 0 END), 0) AS week_total
+  FROM notification_log WHERE streamer_id = ? AND guild_id = ?
+`);
+
+function getGuildNotificationStats(streamerId, guildId) {
+  return _getGuildNotificationStats.get(streamerId, guildId);
+}
+
 // --- Admin ---
 
 const _disableStreamer = db.prepare('UPDATE streamers SET enabled = 0, admin_note = ? WHERE id = ?');
@@ -1089,4 +1107,5 @@ module.exports = {
   getStreamerStats,
   getStreamerNotificationsOverTime,
   getStreamerNotificationsByType,
+  getGuildNotificationStats,
 };
