@@ -13,11 +13,16 @@ async function check(twitchUsername, channelState) {
   const since = channelState.last_clip_created_at || new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const clips = await getClips(broadcasterId, since);
 
+  if (clips.length > 0) {
+    console.log(`[TwitchClips] ${twitchUsername}: found ${clips.length} clips since ${since}`);
+  }
+
   const newClips = clips.filter(
     (clip) => !channelState.last_clip_created_at || clip.created_at > channelState.last_clip_created_at
   );
 
   if (newClips.length === 0) return null;
+  console.log(`[TwitchClips] ${twitchUsername}: ${newClips.length} NEW clips to notify`);
 
   const embeds = newClips.map((clip) =>
     buildEmbed({

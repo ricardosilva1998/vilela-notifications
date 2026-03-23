@@ -11,6 +11,10 @@ const subSync = require('./subSync');
 
 async function pollAllTwitchLive() {
   const channels = db.getAllUniqueWatchedChannels();
+  if (channels.length > 0 && !pollAllTwitchLive._logged) {
+    console.log(`[TwitchLive] Polling ${channels.length} channels: ${channels.map(c => c.twitch_username).join(', ')}`);
+    pollAllTwitchLive._logged = true;
+  }
   for (const { twitch_username } of channels) {
     try {
       const state = db.getChannelState(twitch_username);
@@ -47,7 +51,10 @@ async function pollAllTwitchClips() {
       const result = await twitchClips.check(twitch_username, state);
       if (!result) continue;
 
-      if (result.stateUpdate) db.updateChannelState(twitch_username, result.stateUpdate);
+      if (result.stateUpdate) {
+        console.log(`[TwitchClips] ${twitch_username}: state update`, JSON.stringify(result.stateUpdate));
+        db.updateChannelState(twitch_username, result.stateUpdate);
+      }
 
       if (result.notify && result.embeds) {
         const watchers = db.getWatchersForChannel(twitch_username).filter((w) => w.notify_clips);
