@@ -511,6 +511,41 @@ function logNotification(streamerId, guildId, type, success) {
   _logNotification.run(streamerId, guildId, type, success ? 1 : 0);
 }
 
+// --- Streamer Stats (for account page) ---
+
+const _getStreamerStats = db.prepare(`
+  SELECT
+    (SELECT COUNT(*) FROM guilds WHERE streamer_id = ?) AS total_guilds,
+    (SELECT COUNT(*) FROM watched_channels WHERE streamer_id = ?) AS total_twitch_channels,
+    (SELECT COUNT(*) FROM watched_youtube_channels WHERE streamer_id = ?) AS total_youtube_channels,
+    (SELECT COUNT(*) FROM notification_log WHERE streamer_id = ?) AS total_notifications,
+    (SELECT COUNT(*) FROM notification_log WHERE streamer_id = ? AND created_at > datetime('now', '-1 day')) AS notifications_today,
+    (SELECT COUNT(*) FROM notification_log WHERE streamer_id = ? AND created_at > datetime('now', '-7 days')) AS notifications_week,
+    (SELECT COUNT(*) FROM notification_log WHERE streamer_id = ? AND created_at > datetime('now', '-30 days')) AS notifications_month
+`);
+
+const _getStreamerNotificationsOverTime = db.prepare(`
+  SELECT strftime(?, created_at) AS period, COUNT(*) AS count
+  FROM notification_log WHERE streamer_id = ? GROUP BY period ORDER BY period DESC LIMIT ?
+`);
+
+const _getStreamerNotificationsByType = db.prepare(`
+  SELECT type, COUNT(*) AS count
+  FROM notification_log WHERE streamer_id = ? GROUP BY type ORDER BY count DESC
+`);
+
+function getStreamerStats(streamerId) {
+  return _getStreamerStats.get(streamerId, streamerId, streamerId, streamerId, streamerId, streamerId, streamerId);
+}
+
+function getStreamerNotificationsOverTime(streamerId, format, limit) {
+  return _getStreamerNotificationsOverTime.all(format, streamerId, limit).reverse();
+}
+
+function getStreamerNotificationsByType(streamerId) {
+  return _getStreamerNotificationsByType.all(streamerId);
+}
+
 // --- Admin ---
 
 const _disableStreamer = db.prepare('UPDATE streamers SET enabled = 0, admin_note = ? WHERE id = ?');
@@ -1051,4 +1086,7 @@ module.exports = {
   getGuildsWithWeeklyHighlights,
   getDigestChannelForGuild,
   clearStreamSession,
+  getStreamerStats,
+  getStreamerNotificationsOverTime,
+  getStreamerNotificationsByType,
 };

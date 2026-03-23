@@ -52,6 +52,25 @@ router.post('/claim/:guildId', (req, res) => {
   res.redirect(`/dashboard/guild/${guildId}`);
 });
 
+// Account page
+router.get('/account', (req, res) => {
+  const { tier, limits } = getTierLimits(req.streamer.id);
+  const stats = db.getStreamerStats(req.streamer.id);
+  const notificationsOverTime = db.getStreamerNotificationsOverTime(req.streamer.id, '%Y-%m-%d', 30);
+  const notificationsByType = db.getStreamerNotificationsByType(req.streamer.id);
+  const subscription = db.getSubscription(req.streamer.id);
+
+  res.render('account', {
+    streamer: req.streamer,
+    tier,
+    limits,
+    stats,
+    notificationsOverTime,
+    notificationsByType,
+    subscription,
+  });
+});
+
 // Dashboard home — list guilds
 router.get('/', (req, res) => {
   const guilds = db.getGuildsForStreamer(req.streamer.id);

@@ -1,0 +1,157 @@
+<%- include('header', { title: 'Account', streamer: streamer }) %>
+
+<a href="/dashboard" style="color: var(--text-secondary); font-size: 13px; font-family: var(--font-display); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  Back to Dashboard
+</a>
+
+<div style="display: flex; align-items: center; gap: 16px; margin: 20px 0 32px;" class="animate-in">
+  <% if (streamer.discord_avatar) { %>
+    <img src="<%= streamer.discord_avatar %>" alt="" style="width: 56px; height: 56px; border-radius: 50%; border: 3px solid var(--border);">
+  <% } else { %>
+    <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; color: white; font-family: var(--font-display); font-weight: 700; font-size: 22px;"><%= (streamer.discord_display_name || streamer.discord_username || '?').charAt(0).toUpperCase() %></div>
+  <% } %>
+  <div>
+    <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 4px;"><%= streamer.discord_display_name || streamer.discord_username %></h2>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span class="badge badge-tier"><%= tier.toUpperCase() %></span>
+      <span style="color: var(--text-muted); font-size: 13px;">Member since <%= streamer.created_at ? streamer.created_at.split('T')[0] : 'N/A' %></span>
+    </div>
+  </div>
+</div>
+
+<!-- Metrics Overview -->
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px;" class="animate-in animate-in-delay-1">
+  <div class="card" style="text-align: center; padding: 20px 12px;">
+    <div style="font-size: 28px; font-weight: 800; font-family: var(--font-display); color: var(--accent);"><%= stats.total_notifications %></div>
+    <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Total Sent</div>
+  </div>
+  <div class="card" style="text-align: center; padding: 20px 12px;">
+    <div style="font-size: 28px; font-weight: 800; font-family: var(--font-display); color: var(--success);"><%= stats.notifications_today %></div>
+    <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Today</div>
+  </div>
+  <div class="card" style="text-align: center; padding: 20px 12px;">
+    <div style="font-size: 28px; font-weight: 800; font-family: var(--font-display); color: var(--text-primary);"><%= stats.notifications_week %></div>
+    <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">This Week</div>
+  </div>
+  <div class="card" style="text-align: center; padding: 20px 12px;">
+    <div style="font-size: 28px; font-weight: 800; font-family: var(--font-display); color: var(--text-primary);"><%= stats.notifications_month %></div>
+    <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">This Month</div>
+  </div>
+</div>
+
+<!-- Charts Row -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 28px;" class="animate-in animate-in-delay-2">
+  <!-- Notifications Over Time -->
+  <div class="card" style="padding: 24px;">
+    <h3 style="font-size: 15px; margin-bottom: 20px;">Notifications (Last 30 Days)</h3>
+    <div style="display: flex; align-items: flex-end; gap: 3px; height: 120px;">
+      <% const maxCount = Math.max(...notificationsOverTime.map(d => d.count), 1); %>
+      <% notificationsOverTime.forEach(function(d) { %>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+          <div style="width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; height: <%= Math.max((d.count / maxCount) * 100, 2) %>%; opacity: <%= d.count > 0 ? 1 : 0.2 %>; transition: height 0.3s ease;" title="<%= d.period %>: <%= d.count %>"></div>
+        </div>
+      <% }); %>
+    </div>
+    <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+      <span style="font-size: 10px; color: var(--text-muted);"><%= notificationsOverTime.length > 0 ? notificationsOverTime[0].period : '' %></span>
+      <span style="font-size: 10px; color: var(--text-muted);"><%= notificationsOverTime.length > 0 ? notificationsOverTime[notificationsOverTime.length - 1].period : '' %></span>
+    </div>
+  </div>
+
+  <!-- By Type -->
+  <div class="card" style="padding: 24px;">
+    <h3 style="font-size: 15px; margin-bottom: 20px;">By Type</h3>
+    <% if (notificationsByType.length === 0) { %>
+      <p style="color: var(--text-muted); font-size: 13px;">No notifications yet</p>
+    <% } else { %>
+      <% const typeColors = { twitch_live: '#9146ff', twitch_clip: '#bf94ff', twitch_recap: '#6d28d9', youtube_video: '#f04438', youtube_live: '#ff6b6b', weekly_digest: '#3498db', twitch_milestone: '#f1c40f' }; %>
+      <% const typeLabels = { twitch_live: 'Twitch Live', twitch_clip: 'Clips', twitch_recap: 'Recaps', youtube_video: 'YouTube Videos', youtube_live: 'YouTube Live', weekly_digest: 'Weekly Digest', twitch_milestone: 'Milestones' }; %>
+      <% const totalByType = notificationsByType.reduce((s, d) => s + d.count, 0); %>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <% notificationsByType.forEach(function(d) { %>
+          <div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 12px; color: var(--text-secondary);"><%= typeLabels[d.type] || d.type %></span>
+              <span style="font-size: 12px; color: var(--text-muted);"><%= d.count %></span>
+            </div>
+            <div style="width: 100%; height: 6px; background: var(--bg-base); border-radius: 3px; overflow: hidden;">
+              <div style="width: <%= (d.count / totalByType * 100) %>%; height: 100%; background: <%= typeColors[d.type] || 'var(--accent)' %>; border-radius: 3px;"></div>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<!-- Account Resources -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 28px;" class="animate-in animate-in-delay-2">
+  <div class="card" style="text-align: center; padding: 16px;">
+    <div style="font-size: 20px; font-weight: 800; font-family: var(--font-display);"><%= stats.total_guilds %></div>
+    <div style="font-size: 12px; color: var(--text-muted);">Servers</div>
+  </div>
+  <div class="card" style="text-align: center; padding: 16px;">
+    <div style="font-size: 20px; font-weight: 800; font-family: var(--font-display);"><%= stats.total_twitch_channels + stats.total_youtube_channels %></div>
+    <div style="font-size: 12px; color: var(--text-muted);">Channels Watched</div>
+  </div>
+</div>
+
+<!-- Subscription -->
+<div class="card animate-in animate-in-delay-3" style="margin-bottom: 16px;">
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h3 style="font-size: 15px; margin-bottom: 4px;">Subscription</h3>
+      <p style="color: var(--text-secondary); font-size: 13px;">
+        <span class="badge badge-tier" style="margin-right: 6px;"><%= tier.toUpperCase() %></span>
+        <% if (subscription?.tier === 'free' || !subscription) { %>
+          Free forever
+        <% } else { %>
+          <%= subscription.status === 'active' ? 'Active' : subscription.status %>
+          <% if (subscription.expires_at) { %> &middot; Expires: <%= subscription.expires_at.split('T')[0] %><% } %>
+        <% } %>
+      </p>
+    </div>
+    <a href="/payment/subscription" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px;">Manage</a>
+  </div>
+</div>
+
+<!-- Language -->
+<div class="card animate-in animate-in-delay-3" style="margin-bottom: 16px;">
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h3 style="font-size: 15px; margin-bottom: 4px;">Language</h3>
+      <p style="color: var(--text-secondary); font-size: 13px;">Choose your preferred language</p>
+    </div>
+    <form method="POST" action="/set-language" style="margin: 0;">
+      <select name="lang" onchange="this.form.submit()" style="padding: 8px 12px; background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 13px; font-family: var(--font-body); cursor: pointer;">
+        <% SUPPORTED_LANGS.forEach(function(l) { %>
+          <option value="<%= l %>" <%= l === lang ? 'selected' : '' %>><%= t('lang.' + l) %></option>
+        <% }); %>
+      </select>
+    </form>
+  </div>
+</div>
+
+<!-- Logout -->
+<div class="card animate-in animate-in-delay-4" style="border-color: rgba(240,68,56,0.15);">
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h3 style="font-size: 15px; margin-bottom: 4px; color: var(--danger);">Logout</h3>
+      <p style="color: var(--text-secondary); font-size: 13px;">Sign out of your account</p>
+    </div>
+    <a href="/auth/logout" class="btn btn-danger" style="padding: 8px 16px; font-size: 12px;">Logout</a>
+  </div>
+</div>
+
+<style>
+  @media (max-width: 640px) {
+    .animate-in-delay-1 > .card { margin-bottom: 8px; }
+  }
+  @media (max-width: 520px) {
+    div[style*="grid-template-columns: repeat(4"] { grid-template-columns: repeat(2, 1fr) !important; }
+    div[style*="grid-template-columns: 2fr 1fr"] { grid-template-columns: 1fr !important; }
+  }
+</style>
+
+<%- include('footer') %>
