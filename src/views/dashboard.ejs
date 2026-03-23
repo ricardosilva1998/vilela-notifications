@@ -83,62 +83,108 @@
         </div>
         <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 10px 12px; border: 1px solid var(--border);">
           <div style="font-size: 18px; font-weight: 700; font-family: var(--font-display); color: #bf94ff;"><%= g.stats.clip_count %></div>
-          <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Clips</div>
+          <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Clips Shared</div>
         </div>
         <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 10px 12px; border: 1px solid var(--border);">
           <div style="font-size: 18px; font-weight: 700; font-family: var(--font-display); color: #f04438;"><%= g.stats.youtube_video_count + g.stats.youtube_live_count %></div>
-          <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">YouTube</div>
+          <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">YouTube Alerts</div>
         </div>
         <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 10px 12px; border: 1px solid var(--border);">
           <div style="font-size: 18px; font-weight: 700; font-family: var(--font-display); color: var(--text-primary);"><%= g.stats.total %></div>
-          <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Total</div>
+          <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">All Notifications</div>
         </div>
       </div>
 
       <!-- Expandable Detailed Stats -->
-      <div class="guild-stats-expanded" id="stats-<%= g.guild_id %>" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); animation: fadeUp 0.3s ease-out;">
+      <div class="guild-stats-expanded" id="stats-<%= g.guild_id %>" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
 
         <!-- Chart: Last 30 days -->
-        <div style="margin-bottom: 16px;">
-          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px; font-family: var(--font-display); font-weight: 600;">Last 30 Days</div>
+        <div style="margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="font-size: 13px; color: var(--text-primary); font-family: var(--font-display); font-weight: 600;">Notifications sent per day (last 30 days)</div>
+            <div style="font-size: 11px; color: var(--text-muted);"><%= g.stats.total %> total all time</div>
+          </div>
           <% if (g.chartData.length === 0) { %>
-            <div style="text-align: center; padding: 20px 0; color: var(--text-muted); font-size: 13px;">No notifications yet</div>
+            <div style="text-align: center; padding: 24px 0; color: var(--text-muted); font-size: 13px; background: var(--bg-base); border-radius: var(--radius-sm); border: 1px solid var(--border);">No notifications in the last 30 days</div>
           <% } else { %>
-            <div style="display: flex; align-items: flex-end; gap: 2px; height: 80px;">
+            <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 16px; border: 1px solid var(--border);">
               <% const maxC = Math.max(...g.chartData.map(d => d.count), 1); %>
-              <% g.chartData.forEach(function(d) { %>
-                <div style="flex: 1;" title="<%= d.period %>: <%= d.count %>">
-                  <div style="width: 100%; background: var(--accent); border-radius: 2px 2px 0 0; min-height: 2px; height: <%= Math.max((d.count / maxC) * 100, 2) %>%; opacity: <%= d.count > 0 ? 1 : 0.15 %>;"></div>
-                </div>
-              <% }); %>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin-top: 6px;">
-              <span style="font-size: 9px; color: var(--text-muted);"><%= g.chartData[0].period %></span>
-              <span style="font-size: 9px; color: var(--text-muted);"><%= g.chartData[g.chartData.length - 1].period %></span>
+              <!-- Y-axis label -->
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span style="font-size: 9px; color: var(--text-muted);"><%= maxC %></span>
+                <span style="font-size: 9px; color: var(--text-muted);">notifications</span>
+              </div>
+              <!-- Bars -->
+              <div style="display: flex; align-items: flex-end; gap: 2px; height: 80px; position: relative;">
+                <% g.chartData.forEach(function(d) { %>
+                  <div style="flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; cursor: default;" title="<%= d.period %>: <%= d.count %> notification<%= d.count !== 1 ? 's' : '' %>">
+                    <div style="width: 100%; background: var(--accent); border-radius: 2px 2px 0 0; height: <%= Math.round(Math.max((d.count / maxC) * 80, d.count > 0 ? 3 : 1)) %>px; opacity: <%= d.count > 0 ? 1 : 0.12 %>;"></div>
+                  </div>
+                <% }); %>
+              </div>
+              <!-- X-axis labels -->
+              <div style="display: flex; justify-content: space-between; margin-top: 6px;">
+                <span style="font-size: 9px; color: var(--text-muted);"><%= g.chartData[0].period %></span>
+                <% if (g.chartData.length > 10) { %>
+                  <span style="font-size: 9px; color: var(--text-muted);"><%= g.chartData[Math.floor(g.chartData.length / 2)].period %></span>
+                <% } %>
+                <span style="font-size: 9px; color: var(--text-muted);"><%= g.chartData[g.chartData.length - 1].period %></span>
+              </div>
             </div>
           <% } %>
         </div>
 
         <!-- Detailed Breakdown -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-          <!-- Twitch -->
-          <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 14px; border: 1px solid var(--border);">
-            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 10px; font-family: var(--font-display); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Twitch</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-              <div><div style="font-size: 16px; font-weight: 700; color: var(--accent);"><%= g.stats.live_count %></div><div style="font-size: 10px; color: var(--text-muted);">Live</div></div>
-              <div><div style="font-size: 16px; font-weight: 700; color: #bf94ff;"><%= g.stats.clip_count %></div><div style="font-size: 10px; color: var(--text-muted);">Clips</div></div>
-              <div><div style="font-size: 16px; font-weight: 700; color: #6d28d9;"><%= g.stats.recap_count %></div><div style="font-size: 10px; color: var(--text-muted);">Recaps</div></div>
-              <div><div style="font-size: 16px; font-weight: 700; color: #f1c40f;"><%= g.stats.milestone_count %></div><div style="font-size: 10px; color: var(--text-muted);">Milestones</div></div>
+          <!-- Twitch Notifications -->
+          <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 16px; border: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2H3v16h5v4l4-4h5l4-4V2zM11 11V7M16 11V7"/></svg>
+              <div style="font-size: 12px; color: var(--text-primary); font-family: var(--font-display); font-weight: 600;">Twitch Notifications</div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <div style="font-size: 18px; font-weight: 700; color: var(--accent);"><%= g.stats.live_count %></div>
+                <div style="font-size: 10px; color: var(--text-muted);">Go-Live Alerts</div>
+              </div>
+              <div>
+                <div style="font-size: 18px; font-weight: 700; color: #bf94ff;"><%= g.stats.clip_count %></div>
+                <div style="font-size: 10px; color: var(--text-muted);">Clip Notifications</div>
+              </div>
+              <div>
+                <div style="font-size: 18px; font-weight: 700; color: #6d28d9;"><%= g.stats.recap_count %></div>
+                <div style="font-size: 10px; color: var(--text-muted);">Stream Recaps</div>
+              </div>
+              <div>
+                <div style="font-size: 18px; font-weight: 700; color: #f1c40f;"><%= g.stats.milestone_count %></div>
+                <div style="font-size: 10px; color: var(--text-muted);">Milestone Alerts</div>
+              </div>
             </div>
           </div>
-          <!-- YouTube + Community -->
-          <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 14px; border: 1px solid var(--border);">
-            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 10px; font-family: var(--font-display); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">YouTube & Community</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-              <div><div style="font-size: 16px; font-weight: 700; color: #f04438;"><%= g.stats.youtube_video_count %></div><div style="font-size: 10px; color: var(--text-muted);">Videos</div></div>
-              <div><div style="font-size: 16px; font-weight: 700; color: #ff6b6b;"><%= g.stats.youtube_live_count %></div><div style="font-size: 10px; color: var(--text-muted);">YT Live</div></div>
-              <div><div style="font-size: 16px; font-weight: 700; color: #3498db;"><%= g.stats.digest_count %></div><div style="font-size: 10px; color: var(--text-muted);">Digests</div></div>
-              <div><div style="font-size: 16px; font-weight: 700; color: var(--success);"><%= g.stats.week_total %></div><div style="font-size: 10px; color: var(--text-muted);">This Week</div></div>
+
+          <!-- YouTube & Community Notifications -->
+          <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 16px; border: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f04438" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19.13C5.12 19.56 12 19.56 12 19.56s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.43z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="#f04438"/></svg>
+              <div style="font-size: 12px; color: var(--text-primary); font-family: var(--font-display); font-weight: 600;">YouTube & Community</div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <div style="font-size: 18px; font-weight: 700; color: #f04438;"><%= g.stats.youtube_video_count %></div>
+                <div style="font-size: 10px; color: var(--text-muted);">New Video Alerts</div>
+              </div>
+              <div>
+                <div style="font-size: 18px; font-weight: 700; color: #ff6b6b;"><%= g.stats.youtube_live_count %></div>
+                <div style="font-size: 10px; color: var(--text-muted);">YouTube Live Alerts</div>
+              </div>
+              <div>
+                <div style="font-size: 18px; font-weight: 700; color: #3498db;"><%= g.stats.digest_count %></div>
+                <div style="font-size: 10px; color: var(--text-muted);">Weekly Digests</div>
+              </div>
+              <div>
+                <div style="font-size: 18px; font-weight: 700; color: var(--success);"><%= g.stats.week_total %></div>
+                <div style="font-size: 10px; color: var(--text-muted);">Sent This Week</div>
+              </div>
             </div>
           </div>
         </div>
@@ -174,7 +220,6 @@ function toggleStats(guildId) {
   const btn = document.getElementById('stats-btn-' + guildId);
   const isOpen = panel.style.display !== 'none';
   panel.style.display = isOpen ? 'none' : 'block';
-  btn.classList.toggle('active', !isOpen);
   btn.style.background = isOpen ? '' : 'var(--accent)';
   btn.style.color = isOpen ? '' : 'white';
 }
