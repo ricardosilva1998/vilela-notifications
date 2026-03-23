@@ -13,20 +13,18 @@
     .nav-brand { font-size: 18px; font-weight: 700; color: #efeff1; }
     .nav-user { display: flex; align-items: center; gap: 12px; color: #adadb8; }
     .container { max-width: 900px; margin: 0 auto; padding: 24px; }
-    .btn { display: inline-block; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; }
+    .btn { display: inline-block; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; color: white; }
     .btn:hover { text-decoration: none; opacity: 0.9; }
-    .btn-primary { background: #9146ff; color: white; }
-    .btn-success { background: #00b894; color: white; }
-    .btn-danger { background: #e74c3c; color: white; }
+    .btn-primary { background: #9146ff; }
+    .btn-discord { background: #5865F2; }
+    .btn-success { background: #00b894; }
+    .btn-danger { background: #e74c3c; }
     .btn-secondary { background: #303032; color: #efeff1; }
     .card { background: #18181b; border-radius: 8px; padding: 20px; margin-bottom: 16px; border: 1px solid #303032; }
     .card h3 { margin-bottom: 12px; }
     .form-group { margin-bottom: 16px; }
     .form-group label { display: block; margin-bottom: 6px; font-size: 14px; color: #adadb8; }
-    .form-group select, .form-group input, .form-group textarea {
-      width: 100%; padding: 10px; background: #0e0e10; border: 1px solid #303032;
-      border-radius: 6px; color: #efeff1; font-size: 14px;
-    }
+    .form-group select, .form-group input, .form-group textarea { width: 100%; padding: 10px; background: #0e0e10; border: 1px solid #303032; border-radius: 6px; color: #efeff1; font-size: 14px; }
     .form-group textarea { min-height: 120px; resize: vertical; }
     .toggle { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
     .toggle input[type="checkbox"] { width: 18px; height: 18px; accent-color: #9146ff; }
@@ -49,11 +47,12 @@
     .step-content ul { padding-left: 20px; margin-top: 6px; }
     .step-content code { background: #303032; padding: 2px 6px; border-radius: 4px; font-size: 13px; color: #efeff1; }
     .tip { background: #9146ff22; border-left: 3px solid #9146ff; padding: 12px 16px; border-radius: 0 6px 6px 0; margin: 12px 0; font-size: 14px; color: #adadb8; }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 32px; }
   </style>
 </head>
 <body>
   <nav class="nav">
-    <a href="/dashboard" class="nav-brand">Stream Notifications</a>
+    <a href="/" class="nav-brand">Stream Notifications</a>
     <div class="nav-user">
       <a href="/tutorial" style="color: #adadb8; font-size: 14px; margin-right: 8px;">Setup Guide</a>
       <% if (typeof streamer !== 'undefined' && streamer) { %>
@@ -63,7 +62,3 @@
     </div>
   </nav>
   <div class="container">
-    <%- body %>
-  </div>
-</body>
-</html>

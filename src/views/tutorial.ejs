@@ -1,105 +1,106 @@
-<% var body = `
-  <h2 style="margin-bottom: 8px;">Setup Guide</h2>
-  <p style="color: #adadb8; margin-bottom: 24px;">Follow these steps to get the bot running on your Discord server. Takes about 5 minutes.</p>
+<%- include('header', { title: 'Setup Guide', streamer: typeof streamer !== 'undefined' ? streamer : null }) %>
 
-  <div class="step">
-    <div class="step-number">1</div>
-    <div class="step-content">
-      <h3>Log in with Discord</h3>
-      <p>Click <strong>"Log in with Discord"</strong> on the home page. This creates your account using your Discord identity.</p>
-      <div class="tip">The bot only reads your Discord username and avatar — no access to your messages or servers.</div>
-    </div>
-  </div>
+<h2 style="margin-bottom: 8px;">Setup Guide</h2>
+<p style="color: #adadb8; margin-bottom: 24px;">Follow these steps to get the bot running on your Discord server. Takes about 5 minutes.</p>
 
-  <div class="step">
-    <div class="step-number">2</div>
-    <div class="step-content">
-      <h3>Link Your Twitch Account</h3>
-      <p>From the dashboard, click <strong>"Link Twitch Account"</strong>. This tells the bot which Twitch channel to monitor for live streams and clips.</p>
-      <ul>
-        <li>You'll be redirected to Twitch to authorize</li>
-        <li>The bot only reads your public profile — no special permissions needed</li>
-      </ul>
-    </div>
+<div class="step">
+  <div class="step-number">1</div>
+  <div class="step-content">
+    <h3>Log in with Discord</h3>
+    <p>Click <strong>"Log in with Discord"</strong> on the home page. This creates your account using your Discord identity.</p>
+    <div class="tip">The bot only reads your Discord username and avatar — no access to your messages or servers.</div>
   </div>
+</div>
 
-  <div class="step">
-    <div class="step-number">3</div>
-    <div class="step-content">
-      <h3>Add the Bot to Your Discord Server</h3>
-      <p>Click <strong>"Add Bot to a Server"</strong> from the dashboard. This opens Discord's authorization page where you select which server to add the bot to.</p>
-      <ul>
-        <li>You need <strong>Manage Server</strong> permission in the Discord server</li>
-        <li>The bot will request permissions to send messages, embed links, and manage roles</li>
-        <li>After authorizing, go back to the dashboard</li>
-      </ul>
-    </div>
+<div class="step">
+  <div class="step-number">2</div>
+  <div class="step-content">
+    <h3>Link Your Twitch Account</h3>
+    <p>From the dashboard, click <strong>"Link Twitch Account"</strong>. This tells the bot which Twitch channel to monitor for live streams and clips.</p>
+    <ul>
+      <li>You'll be redirected to Twitch to authorize</li>
+      <li>The bot only reads your public profile — no special permissions needed</li>
+    </ul>
   </div>
+</div>
 
-  <div class="step">
-    <div class="step-number">4</div>
-    <div class="step-content">
-      <h3>Claim Your Server</h3>
-      <p>After adding the bot, your server will appear under <strong>"Available Servers"</strong> on the dashboard. Click <strong>"Claim"</strong> to link it to your account.</p>
-      <div class="tip">One server can be claimed by multiple streamers. Each streamer gets their own independent notification configuration.</div>
-    </div>
+<div class="step">
+  <div class="step-number">3</div>
+  <div class="step-content">
+    <h3>Add the Bot to Your Discord Server</h3>
+    <p>Click <strong>"Add Bot to a Server"</strong> from the dashboard. This opens Discord's authorization page where you select which server to add the bot to.</p>
+    <ul>
+      <li>You need <strong>Manage Server</strong> permission in the Discord server</li>
+      <li>The bot will request permissions to send messages, embed links, and manage roles</li>
+      <li>After authorizing, go back to the dashboard</li>
+    </ul>
   </div>
+</div>
 
-  <div class="step">
-    <div class="step-number">5</div>
-    <div class="step-content">
-      <h3>Configure Notifications</h3>
-      <p>Click <strong>"Configure"</strong> on your server. Here you can set up:</p>
-      <ul>
-        <li><strong>Twitch Live</strong> — get notified in a channel when you go live</li>
-        <li><strong>Twitch Clips</strong> — get notified when someone clips your stream</li>
-        <li><strong>YouTube Videos</strong> — get notified when you upload a new video</li>
-        <li><strong>YouTube Live</strong> — get notified when you go live on YouTube</li>
-        <li><strong>Welcome Messages</strong> — automatically greet new members</li>
-        <li><strong>Subscriber Role Sync</strong> — auto-assign a Discord role to your Twitch subscribers</li>
-      </ul>
-      <p style="margin-top: 8px;">For each feature, toggle it on and select the Discord channel where notifications should be posted.</p>
-    </div>
+<div class="step">
+  <div class="step-number">4</div>
+  <div class="step-content">
+    <h3>Claim Your Server</h3>
+    <p>After adding the bot, your server will appear under <strong>"Available Servers"</strong> on the dashboard. Click <strong>"Claim"</strong> to link it to your account.</p>
+    <div class="tip">One server can be claimed by multiple streamers. Each streamer gets their own independent notification configuration.</div>
   </div>
+</div>
 
-  <div class="step">
-    <div class="step-number">6</div>
-    <div class="step-content">
-      <h3>Set Up YouTube (Optional)</h3>
-      <p>If you want YouTube notifications, go to <strong>"YouTube Settings"</strong> from the dashboard:</p>
-      <ul>
-        <li>Enter your <strong>YouTube Channel ID</strong> (starts with <code>UC</code>). Find it at <a href="https://commentpicker.com/youtube-channel-id.php" target="_blank">commentpicker.com</a></li>
-        <li>For live stream detection, you need a <strong>YouTube Data API Key</strong>:
-          <ul>
-            <li>Go to <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a></li>
-            <li>Create a project, enable <strong>YouTube Data API v3</strong></li>
-            <li>Go to Credentials, create an API Key</li>
-          </ul>
-        </li>
-        <li>Video upload notifications use the free RSS feed and don't need an API key</li>
-      </ul>
-    </div>
+<div class="step">
+  <div class="step-number">5</div>
+  <div class="step-content">
+    <h3>Configure Notifications</h3>
+    <p>Click <strong>"Configure"</strong> on your server. Here you can set up:</p>
+    <ul>
+      <li><strong>Twitch Live</strong> — get notified in a channel when you go live</li>
+      <li><strong>Twitch Clips</strong> — get notified when someone clips your stream</li>
+      <li><strong>YouTube Videos</strong> — get notified when you upload a new video</li>
+      <li><strong>YouTube Live</strong> — get notified when you go live on YouTube</li>
+      <li><strong>Welcome Messages</strong> — automatically greet new members</li>
+      <li><strong>Subscriber Role Sync</strong> — auto-assign a Discord role to your Twitch subscribers</li>
+    </ul>
+    <p style="margin-top: 8px;">For each feature, toggle it on and select the Discord channel where notifications should be posted.</p>
   </div>
+</div>
 
-  <div class="step">
-    <div class="step-number">7</div>
-    <div class="step-content">
-      <h3>Enable Subscriber Role Sync (Optional)</h3>
-      <p>This feature automatically gives a Discord role to your Twitch subscribers:</p>
-      <ul>
-        <li>Click <strong>"Enable Sub Sync"</strong> from the dashboard — this authorizes the bot to read your subscriber list</li>
-        <li>In your server config, toggle on <strong>Subscriber Role Sync</strong> and select a role</li>
-        <li>Your community members type <code>/link</code> in Discord to connect their Twitch account</li>
-        <li>The bot checks every 10 minutes and assigns or removes the role automatically</li>
-      </ul>
-      <div class="tip">Make sure the bot's role is <strong>above</strong> the subscriber role in your server's role list (Server Settings, Roles). The bot can only assign roles lower than its own.</div>
-    </div>
+<div class="step">
+  <div class="step-number">6</div>
+  <div class="step-content">
+    <h3>Set Up YouTube (Optional)</h3>
+    <p>If you want YouTube notifications, go to <strong>"YouTube Settings"</strong> from the dashboard:</p>
+    <ul>
+      <li>Enter your <strong>YouTube Channel ID</strong> (starts with <code>UC</code>). Find it at <a href="https://commentpicker.com/youtube-channel-id.php" target="_blank">commentpicker.com</a></li>
+      <li>For live stream detection, you need a <strong>YouTube Data API Key</strong>:
+        <ul>
+          <li>Go to <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a></li>
+          <li>Create a project, enable <strong>YouTube Data API v3</strong></li>
+          <li>Go to Credentials, create an API Key</li>
+        </ul>
+      </li>
+      <li>Video upload notifications use the free RSS feed and don't need an API key</li>
+    </ul>
   </div>
+</div>
 
-  <div class="card" style="margin-top: 32px; text-align: center;">
-    <h3 style="margin-bottom: 8px;">Ready to get started?</h3>
-    <p style="color: #adadb8; margin-bottom: 16px;">The whole setup takes about 5 minutes.</p>
-    <a href="/auth/login" class="btn btn-primary" style="font-size: 16px; padding: 12px 24px; background: #5865F2;">Log in with Discord</a>
+<div class="step">
+  <div class="step-number">7</div>
+  <div class="step-content">
+    <h3>Enable Subscriber Role Sync (Optional)</h3>
+    <p>This feature automatically gives a Discord role to your Twitch subscribers:</p>
+    <ul>
+      <li>Click <strong>"Enable Sub Sync"</strong> from the dashboard — this authorizes the bot to read your subscriber list</li>
+      <li>In your server config, toggle on <strong>Subscriber Role Sync</strong> and select a role</li>
+      <li>Your community members type <code>/link</code> in Discord to connect their Twitch account</li>
+      <li>The bot checks every 10 minutes and assigns or removes the role automatically</li>
+    </ul>
+    <div class="tip">Make sure the bot's role is <strong>above</strong> the subscriber role in your server's role list (Server Settings &rarr; Roles). The bot can only assign roles lower than its own.</div>
   </div>
-`; %>
-<%- include('layout', { body, streamer: typeof streamer !== 'undefined' ? streamer : null, title: 'Setup Guide' }) %>
+</div>
+
+<div class="card" style="margin-top: 32px; text-align: center;">
+  <h3 style="margin-bottom: 8px;">Ready to get started?</h3>
+  <p style="color: #adadb8; margin-bottom: 16px;">The whole setup takes about 5 minutes.</p>
+  <a href="/auth/login" class="btn btn-discord" style="font-size: 16px; padding: 12px 24px;">Log in with Discord</a>
+</div>
+
+<%- include('footer') %>

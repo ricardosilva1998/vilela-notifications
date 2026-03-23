@@ -1,94 +1,110 @@
-<% var body = `
-  <a href="/dashboard" style="color: #adadb8; font-size: 14px;">&larr; Back to Dashboard</a>
-  <h2 style="margin: 12px 0 20px;">${guildName}</h2>
+<%- include('header', { title: guildName + ' - Config', streamer: streamer }) %>
 
-  ${typeof saved !== 'undefined' || (typeof require !== 'undefined' && false) ? '' : ''}
-  ${guild && guild.id ? '' : ''}
+<a href="/dashboard" style="color: #adadb8; font-size: 14px;">&larr; Back to Dashboard</a>
+<h2 style="margin: 12px 0 20px;"><%= guildName %></h2>
 
-  <form method="POST" action="/dashboard/guild/${guild.guild_id}">
+<% if (typeof saved !== 'undefined' && saved) { %>
+  <div class="alert alert-success">Configuration saved!</div>
+<% } %>
 
-    <div class="card">
-      <h3>Twitch Live Notifications</h3>
-      <div class="toggle">
-        <input type="checkbox" name="twitch_live_enabled" id="twitch_live_enabled" ${guild.twitch_live_enabled ? 'checked' : ''}>
-        <label for="twitch_live_enabled">Enable live notifications</label>
-      </div>
-      <div class="form-group">
-        <label>Channel</label>
-        <select name="twitch_live_channel_id">
-          <option value="">-- Select channel --</option>
-          ${channels.map(c => '<option value="' + c.id + '" ' + (guild.twitch_live_channel_id === c.id ? 'selected' : '') + '>#' + c.name + '</option>').join('')}
-        </select>
-      </div>
+<form method="POST" action="/dashboard/guild/<%= guild.guild_id %>">
+
+  <div class="card">
+    <h3>Twitch Live Notifications</h3>
+    <div class="toggle">
+      <input type="checkbox" name="twitch_live_enabled" id="twitch_live_enabled" <%= guild.twitch_live_enabled ? 'checked' : '' %>>
+      <label for="twitch_live_enabled">Enable live notifications</label>
     </div>
-
-    <div class="card">
-      <h3>Twitch Clip Notifications</h3>
-      <div class="toggle">
-        <input type="checkbox" name="twitch_clips_enabled" id="twitch_clips_enabled" ${guild.twitch_clips_enabled ? 'checked' : ''}>
-        <label for="twitch_clips_enabled">Enable clip notifications</label>
-      </div>
-      <div class="form-group">
-        <label>Channel</label>
-        <select name="twitch_clips_channel_id">
-          <option value="">-- Select channel --</option>
-          ${channels.map(c => '<option value="' + c.id + '" ' + (guild.twitch_clips_channel_id === c.id ? 'selected' : '') + '>#' + c.name + '</option>').join('')}
-        </select>
-      </div>
+    <div class="form-group">
+      <label>Channel</label>
+      <select name="twitch_live_channel_id">
+        <option value="">-- Select channel --</option>
+        <% for (const c of channels) { %>
+          <option value="<%= c.id %>" <%= guild.twitch_live_channel_id === c.id ? 'selected' : '' %>>#<%= c.name %></option>
+        <% } %>
+      </select>
     </div>
+  </div>
 
-    <div class="card">
-      <h3>YouTube Notifications</h3>
-      <div class="toggle">
-        <input type="checkbox" name="youtube_enabled" id="youtube_enabled" ${guild.youtube_enabled ? 'checked' : ''}>
-        <label for="youtube_enabled">Enable YouTube notifications</label>
-      </div>
-      <div class="form-group">
-        <label>Channel</label>
-        <select name="youtube_channel_id">
-          <option value="">-- Select channel --</option>
-          ${channels.map(c => '<option value="' + c.id + '" ' + (guild.youtube_channel_id === c.id ? 'selected' : '') + '>#' + c.name + '</option>').join('')}
-        </select>
-      </div>
-      ${!streamer.youtube_channel_id ? '<p style="color: #adadb8; font-size: 13px;">Set up YouTube in <a href="/dashboard/youtube">YouTube Settings</a> first.</p>' : ''}
+  <div class="card">
+    <h3>Twitch Clip Notifications</h3>
+    <div class="toggle">
+      <input type="checkbox" name="twitch_clips_enabled" id="twitch_clips_enabled" <%= guild.twitch_clips_enabled ? 'checked' : '' %>>
+      <label for="twitch_clips_enabled">Enable clip notifications</label>
     </div>
-
-    <div class="card">
-      <h3>Welcome Message</h3>
-      <div class="toggle">
-        <input type="checkbox" name="welcome_enabled" id="welcome_enabled" ${guild.welcome_enabled ? 'checked' : ''}>
-        <label for="welcome_enabled">Enable welcome messages</label>
-      </div>
-      <div class="form-group">
-        <label>Channel</label>
-        <select name="welcome_channel_id">
-          <option value="">-- Select channel --</option>
-          ${channels.map(c => '<option value="' + c.id + '" ' + (guild.welcome_channel_id === c.id ? 'selected' : '') + '>#' + c.name + '</option>').join('')}
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Custom message (leave blank for default)</label>
-        <textarea name="welcome_message" placeholder="Welcome to the server!">${guild.welcome_message || ''}</textarea>
-      </div>
+    <div class="form-group">
+      <label>Channel</label>
+      <select name="twitch_clips_channel_id">
+        <option value="">-- Select channel --</option>
+        <% for (const c of channels) { %>
+          <option value="<%= c.id %>" <%= guild.twitch_clips_channel_id === c.id ? 'selected' : '' %>>#<%= c.name %></option>
+        <% } %>
+      </select>
     </div>
+  </div>
 
-    <div class="card">
-      <h3>Subscriber Role Sync</h3>
-      <div class="toggle">
-        <input type="checkbox" name="sub_sync_enabled" id="sub_sync_enabled" ${guild.sub_sync_enabled ? 'checked' : ''}>
-        <label for="sub_sync_enabled">Enable subscriber role sync</label>
-      </div>
-      <div class="form-group">
-        <label>Subscriber Role</label>
-        <select name="sub_role_id">
-          <option value="">-- Select role --</option>
-          ${roles.map(r => '<option value="' + r.id + '" ' + (guild.sub_role_id === r.id ? 'selected' : '') + '>' + r.name + '</option>').join('')}
-        </select>
-      </div>
-      ${!hasBroadcasterToken ? '<p style="color: #adadb8; font-size: 13px;">You need to <a href="' + broadcasterAuthUrl + '">authorize broadcaster access</a> for sub sync to work.</p>' : ''}
+  <div class="card">
+    <h3>YouTube Notifications</h3>
+    <div class="toggle">
+      <input type="checkbox" name="youtube_enabled" id="youtube_enabled" <%= guild.youtube_enabled ? 'checked' : '' %>>
+      <label for="youtube_enabled">Enable YouTube notifications</label>
     </div>
+    <div class="form-group">
+      <label>Channel</label>
+      <select name="youtube_channel_id">
+        <option value="">-- Select channel --</option>
+        <% for (const c of channels) { %>
+          <option value="<%= c.id %>" <%= guild.youtube_channel_id === c.id ? 'selected' : '' %>>#<%= c.name %></option>
+        <% } %>
+      </select>
+    </div>
+    <% if (!streamer.youtube_channel_id) { %>
+      <p style="color: #adadb8; font-size: 13px;">Set up YouTube in <a href="/dashboard/youtube">YouTube Settings</a> first.</p>
+    <% } %>
+  </div>
 
-    <button type="submit" class="btn btn-success" style="width: 100%; padding: 14px; font-size: 16px;">Save Configuration</button>
-  </form>
-`; %>
-<%- include('layout', { body, streamer, title: guildName + ' - Config' }) %>
+  <div class="card">
+    <h3>Welcome Message</h3>
+    <div class="toggle">
+      <input type="checkbox" name="welcome_enabled" id="welcome_enabled" <%= guild.welcome_enabled ? 'checked' : '' %>>
+      <label for="welcome_enabled">Enable welcome messages</label>
+    </div>
+    <div class="form-group">
+      <label>Channel</label>
+      <select name="welcome_channel_id">
+        <option value="">-- Select channel --</option>
+        <% for (const c of channels) { %>
+          <option value="<%= c.id %>" <%= guild.welcome_channel_id === c.id ? 'selected' : '' %>>#<%= c.name %></option>
+        <% } %>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Custom message (leave blank for default)</label>
+      <textarea name="welcome_message" placeholder="Welcome to the server!"><%= guild.welcome_message || '' %></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Subscriber Role Sync</h3>
+    <div class="toggle">
+      <input type="checkbox" name="sub_sync_enabled" id="sub_sync_enabled" <%= guild.sub_sync_enabled ? 'checked' : '' %>>
+      <label for="sub_sync_enabled">Enable subscriber role sync</label>
+    </div>
+    <div class="form-group">
+      <label>Subscriber Role</label>
+      <select name="sub_role_id">
+        <option value="">-- Select role --</option>
+        <% for (const r of roles) { %>
+          <option value="<%= r.id %>" <%= guild.sub_role_id === r.id ? 'selected' : '' %>><%= r.name %></option>
+        <% } %>
+      </select>
+    </div>
+    <% if (!hasBroadcasterToken) { %>
+      <p style="color: #adadb8; font-size: 13px;">You need to <a href="<%= broadcasterAuthUrl %>">authorize broadcaster access</a> for sub sync to work.</p>
+    <% } %>
+  </div>
+
+  <button type="submit" class="btn btn-success" style="width: 100%; padding: 14px; font-size: 16px;">Save Configuration</button>
+</form>
+
+<%- include('footer') %>
