@@ -1,17 +1,17 @@
 const { getLatestVideos, checkLiveStatus } = require('../services/youtube');
 const { buildEmbed } = require('../discord');
 
-async function check(streamer, pollerState) {
-  if (!streamer.youtube_channel_id || !streamer.youtube_api_key) return null;
+async function check(youtubeChannelId, channelState, apiKey) {
+  if (!apiKey) return null; // Need API key for live detection
 
-  const videos = await getLatestVideos(streamer.youtube_channel_id);
+  const videos = await getLatestVideos(youtubeChannelId);
   const videoIds = videos.map((v) => v.id);
-  const liveVideo = await checkLiveStatus(videoIds, streamer.youtube_api_key);
+  const liveVideo = await checkLiveStatus(videoIds, apiKey);
 
-  if (liveVideo && !pollerState.youtube_is_live) {
+  if (liveVideo && !channelState.is_live) {
     const embed = buildEmbed({
       color: 0xff0000,
-      author: { name: `${streamer.twitch_display_name || streamer.twitch_username} is live on YouTube!` },
+      author: { name: `${liveVideo.title ? '' : ''}Live on YouTube!` },
       title: liveVideo.title,
       url: `https://www.youtube.com/watch?v=${liveVideo.id}`,
       description: liveVideo.description?.substring(0, 200) || undefined,
@@ -23,15 +23,12 @@ async function check(streamer, pollerState) {
     return {
       notify: true,
       embed,
-      stateUpdate: { youtube_is_live: 1, youtube_live_video_id: liveVideo.id },
+      stateUpdate: { is_live: 1, live_video_id: liveVideo.id },
     };
   }
 
-  if (!liveVideo && pollerState.youtube_is_live) {
-    return {
-      notify: false,
-      stateUpdate: { youtube_is_live: 0, youtube_live_video_id: null },
-    };
+  if (!liveVideo && channelState.is_live) {
+    return { notify: false, stateUpdate: { is_live: 0, live_video_id: null } };
   }
 
   return null;

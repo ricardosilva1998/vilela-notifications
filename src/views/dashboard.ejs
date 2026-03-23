@@ -2,7 +2,7 @@
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
   <h2>Dashboard</h2>
-  <a href="<%= botInviteUrl %>" class="btn btn-discord">+ Add Bot to Server</a>
+  <a href="<%= botInviteUrl %>" target="_blank" rel="noopener" class="btn btn-discord">+ Add Bot to Server</a>
 </div>
 
 <% if (msg === 'guild_removed') { %>
@@ -17,6 +17,9 @@
 <% if (msg === 'youtube_saved') { %>
   <div class="alert alert-success">YouTube settings saved.</div>
 <% } %>
+<% if (msg === 'already_claimed') { %>
+  <div class="alert" style="background: #e74c3c33; border: 1px solid #e74c3c;">This server is already configured by another user.</div>
+<% } %>
 
 <!-- Quick Links -->
 <div style="display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap;">
@@ -25,7 +28,6 @@
   <% } else { %>
     <span class="btn btn-secondary" style="cursor: default; opacity: 0.8;">Twitch: <%= streamer.twitch_username %></span>
   <% } %>
-  <a href="/dashboard/youtube" class="btn btn-secondary">YouTube Settings</a>
   <% if (streamer.twitch_user_id && !streamer.broadcaster_access_token) { %>
     <a href="/auth/broadcaster" class="btn btn-secondary">Enable Sub Sync</a>
   <% } %>
@@ -38,7 +40,7 @@
   <div class="card" style="text-align: center; padding: 40px;">
     <p style="font-size: 28px; margin-bottom: 8px;">🖥️</p>
     <p style="color: #adadb8; margin-bottom: 12px;">No servers yet. Add the bot to a Discord server to get started.</p>
-    <a href="<%= botInviteUrl %>" class="btn btn-discord">Add Bot to Server</a>
+    <a href="<%= botInviteUrl %>" target="_blank" rel="noopener" class="btn btn-discord">Add Bot to Server</a>
   </div>
 <% } %>
 

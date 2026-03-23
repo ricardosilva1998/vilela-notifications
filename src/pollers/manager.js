@@ -80,72 +80,80 @@ async function pollAllTwitchClips() {
   }
 }
 
-// --- YouTube polling (still streamer-centric) ---
-
-function getActiveStreamers() {
-  return db.getAllStreamers().filter((s) => s.enabled);
-}
+// --- YouTube polling (channel-centric) ---
 
 async function pollAllYouTubeFeed() {
-  for (const streamer of getActiveStreamers().filter((s) => s.youtube_channel_id)) {
+  const channels = db.getAllUniqueWatchedYoutubeChannels();
+  for (const { youtube_channel_id } of channels) {
     try {
-      const state = db.getPollerState(streamer.id);
-      const result = await youtubeFeed.check(streamer, state);
+      const state = db.getYoutubeChannelState(youtube_channel_id);
+      const result = await youtubeFeed.check(youtube_channel_id, state);
       if (!result) continue;
 
-      if (result.stateUpdate) db.updatePollerState(streamer.id, result.stateUpdate);
+      if (result.stateUpdate) db.updateYoutubeChannelState(youtube_channel_id, result.stateUpdate);
 
       if (result.notify && result.embeds) {
-        const guilds = db.getGuildsForStreamer(streamer.id)
-          .filter((g) => g.youtube_enabled && g.youtube_channel_id);
-        for (const guild of guilds) {
+        const watchers = db.getYoutubeWatchersForChannel(youtube_channel_id)
+          .filter((w) => w.notify_videos && w.videos_channel_id);
+        for (const w of watchers) {
           for (const embed of result.embeds) {
             try {
-              await sendNotification(guild.youtube_channel_id, embed, {
-                streamerId: streamer.id,
-                guildId: guild.guild_id,
+              await sendNotification(w.videos_channel_id, embed, {
+                streamerId: w.streamer_id,
+                guildId: w.guild_id,
                 type: 'youtube_video',
               });
             } catch (e) {
-              console.error(`[YouTubeFeed] Send failed to ${guild.guild_id}: ${e.message}`);
+              console.error(`[YouTubeFeed] Send failed for ${youtube_channel_id} to ${w.guild_id}: ${e.message}`);
             }
           }
         }
       }
     } catch (error) {
-      console.error(`[YouTubeFeed] Error for ${streamer.twitch_username}: ${error.message}`);
+      console.error(`[YouTubeFeed] Error for ${youtube_channel_id}: ${error.message}`);
     }
   }
 }
 
 async function pollAllYouTubeLive() {
-  for (const streamer of getActiveStreamers().filter((s) => s.youtube_channel_id && s.youtube_api_key)) {
+  const channels = db.getAllUniqueWatchedYoutubeChannels();
+  for (const { youtube_channel_id } of channels) {
     try {
-      const state = db.getPollerState(streamer.id);
-      const result = await youtubeLive.check(streamer, state);
+      const watchers = db.getYoutubeWatchersForChannel(youtube_channel_id)
+        .filter((w) => w.notify_live && w.live_channel_id);
+      if (watchers.length === 0) continue;
+
+      // Use the first watcher's API key (if any)
+      const apiKey = watchers.find((w) => w.youtube_api_key)?.youtube_api_key;
+      if (!apiKey) continue;
+
+      const state = db.getYoutubeChannelState(youtube_channel_id);
+      const result = await youtubeLive.check(youtube_channel_id, state, apiKey);
       if (!result) continue;
 
-      if (result.stateUpdate) db.updatePollerState(streamer.id, result.stateUpdate);
+      if (result.stateUpdate) db.updateYoutubeChannelState(youtube_channel_id, result.stateUpdate);
 
       if (result.notify) {
-        const guilds = db.getGuildsForStreamer(streamer.id)
-          .filter((g) => g.youtube_enabled && g.youtube_channel_id);
-        for (const guild of guilds) {
+        for (const w of watchers) {
           try {
-            await sendNotification(guild.youtube_channel_id, result.embed, {
-              streamerId: streamer.id,
-              guildId: guild.guild_id,
+            await sendNotification(w.live_channel_id, result.embed, {
+              streamerId: w.streamer_id,
+              guildId: w.guild_id,
               type: 'youtube_live',
             });
           } catch (e) {
-            console.error(`[YouTubeLive] Send failed to ${guild.guild_id}: ${e.message}`);
+            console.error(`[YouTubeLive] Send failed for ${youtube_channel_id} to ${w.guild_id}: ${e.message}`);
           }
         }
       }
     } catch (error) {
-      console.error(`[YouTubeLive] Error for ${streamer.twitch_username}: ${error.message}`);
+      console.error(`[YouTubeLive] Error for ${youtube_channel_id}: ${error.message}`);
     }
   }
+}
+
+function getActiveStreamers() {
+  return db.getAllStreamers().filter((s) => s.enabled);
 }
 
 async function pollAllSubSync() {

@@ -150,6 +150,28 @@ db.exec(`
     is_live INTEGER DEFAULT 0,
     last_clip_created_at TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS watched_youtube_channels (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    streamer_id INTEGER NOT NULL REFERENCES streamers(id) ON DELETE CASCADE,
+    youtube_channel_id TEXT NOT NULL,
+    youtube_channel_name TEXT,
+    videos_channel_id TEXT,
+    live_channel_id TEXT,
+    notify_videos INTEGER DEFAULT 1,
+    notify_live INTEGER DEFAULT 1,
+    enabled INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(guild_id, streamer_id, youtube_channel_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS youtube_channel_state (
+    youtube_channel_id TEXT PRIMARY KEY,
+    known_video_ids TEXT DEFAULT '[]',
+    is_live INTEGER DEFAULT 0,
+    live_video_id TEXT
+  );
 `);
 
 // --- Streamers ---
@@ -244,6 +266,12 @@ const _updateGuildConfig = db.prepare(`
   WHERE guild_id = ? AND streamer_id = ?
 `);
 const _deleteGuild = db.prepare('DELETE FROM guilds WHERE guild_id = ? AND streamer_id = ?');
+
+const _getAllClaimedGuildIds = db.prepare('SELECT DISTINCT guild_id FROM guilds');
+
+function getAllClaimedGuildIds() {
+  return new Set(_getAllClaimedGuildIds.all().map((r) => r.guild_id));
+}
 
 function getGuildsForStreamer(streamerId) {
   return _getGuildsForStreamer.all(streamerId);
@@ -491,6 +519,69 @@ function updateChannelState(twitchUsername, updates) {
   );
 }
 
+// --- Watched YouTube Channels ---
+
+const _addWatchedYoutubeChannel = db.prepare(`
+  INSERT OR IGNORE INTO watched_youtube_channels (guild_id, streamer_id, youtube_channel_id, youtube_channel_name, videos_channel_id, live_channel_id, notify_videos, notify_live)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`);
+const _removeWatchedYoutubeChannel = db.prepare('DELETE FROM watched_youtube_channels WHERE id = ? AND streamer_id = ?');
+const _getWatchedYoutubeChannelsForGuild = db.prepare('SELECT * FROM watched_youtube_channels WHERE guild_id = ? AND streamer_id = ?');
+const _getAllUniqueWatchedYoutubeChannels = db.prepare('SELECT DISTINCT youtube_channel_id FROM watched_youtube_channels WHERE enabled = 1');
+const _getYoutubeWatchersForChannel = db.prepare(`
+  SELECT wyc.*, s.id AS owner_id, s.enabled AS streamer_enabled, s.youtube_api_key
+  FROM watched_youtube_channels wyc
+  JOIN streamers s ON wyc.streamer_id = s.id
+  WHERE wyc.youtube_channel_id = ? AND wyc.enabled = 1 AND s.enabled = 1
+`);
+const _getYoutubeChannelState = db.prepare('SELECT * FROM youtube_channel_state WHERE youtube_channel_id = ?');
+const _upsertYoutubeChannelState = db.prepare(`
+  INSERT INTO youtube_channel_state (youtube_channel_id) VALUES (?)
+  ON CONFLICT(youtube_channel_id) DO NOTHING
+`);
+const _updateYoutubeChannelState = db.prepare(`
+  UPDATE youtube_channel_state SET
+    known_video_ids = COALESCE(?, known_video_ids),
+    is_live = COALESCE(?, is_live),
+    live_video_id = COALESCE(?, live_video_id)
+  WHERE youtube_channel_id = ?
+`);
+
+function addWatchedYoutubeChannel(guildId, streamerId, ytChannelId, ytChannelName, videosChannelId, liveChannelId) {
+  _addWatchedYoutubeChannel.run(guildId, streamerId, ytChannelId, ytChannelName || null, videosChannelId || null, liveChannelId || null, videosChannelId ? 1 : 0, liveChannelId ? 1 : 0);
+  _upsertYoutubeChannelState.run(ytChannelId);
+}
+
+function removeWatchedYoutubeChannel(id, streamerId) {
+  _removeWatchedYoutubeChannel.run(id, streamerId);
+}
+
+function getWatchedYoutubeChannelsForGuild(guildId, streamerId) {
+  return _getWatchedYoutubeChannelsForGuild.all(guildId, streamerId);
+}
+
+function getAllUniqueWatchedYoutubeChannels() {
+  return _getAllUniqueWatchedYoutubeChannels.all();
+}
+
+function getYoutubeWatchersForChannel(ytChannelId) {
+  return _getYoutubeWatchersForChannel.all(ytChannelId);
+}
+
+function getYoutubeChannelState(ytChannelId) {
+  _upsertYoutubeChannelState.run(ytChannelId);
+  return _getYoutubeChannelState.get(ytChannelId);
+}
+
+function updateYoutubeChannelState(ytChannelId, updates) {
+  _updateYoutubeChannelState.run(
+    updates.known_video_ids ?? null,
+    updates.is_live ?? null,
+    updates.live_video_id ?? null,
+    ytChannelId
+  );
+}
+
 module.exports = {
   db,
   getStreamerByDiscordId,
@@ -501,6 +592,7 @@ module.exports = {
   linkTwitch,
   updateStreamerBroadcasterTokens,
   updateStreamerYoutube,
+  getAllClaimedGuildIds,
   getGuildsForStreamer,
   getGuildConfig,
   getGuildConfigsByGuildId,
@@ -529,4 +621,11 @@ module.exports = {
   getWatchersForChannel,
   getChannelState,
   updateChannelState,
+  addWatchedYoutubeChannel,
+  removeWatchedYoutubeChannel,
+  getWatchedYoutubeChannelsForGuild,
+  getAllUniqueWatchedYoutubeChannels,
+  getYoutubeWatchersForChannel,
+  getYoutubeChannelState,
+  updateYoutubeChannelState,
 };
