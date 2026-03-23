@@ -76,6 +76,44 @@ router.post('/streamers/:id/remove', requireAdmin, (req, res) => {
   res.redirect('/admin/streamers');
 });
 
+// Analytics
+router.get('/analytics', requireAdmin, (req, res) => {
+  const users = db.getUsersOverTime('%Y-%m', 12);
+  const notifications = db.getNotificationsOverTime('%Y-%m', 12);
+  const servers = db.getServersOverTime('%Y-%m', 12);
+  const revenue = db.getMonthlyRevenue();
+  const tierBreakdown = db.getSubscriptionsByTier();
+  res.render('admin-analytics', { streamer: null, title: 'Analytics', users, notifications, servers, revenue, tierBreakdown });
+});
+
+// Revenue
+router.get('/revenue', requireAdmin, (req, res) => {
+  const revenueStats = db.getRevenueStats();
+  const transactions = db.getRecentTransactions();
+  res.render('admin-revenue', { streamer: null, title: 'Revenue', revenueStats, transactions });
+});
+
+// Discount codes
+router.get('/discounts', requireAdmin, (req, res) => {
+  const codes = db.getAllDiscountCodes();
+  res.render('admin-discounts', { streamer: null, title: 'Discount Codes', codes, msg: req.query.msg });
+});
+
+router.post('/discounts', requireAdmin, (req, res) => {
+  const { code, discount_percent, max_uses } = req.body;
+  if (!code || !discount_percent) return res.redirect('/admin/discounts');
+  db.createDiscountCode(code, parseInt(discount_percent), max_uses ? parseInt(max_uses) : null);
+  console.log(`[Admin] Created discount code ${code} (${discount_percent}%)`);
+  res.redirect('/admin/discounts?msg=created');
+});
+
+router.post('/discounts/:id/toggle', requireAdmin, (req, res) => {
+  const codes = db.getAllDiscountCodes();
+  const code = codes.find((c) => c.id === parseInt(req.params.id));
+  if (code) db.toggleDiscountCode(code.id, !code.active);
+  res.redirect('/admin/discounts');
+});
+
 // Issues list
 router.get('/issues', requireAdmin, (req, res) => {
   const issues = db.getAllIssues();

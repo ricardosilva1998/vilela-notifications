@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
 const apiRoutes = require('./routes/api');
 const adminRoutes = require('./routes/admin');
+const paymentRoutes = require('./routes/payment');
 
 const app = express();
 
@@ -45,8 +46,18 @@ app.get('/tutorial', (req, res) => {
   res.render('tutorial', { streamer: req.streamer || null });
 });
 
+app.get('/pricing', (req, res) => {
+  res.render('pricing', {
+    streamer: req.streamer || null,
+    tiers: config.tiers,
+    currentTier: req.streamer ? db.getStreamerTier(req.streamer.id) : null,
+    msg: req.query.msg,
+  });
+});
+
 app.use('/auth', authRoutes);
 app.use('/dashboard', dashboardRoutes);
+app.use('/payment', paymentRoutes);
 app.use('/api', apiRoutes);
 app.use('/admin', adminRoutes);
 
@@ -59,8 +70,14 @@ function start() {
     console.log(`[Server] Dashboard at ${config.app.url}`);
   });
 
+  // Ensure all streamers have a subscription record
+  db.ensureFreeSubscriptions();
+
   // Clean expired sessions every hour
   setInterval(() => db.cleanExpiredSessions(), 60 * 60 * 1000);
+
+  // Check for expired subscriptions every hour
+  setInterval(() => db.expireSubscriptions(), 60 * 60 * 1000);
 }
 
 module.exports = { start };

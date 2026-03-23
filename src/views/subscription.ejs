@@ -1,0 +1,51 @@
+<%- include('header', { title: 'My Subscription', streamer: streamer }) %>
+
+<a href="/dashboard" style="color: #adadb8; font-size: 14px;">&larr; Back to Dashboard</a>
+<h2 style="margin: 12px 0 20px;">My Subscription</h2>
+
+<% if (msg === 'activated') { %>
+  <div class="alert alert-success">Subscription activated! Enjoy your new features.</div>
+<% } %>
+<% if (msg === 'cancelled') { %>
+  <div class="alert alert-info">Your subscription has been cancelled. You're now on the Free plan.</div>
+<% } %>
+
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <div>
+      <h3 style="margin-bottom: 4px;"><%= (subscription?.tier || 'free').charAt(0).toUpperCase() + (subscription?.tier || 'free').slice(1) %> Plan</h3>
+      <p style="color: #adadb8; font-size: 14px;">
+        <% if (subscription?.tier === 'free' || !subscription) { %>
+          Free forever
+        <% } else { %>
+          <%= subscription.status === 'active' ? 'Active' : subscription.status %> &middot;
+          <% if (subscription.expires_at) { %>Expires: <%= subscription.expires_at.split('T')[0] %><% } %>
+        <% } %>
+      </p>
+    </div>
+    <div style="font-size: 24px; font-weight: 700; color: #9146ff;"><%= tierConfig.price %> EUR<span style="font-size: 14px; color: #adadb8; font-weight: 400;">/yr</span></div>
+  </div>
+
+  <h4 style="margin-bottom: 8px; font-size: 14px; color: #adadb8;">Your features:</h4>
+  <ul style="list-style: none; padding: 0; font-size: 14px; color: #adadb8; line-height: 2;">
+    <li><%= tierConfig.twitchLive ? '&#10003;' : '&#10007;' %> Twitch Live Notifications</li>
+    <li><%= tierConfig.twitchClips ? '&#10003;' : '&#10007;' %> Twitch Clip Notifications</li>
+    <li><%= tierConfig.youtube ? '&#10003;' : '&#10007;' %> YouTube Notifications</li>
+    <li><%= tierConfig.welcome ? '&#10003;' : '&#10007;' %> Welcome Messages</li>
+    <li><%= tierConfig.subSync ? '&#10003;' : '&#10007;' %> Subscriber Role Sync</li>
+    <li>&#10003; <%= tierConfig.maxGuilds === -1 ? 'Unlimited' : tierConfig.maxGuilds %> Discord Server<%= tierConfig.maxGuilds !== 1 ? 's' : '' %></li>
+  </ul>
+</div>
+
+<div style="display: flex; gap: 12px; margin-top: 16px;">
+  <% if (!subscription || subscription.tier === 'free') { %>
+    <a href="/pricing" class="btn btn-primary">Upgrade Plan</a>
+  <% } else { %>
+    <a href="/pricing" class="btn btn-primary">Change Plan</a>
+    <form method="POST" action="/payment/subscription/cancel" onsubmit="return confirm('Are you sure you want to cancel? You will lose your current features and switch to the Free plan.')">
+      <button type="submit" class="btn btn-danger">Cancel Subscription</button>
+    </form>
+  <% } %>
+</div>
+
+<%- include('footer') %>

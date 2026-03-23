@@ -1,7 +1,10 @@
 <%- include('header', { title: 'Dashboard', streamer: streamer }) %>
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-  <h2>Dashboard</h2>
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <h2>Dashboard</h2>
+    <span style="background: #9146ff; color: white; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px;"><%= (tier || 'free').toUpperCase() %></span>
+  </div>
   <a href="<%= botInviteUrl %>" target="_blank" rel="noopener" class="btn btn-discord">+ Add Bot to Server</a>
 </div>
 
@@ -16,6 +19,9 @@
 <% } %>
 <% if (msg === 'youtube_saved') { %>
   <div class="alert alert-success">YouTube settings saved.</div>
+<% } %>
+<% if (msg === 'guild_limit') { %>
+  <div class="alert" style="background: #f39c1233; border: 1px solid #f39c12;">You've reached the server limit for your plan. <a href="/pricing">Upgrade</a> to add more servers.</div>
 <% } %>
 <% if (msg === 'already_claimed') { %>
   <div class="alert" style="background: #e74c3c33; border: 1px solid #e74c3c;">This server is already configured by another user.</div>

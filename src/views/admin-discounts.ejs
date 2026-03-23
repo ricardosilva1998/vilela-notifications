@@ -1,0 +1,74 @@
+<%- include('header', { title: 'Discount Codes', streamer: null }) %>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+  <h2>Discount Codes</h2>
+  <div>
+    <a href="/admin/dashboard" class="btn btn-secondary">Dashboard</a>
+    <a href="/admin/revenue" class="btn btn-secondary" style="margin-left: 8px;">Revenue</a>
+    <a href="/admin/logout" class="btn btn-secondary" style="margin-left: 8px;">Logout</a>
+  </div>
+</div>
+
+<% if (msg === 'created') { %>
+  <div class="alert alert-success">Discount code created.</div>
+<% } %>
+
+<div class="card">
+  <h3>Create Discount Code</h3>
+  <form method="POST" action="/admin/discounts" style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap;">
+    <div class="form-group" style="margin-bottom: 0;">
+      <label>Code</label>
+      <input type="text" name="code" placeholder="e.g. LAUNCH25" required style="text-transform: uppercase;">
+    </div>
+    <div class="form-group" style="margin-bottom: 0;">
+      <label>Discount %</label>
+      <select name="discount_percent" required>
+        <option value="25">25%</option>
+        <option value="50">50%</option>
+        <option value="75">75%</option>
+        <option value="100">100% (Free)</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom: 0;">
+      <label>Max Uses (blank = unlimited)</label>
+      <input type="number" name="max_uses" placeholder="Unlimited">
+    </div>
+    <button type="submit" class="btn btn-primary">Create</button>
+  </form>
+</div>
+
+<h3 class="section-title" style="margin-top: 24px;">All Codes</h3>
+<% if (codes.length === 0) { %>
+  <p style="color: #adadb8;">No discount codes yet.</p>
+<% } else { %>
+  <div class="card" style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+      <thead>
+        <tr style="border-bottom: 1px solid #303032; text-align: left;">
+          <th style="padding: 8px; color: #adadb8;">Code</th>
+          <th style="padding: 8px; color: #adadb8;">Discount</th>
+          <th style="padding: 8px; color: #adadb8;">Uses</th>
+          <th style="padding: 8px; color: #adadb8;">Status</th>
+          <th style="padding: 8px; color: #adadb8;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const c of codes) { %>
+          <tr style="border-bottom: 1px solid #1a1a1d;">
+            <td style="padding: 8px; font-weight: 600;"><%= c.code %></td>
+            <td style="padding: 8px;"><%= c.discount_percent %>%</td>
+            <td style="padding: 8px;"><%= c.current_uses %><%= c.max_uses ? ' / ' + c.max_uses : '' %></td>
+            <td style="padding: 8px;"><span style="color: <%= c.active ? '#00b894' : '#e74c3c' %>;"><%= c.active ? 'Active' : 'Disabled' %></span></td>
+            <td style="padding: 8px;">
+              <form method="POST" action="/admin/discounts/<%= c.id %>/toggle" style="margin: 0;">
+                <button type="submit" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;"><%= c.active ? 'Disable' : 'Enable' %></button>
+              </form>
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<%- include('footer') %>

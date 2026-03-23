@@ -12,6 +12,12 @@
 <% if (msg === 'missing_fields') { %>
   <div class="alert" style="background: #e74c3c33; border: 1px solid #e74c3c;">Please enter a username and select at least one notification channel.</div>
 <% } %>
+<% if (msg === 'upgrade_clips') { %>
+  <div class="alert" style="background: #f39c1233; border: 1px solid #f39c12;">Clip notifications require a <a href="/pricing">Starter plan or higher</a>.</div>
+<% } %>
+<% if (msg === 'channel_limit') { %>
+  <div class="alert" style="background: #f39c1233; border: 1px solid #f39c12;">You've reached the channel limit for your plan. <a href="/pricing">Upgrade</a> to add more.</div>
+<% } %>
 
 <div class="card">
   <h3>Add a Twitch Channel</h3>

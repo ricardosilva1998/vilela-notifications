@@ -129,6 +129,41 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_notification_log_streamer ON notification_log(streamer_id);
   CREATE INDEX IF NOT EXISTS idx_notification_log_created ON notification_log(created_at);
 
+  CREATE TABLE IF NOT EXISTS subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    streamer_id INTEGER NOT NULL REFERENCES streamers(id) ON DELETE CASCADE,
+    tier TEXT NOT NULL DEFAULT 'free',
+    status TEXT NOT NULL DEFAULT 'active',
+    paypal_subscription_id TEXT,
+    started_at TEXT DEFAULT (datetime('now')),
+    expires_at TEXT,
+    cancelled_at TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    streamer_id INTEGER NOT NULL REFERENCES streamers(id) ON DELETE CASCADE,
+    subscription_id INTEGER REFERENCES subscriptions(id),
+    paypal_payment_id TEXT,
+    amount REAL NOT NULL,
+    currency TEXT DEFAULT 'EUR',
+    discount_code TEXT,
+    discount_percent INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'completed',
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS discount_codes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT UNIQUE NOT NULL,
+    discount_percent INTEGER NOT NULL,
+    max_uses INTEGER,
+    current_uses INTEGER DEFAULT 0,
+    active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS issues (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     streamer_id INTEGER REFERENCES streamers(id) ON DELETE SET NULL,
@@ -596,6 +631,150 @@ function updateYoutubeChannelState(ytChannelId, updates) {
   );
 }
 
+// --- Subscriptions ---
+
+const _getSubscription = db.prepare("SELECT * FROM subscriptions WHERE streamer_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1");
+const _createSubscription = db.prepare('INSERT INTO subscriptions (streamer_id, tier, status, paypal_subscription_id, expires_at) VALUES (?, ?, ?, ?, ?)');
+const _cancelSubscription = db.prepare("UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now') WHERE streamer_id = ? AND status = 'active'");
+const _expireSubscriptions = db.prepare("UPDATE subscriptions SET status = 'expired' WHERE status = 'active' AND expires_at IS NOT NULL AND expires_at < datetime('now')");
+const _ensureFreeSubscription = db.prepare(`
+  INSERT INTO subscriptions (streamer_id, tier, status)
+  SELECT id, 'free', 'active' FROM streamers
+  WHERE id NOT IN (SELECT streamer_id FROM subscriptions WHERE status = 'active')
+`);
+
+function getSubscription(streamerId) {
+  return _getSubscription.get(streamerId);
+}
+
+function getStreamerTier(streamerId) {
+  const sub = getSubscription(streamerId);
+  return sub?.tier || 'free';
+}
+
+function createSubscription(streamerId, tier, paypalSubId, expiresAt) {
+  // Cancel any existing active subscription first
+  _cancelSubscription.run(streamerId);
+  return _createSubscription.run(streamerId, tier, 'active', paypalSubId || null, expiresAt || null);
+}
+
+function cancelSubscription(streamerId) {
+  _cancelSubscription.run(streamerId);
+  // Create a free subscription
+  _createSubscription.run(streamerId, 'free', 'active', null, null);
+}
+
+function expireSubscriptions() {
+  const result = _expireSubscriptions.run();
+  if (result.changes > 0) {
+    console.log(`[Subscriptions] Expired ${result.changes} subscriptions`);
+  }
+}
+
+function ensureFreeSubscriptions() {
+  _ensureFreeSubscription.run();
+}
+
+// --- Transactions ---
+
+const _createTransaction = db.prepare('INSERT INTO transactions (streamer_id, subscription_id, paypal_payment_id, amount, discount_code, discount_percent) VALUES (?, ?, ?, ?, ?, ?)');
+const _getRevenueStats = db.prepare(`
+  SELECT
+    (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE status = 'completed') AS total_revenue,
+    (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE status = 'completed' AND created_at > datetime('now', '-1 day')) AS revenue_today,
+    (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE status = 'completed' AND created_at > datetime('now', '-30 days')) AS revenue_month,
+    (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE status = 'completed' AND created_at > datetime('now', '-365 days')) AS revenue_year,
+    (SELECT COUNT(*) FROM transactions WHERE status = 'completed') AS total_transactions
+`);
+const _getRecentTransactions = db.prepare(`
+  SELECT t.*, s.discord_username FROM transactions t
+  JOIN streamers s ON t.streamer_id = s.id
+  ORDER BY t.created_at DESC LIMIT 50
+`);
+const _getMonthlyRevenue = db.prepare(`
+  SELECT strftime('%Y-%m', created_at) AS month, SUM(amount) AS total
+  FROM transactions WHERE status = 'completed'
+  GROUP BY month ORDER BY month DESC LIMIT 12
+`);
+const _getSubscriptionsByTier = db.prepare(`
+  SELECT tier, COUNT(*) AS count FROM subscriptions WHERE status = 'active' GROUP BY tier
+`);
+
+function createTransaction(streamerId, subscriptionId, amount, paypalPaymentId, discountCode, discountPercent) {
+  _createTransaction.run(streamerId, subscriptionId, paypalPaymentId || null, amount, discountCode || null, discountPercent || 0);
+}
+
+function getRevenueStats() {
+  return _getRevenueStats.get();
+}
+
+function getRecentTransactions() {
+  return _getRecentTransactions.all();
+}
+
+function getMonthlyRevenue() {
+  return _getMonthlyRevenue.all();
+}
+
+function getSubscriptionsByTier() {
+  return _getSubscriptionsByTier.all();
+}
+
+// --- Discount Codes ---
+
+const _createDiscountCode = db.prepare('INSERT INTO discount_codes (code, discount_percent, max_uses) VALUES (?, ?, ?)');
+const _getDiscountCode = db.prepare("SELECT * FROM discount_codes WHERE code = ? AND active = 1 AND (max_uses IS NULL OR current_uses < max_uses)");
+const _useDiscountCode = db.prepare('UPDATE discount_codes SET current_uses = current_uses + 1 WHERE code = ?');
+const _getAllDiscountCodes = db.prepare('SELECT * FROM discount_codes ORDER BY created_at DESC');
+const _toggleDiscountCode = db.prepare('UPDATE discount_codes SET active = ? WHERE id = ?');
+
+function createDiscountCode(code, discountPercent, maxUses) {
+  _createDiscountCode.run(code.toUpperCase(), discountPercent, maxUses || null);
+}
+
+function getDiscountCode(code) {
+  return _getDiscountCode.get(code.toUpperCase());
+}
+
+function useDiscountCode(code) {
+  _useDiscountCode.run(code.toUpperCase());
+}
+
+function getAllDiscountCodes() {
+  return _getAllDiscountCodes.all();
+}
+
+function toggleDiscountCode(id, active) {
+  _toggleDiscountCode.run(active ? 1 : 0, id);
+}
+
+// --- Analytics ---
+
+const _getUsersOverTime = db.prepare(`
+  SELECT strftime(?, created_at) AS period, COUNT(*) AS count
+  FROM streamers GROUP BY period ORDER BY period DESC LIMIT ?
+`);
+const _getNotificationsOverTime = db.prepare(`
+  SELECT strftime(?, created_at) AS period, COUNT(*) AS count
+  FROM notification_log GROUP BY period ORDER BY period DESC LIMIT ?
+`);
+const _getServersOverTime = db.prepare(`
+  SELECT strftime(?, created_at) AS period, COUNT(*) AS count
+  FROM guilds GROUP BY period ORDER BY period DESC LIMIT ?
+`);
+
+function getUsersOverTime(format, limit) {
+  return _getUsersOverTime.all(format, limit).reverse();
+}
+
+function getNotificationsOverTime(format, limit) {
+  return _getNotificationsOverTime.all(format, limit).reverse();
+}
+
+function getServersOverTime(format, limit) {
+  return _getServersOverTime.all(format, limit).reverse();
+}
+
 // --- Issues ---
 
 const _createIssue = db.prepare('INSERT INTO issues (streamer_id, discord_username, subject, description) VALUES (?, ?, ?, ?)');
@@ -669,4 +848,23 @@ module.exports = {
   getAllIssues,
   getIssueById,
   updateIssueStatus,
+  getSubscription,
+  getStreamerTier,
+  createSubscription,
+  cancelSubscription,
+  expireSubscriptions,
+  ensureFreeSubscriptions,
+  createTransaction,
+  getRevenueStats,
+  getRecentTransactions,
+  getMonthlyRevenue,
+  getSubscriptionsByTier,
+  createDiscountCode,
+  getDiscountCode,
+  useDiscountCode,
+  getAllDiscountCodes,
+  toggleDiscountCode,
+  getUsersOverTime,
+  getNotificationsOverTime,
+  getServersOverTime,
 };

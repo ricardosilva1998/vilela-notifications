@@ -5,6 +5,12 @@ const { client } = require('../discord');
 
 const router = Router();
 
+// Helper: get tier limits for current user
+function getTierLimits(streamerId) {
+  const tier = db.getStreamerTier(streamerId);
+  return { tier, limits: config.tiers[tier] || config.tiers.free };
+}
+
 // All dashboard routes require auth
 router.use((req, res, next) => {
   if (!req.streamer) return res.redirect('/auth/login');
@@ -31,6 +37,13 @@ router.post('/claim/:guildId', (req, res) => {
   const allClaimed = db.getAllClaimedGuildIds();
   if (allClaimed.has(guildId)) {
     return res.redirect('/dashboard?msg=already_claimed');
+  }
+
+  // Check tier guild limit
+  const { limits } = getTierLimits(req.streamer.id);
+  const currentGuilds = db.getGuildsForStreamer(req.streamer.id);
+  if (limits.maxGuilds !== -1 && currentGuilds.length >= limits.maxGuilds) {
+    return res.redirect('/dashboard?msg=guild_limit');
   }
 
   db.upsertGuild(guildId, req.streamer.id, discordGuild.name);
@@ -61,6 +74,7 @@ router.get('/', (req, res) => {
     .map((g) => ({ id: g.id, name: g.name, icon: g.iconURL({ size: 64 }) }));
 
   const botInviteUrl = `https://discord.com/oauth2/authorize?client_id=${client.application.id}&permissions=8&scope=bot%20applications.commands&state=${req.streamer.id}`;
+  const { tier, limits } = getTierLimits(req.streamer.id);
 
   res.render('dashboard', {
     streamer: req.streamer,
@@ -68,6 +82,8 @@ router.get('/', (req, res) => {
     unclaimedGuilds,
     botInviteUrl,
     msg,
+    tier,
+    limits,
   });
 });
 
@@ -142,6 +158,7 @@ router.get('/guild/:guildId/channels', (req, res) => {
   if (!guildConfig) return res.redirect('/dashboard');
 
   const discordGuild = client.guilds.cache.get(guildId);
+  const { tier, limits } = getTierLimits(req.streamer.id);
   res.render('guild-channels', {
     streamer: req.streamer,
     guild: guildConfig,
@@ -150,12 +167,15 @@ router.get('/guild/:guildId/channels', (req, res) => {
     watchedChannels: db.getWatchedChannelsForGuild(guildId, req.streamer.id),
     channels: getDiscordChannels(guildId),
     msg: req.query.msg,
+    tier,
+    limits,
   });
 });
 
 router.post('/guild/:guildId/channels', (req, res) => {
   const { guildId } = req.params;
   if (!db.getGuildConfig(guildId, req.streamer.id)) return res.redirect('/dashboard');
+  const { limits } = getTierLimits(req.streamer.id);
 
   const twitchUsername = (req.body.twitch_username || '').trim().toLowerCase();
   const liveChannelId = req.body.live_channel_id;
@@ -163,6 +183,19 @@ router.post('/guild/:guildId/channels', (req, res) => {
 
   if (!twitchUsername || (!liveChannelId && !clipsChannelId)) {
     return res.redirect(`/dashboard/guild/${guildId}/channels?msg=missing_fields`);
+  }
+
+  // Check clips permission
+  if (clipsChannelId && !limits.twitchClips) {
+    return res.redirect(`/dashboard/guild/${guildId}/channels?msg=upgrade_clips`);
+  }
+
+  // Check max channels for free tier
+  if (limits.maxTwitchChannels !== -1) {
+    const existing = db.getWatchedChannelsForGuild(guildId, req.streamer.id);
+    if (existing.length >= limits.maxTwitchChannels) {
+      return res.redirect(`/dashboard/guild/${guildId}/channels?msg=channel_limit`);
+    }
   }
 
   db.addWatchedChannel(guildId, req.streamer.id, twitchUsername, liveChannelId, clipsChannelId, !!liveChannelId, !!clipsChannelId);
@@ -198,6 +231,11 @@ router.get('/guild/:guildId/youtube', (req, res) => {
 router.post('/guild/:guildId/youtube', (req, res) => {
   const { guildId } = req.params;
   if (!db.getGuildConfig(guildId, req.streamer.id)) return res.redirect('/dashboard');
+
+  const { limits } = getTierLimits(req.streamer.id);
+  if (!limits.youtube) {
+    return res.redirect(`/dashboard/guild/${guildId}/youtube?msg=upgrade_youtube`);
+  }
 
   const ytChannelId = (req.body.youtube_channel_id || '').trim();
   const ytChannelName = (req.body.youtube_channel_name || '').trim();
