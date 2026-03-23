@@ -56,16 +56,17 @@ async function pollAllTwitchClips() {
         db.updateChannelState(twitch_username, result.stateUpdate);
       }
 
-      if (result.notify && result.embeds) {
+      if (result.notify && result.clipData) {
         const watchers = db.getWatchersForChannel(twitch_username).filter((w) => w.notify_clips && w.clips_channel_id);
         console.log(`[TwitchClips] ${twitch_username}: ${watchers.length} watchers with clips enabled`);
         for (const w of watchers) {
-          for (const embed of result.embeds) {
+          for (const clip of result.clipData) {
             try {
-              await sendNotification(w.clips_channel_id, embed, {
+              await sendNotification(w.clips_channel_id, clip.embed, {
                 streamerId: w.streamer_id,
                 guildId: w.guild_id,
                 type: 'twitch_clip',
+                content: clip.clipUrl,
               });
               console.log(`[TwitchClips] Sent successfully`);
             } catch (e) {

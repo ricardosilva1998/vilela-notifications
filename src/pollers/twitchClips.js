@@ -24,27 +24,27 @@ async function check(twitchUsername, channelState) {
   if (newClips.length === 0) return null;
   console.log(`[TwitchClips] ${twitchUsername}: ${newClips.length} NEW clips to notify`);
 
-  const embeds = newClips.map((clip) =>
-    buildEmbed({
+  const clipData = newClips.map((clip) => ({
+    embed: buildEmbed({
       color: 0x9146ff,
       author: { name: `New clip by ${clip.creator_name}` },
       title: clip.title,
       url: clip.url,
-      image: clip.thumbnail_url,
       fields: [
         { name: 'Views', value: String(clip.view_count), inline: true },
         { name: 'Duration', value: `${Math.round(clip.duration)}s`, inline: true },
       ],
       footer: { text: 'Twitch Clip' },
       timestamp: clip.created_at,
-    })
-  );
+    }),
+    clipUrl: clip.url,
+  }));
 
   const newest = newClips.reduce((a, b) => (a.created_at > b.created_at ? a : b));
 
   return {
     notify: true,
-    embeds,
+    clipData,
     stateUpdate: { last_clip_created_at: newest.created_at },
   };
 }

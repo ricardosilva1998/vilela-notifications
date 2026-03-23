@@ -12,7 +12,9 @@ async function sendNotification(channelId, embed, meta) {
       if (meta) db.logNotification(meta.streamerId, meta.guildId, meta.type, false);
       return;
     }
-    await channel.send({ embeds: [embed] });
+    const payload = { embeds: [embed] };
+    if (meta?.content) payload.content = meta.content;
+    await channel.send(payload);
     if (meta) db.logNotification(meta.streamerId, meta.guildId, meta.type, true);
   } catch (error) {
     console.error(`Discord send error: ${error.message} (code: ${error.code}, status: ${error.status})`);
