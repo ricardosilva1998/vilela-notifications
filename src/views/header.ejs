@@ -10,13 +10,16 @@
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0e0e10; color: #efeff1; min-height: 100vh; }
     a { color: #a970ff; text-decoration: none; }
     a:hover { text-decoration: underline; }
-    .nav { background: #18181b; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #303032; }
+    .nav { background: #18181b; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #303032; position: relative; z-index: 100; }
+    .nav-left { display: flex; align-items: center; gap: 8px; }
     .nav-brand { font-size: 18px; font-weight: 700; color: #efeff1; display: flex; align-items: center; gap: 8px; }
     .nav-brand:hover { text-decoration: none; }
     .nav-brand img { width: 28px; height: 28px; border-radius: 6px; }
+    .hamburger { display: flex; flex-direction: column; justify-content: center; gap: 4px; width: 32px; height: 32px; padding: 6px; border: none; background: none; cursor: pointer; border-radius: 6px; }
+    .hamburger:hover { background: #303032; }
+    .hamburger span { display: block; width: 100%; height: 2px; background: #adadb8; border-radius: 2px; transition: 0.2s; }
+    .hamburger:hover span { background: #efeff1; }
     .nav-right { display: flex; align-items: center; gap: 16px; }
-    .nav-right a { color: #adadb8; font-size: 14px; }
-    .nav-right a:hover { color: #efeff1; text-decoration: none; }
     .nav-user { display: flex; align-items: center; gap: 10px; }
     .nav-avatar { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #303032; }
     .nav-username { font-size: 14px; color: #efeff1; font-weight: 500; }
@@ -25,6 +28,24 @@
     .nav-login { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 6px; background: #5865F2; color: white; font-size: 14px; font-weight: 600; text-decoration: none; }
     .nav-login:hover { opacity: 0.9; text-decoration: none; }
     .nav-login svg { width: 18px; height: 18px; fill: white; }
+    /* Sidebar */
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; }
+    .sidebar-overlay.active { display: block; }
+    .sidebar { position: fixed; top: 0; left: 0; width: 280px; height: 100%; background: #18181b; z-index: 300; transform: translateX(-100%); transition: transform 0.25s ease; border-right: 1px solid #303032; display: flex; flex-direction: column; }
+    .sidebar.active { transform: translateX(0); }
+    .sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #303032; }
+    .sidebar-header-brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; color: #efeff1; }
+    .sidebar-header-brand img { width: 28px; height: 28px; border-radius: 6px; }
+    .sidebar-close { background: none; border: none; color: #adadb8; font-size: 22px; cursor: pointer; padding: 4px; line-height: 1; }
+    .sidebar-close:hover { color: #efeff1; }
+    .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+    .sidebar-link { display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: #adadb8; font-size: 15px; text-decoration: none; transition: background 0.15s; }
+    .sidebar-link:hover { background: #303032; color: #efeff1; text-decoration: none; }
+    .sidebar-link svg { width: 20px; height: 20px; fill: currentColor; flex-shrink: 0; }
+    .sidebar-divider { height: 1px; background: #303032; margin: 8px 20px; }
+    .sidebar-section { padding: 8px 20px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #666; font-weight: 600; }
+    .sidebar-footer { padding: 16px 20px; border-top: 1px solid #303032; font-size: 12px; color: #666; }
+    /* Content */
     .container { max-width: 900px; margin: 0 auto; padding: 24px; }
     .btn { display: inline-block; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; color: white; }
     .btn:hover { text-decoration: none; opacity: 0.9; }
@@ -76,10 +97,68 @@
   </style>
 </head>
 <body>
+  <!-- Sidebar overlay -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-header-brand">
+        <img src="/app-icon/honest_graphic-running-athlete-9715727.png" alt="">
+        Atleta
+      </div>
+      <button class="sidebar-close" onclick="closeSidebar()">&times;</button>
+    </div>
+    <div class="sidebar-nav">
+      <div class="sidebar-section">Navigation</div>
+      <a href="/" class="sidebar-link">
+        <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        Home
+      </a>
+      <% if (typeof streamer !== 'undefined' && streamer) { %>
+        <a href="/dashboard" class="sidebar-link">
+          <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+          Dashboard
+        </a>
+      <% } %>
+      <a href="/tutorial" class="sidebar-link">
+        <svg viewBox="0 0 24 24"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>
+        Setup Guide
+      </a>
+
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section">Resources</div>
+      <a href="https://github.com/ricardosilva1998/atleta-notifications-helper" target="_blank" class="sidebar-link">
+        <svg viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        GitHub
+      </a>
+      <a href="https://github.com/ricardosilva1998/atleta-notifications-helper/issues" target="_blank" class="sidebar-link">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        Report an Issue
+      </a>
+
+      <% if (typeof streamer !== 'undefined' && streamer) { %>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-section">Account</div>
+        <a href="/auth/logout" class="sidebar-link">
+          <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+          Logout
+        </a>
+      <% } %>
+    </div>
+    <div class="sidebar-footer">
+      Atleta Notifications Helper
+    </div>
+  </div>
+
   <nav class="nav">
-    <a href="/" class="nav-brand"><img src="/app-icon/honest_graphic-running-athlete-9715727.png" alt="">Atleta</a>
+    <div class="nav-left">
+      <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+      <a href="/" class="nav-brand"><img src="/app-icon/honest_graphic-running-athlete-9715727.png" alt="">Atleta</a>
+    </div>
     <div class="nav-right">
-      <a href="/tutorial">Setup Guide</a>
       <% if (typeof streamer !== 'undefined' && streamer) { %>
         <div class="nav-user">
           <% if (streamer.discord_avatar) { %>
@@ -106,6 +185,7 @@
     <img id="lightbox-img" src="" alt="">
   </div>
   <script>
+    // Lightbox
     document.addEventListener('click', function(e) {
       if (e.target.matches('.screenshot img')) {
         document.getElementById('lightbox-img').src = e.target.src;
@@ -113,5 +193,19 @@
       }
     });
     function closeLightbox() { document.getElementById('lightbox').classList.remove('active'); }
-    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeLightbox(); });
+
+    // Sidebar
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('active');
+      document.getElementById('sidebar-overlay').classList.toggle('active');
+    }
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('active');
+      document.getElementById('sidebar-overlay').classList.remove('active');
+    }
+
+    // Escape closes both
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') { closeLightbox(); closeSidebar(); }
+    });
   </script>
