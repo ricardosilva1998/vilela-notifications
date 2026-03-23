@@ -487,9 +487,15 @@
       color: var(--text-secondary); font-family: var(--font-display);
       font-size: 13px; font-weight: 600; cursor: pointer;
       border-radius: var(--radius-sm); transition: all var(--transition);
+      display: flex; align-items: center; justify-content: center; gap: 7px;
     }
+    .tab-btn svg { flex-shrink: 0; }
     .tab-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
-    .tab-btn.active { background: var(--accent); color: white; }
+    .tab-btn.active { color: white; }
+    .tab-twitch.active { background: #9146ff; }
+    .tab-youtube.active { background: #ff0000; }
+    .tab-discord.active { background: #5865F2; }
+    .tab-settings.active { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border); }
     .tab-content { display: none; }
     .tab-content.active { display: block; animation: fadeUp 0.3s ease-out; }
 
