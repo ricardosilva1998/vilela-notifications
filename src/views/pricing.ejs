@@ -10,7 +10,7 @@
   <% if (msg === 'cancelled') { %><div class="alert alert-info">Payment cancelled.</div><% } %>
 <% } %>
 
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 32px;">
+<div class="pricing-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px;">
 
   <!-- Free -->
   <div class="card animate-in animate-in-delay-1" style="text-align: center; padding: 28px 20px; <%= currentTier === 'free' ? 'border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 4px 24px rgba(145,70,255,0.1);' : '' %>">

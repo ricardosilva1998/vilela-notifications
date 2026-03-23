@@ -3,6 +3,7 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const config = require('./config');
 const db = require('./db');
+const { t, SUPPORTED_LANGS } = require('./i18n');
 
 const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
@@ -34,6 +35,14 @@ app.use((req, res, next) => {
     }
   }
   res.locals.streamerTier = req.streamer ? db.getStreamerTier(req.streamer.id) : 'free';
+
+  // i18n
+  const lang = SUPPORTED_LANGS.includes(req.cookies?.lang) ? req.cookies.lang : 'en';
+  req.lang = lang;
+  res.locals.lang = lang;
+  res.locals.SUPPORTED_LANGS = SUPPORTED_LANGS;
+  res.locals.t = (key, params) => t(lang, key, params);
+
   next();
 });
 
@@ -61,6 +70,14 @@ app.use('/dashboard', dashboardRoutes);
 app.use('/payment', paymentRoutes);
 app.use('/api', apiRoutes);
 app.use('/admin', adminRoutes);
+
+// Language switch
+app.post('/set-language', (req, res) => {
+  const lang = SUPPORTED_LANGS.includes(req.body.lang) ? req.body.lang : 'en';
+  res.cookie('lang', lang, { maxAge: 365 * 24 * 60 * 60 * 1000, httpOnly: true });
+  const referer = req.headers.referer || '/';
+  res.redirect(referer);
+});
 
 // Health check
 app.get('/health', (req, res) => res.send('OK'));

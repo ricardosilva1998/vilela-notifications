@@ -59,6 +59,13 @@ async function getUserId(username) {
   return data.data?.[0]?.id || null;
 }
 
+async function getUserProfile(username) {
+  const data = await apiCall(`/users?login=${encodeURIComponent(username)}`);
+  const user = data.data?.[0];
+  if (!user) return null;
+  return { id: user.id, login: user.login, display_name: user.display_name, profile_image_url: user.profile_image_url };
+}
+
 async function getClips(broadcasterId, startedAt, endedAt) {
   const params = new URLSearchParams({
     broadcaster_id: broadcasterId,
@@ -145,4 +152,4 @@ async function getGameNames(gameIds) {
   return (data.data || []).map((g) => g.name);
 }
 
-module.exports = { getStream, getUserId, getClips, getSubscribers, getVideos, getFollowerCount, getGameNames };
+module.exports = { getStream, getUserId, getUserProfile, getClips, getSubscribers, getVideos, getFollowerCount, getGameNames };

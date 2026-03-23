@@ -2,14 +2,14 @@
 
 <div style="text-align: center; padding: 48px 0 32px;" class="animate-in">
   <div style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; background: var(--accent-glow); border: 1px solid rgba(145,70,255,0.15); font-size: 12px; color: var(--accent-hover); font-family: var(--font-display); font-weight: 600; margin-bottom: 20px;">
-    Free to use &middot; No coding required
+    <%= t('landing.tagline') %>
   </div>
   <h1 style="font-size: 40px; font-weight: 800; margin-bottom: 12px; line-height: 1.1; letter-spacing: -0.03em;">
-    Never miss a moment<br>
-    <span style="background: linear-gradient(135deg, var(--accent), #c026d3); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">on your favorite streams</span>
+    <%= t('landing.title1') %><br>
+    <span style="background: linear-gradient(135deg, var(--accent), #c026d3); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"><%= t('landing.title2') %></span>
   </h1>
   <p style="color: var(--text-secondary); max-width: 460px; margin: 0 auto; font-size: 16px; line-height: 1.6;">
-    Automatic Discord notifications for Twitch and YouTube. Go-live alerts, clips, recaps, and more.
+    <%= t('landing.subtitle') %>
   </p>
 </div>
 
@@ -18,38 +18,38 @@
     <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(145,70,255,0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; font-size: 22px;">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
     </div>
-    <h3 style="font-size: 15px; margin-bottom: 6px;">Live Alerts</h3>
-    <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.5;">Instant notifications when any Twitch streamer goes live</p>
+    <h3 style="font-size: 15px; margin-bottom: 6px;"><%= t('landing.liveAlerts') %></h3>
+    <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.5;"><%= t('landing.liveAlertsDesc') %></p>
   </div>
   <div class="card animate-in animate-in-delay-2" style="text-align: center; padding: 28px 20px;">
     <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(240,68,56,0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px;">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
     </div>
-    <h3 style="font-size: 15px; margin-bottom: 6px;">Clips & Recaps</h3>
-    <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.5;">Auto-share new clips and post stream recaps when channels go offline</p>
+    <h3 style="font-size: 15px; margin-bottom: 6px;"><%= t('landing.clipsRecaps') %></h3>
+    <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.5;"><%= t('landing.clipsRecapsDesc') %></p>
   </div>
   <div class="card animate-in animate-in-delay-3" style="text-align: center; padding: 28px 20px;">
     <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(240,68,56,0.08); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px;">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f04438" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19.13C5.12 19.56 12 19.56 12 19.56s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.43z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="#f04438"/></svg>
     </div>
-    <h3 style="font-size: 15px; margin-bottom: 6px;">YouTube</h3>
-    <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.5;">Announce new videos and YouTube live streams automatically</p>
+    <h3 style="font-size: 15px; margin-bottom: 6px;"><%= t('landing.youtube') %></h3>
+    <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.5;"><%= t('landing.youtubeDesc') %></p>
   </div>
   <div class="card animate-in animate-in-delay-4" style="text-align: center; padding: 28px 20px;">
     <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(62,207,142,0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px;">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     </div>
-    <h3 style="font-size: 15px; margin-bottom: 6px;">Community</h3>
-    <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.5;">Welcome messages, milestone celebrations, and subscriber sync</p>
+    <h3 style="font-size: 15px; margin-bottom: 6px;"><%= t('landing.community') %></h3>
+    <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.5;"><%= t('landing.communityDesc') %></p>
   </div>
 </div>
 
 <div style="text-align: center; margin-bottom: 24px;" class="animate-in animate-in-delay-4">
   <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-    <a href="/tutorial" class="btn btn-secondary" style="padding: 12px 28px;">How It Works</a>
+    <a href="/tutorial" class="btn btn-secondary" style="padding: 12px 28px;"><%= t('landing.howItWorks') %></a>
     <a href="/auth/login" class="btn btn-discord" style="padding: 12px 28px;">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
-      Get Started with Discord
+      <%= t('landing.getStarted') %>
     </a>
   </div>
 </div>

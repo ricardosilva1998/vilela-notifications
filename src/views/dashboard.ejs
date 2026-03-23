@@ -2,32 +2,28 @@
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px;" class="animate-in">
   <div style="display: flex; align-items: center; gap: 12px;">
-    <h2 style="font-size: 24px; font-weight: 700;">Dashboard</h2>
+    <h2 style="font-size: 24px; font-weight: 700;"><%= t('dashboard.title') %></h2>
     <span class="badge badge-tier"><%= (tier || 'free').toUpperCase() %></span>
   </div>
-  <a href="<%= botInviteUrl %>" target="_blank" rel="noopener" class="btn btn-discord" style="padding: 8px 16px; font-size: 13px;">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    Add Bot to Server
-  </a>
 </div>
 
 <% if (msg === 'guild_removed') { %>
-  <div class="alert alert-success">Server removed from your account.</div>
+  <div class="alert alert-success"><%= t('dashboard.guildRemoved') %></div>
 <% } %>
 <% if (msg === 'twitch_linked') { %>
-  <div class="alert alert-success">Twitch account linked successfully!</div>
+  <div class="alert alert-success"><%= t('dashboard.twitchLinked') %></div>
 <% } %>
 <% if (msg === 'broadcaster_authorized') { %>
-  <div class="alert alert-success">Broadcaster authorized! Sub sync is now available.</div>
+  <div class="alert alert-success"><%= t('dashboard.broadcasterAuthorized') %></div>
 <% } %>
 <% if (msg === 'youtube_saved') { %>
-  <div class="alert alert-success">YouTube settings saved.</div>
+  <div class="alert alert-success"><%= t('dashboard.youtubeSaved') %></div>
 <% } %>
 <% if (msg === 'guild_limit') { %>
-  <div class="alert alert-warning">You've reached the server limit for your plan. <a href="/pricing">Upgrade</a> to add more servers.</div>
+  <div class="alert alert-warning"><%= t('dashboard.guildLimit') %></div>
 <% } %>
 <% if (msg === 'already_claimed') { %>
-  <div class="alert alert-danger">This server is already configured by another user.</div>
+  <div class="alert alert-danger"><%= t('dashboard.alreadyClaimed') %></div>
 <% } %>
 
 <!-- Quick Links -->
@@ -35,7 +31,7 @@
   <% if (!streamer.twitch_user_id) { %>
     <a href="/auth/twitch" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2H3v16h5v4l4-4h5l4-4V2zM11 11V7M16 11V7"/></svg>
-      Link Twitch Account
+      <%= t('dashboard.linkTwitch') %>
     </a>
   <% } else { %>
     <span class="btn btn-secondary" style="cursor: default; padding: 8px 16px; font-size: 13px;">
@@ -44,20 +40,24 @@
     </span>
   <% } %>
   <% if (streamer.twitch_user_id && !streamer.broadcaster_access_token) { %>
-    <a href="/auth/broadcaster" class="btn btn-secondary" style="padding: 8px 16px; font-size: 13px;">Enable Sub Sync</a>
+    <a href="/auth/broadcaster" class="btn btn-secondary" style="padding: 8px 16px; font-size: 13px;"><%= t('dashboard.enableSubSync') %></a>
   <% } %>
+  <a href="<%= botInviteUrl %>" target="_blank" rel="noopener" class="btn btn-discord" style="padding: 8px 16px; font-size: 13px;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <%= t('dashboard.addBot') %>
+  </a>
 </div>
 
 <!-- Servers -->
-<h3 class="section-title animate-in animate-in-delay-2">Your Servers</h3>
+<h3 class="section-title animate-in animate-in-delay-2"><%= t('dashboard.yourServers') %> (<%= guilds.length %>)</h3>
 
 <% if (guilds.length === 0 && unclaimedGuilds.length === 0) { %>
   <div class="card animate-in animate-in-delay-3" style="text-align: center; padding: 48px 24px;">
     <div style="width: 56px; height: 56px; border-radius: 16px; background: var(--bg-elevated); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
     </div>
-    <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">No servers yet. Add the bot to a Discord server to get started.</p>
-    <a href="<%= botInviteUrl %>" target="_blank" rel="noopener" class="btn btn-discord">Add Bot to Server</a>
+    <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;"><%= t('dashboard.noServers') %></p>
+    <a href="<%= botInviteUrl %>" target="_blank" rel="noopener" class="btn btn-discord"><%= t('dashboard.addBot') %></a>
   </div>
 <% } %>
 
@@ -75,23 +75,20 @@
         <h4><%= g.name %></h4>
         <p>
           <% if (g.botPresent) { %>
-            <span class="status-dot online"></span>Active
+            <span class="status-dot online"></span><%= t('dashboard.active') %>
           <% } else { %>
-            <span class="status-dot offline"></span>Offline
+            <span class="status-dot offline"></span><%= t('dashboard.offline') %>
           <% } %>
         </p>
       </div>
-      <div style="display: flex; gap: 8px;">
-        <a href="/dashboard/guild/<%= g.guild_id %>/channels" class="btn btn-primary" style="padding: 7px 14px; font-size: 12px;">Channels</a>
-        <a href="/dashboard/guild/<%= g.guild_id %>" class="btn btn-secondary" style="padding: 7px 14px; font-size: 12px;">Settings</a>
-      </div>
+      <a href="/dashboard/guild/<%= g.guild_id %>" class="btn btn-primary" style="padding: 7px 14px; font-size: 12px;"><%= t('dashboard.configure') %></a>
     </div>
   <% }); %>
 </div>
 
 <% if (unclaimedGuilds.length > 0) { %>
-  <h3 class="section-title" style="margin-top: 28px;">Available Servers</h3>
-  <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 14px;">The bot is in these servers. Claim one to start configuring.</p>
+  <h3 class="section-title" style="margin-top: 28px;"><%= t('dashboard.availableServers') %></h3>
+  <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 14px;"><%= t('dashboard.availableServersDesc') %></p>
   <div class="guild-list">
     <% unclaimedGuilds.forEach(function(g, i) { %>
       <div class="card guild-card animate-in" style="animation-delay: <%= 0.05 + i * 0.05 %>s;">
@@ -104,10 +101,10 @@
         </div>
         <div class="guild-info">
           <h4><%= g.name %></h4>
-          <p style="color: var(--text-muted);">Ready to configure</p>
+          <p style="color: var(--text-muted);"><%= t('dashboard.readyToConfigure') %></p>
         </div>
         <form method="POST" action="/dashboard/claim/<%= g.id %>" style="margin: 0;">
-          <button type="submit" class="btn btn-primary" style="padding: 7px 14px; font-size: 12px;">Claim</button>
+          <button type="submit" class="btn btn-primary" style="padding: 7px 14px; font-size: 12px;"><%= t('dashboard.claim') %></button>
         </form>
       </div>
     <% }); %>

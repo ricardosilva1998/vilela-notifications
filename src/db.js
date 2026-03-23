@@ -73,6 +73,15 @@ try {
   }
 } catch {}
 
+// Migration 6: add profile_image_url to watched_channels
+try {
+  const cols = db.prepare("PRAGMA table_info(watched_channels)").all();
+  if (cols.length > 0 && !cols.find((c) => c.name === 'profile_image_url')) {
+    db.exec('ALTER TABLE watched_channels ADD COLUMN profile_image_url TEXT');
+    console.log('[DB] Added profile_image_url column to watched_channels');
+  }
+} catch {}
+
 // --- Schema ---
 
 db.exec(`
@@ -562,8 +571,8 @@ function getRecentNotifications() {
 // --- Watched Channels ---
 
 const _addWatchedChannel = db.prepare(`
-  INSERT OR IGNORE INTO watched_channels (guild_id, streamer_id, twitch_username, live_channel_id, clips_channel_id, notify_live, notify_clips)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
+  INSERT OR IGNORE INTO watched_channels (guild_id, streamer_id, twitch_username, live_channel_id, clips_channel_id, notify_live, notify_clips, profile_image_url)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const _removeWatchedChannel = db.prepare('DELETE FROM watched_channels WHERE id = ? AND streamer_id = ?');
 const _getWatchedChannelsForGuild = db.prepare('SELECT * FROM watched_channels WHERE guild_id = ? AND streamer_id = ?');
@@ -591,8 +600,8 @@ const _updateChannelState = db.prepare(`
   WHERE twitch_username = ?
 `);
 
-function addWatchedChannel(guildId, streamerId, twitchUsername, liveChannelId, clipsChannelId, notifyLive, notifyClips) {
-  _addWatchedChannel.run(guildId, streamerId, twitchUsername.toLowerCase(), liveChannelId || null, clipsChannelId || null, notifyLive ? 1 : 0, notifyClips ? 1 : 0);
+function addWatchedChannel(guildId, streamerId, twitchUsername, liveChannelId, clipsChannelId, notifyLive, notifyClips, profileImageUrl = null) {
+  _addWatchedChannel.run(guildId, streamerId, twitchUsername.toLowerCase(), liveChannelId || null, clipsChannelId || null, notifyLive ? 1 : 0, notifyClips ? 1 : 0, profileImageUrl);
   // Ensure channel_state row exists
   _upsertChannelState.run(twitchUsername.toLowerCase());
 }
