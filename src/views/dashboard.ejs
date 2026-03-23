@@ -86,7 +86,13 @@
             <span style="font-size: 11px; color: var(--text-muted);"><%= g.twitchCount %> Twitch &middot; <%= g.youtubeCount %> YouTube</span>
           </div>
         </div>
-        <a href="/dashboard/guild/<%= g.guild_id %>" class="btn btn-primary" style="padding: 7px 16px; font-size: 12px; flex-shrink: 0;"><%= t('dashboard.configure') %></a>
+        <div style="display: flex; gap: 6px; flex-shrink: 0;">
+          <a href="/dashboard/guild/<%= g.guild_id %>/stats" class="btn btn-secondary" style="padding: 7px 12px; font-size: 12px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            Stats
+          </a>
+          <a href="/dashboard/guild/<%= g.guild_id %>" class="btn btn-primary" style="padding: 7px 12px; font-size: 12px;"><%= t('dashboard.configure') %></a>
+        </div>
       </div>
 
       <!-- Metrics -->

@@ -564,6 +564,62 @@ function getGuildNotificationStats(streamerId, guildId) {
   return _getGuildNotificationStats.get(streamerId, guildId);
 }
 
+const _getGuildStatsByPeriod = db.prepare(`
+  SELECT
+    COALESCE(SUM(CASE WHEN type = 'twitch_live' THEN 1 ELSE 0 END), 0) AS live_count,
+    COALESCE(SUM(CASE WHEN type = 'twitch_clip' THEN 1 ELSE 0 END), 0) AS clip_count,
+    COALESCE(SUM(CASE WHEN type = 'twitch_recap' THEN 1 ELSE 0 END), 0) AS recap_count,
+    COALESCE(SUM(CASE WHEN type = 'youtube_video' THEN 1 ELSE 0 END), 0) AS youtube_video_count,
+    COALESCE(SUM(CASE WHEN type = 'youtube_live' THEN 1 ELSE 0 END), 0) AS youtube_live_count,
+    COALESCE(SUM(CASE WHEN type = 'twitch_milestone' THEN 1 ELSE 0 END), 0) AS milestone_count,
+    COALESCE(SUM(CASE WHEN type = 'weekly_digest' THEN 1 ELSE 0 END), 0) AS digest_count,
+    COUNT(*) AS total,
+    COALESCE(SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END), 0) AS success_count,
+    COALESCE(SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END), 0) AS fail_count
+  FROM notification_log WHERE streamer_id = ? AND guild_id = ? AND created_at > datetime('now', ?)
+`);
+
+const _getGuildStatsLifetime = db.prepare(`
+  SELECT
+    COALESCE(SUM(CASE WHEN type = 'twitch_live' THEN 1 ELSE 0 END), 0) AS live_count,
+    COALESCE(SUM(CASE WHEN type = 'twitch_clip' THEN 1 ELSE 0 END), 0) AS clip_count,
+    COALESCE(SUM(CASE WHEN type = 'twitch_recap' THEN 1 ELSE 0 END), 0) AS recap_count,
+    COALESCE(SUM(CASE WHEN type = 'youtube_video' THEN 1 ELSE 0 END), 0) AS youtube_video_count,
+    COALESCE(SUM(CASE WHEN type = 'youtube_live' THEN 1 ELSE 0 END), 0) AS youtube_live_count,
+    COALESCE(SUM(CASE WHEN type = 'twitch_milestone' THEN 1 ELSE 0 END), 0) AS milestone_count,
+    COALESCE(SUM(CASE WHEN type = 'weekly_digest' THEN 1 ELSE 0 END), 0) AS digest_count,
+    COUNT(*) AS total,
+    COALESCE(SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END), 0) AS success_count,
+    COALESCE(SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END), 0) AS fail_count
+  FROM notification_log WHERE streamer_id = ? AND guild_id = ?
+`);
+
+const _getGuildNotificationsOverTime = db.prepare(`
+  SELECT strftime(?, created_at) AS period, COUNT(*) AS count
+  FROM notification_log WHERE streamer_id = ? AND guild_id = ? AND created_at > datetime('now', ?)
+  GROUP BY period ORDER BY period ASC
+`);
+
+function getGuildStatsByPeriod(streamerId, guildId, period) {
+  if (period === 'lifetime') {
+    return _getGuildStatsLifetime.get(streamerId, guildId);
+  }
+  const offsets = { '24h': '-1 day', '7d': '-7 days', '30d': '-30 days', '1y': '-365 days' };
+  return _getGuildStatsByPeriod.get(streamerId, guildId, offsets[period] || '-7 days');
+}
+
+function getGuildNotificationsOverTime(streamerId, guildId, period) {
+  const config = {
+    '24h': { format: '%H:00', offset: '-1 day' },
+    '7d': { format: '%Y-%m-%d', offset: '-7 days' },
+    '30d': { format: '%Y-%m-%d', offset: '-30 days' },
+    '1y': { format: '%Y-%m', offset: '-365 days' },
+    'lifetime': { format: '%Y-%m', offset: '-10 years' },
+  };
+  const c = config[period] || config['7d'];
+  return _getGuildNotificationsOverTime.all(c.format, streamerId, guildId, c.offset);
+}
+
 // --- Admin ---
 
 const _disableStreamer = db.prepare('UPDATE streamers SET enabled = 0, admin_note = ? WHERE id = ?');
@@ -1108,4 +1164,6 @@ module.exports = {
   getStreamerNotificationsOverTime,
   getStreamerNotificationsByType,
   getGuildNotificationStats,
+  getGuildStatsByPeriod,
+  getGuildNotificationsOverTime,
 };

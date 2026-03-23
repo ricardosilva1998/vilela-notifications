@@ -113,6 +113,32 @@ router.get('/', (req, res) => {
   });
 });
 
+// Guild stats page
+router.get('/guild/:guildId/stats', (req, res) => {
+  const { guildId } = req.params;
+  const guildConfig = db.getGuildConfig(guildId, req.streamer.id);
+  if (!guildConfig) return res.redirect('/dashboard');
+
+  const discordGuild = client.guilds.cache.get(guildId);
+  const period = req.query.period || '7d';
+  const stats = db.getGuildStatsByPeriod(req.streamer.id, guildId, period);
+  const chartData = db.getGuildNotificationsOverTime(req.streamer.id, guildId, period);
+  const twitchCount = db.getWatchedChannelsForGuild(guildId, req.streamer.id).length;
+  const youtubeCount = db.getWatchedYoutubeChannelsForGuild(guildId, req.streamer.id).length;
+
+  res.render('guild-stats', {
+    streamer: req.streamer,
+    guild: guildConfig,
+    guildName: discordGuild?.name || guildConfig.guild_name || 'Unknown',
+    guildId,
+    period,
+    stats,
+    chartData,
+    twitchCount,
+    youtubeCount,
+  });
+});
+
 // Guild config page
 router.get('/guild/:guildId', (req, res) => {
   const { guildId } = req.params;
