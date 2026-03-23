@@ -1,6 +1,7 @@
 const required = [
   'DISCORD_TOKEN',
-  'DISCORD_TWITCH_CHANNEL_ID',
+  'DISCORD_TWITCH_LIVE_CHANNEL_ID',
+  'DISCORD_TWITCH_CLIPS_CHANNEL_ID',
   'TWITCH_CLIENT_ID',
   'TWITCH_CLIENT_SECRET',
   'TWITCH_USERNAME',
@@ -23,7 +24,8 @@ if (youtubeEnabled) {
 module.exports = {
   discord: {
     token: process.env.DISCORD_TOKEN,
-    twitchChannelId: process.env.DISCORD_TWITCH_CHANNEL_ID,
+    twitchLiveChannelId: process.env.DISCORD_TWITCH_LIVE_CHANNEL_ID,
+    twitchClipsChannelId: process.env.DISCORD_TWITCH_CLIPS_CHANNEL_ID,
     youtubeChannelId: process.env.DISCORD_YOUTUBE_CHANNEL_ID,
   },
   twitch: {

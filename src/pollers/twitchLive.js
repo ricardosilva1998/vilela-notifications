@@ -27,7 +27,7 @@ async function poll() {
         footer: { text: 'Twitch' },
         timestamp: new Date(),
       });
-      await sendNotification(config.discord.twitchChannelId, embed);
+      await sendNotification(config.discord.twitchLiveChannelId, embed);
       console.log(`[TwitchLive] Sent live notification: ${stream.title}`);
     } else if (!stream && appState.twitchIsLive) {
       appState.twitchIsLive = false;

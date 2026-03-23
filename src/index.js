@@ -10,7 +10,8 @@ client.once('ready', async () => {
   console.log(`Bot online as ${client.user.tag}`);
   console.log(`Monitoring: Twitch=${config.twitch.username}`);
   if (config.youtube.enabled) console.log(`Monitoring: YouTube=${config.youtube.channelId}`);
-  console.log(`Posting Twitch to channel: ${config.discord.twitchChannelId}`);
+  console.log(`Posting Twitch Live to channel: ${config.discord.twitchLiveChannelId}`);
+  console.log(`Posting Twitch Clips to channel: ${config.discord.twitchClipsChannelId}`);
   if (config.youtube.enabled) console.log(`Posting YouTube to channel: ${config.discord.youtubeChannelId}`);
 
   try {
