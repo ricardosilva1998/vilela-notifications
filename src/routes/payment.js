@@ -63,11 +63,13 @@ router.get('/', (req, res) => {
 router.post('/create', (req, res) => {
   if (!req.streamer) return res.redirect('/auth/login');
 
-  const { tier, discount_code } = req.body;
+  const { tier, discount_code, billing } = req.body;
   const tierConfig = config.tiers[tier];
   if (!tierConfig || tier === 'free') return res.redirect('/pricing');
 
-  let price = tierConfig.price;
+  const isAnnual = billing !== 'monthly';
+  let price = isAnnual ? tierConfig.priceAnnual : tierConfig.priceMonthly;
+  const durationDays = isAnnual ? 365 : 30;
   let discountPercent = 0;
   let discountCodeUsed = null;
 
@@ -84,7 +86,7 @@ router.post('/create', (req, res) => {
   if (price <= 0) {
     // 100% discount — activate immediately
     if (discountCodeUsed) db.useDiscountCode(discountCodeUsed);
-    const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+    const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
     const sub = db.createSubscription(req.streamer.id, tier, null, expiresAt);
     db.createTransaction(req.streamer.id, null, 0, 'FREE_CODE', discountCodeUsed, discountPercent);
     console.log(`[Payment] Free subscription (${tier}) activated for ${req.streamer.discord_username} with code ${discountCodeUsed}`);
@@ -92,12 +94,12 @@ router.post('/create', (req, res) => {
   }
 
   // Store payment intent in session cookie
-  res.cookie('payment_intent', JSON.stringify({ tier, price, discountPercent, discountCodeUsed }), {
+  res.cookie('payment_intent', JSON.stringify({ tier, price, discountPercent, discountCodeUsed, durationDays }), {
     httpOnly: true, maxAge: 30 * 60 * 1000, // 30 minutes
   });
 
-  // Create PayPal order
-  createPayPalOrder(price, `Atleta ${tier.charAt(0).toUpperCase() + tier.slice(1)} - Annual Subscription`)
+  const billingLabel = isAnnual ? 'Annual' : 'Monthly';
+  createPayPalOrder(price, `Atleta ${tierConfig.name} - ${billingLabel} Subscription`)
     .then((order) => {
       const approveLink = order.links?.find((l) => l.rel === 'approve');
       if (approveLink) {
@@ -133,7 +135,8 @@ router.get('/success', async (req, res) => {
 
       if (intent.discountCodeUsed) db.useDiscountCode(intent.discountCodeUsed);
 
-      const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+      const days = intent.durationDays || 365;
+      const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
       db.createSubscription(req.streamer.id, intent.tier, paymentId, expiresAt);
       db.createTransaction(req.streamer.id, null, intent.price, paymentId, intent.discountCodeUsed, intent.discountPercent);
 

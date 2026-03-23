@@ -1,25 +1,31 @@
 <%- include('header', { title: 'Pricing', streamer: streamer }) %>
 
-<div style="text-align: center; margin-bottom: 32px;">
+<div style="text-align: center; margin-bottom: 24px;">
   <h2 style="font-size: 28px; margin-bottom: 8px;">Choose Your Plan</h2>
-  <p style="color: #adadb8;">All plans are billed annually. Cancel anytime.</p>
+  <p style="color: #adadb8; margin-bottom: 16px;">Start free, upgrade when you need more.</p>
+
+  <div style="display: inline-flex; background: #18181b; border-radius: 8px; padding: 4px; border: 1px solid #303032;">
+    <button id="btn-monthly" onclick="toggleBilling('monthly')" style="padding: 8px 20px; border-radius: 6px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; background: #303032; color: #efeff1;">Monthly</button>
+    <button id="btn-annual" onclick="toggleBilling('annual')" style="padding: 8px 20px; border-radius: 6px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; background: #9146ff; color: white;">Annual <span style="font-size: 11px; opacity: 0.8;">Save 17%</span></button>
+  </div>
 </div>
 
-<% if (typeof msg !== 'undefined') { %>
+<% if (typeof msg !== 'undefined' && msg) { %>
   <% if (msg === 'payment_error') { %><div class="alert" style="background: #e74c3c33; border: 1px solid #e74c3c;">Payment failed. Please try again.</div><% } %>
   <% if (msg === 'cancelled') { %><div class="alert alert-info">Payment cancelled.</div><% } %>
 <% } %>
 
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px;">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 32px;">
 
   <!-- Free -->
-  <div class="card" style="text-align: center; padding: 24px; <%= currentTier === 'free' ? 'border-color: #9146ff;' : '' %>">
+  <div class="card" style="text-align: center; padding: 24px; position: relative; <%= currentTier === 'free' ? 'border-color: #9146ff;' : '' %>">
     <h3 style="margin-bottom: 4px;">Free</h3>
     <div style="font-size: 28px; font-weight: 700; margin: 12px 0;">0 EUR</div>
-    <p style="color: #adadb8; font-size: 13px; margin-bottom: 16px;">per year</p>
+    <p style="color: #adadb8; font-size: 13px; margin-bottom: 16px;">forever</p>
     <ul style="text-align: left; list-style: none; padding: 0; font-size: 13px; color: #adadb8; line-height: 2;">
-      <li>&#10003; 1 Twitch live channel</li>
-      <li>&#10003; 1 Discord server</li>
+      <li style="color: #efeff1;">&#10003; 1 Discord server</li>
+      <li style="color: #efeff1;">&#10003; 2 Twitch live channels</li>
+      <li>&#9203; 5 min notification delay</li>
       <li style="color: #666;">&#10007; Clip notifications</li>
       <li style="color: #666;">&#10007; YouTube</li>
       <li style="color: #666;">&#10007; Welcome messages</li>
@@ -33,21 +39,29 @@
   <!-- Starter -->
   <div class="card" style="text-align: center; padding: 24px; <%= currentTier === 'starter' ? 'border-color: #9146ff;' : '' %>">
     <h3 style="margin-bottom: 4px;">Starter</h3>
-    <div style="font-size: 28px; font-weight: 700; margin: 12px 0;">10 EUR</div>
-    <p style="color: #adadb8; font-size: 13px; margin-bottom: 16px;">per year</p>
+    <div style="font-size: 28px; font-weight: 700; margin: 12px 0;">
+      <span class="price-monthly" style="display: none;">5 EUR</span>
+      <span class="price-annual">50 EUR</span>
+    </div>
+    <p style="color: #adadb8; font-size: 13px; margin-bottom: 16px;">
+      <span class="price-monthly" style="display: none;">per month</span>
+      <span class="price-annual">per year</span>
+    </p>
     <ul style="text-align: left; list-style: none; padding: 0; font-size: 13px; color: #adadb8; line-height: 2;">
-      <li>&#10003; Unlimited Twitch live</li>
-      <li>&#10003; Clip notifications</li>
-      <li>&#10003; 2 Discord servers</li>
-      <li style="color: #666;">&#10007; YouTube</li>
-      <li style="color: #666;">&#10007; Welcome messages</li>
-      <li style="color: #666;">&#10007; Sub sync</li>
+      <li style="color: #efeff1;">&#10003; 3 Discord servers</li>
+      <li style="color: #efeff1;">&#10003; 10 Twitch channels</li>
+      <li style="color: #efeff1;">&#10003; 3 YouTube channels</li>
+      <li style="color: #efeff1;">&#10003; Clip notifications</li>
+      <li style="color: #efeff1;">&#10003; Instant notifications</li>
+      <li style="color: #efeff1;">&#10003; Welcome messages</li>
+      <li style="color: #efeff1;">&#10003; Sub sync (/link)</li>
     </ul>
     <% if (currentTier === 'starter') { %>
       <div class="btn btn-secondary" style="width: 100%; margin-top: 12px; cursor: default;">Current Plan</div>
     <% } else if (streamer) { %>
       <form method="POST" action="/payment/create" style="margin-top: 12px;">
         <input type="hidden" name="tier" value="starter">
+        <input type="hidden" name="billing" value="annual" class="billing-input">
         <div style="margin-bottom: 8px;"><input type="text" name="discount_code" placeholder="Discount code" style="width: 100%; padding: 6px; background: #0e0e10; border: 1px solid #303032; border-radius: 4px; color: #efeff1; font-size: 12px; text-align: center;"></div>
         <button type="submit" class="btn btn-primary" style="width: 100%;">Subscribe</button>
       </form>
@@ -57,24 +71,32 @@
   </div>
 
   <!-- Pro -->
-  <div class="card" style="text-align: center; padding: 24px; border-color: #9146ff; <%= currentTier === 'pro' ? '' : 'border-color: #9146ff44;' %>">
-    <div style="background: #9146ff; color: white; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 8px;">POPULAR</div>
+  <div class="card" style="text-align: center; padding: 24px; border-color: #9146ff; position: relative;">
+    <div style="background: #9146ff; color: white; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 8px;">MOST POPULAR</div>
     <h3 style="margin-bottom: 4px;">Pro</h3>
-    <div style="font-size: 28px; font-weight: 700; margin: 12px 0;">20 EUR</div>
-    <p style="color: #adadb8; font-size: 13px; margin-bottom: 16px;">per year</p>
+    <div style="font-size: 28px; font-weight: 700; margin: 12px 0;">
+      <span class="price-monthly" style="display: none;">12 EUR</span>
+      <span class="price-annual">120 EUR</span>
+    </div>
+    <p style="color: #adadb8; font-size: 13px; margin-bottom: 16px;">
+      <span class="price-monthly" style="display: none;">per month</span>
+      <span class="price-annual">per year</span>
+    </p>
     <ul style="text-align: left; list-style: none; padding: 0; font-size: 13px; color: #adadb8; line-height: 2;">
-      <li>&#10003; Unlimited Twitch live</li>
-      <li>&#10003; Clip notifications</li>
-      <li>&#10003; YouTube notifications</li>
-      <li>&#10003; Welcome messages</li>
-      <li>&#10003; Sub sync (/link)</li>
-      <li>&#10003; 5 Discord servers</li>
+      <li style="color: #efeff1;">&#10003; 10 Discord servers</li>
+      <li style="color: #efeff1;">&#10003; 50 Twitch channels</li>
+      <li style="color: #efeff1;">&#10003; 20 YouTube channels</li>
+      <li style="color: #efeff1;">&#10003; Everything in Starter</li>
+      <li style="color: #efeff1;">&#10003; Custom embed colors</li>
+      <li style="color: #efeff1;">&#10003; Stream summaries</li>
+      <li style="color: #efeff1;">&#10003; Go-live threads</li>
     </ul>
     <% if (currentTier === 'pro') { %>
       <div class="btn btn-secondary" style="width: 100%; margin-top: 12px; cursor: default;">Current Plan</div>
     <% } else if (streamer) { %>
       <form method="POST" action="/payment/create" style="margin-top: 12px;">
         <input type="hidden" name="tier" value="pro">
+        <input type="hidden" name="billing" value="annual" class="billing-input">
         <div style="margin-bottom: 8px;"><input type="text" name="discount_code" placeholder="Discount code" style="width: 100%; padding: 6px; background: #0e0e10; border: 1px solid #303032; border-radius: 4px; color: #efeff1; font-size: 12px; text-align: center;"></div>
         <button type="submit" class="btn btn-primary" style="width: 100%;">Subscribe</button>
       </form>
@@ -83,22 +105,31 @@
     <% } %>
   </div>
 
-  <!-- Unlimited -->
-  <div class="card" style="text-align: center; padding: 24px; <%= currentTier === 'unlimited' ? 'border-color: #9146ff;' : '' %>">
-    <h3 style="margin-bottom: 4px;">Unlimited</h3>
-    <div style="font-size: 28px; font-weight: 700; margin: 12px 0;">50 EUR</div>
-    <p style="color: #adadb8; font-size: 13px; margin-bottom: 16px;">per year</p>
+  <!-- Enterprise -->
+  <div class="card" style="text-align: center; padding: 24px; <%= currentTier === 'enterprise' ? 'border-color: #9146ff;' : '' %>">
+    <h3 style="margin-bottom: 4px;">Enterprise</h3>
+    <div style="font-size: 28px; font-weight: 700; margin: 12px 0;">
+      <span class="price-monthly" style="display: none;">25 EUR</span>
+      <span class="price-annual">250 EUR</span>
+    </div>
+    <p style="color: #adadb8; font-size: 13px; margin-bottom: 16px;">
+      <span class="price-monthly" style="display: none;">per month</span>
+      <span class="price-annual">per year</span>
+    </p>
     <ul style="text-align: left; list-style: none; padding: 0; font-size: 13px; color: #adadb8; line-height: 2;">
-      <li>&#10003; Everything in Pro</li>
-      <li>&#10003; Unlimited Discord servers</li>
-      <li>&#10003; Unlimited channels</li>
-      <li>&#10003; Priority support</li>
+      <li style="color: #efeff1;">&#10003; Unlimited servers</li>
+      <li style="color: #efeff1;">&#10003; Unlimited channels</li>
+      <li style="color: #efeff1;">&#10003; Everything in Pro</li>
+      <li style="color: #efeff1;">&#10003; Custom webhooks</li>
+      <li style="color: #efeff1;">&#10003; White-label (no branding)</li>
+      <li style="color: #efeff1;">&#10003; Priority support</li>
     </ul>
-    <% if (currentTier === 'unlimited') { %>
+    <% if (currentTier === 'enterprise') { %>
       <div class="btn btn-secondary" style="width: 100%; margin-top: 12px; cursor: default;">Current Plan</div>
     <% } else if (streamer) { %>
       <form method="POST" action="/payment/create" style="margin-top: 12px;">
-        <input type="hidden" name="tier" value="unlimited">
+        <input type="hidden" name="tier" value="enterprise">
+        <input type="hidden" name="billing" value="annual" class="billing-input">
         <div style="margin-bottom: 8px;"><input type="text" name="discount_code" placeholder="Discount code" style="width: 100%; padding: 6px; background: #0e0e10; border: 1px solid #303032; border-radius: 4px; color: #efeff1; font-size: 12px; text-align: center;"></div>
         <button type="submit" class="btn btn-primary" style="width: 100%;">Subscribe</button>
       </form>
@@ -108,5 +139,29 @@
   </div>
 
 </div>
+
+<script>
+function toggleBilling(type) {
+  const monthly = document.querySelectorAll('.price-monthly');
+  const annual = document.querySelectorAll('.price-annual');
+  const inputs = document.querySelectorAll('.billing-input');
+  const btnM = document.getElementById('btn-monthly');
+  const btnA = document.getElementById('btn-annual');
+
+  if (type === 'monthly') {
+    monthly.forEach(el => el.style.display = 'inline');
+    annual.forEach(el => el.style.display = 'none');
+    inputs.forEach(el => el.value = 'monthly');
+    btnM.style.background = '#9146ff'; btnM.style.color = 'white';
+    btnA.style.background = '#303032'; btnA.style.color = '#efeff1';
+  } else {
+    monthly.forEach(el => el.style.display = 'none');
+    annual.forEach(el => el.style.display = 'inline');
+    inputs.forEach(el => el.value = 'annual');
+    btnA.style.background = '#9146ff'; btnA.style.color = 'white';
+    btnM.style.background = '#303032'; btnM.style.color = '#efeff1';
+  }
+}
+</script>
 
 <%- include('footer') %>

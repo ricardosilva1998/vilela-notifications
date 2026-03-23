@@ -13,7 +13,10 @@
 <div class="card">
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
     <div>
-      <h3 style="margin-bottom: 4px;"><%= (subscription?.tier || 'free').charAt(0).toUpperCase() + (subscription?.tier || 'free').slice(1) %> Plan</h3>
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+        <h3 style="margin: 0;"><%= tierConfig.name %> Plan</h3>
+        <span style="background: #9146ff; color: white; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px;"><%= (subscription?.tier || 'free').toUpperCase() %></span>
+      </div>
       <p style="color: #adadb8; font-size: 14px;">
         <% if (subscription?.tier === 'free' || !subscription) { %>
           Free forever
@@ -23,18 +26,36 @@
         <% } %>
       </p>
     </div>
-    <div style="font-size: 24px; font-weight: 700; color: #9146ff;"><%= tierConfig.price %> EUR<span style="font-size: 14px; color: #adadb8; font-weight: 400;">/yr</span></div>
   </div>
 
-  <h4 style="margin-bottom: 8px; font-size: 14px; color: #adadb8;">Your features:</h4>
-  <ul style="list-style: none; padding: 0; font-size: 14px; color: #adadb8; line-height: 2;">
-    <li><%= tierConfig.twitchLive ? '&#10003;' : '&#10007;' %> Twitch Live Notifications</li>
-    <li><%= tierConfig.twitchClips ? '&#10003;' : '&#10007;' %> Twitch Clip Notifications</li>
-    <li><%= tierConfig.youtube ? '&#10003;' : '&#10007;' %> YouTube Notifications</li>
-    <li><%= tierConfig.welcome ? '&#10003;' : '&#10007;' %> Welcome Messages</li>
-    <li><%= tierConfig.subSync ? '&#10003;' : '&#10007;' %> Subscriber Role Sync</li>
-    <li>&#10003; <%= tierConfig.maxGuilds === -1 ? 'Unlimited' : tierConfig.maxGuilds %> Discord Server<%= tierConfig.maxGuilds !== 1 ? 's' : '' %></li>
-  </ul>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+    <div>
+      <h4 style="font-size: 14px; color: #adadb8; margin-bottom: 8px;">Limits</h4>
+      <ul style="list-style: none; padding: 0; font-size: 14px; color: #adadb8; line-height: 2;">
+        <li>&#128421; <%= tierConfig.maxGuilds === -1 ? 'Unlimited' : tierConfig.maxGuilds %> Discord server<%= tierConfig.maxGuilds !== 1 ? 's' : '' %></li>
+        <li>&#128266; <%= tierConfig.maxTwitchChannels === -1 ? 'Unlimited' : tierConfig.maxTwitchChannels %> Twitch channel<%= tierConfig.maxTwitchChannels !== 1 ? 's' : '' %></li>
+        <li>&#127909; <%= tierConfig.maxYoutubeChannels === -1 ? 'Unlimited' : tierConfig.maxYoutubeChannels %> YouTube channel<%= tierConfig.maxYoutubeChannels !== 1 ? 's' : '' %></li>
+        <% if (tierConfig.delayMinutes > 0) { %>
+          <li>&#9203; <%= tierConfig.delayMinutes %> min notification delay</li>
+        <% } else { %>
+          <li>&#9889; Instant notifications</li>
+        <% } %>
+      </ul>
+    </div>
+    <div>
+      <h4 style="font-size: 14px; color: #adadb8; margin-bottom: 8px;">Features</h4>
+      <ul style="list-style: none; padding: 0; font-size: 14px; color: #adadb8; line-height: 2;">
+        <li style="color: <%= tierConfig.twitchLive ? '#efeff1' : '#666' %>;"><%= tierConfig.twitchLive ? '&#10003;' : '&#10007;' %> Twitch Live</li>
+        <li style="color: <%= tierConfig.twitchClips ? '#efeff1' : '#666' %>;"><%= tierConfig.twitchClips ? '&#10003;' : '&#10007;' %> Clip Notifications</li>
+        <li style="color: <%= tierConfig.youtube ? '#efeff1' : '#666' %>;"><%= tierConfig.youtube ? '&#10003;' : '&#10007;' %> YouTube</li>
+        <li style="color: <%= tierConfig.welcome ? '#efeff1' : '#666' %>;"><%= tierConfig.welcome ? '&#10003;' : '&#10007;' %> Welcome Messages</li>
+        <li style="color: <%= tierConfig.subSync ? '#efeff1' : '#666' %>;"><%= tierConfig.subSync ? '&#10003;' : '&#10007;' %> Sub Sync</li>
+        <li style="color: <%= tierConfig.streamSummaries ? '#efeff1' : '#666' %>;"><%= tierConfig.streamSummaries ? '&#10003;' : '&#10007;' %> Stream Summaries</li>
+        <li style="color: <%= tierConfig.goLiveThreads ? '#efeff1' : '#666' %>;"><%= tierConfig.goLiveThreads ? '&#10003;' : '&#10007;' %> Go-Live Threads</li>
+        <li style="color: <%= tierConfig.webhooks ? '#efeff1' : '#666' %>;"><%= tierConfig.webhooks ? '&#10003;' : '&#10007;' %> Webhooks</li>
+      </ul>
+    </div>
+  </div>
 </div>
 
 <div style="display: flex; gap: 12px; margin-top: 16px;">

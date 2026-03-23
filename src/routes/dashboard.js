@@ -246,6 +246,14 @@ router.post('/guild/:guildId/youtube', (req, res) => {
     return res.redirect(`/dashboard/guild/${guildId}/youtube?msg=missing_fields`);
   }
 
+  // Check max YouTube channels
+  if (limits.maxYoutubeChannels !== -1) {
+    const existing = db.getWatchedYoutubeChannelsForGuild(guildId, req.streamer.id);
+    if (existing.length >= limits.maxYoutubeChannels) {
+      return res.redirect(`/dashboard/guild/${guildId}/youtube?msg=channel_limit`);
+    }
+  }
+
   db.addWatchedYoutubeChannel(guildId, req.streamer.id, ytChannelId, ytChannelName, videosChannelId, liveChannelId);
   console.log(`[Dashboard] Added YouTube channel ${ytChannelId} for guild ${guildId}`);
   res.redirect(`/dashboard/guild/${guildId}/youtube?msg=added`);
