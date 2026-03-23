@@ -600,6 +600,12 @@ const _getGuildNotificationsOverTime = db.prepare(`
   GROUP BY period ORDER BY period ASC
 `);
 
+const _getGuildNotificationsByTypeOverTime = db.prepare(`
+  SELECT strftime(?, created_at) AS period, type, COUNT(*) AS count
+  FROM notification_log WHERE streamer_id = ? AND guild_id = ? AND created_at > datetime('now', ?)
+  GROUP BY period, type ORDER BY period ASC
+`);
+
 function getGuildStatsByPeriod(streamerId, guildId, period) {
   if (period === 'lifetime') {
     return _getGuildStatsLifetime.get(streamerId, guildId);
@@ -618,6 +624,30 @@ function getGuildNotificationsOverTime(streamerId, guildId, period) {
   };
   const c = config[period] || config['7d'];
   return _getGuildNotificationsOverTime.all(c.format, streamerId, guildId, c.offset);
+}
+
+function getGuildNotificationsByTypeOverTime(streamerId, guildId, period) {
+  const config = {
+    '24h': { format: '%H:00', offset: '-1 day' },
+    '7d': { format: '%Y-%m-%d', offset: '-7 days' },
+    '30d': { format: '%Y-%m-%d', offset: '-30 days' },
+    '1y': { format: '%Y-%m', offset: '-365 days' },
+    'lifetime': { format: '%Y-%m', offset: '-10 years' },
+  };
+  const c = config[period] || config['30d'];
+  const rows = _getGuildNotificationsByTypeOverTime.all(c.format, streamerId, guildId, c.offset);
+
+  // Build a map: period -> { type: count, ... }
+  const periods = new Map();
+  for (const row of rows) {
+    if (!periods.has(row.period)) periods.set(row.period, {});
+    periods.get(row.period)[row.type] = row.count;
+  }
+
+  // Convert to array sorted by period
+  return [...periods.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([period, types]) => ({ period, ...types }));
 }
 
 // --- Admin ---
@@ -1166,4 +1196,5 @@ module.exports = {
   getGuildNotificationStats,
   getGuildStatsByPeriod,
   getGuildNotificationsOverTime,
+  getGuildNotificationsByTypeOverTime,
 };

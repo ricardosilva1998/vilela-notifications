@@ -81,7 +81,7 @@ router.get('/', (req, res) => {
     const stats = db.getGuildNotificationStats(req.streamer.id, g.guild_id);
     const twitchCount = db.getWatchedChannelsForGuild(g.guild_id, req.streamer.id).length;
     const youtubeCount = db.getWatchedYoutubeChannelsForGuild(g.guild_id, req.streamer.id).length;
-    const chartData = db.getGuildNotificationsOverTime(req.streamer.id, g.guild_id, '30d');
+    const chartData = db.getGuildNotificationsByTypeOverTime(req.streamer.id, g.guild_id, '30d');
     return {
       ...g,
       name: discordGuild?.name || g.guild_name || 'Unknown Server',

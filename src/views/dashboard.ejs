@@ -101,7 +101,12 @@
       <!-- Expandable Stats -->
       <div id="stats-<%= g.guild_id %>" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
 
-        <!-- Chart -->
+        <!-- Chart: Stacked by type -->
+        <%
+          const typeKeys = ['twitch_live', 'twitch_clip', 'twitch_recap', 'twitch_milestone', 'youtube_video', 'youtube_live', 'weekly_digest'];
+          const typeColors = { twitch_live: '#9146ff', twitch_clip: '#bf94ff', twitch_recap: '#6d28d9', twitch_milestone: '#f1c40f', youtube_video: '#f04438', youtube_live: '#ff6b6b', weekly_digest: '#3498db' };
+          const typeNames = { twitch_live: 'Go-Live', twitch_clip: 'Clips', twitch_recap: 'Recaps', twitch_milestone: 'Milestones', youtube_video: 'YT Videos', youtube_live: 'YT Live', weekly_digest: 'Digests' };
+        %>
         <div style="margin-bottom: 20px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <div style="font-size: 13px; color: var(--text-primary); font-family: var(--font-display); font-weight: 600;">Notifications per day (last 30 days)</div>
@@ -111,18 +116,43 @@
             <div style="text-align: center; padding: 24px 0; color: var(--text-muted); font-size: 13px; background: var(--bg-base); border-radius: var(--radius-sm); border: 1px solid var(--border);">No notifications in the last 30 days</div>
           <% } else { %>
             <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 16px; border: 1px solid var(--border);">
-              <% const maxC = Math.max(...g.chartData.map(d => d.count), 1); %>
-              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                <span style="font-size: 9px; color: var(--text-muted);"><%= maxC %></span>
-                <span style="font-size: 9px; color: var(--text-muted);">notifications</span>
+              <!-- Legend -->
+              <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                <% typeKeys.forEach(function(tk) {
+                  const hasAny = g.chartData.some(function(d) { return (d[tk] || 0) > 0; });
+                  if (hasAny) { %>
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                      <div style="width: 8px; height: 8px; border-radius: 2px; background: <%= typeColors[tk] %>;"></div>
+                      <span style="font-size: 10px; color: var(--text-muted);"><%= typeNames[tk] %></span>
+                    </div>
+                <% } }); %>
               </div>
-              <div style="display: flex; align-items: flex-end; gap: 2px; height: 80px; position: relative;">
-                <% g.chartData.forEach(function(d) { %>
-                  <div style="flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; cursor: default;" title="<%= d.period %>: <%= d.count %> notification<%= d.count !== 1 ? 's' : '' %>">
-                    <div style="width: 100%; background: var(--accent); border-radius: 2px 2px 0 0; height: <%= Math.round(Math.max((d.count / maxC) * 80, d.count > 0 ? 3 : 1)) %>px; opacity: <%= d.count > 0 ? 1 : 0.12 %>;"></div>
+              <!-- Bars -->
+              <% const maxC = Math.max(...g.chartData.map(function(d) { let t = 0; typeKeys.forEach(function(tk) { t += (d[tk] || 0); }); return t; }), 1); %>
+              <div style="display: flex; align-items: flex-end; gap: 2px; height: 100px; position: relative;">
+                <% g.chartData.forEach(function(d) {
+                  let dayTotal = 0;
+                  typeKeys.forEach(function(tk) { dayTotal += (d[tk] || 0); });
+                  const barH = Math.round(Math.max((dayTotal / maxC) * 100, dayTotal > 0 ? 3 : 1));
+                  // Build tooltip
+                  let tipParts = [];
+                  typeKeys.forEach(function(tk) { if (d[tk]) tipParts.push(typeNames[tk] + ': ' + d[tk]); });
+                  const tipText = d.period + ' — ' + dayTotal + ' total' + (tipParts.length > 0 ? '\n' + tipParts.join(', ') : '');
+                %>
+                  <div style="flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; cursor: default;" title="<%= tipText %>">
+                    <div style="width: 100%; border-radius: 2px 2px 0 0; height: <%= barH %>px; overflow: hidden; display: flex; flex-direction: column-reverse; opacity: <%= dayTotal > 0 ? 1 : 0.1 %>;">
+                      <% typeKeys.forEach(function(tk) {
+                        const val = d[tk] || 0;
+                        if (val > 0) {
+                          const segH = Math.max(Math.round((val / dayTotal) * barH), 1);
+                      %>
+                        <div style="width: 100%; height: <%= segH %>px; background: <%= typeColors[tk] %>; flex-shrink: 0;"></div>
+                      <% } }); %>
+                    </div>
                   </div>
                 <% }); %>
               </div>
+              <!-- X-axis -->
               <div style="display: flex; justify-content: space-between; margin-top: 6px;">
                 <span style="font-size: 9px; color: var(--text-muted);"><%= g.chartData[0].period %></span>
                 <% if (g.chartData.length > 10) { %>
