@@ -3,6 +3,7 @@ const state = require('./state');
 const { client } = require('./discord');
 const twitchLive = require('./pollers/twitchLive');
 const twitchClips = require('./pollers/twitchClips');
+const welcome = require('./welcome');
 
 let appState = state.load();
 
@@ -35,6 +36,7 @@ client.once('ready', async () => {
     // Start polling
     twitchLive.start(appState);
     twitchClips.start(appState);
+    welcome.start();
 
     console.log('All pollers running');
   } catch (error) {

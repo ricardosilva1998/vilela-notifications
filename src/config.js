@@ -26,6 +26,7 @@ module.exports = {
     token: process.env.DISCORD_TOKEN,
     twitchLiveChannelId: process.env.DISCORD_TWITCH_LIVE_CHANNEL_ID,
     twitchClipsChannelId: process.env.DISCORD_TWITCH_CLIPS_CHANNEL_ID,
+    welcomeChannelId: process.env.DISCORD_WELCOME_CHANNEL_ID,
     youtubeChannelId: process.env.DISCORD_YOUTUBE_CHANNEL_ID,
   },
   twitch: {
