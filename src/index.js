@@ -1,65 +1,52 @@
 const config = require('./config');
-const state = require('./state');
+const db = require('./db');
 const { client } = require('./discord');
-const twitchLive = require('./pollers/twitchLive');
-const twitchClips = require('./pollers/twitchClips');
-const welcome = require('./welcome');
 const server = require('./server');
 const commands = require('./commands');
-const subSync = require('./pollers/subSync');
-
-let appState = state.load();
+const welcome = require('./welcome');
+const { startAll } = require('./pollers/manager');
 
 client.once('ready', async () => {
   console.log(`Bot online as ${client.user.tag}`);
-  console.log(`Monitoring: Twitch=${config.twitch.username}`);
-  if (config.youtube.enabled) console.log(`Monitoring: YouTube=${config.youtube.channelId}`);
-  console.log(`Posting Twitch Live to channel: ${config.discord.twitchLiveChannelId}`);
-  console.log(`Posting Twitch Clips to channel: ${config.discord.twitchClipsChannelId}`);
-  if (config.youtube.enabled) console.log(`Posting YouTube to channel: ${config.discord.youtubeChannelId}`);
+  console.log(`Serving ${client.guilds.cache.size} guilds`);
+  console.log(`${db.getAllStreamers().length} registered streamers`);
 
   try {
-    // Initialize all pollers (sets correct state to avoid false notifications)
-    console.log('Initializing pollers...');
-    await twitchLive.init(appState);
-    await twitchClips.init(appState);
-
-    if (config.youtube.enabled) {
-      const youtubeFeed = require('./pollers/youtubeFeed');
-      const youtubeLive = require('./pollers/youtubeLive');
-      await youtubeFeed.init(appState);
-      await youtubeLive.init(appState);
-      youtubeFeed.start(appState);
-      youtubeLive.start(appState);
-    }
-
-    state.save(appState);
-    console.log('Initialization complete');
-
-    // Start polling
-    twitchLive.start(appState);
-    twitchClips.start(appState);
-    welcome.start();
-    subSync.start();
-
-    // Register slash commands and start listening
+    // Register slash commands
     await commands.registerCommands();
     commands.start();
 
-    // Start web server for OAuth
+    // Start welcome listener
+    welcome.start();
+
+    // Start all pollers
+    startAll();
+
+    // Start web dashboard
     server.start();
 
-    console.log('All pollers running');
+    console.log('All systems running');
   } catch (error) {
     console.error(`Startup error: ${error.message}`);
     process.exit(1);
   }
 });
 
+// Handle bot joining a new guild
+client.on('guildCreate', (guild) => {
+  console.log(`[Guild] Joined: ${guild.name} (${guild.id})`);
+  // Guild-streamer linking happens via the dashboard invite URL (state param)
+  // We just log it here; the actual record is created when the streamer configures it
+});
+
+// Handle bot being removed from a guild
+client.on('guildDelete', (guild) => {
+  console.log(`[Guild] Removed from: ${guild.name} (${guild.id})`);
+});
+
 // Graceful shutdown
 function shutdown() {
   console.log('Shutting down...');
-  state.save(appState);
   client.destroy();
   process.exit(0);
 }

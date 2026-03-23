@@ -3,6 +3,7 @@ const config = require('../config');
 let accessToken = null;
 let tokenExpiresAt = 0;
 
+// App-level auth (client credentials) — shared across all streamers
 async function authenticate() {
   const params = new URLSearchParams({
     client_id: config.twitch.clientId,
@@ -21,7 +22,7 @@ async function authenticate() {
 
   const data = await res.json();
   accessToken = data.access_token;
-  tokenExpiresAt = Date.now() + data.expires_in * 1000 - 60_000; // refresh 1min early
+  tokenExpiresAt = Date.now() + data.expires_in * 1000 - 60_000;
 }
 
 async function apiCall(endpoint) {
@@ -68,4 +69,34 @@ async function getClips(broadcasterId, startedAt) {
   return data.data || [];
 }
 
-module.exports = { getStream, getUserId, getClips };
+async function getSubscribers(broadcasterId, broadcasterAccessToken) {
+  const subs = [];
+  let cursor = null;
+
+  do {
+    const params = new URLSearchParams({
+      broadcaster_id: broadcasterId,
+      first: '100',
+    });
+    if (cursor) params.set('after', cursor);
+
+    const res = await fetch(`https://api.twitch.tv/helix/subscriptions?${params}`, {
+      headers: {
+        Authorization: `Bearer ${broadcasterAccessToken}`,
+        'Client-Id': config.twitch.clientId,
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Subscriptions API error: ${res.status} ${await res.text()}`);
+    }
+
+    const data = await res.json();
+    subs.push(...data.data);
+    cursor = data.pagination?.cursor || null;
+  } while (cursor);
+
+  return subs;
+}
+
+module.exports = { getStream, getUserId, getClips, getSubscribers };

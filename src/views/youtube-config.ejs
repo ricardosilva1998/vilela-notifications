@@ -1,0 +1,23 @@
+<% var body = `
+  <a href="/dashboard" style="color: #adadb8; font-size: 14px;">&larr; Back to Dashboard</a>
+  <h2 style="margin: 12px 0 20px;">YouTube Settings</h2>
+
+  <form method="POST" action="/dashboard/youtube">
+    <div class="card">
+      <h3>YouTube Channel</h3>
+      <div class="form-group">
+        <label>YouTube Channel ID (starts with UC...)</label>
+        <input type="text" name="youtube_channel_id" value="${streamer.youtube_channel_id || ''}" placeholder="UCxxxxxxxxxxxxxxxxxxxxxxxx">
+      </div>
+      <div class="form-group">
+        <label>YouTube Data API Key</label>
+        <input type="password" name="youtube_api_key" value="${streamer.youtube_api_key || ''}" placeholder="Your API key">
+      </div>
+      <p style="color: #adadb8; font-size: 13px; margin-bottom: 16px;">
+        The API key is needed for live stream detection. Video upload notifications use the free RSS feed and don't need an API key.
+      </p>
+      <button type="submit" class="btn btn-success">Save YouTube Settings</button>
+    </div>
+  </form>
+`; %>
+<%- include('layout', { body, streamer, title: 'YouTube Settings' }) %>

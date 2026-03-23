@@ -1,55 +1,40 @@
 const { getStream } = require('../services/twitch');
-const { sendNotification, buildEmbed } = require('../discord');
-const config = require('../config');
-const state = require('../state');
-
-let appState;
+const { buildEmbed } = require('../discord');
 
 function formatThumbnail(url) {
   return url.replace('{width}', '1280').replace('{height}', '720');
 }
 
-async function poll() {
-  try {
-    const stream = await getStream(config.twitch.username);
+async function check(streamer, pollerState) {
+  const stream = await getStream(streamer.twitch_username);
 
-    if (stream && !appState.twitchIsLive) {
-      appState.twitchIsLive = true;
-      state.save(appState);
+  if (stream && !pollerState.twitch_is_live) {
+    const embed = buildEmbed({
+      color: 0x9146ff,
+      author: { name: `${streamer.twitch_display_name || streamer.twitch_username} is live on Twitch!` },
+      title: stream.title,
+      url: `https://twitch.tv/${streamer.twitch_username}`,
+      description: `Playing **${stream.game_name || 'Unknown'}**`,
+      image: formatThumbnail(stream.thumbnail_url),
+      footer: { text: 'Twitch' },
+      timestamp: new Date(),
+    });
 
-      const embed = buildEmbed({
-        color: 0x9146ff,
-        author: { name: `${config.twitch.username} is live on Twitch!` },
-        title: stream.title,
-        url: `https://twitch.tv/${config.twitch.username}`,
-        description: `Playing **${stream.game_name || 'Unknown'}**`,
-        image: formatThumbnail(stream.thumbnail_url),
-        footer: { text: 'Twitch' },
-        timestamp: new Date(),
-      });
-      await sendNotification(config.discord.twitchLiveChannelId, embed);
-      console.log(`[TwitchLive] Sent live notification: ${stream.title}`);
-    } else if (!stream && appState.twitchIsLive) {
-      appState.twitchIsLive = false;
-      state.save(appState);
-      console.log('[TwitchLive] Stream ended');
-    }
-  } catch (error) {
-    console.error(`[TwitchLive] Poll failed: ${error.message}`);
+    return {
+      notify: true,
+      embed,
+      stateUpdate: { twitch_is_live: 1 },
+    };
   }
+
+  if (!stream && pollerState.twitch_is_live) {
+    return {
+      notify: false,
+      stateUpdate: { twitch_is_live: 0 },
+    };
+  }
+
+  return null;
 }
 
-function start(sharedState) {
-  appState = sharedState;
-  setInterval(poll, config.intervals.twitchLive);
-  console.log(`[TwitchLive] Polling every ${config.intervals.twitchLive / 1000}s`);
-}
-
-async function init(sharedState) {
-  appState = sharedState;
-  // Always start as offline so the first poll triggers a notification if already live
-  appState.twitchIsLive = false;
-  console.log('[TwitchLive] Initialized (will notify on first poll if live)');
-}
-
-module.exports = { start, init };
+module.exports = { check };

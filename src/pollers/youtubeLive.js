@@ -1,63 +1,40 @@
 const { getLatestVideos, checkLiveStatus } = require('../services/youtube');
-const { sendNotification, buildEmbed } = require('../discord');
-const config = require('../config');
-const state = require('../state');
+const { buildEmbed } = require('../discord');
 
-let appState;
+async function check(streamer, pollerState) {
+  if (!streamer.youtube_channel_id || !streamer.youtube_api_key) return null;
 
-async function poll() {
-  try {
-    const videos = await getLatestVideos();
-    const videoIds = videos.map((v) => v.id);
+  const videos = await getLatestVideos(streamer.youtube_channel_id);
+  const videoIds = videos.map((v) => v.id);
+  const liveVideo = await checkLiveStatus(videoIds, streamer.youtube_api_key);
 
-    const liveVideo = await checkLiveStatus(videoIds);
+  if (liveVideo && !pollerState.youtube_is_live) {
+    const embed = buildEmbed({
+      color: 0xff0000,
+      author: { name: `${streamer.twitch_display_name || streamer.twitch_username} is live on YouTube!` },
+      title: liveVideo.title,
+      url: `https://www.youtube.com/watch?v=${liveVideo.id}`,
+      description: liveVideo.description?.substring(0, 200) || undefined,
+      image: liveVideo.thumbnail,
+      footer: { text: 'YouTube Live' },
+      timestamp: new Date(),
+    });
 
-    if (liveVideo && !appState.youtubeIsLive) {
-      appState.youtubeIsLive = true;
-      appState.youtubeLiveVideoId = liveVideo.id;
-      state.save(appState);
-
-      const embed = buildEmbed({
-        color: 0xff0000,
-        author: { name: `${config.twitch.username} is live on YouTube!` },
-        title: liveVideo.title,
-        url: `https://www.youtube.com/watch?v=${liveVideo.id}`,
-        description: liveVideo.description?.substring(0, 200) || undefined,
-        image: liveVideo.thumbnail,
-        footer: { text: 'YouTube Live' },
-        timestamp: new Date(),
-      });
-      await sendNotification(config.discord.youtubeChannelId, embed);
-      console.log(`[YouTubeLive] Sent live notification: ${liveVideo.title}`);
-    } else if (!liveVideo && appState.youtubeIsLive) {
-      appState.youtubeIsLive = false;
-      appState.youtubeLiveVideoId = null;
-      state.save(appState);
-      console.log('[YouTubeLive] Stream ended');
-    }
-  } catch (error) {
-    console.error(`[YouTubeLive] Poll failed: ${error.message}`);
+    return {
+      notify: true,
+      embed,
+      stateUpdate: { youtube_is_live: 1, youtube_live_video_id: liveVideo.id },
+    };
   }
-}
 
-function start(sharedState) {
-  appState = sharedState;
-  setInterval(poll, config.intervals.youtubeLive);
-  console.log(`[YouTubeLive] Polling every ${config.intervals.youtubeLive / 1000}s`);
-}
-
-async function init(sharedState) {
-  appState = sharedState;
-  try {
-    const videos = await getLatestVideos();
-    const videoIds = videos.map((v) => v.id);
-    const liveVideo = await checkLiveStatus(videoIds);
-    appState.youtubeIsLive = !!liveVideo;
-    appState.youtubeLiveVideoId = liveVideo?.id || null;
-    console.log(`[YouTubeLive] Initial state: ${appState.youtubeIsLive ? 'LIVE' : 'offline'}`);
-  } catch (error) {
-    console.error(`[YouTubeLive] Init failed: ${error.message}`);
+  if (!liveVideo && pollerState.youtube_is_live) {
+    return {
+      notify: false,
+      stateUpdate: { youtube_is_live: 0, youtube_live_video_id: null },
+    };
   }
+
+  return null;
 }
 
-module.exports = { start, init };
+module.exports = { check };

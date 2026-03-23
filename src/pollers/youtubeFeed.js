@@ -1,64 +1,45 @@
 const { getLatestVideos } = require('../services/youtube');
-const { sendNotification, buildEmbed } = require('../discord');
-const config = require('../config');
-const state = require('../state');
+const { buildEmbed } = require('../discord');
 
-let appState;
+async function check(streamer, pollerState) {
+  if (!streamer.youtube_channel_id) return null;
 
-async function poll() {
-  try {
-    const videos = await getLatestVideos();
+  const videos = await getLatestVideos(streamer.youtube_channel_id);
+  const knownIds = JSON.parse(pollerState.known_video_ids || '[]');
+  const liveVideoId = pollerState.youtube_live_video_id;
 
-    for (const video of videos) {
-      if (appState.knownVideoIds.includes(video.id)) continue;
-      if (appState.youtubeLiveVideoId === video.id) continue; // skip live streams (handled by youtubeLive poller)
+  const newVideos = videos.filter(
+    (v) => !knownIds.includes(v.id) && v.id !== liveVideoId
+  );
 
-      appState.knownVideoIds.push(video.id);
-
-      const embed = buildEmbed({
-        color: 0xff0000,
-        author: { name: `${video.author || config.twitch.username} uploaded a new video!` },
-        title: video.title,
-        url: video.url,
-        image: `https://i.ytimg.com/vi/${video.id}/maxresdefault.jpg`,
-        footer: { text: 'YouTube' },
-        timestamp: video.published,
-      });
-      await sendNotification(config.discord.youtubeChannelId, embed);
-      console.log(`[YouTubeFeed] Sent video notification: ${video.title}`);
+  if (newVideos.length === 0) {
+    // Still update known IDs with any new entries
+    const allIds = [...new Set([...knownIds, ...videos.map((v) => v.id)])].slice(-50);
+    if (allIds.length !== knownIds.length) {
+      return { notify: false, stateUpdate: { known_video_ids: JSON.stringify(allIds) } };
     }
-
-    // Keep array bounded
-    if (appState.knownVideoIds.length > 50) {
-      appState.knownVideoIds = appState.knownVideoIds.slice(-50);
-    }
-    state.save(appState);
-  } catch (error) {
-    console.error(`[YouTubeFeed] Poll failed: ${error.message}`);
+    return null;
   }
+
+  const embeds = newVideos.map((video) =>
+    buildEmbed({
+      color: 0xff0000,
+      author: { name: `${video.author || streamer.twitch_display_name} uploaded a new video!` },
+      title: video.title,
+      url: video.url,
+      image: `https://i.ytimg.com/vi/${video.id}/maxresdefault.jpg`,
+      footer: { text: 'YouTube' },
+      timestamp: video.published,
+    })
+  );
+
+  const allIds = [...new Set([...knownIds, ...videos.map((v) => v.id)])].slice(-50);
+
+  return {
+    notify: true,
+    embeds,
+    stateUpdate: { known_video_ids: JSON.stringify(allIds) },
+  };
 }
 
-function start(sharedState) {
-  appState = sharedState;
-  setInterval(poll, config.intervals.youtubeFeed);
-  console.log(`[YouTubeFeed] Polling every ${config.intervals.youtubeFeed / 1000}s`);
-}
-
-async function init(sharedState) {
-  appState = sharedState;
-  try {
-    const videos = await getLatestVideos();
-    const existingIds = videos.map((v) => v.id);
-    // Merge with any previously known IDs
-    for (const id of existingIds) {
-      if (!appState.knownVideoIds.includes(id)) {
-        appState.knownVideoIds.push(id);
-      }
-    }
-    console.log(`[YouTubeFeed] Initialized with ${appState.knownVideoIds.length} known videos`);
-  } catch (error) {
-    console.error(`[YouTubeFeed] Init failed: ${error.message}`);
-  }
-}
-
-module.exports = { start, init };
+module.exports = { check };

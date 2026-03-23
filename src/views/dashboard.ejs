@@ -1,0 +1,53 @@
+<% var body = `
+  <h2 style="margin-bottom: 20px;">Dashboard</h2>
+
+  ${msg === 'broadcaster_authorized' ? '<div class="alert alert-success">Broadcaster authorized! Sub sync is now available.</div>' : ''}
+  ${msg === 'youtube_saved' ? '<div class="alert alert-success">YouTube settings saved.</div>' : ''}
+
+  <div style="display: flex; gap: 12px; margin-bottom: 24px;">
+    <a href="${botInviteUrl}" class="btn btn-primary">Add Bot to a Server</a>
+    <a href="/dashboard/youtube" class="btn btn-secondary">YouTube Settings</a>
+    ${!streamer.broadcaster_access_token ? '<a href="/auth/broadcaster" class="btn btn-secondary">Enable Sub Sync</a>' : ''}
+  </div>
+
+  <h3 class="section-title">Your Servers</h3>
+
+  ${guilds.length === 0 && unclaimedGuilds.length === 0 ? '<p style="color: #adadb8;">No servers configured yet. Click "Add Bot to a Server" to get started.</p>' : ''}
+
+  <div class="guild-list">
+    ${guilds.map(g => \`
+      <div class="card guild-card">
+        <div class="guild-icon">
+          \${g.icon ? '<img src="' + g.icon + '" alt="">' : g.name.charAt(0)}
+        </div>
+        <div class="guild-info">
+          <h4>\${g.name}</h4>
+          <p>\${g.botPresent ? 'Bot active' : 'Bot not in server'}</p>
+        </div>
+        <a href="/dashboard/guild/\${g.guild_id}" class="btn btn-secondary">Configure</a>
+      </div>
+    \`).join('')}
+  </div>
+
+  ${unclaimedGuilds.length > 0 ? \`
+    <h3 class="section-title" style="margin-top: 24px;">Available Servers</h3>
+    <p style="color: #adadb8; margin-bottom: 12px; font-size: 14px;">The bot is in these servers. Claim one to configure notifications for your channel.</p>
+    <div class="guild-list">
+      \${unclaimedGuilds.map(g => \`
+        <div class="card guild-card">
+          <div class="guild-icon">
+            \${g.icon ? '<img src="' + g.icon + '" alt="">' : g.name.charAt(0)}
+          </div>
+          <div class="guild-info">
+            <h4>\${g.name}</h4>
+            <p>Not configured</p>
+          </div>
+          <form method="POST" action="/dashboard/claim/\${g.id}" style="margin: 0;">
+            <button type="submit" class="btn btn-primary">Claim</button>
+          </form>
+        </div>
+      \`).join('')}
+    </div>
+  \` : ''}
+`; %>
+<%- include('layout', { body, streamer, title: 'Dashboard' }) %>

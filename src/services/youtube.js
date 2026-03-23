@@ -3,8 +3,8 @@ const config = require('../config');
 
 const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' });
 
-async function getLatestVideos() {
-  const url = `https://www.youtube.com/feeds/videos.xml?channel_id=${config.youtube.channelId}`;
+async function getLatestVideos(youtubeChannelId) {
+  const url = `https://www.youtube.com/feeds/videos.xml?channel_id=${youtubeChannelId}`;
   const res = await fetch(url);
 
   if (!res.ok) {
@@ -27,14 +27,14 @@ async function getLatestVideos() {
   }));
 }
 
-async function checkLiveStatus(videoIds) {
-  if (videoIds.length === 0) return null;
+async function checkLiveStatus(videoIds, apiKey) {
+  if (videoIds.length === 0 || !apiKey) return null;
 
   const ids = videoIds.slice(0, 5).join(',');
   const params = new URLSearchParams({
     part: 'liveStreamingDetails,snippet',
     id: ids,
-    key: config.youtube.apiKey,
+    key: apiKey,
   });
 
   const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?${params}`);

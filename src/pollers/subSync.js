@@ -1,13 +1,14 @@
 const config = require('../config');
-const { loadAuth, saveAuth, getLinkedUsers } = require('../auth');
+const db = require('../db');
+const { getSubscribers } = require('../services/twitch');
 const { client } = require('../discord');
 
-async function refreshBroadcasterToken(auth) {
+async function refreshBroadcasterToken(streamer) {
   const params = new URLSearchParams({
     client_id: config.twitch.clientId,
     client_secret: config.twitch.clientSecret,
     grant_type: 'refresh_token',
-    refresh_token: auth.broadcasterRefreshToken,
+    refresh_token: streamer.broadcaster_refresh_token,
   });
 
   const res = await fetch('https://id.twitch.tv/oauth2/token', {
@@ -15,123 +16,67 @@ async function refreshBroadcasterToken(auth) {
     body: params,
   });
 
-  if (!res.ok) {
-    throw new Error(`Token refresh failed: ${res.status} ${await res.text()}`);
-  }
+  if (!res.ok) throw new Error(`Token refresh failed: ${res.status}`);
 
   const data = await res.json();
-  auth.broadcasterAccessToken = data.access_token;
-  auth.broadcasterRefreshToken = data.refresh_token;
-  auth.broadcasterTokenExpiresAt = Date.now() + data.expires_in * 1000 - 60_000;
-  saveAuth(auth);
-  console.log('[SubSync] Broadcaster token refreshed');
+  db.updateStreamerBroadcasterTokens(
+    streamer.id,
+    data.access_token,
+    data.refresh_token,
+    Date.now() + data.expires_in * 1000 - 60_000
+  );
+
+  return data.access_token;
 }
 
-async function getSubscribers(auth) {
-  if (Date.now() >= auth.broadcasterTokenExpiresAt) {
-    await refreshBroadcasterToken(auth);
+async function checkStreamer(streamer) {
+  if (!streamer.broadcaster_access_token) return;
+
+  const pollerState = db.getPollerState(streamer.id);
+  const broadcasterId = pollerState.twitch_broadcaster_id;
+  if (!broadcasterId) return;
+
+  let accessToken = streamer.broadcaster_access_token;
+  if (Date.now() >= streamer.broadcaster_token_expires_at) {
+    accessToken = await refreshBroadcasterToken(streamer);
   }
 
-  const subs = [];
-  let cursor = null;
+  const subscribers = await getSubscribers(broadcasterId, accessToken);
+  const subscriberTwitchIds = new Set(subscribers.map((s) => s.user_id));
+  const linkedUsers = db.getLinkedUsers(streamer.id);
 
-  do {
-    const params = new URLSearchParams({
-      broadcaster_id: config.twitch.broadcasterId,
-      first: '100',
-    });
-    if (cursor) params.set('after', cursor);
+  // Get all guilds with sub sync enabled for this streamer
+  const guilds = db.getGuildsForStreamer(streamer.id).filter(
+    (g) => g.sub_sync_enabled && g.sub_role_id
+  );
 
-    const res = await fetch(`https://api.twitch.tv/helix/subscriptions?${params}`, {
-      headers: {
-        Authorization: `Bearer ${auth.broadcasterAccessToken}`,
-        'Client-Id': config.twitch.clientId,
-      },
-    });
+  for (const guildConfig of guilds) {
+    const guild = client.guilds.cache.get(guildConfig.guild_id);
+    if (!guild) continue;
 
-    if (res.status === 401) {
-      await refreshBroadcasterToken(auth);
-      return getSubscribers(auth);
-    }
+    const role = guild.roles.cache.get(guildConfig.sub_role_id);
+    if (!role) continue;
 
-    if (!res.ok) {
-      throw new Error(`Subscriptions API error: ${res.status} ${await res.text()}`);
-    }
-
-    const data = await res.json();
-    subs.push(...data.data);
-    cursor = data.pagination?.cursor || null;
-  } while (cursor);
-
-  return subs;
-}
-
-async function poll() {
-  try {
-    const auth = loadAuth();
-    if (!auth.broadcasterAccessToken) {
-      return; // Broadcaster hasn't authorized yet, skip silently
-    }
-
-    const links = getLinkedUsers();
-    const linkedDiscordIds = Object.keys(links);
-    if (linkedDiscordIds.length === 0) {
-      return; // No linked users yet
-    }
-
-    // Get all subscribers
-    const subscribers = await getSubscribers(auth);
-    const subscriberTwitchIds = new Set(subscribers.map((s) => s.user_id));
-
-    // Get the Discord guild and role
-    const guild = client.guilds.cache.first();
-    if (!guild) {
-      console.error('[SubSync] No guild found');
-      return;
-    }
-
-    const role = guild.roles.cache.get(config.discord.subRoleId);
-    if (!role) {
-      console.error(`[SubSync] Role ${config.discord.subRoleId} not found`);
-      return;
-    }
-
-    // Sync roles for each linked user
-    for (const [discordId, { twitchUserId, twitchUsername }] of Object.entries(links)) {
+    for (const link of linkedUsers) {
       try {
-        const member = await guild.members.fetch(discordId).catch(() => null);
-        if (!member) continue; // User left the server
+        const member = await guild.members.fetch(link.discord_user_id).catch(() => null);
+        if (!member) continue;
 
-        const isSub = subscriberTwitchIds.has(twitchUserId);
-        const hasRole = member.roles.cache.has(config.discord.subRoleId);
+        const isSub = subscriberTwitchIds.has(link.twitch_user_id);
+        const hasRole = member.roles.cache.has(guildConfig.sub_role_id);
 
         if (isSub && !hasRole) {
           await member.roles.add(role);
-          console.log(`[SubSync] Added sub role to ${member.user.username} (Twitch: ${twitchUsername})`);
+          console.log(`[SubSync] +role ${member.user.username} in ${guild.name}`);
         } else if (!isSub && hasRole) {
           await member.roles.remove(role);
-          console.log(`[SubSync] Removed sub role from ${member.user.username} (Twitch: ${twitchUsername})`);
+          console.log(`[SubSync] -role ${member.user.username} in ${guild.name}`);
         }
       } catch (error) {
-        console.error(`[SubSync] Failed to sync role for Discord ${discordId}: ${error.message}`);
+        console.error(`[SubSync] Role sync error: ${error.message}`);
       }
     }
-  } catch (error) {
-    console.error(`[SubSync] Poll failed: ${error.message}`);
   }
 }
 
-function start() {
-  if (!config.discord.subRoleId) {
-    console.log('[SubSync] Disabled (DISCORD_SUB_ROLE_ID not set)');
-    return;
-  }
-
-  setInterval(poll, config.intervals.subSync);
-  console.log(`[SubSync] Polling every ${config.intervals.subSync / 1000}s`);
-
-  // Run immediately on start
-  poll();
-}
-
-module.exports = { start };
+module.exports = { checkStreamer };
