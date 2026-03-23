@@ -11,8 +11,20 @@
     a { color: #a970ff; text-decoration: none; }
     a:hover { text-decoration: underline; }
     .nav { background: #18181b; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #303032; }
-    .nav-brand { font-size: 18px; font-weight: 700; color: #efeff1; }
-    .nav-user { display: flex; align-items: center; gap: 12px; color: #adadb8; }
+    .nav-brand { font-size: 18px; font-weight: 700; color: #efeff1; display: flex; align-items: center; gap: 8px; }
+    .nav-brand:hover { text-decoration: none; }
+    .nav-brand img { width: 28px; height: 28px; border-radius: 6px; }
+    .nav-right { display: flex; align-items: center; gap: 16px; }
+    .nav-right a { color: #adadb8; font-size: 14px; }
+    .nav-right a:hover { color: #efeff1; text-decoration: none; }
+    .nav-user { display: flex; align-items: center; gap: 10px; }
+    .nav-avatar { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #303032; }
+    .nav-username { font-size: 14px; color: #efeff1; font-weight: 500; }
+    .nav-logout { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; background: #303032; color: #adadb8; border: none; cursor: pointer; font-size: 16px; text-decoration: none; }
+    .nav-logout:hover { background: #404042; color: #efeff1; text-decoration: none; }
+    .nav-login { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 6px; background: #5865F2; color: white; font-size: 14px; font-weight: 600; text-decoration: none; }
+    .nav-login:hover { opacity: 0.9; text-decoration: none; }
+    .nav-login svg { width: 18px; height: 18px; fill: white; }
     .container { max-width: 900px; margin: 0 auto; padding: 24px; }
     .btn { display: inline-block; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; color: white; }
     .btn:hover { text-decoration: none; opacity: 0.9; }
@@ -53,18 +65,53 @@
     .screenshot { margin: 12px 0; border: 2px dashed #303032; border-radius: 8px; background: #1a1a1d; padding: 40px 20px; text-align: center; color: #666; font-size: 13px; }
     .screenshot .icon { font-size: 28px; margin-bottom: 8px; }
     .screenshot .label { color: #adadb8; font-weight: 600; margin-bottom: 4px; }
-    .screenshot img { max-width: 100%; border-radius: 6px; display: block; margin: 0 auto; }
+    .screenshot img { max-width: 100%; border-radius: 6px; display: block; margin: 0 auto; cursor: pointer; transition: opacity 0.2s; }
+    .screenshot img:hover { opacity: 0.85; }
+    /* Lightbox */
+    .lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; cursor: pointer; align-items: center; justify-content: center; }
+    .lightbox.active { display: flex; }
+    .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; cursor: default; }
+    .lightbox-close { position: fixed; top: 16px; right: 24px; color: white; font-size: 32px; cursor: pointer; z-index: 1001; font-weight: 300; line-height: 1; }
+    .lightbox-close:hover { opacity: 0.7; }
   </style>
 </head>
 <body>
   <nav class="nav">
-    <a href="/" class="nav-brand" style="display: flex; align-items: center; gap: 8px;"><img src="/app-icon/honest_graphic-running-athlete-9715727.png" alt="" style="width: 28px; height: 28px; border-radius: 6px;">Atleta</a>
-    <div class="nav-user">
-      <a href="/tutorial" style="color: #adadb8; font-size: 14px; margin-right: 8px;">Setup Guide</a>
+    <a href="/" class="nav-brand"><img src="/app-icon/honest_graphic-running-athlete-9715727.png" alt="">Atleta</a>
+    <div class="nav-right">
+      <a href="/tutorial">Setup Guide</a>
       <% if (typeof streamer !== 'undefined' && streamer) { %>
-        <span><%= streamer.discord_display_name || streamer.discord_username %></span>
-        <a href="/auth/logout" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">Logout</a>
+        <div class="nav-user">
+          <% if (streamer.discord_avatar) { %>
+            <img src="<%= streamer.discord_avatar %>" alt="" class="nav-avatar">
+          <% } else { %>
+            <div class="nav-avatar" style="background: #9146ff; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 14px;"><%= (streamer.discord_display_name || streamer.discord_username || '?').charAt(0).toUpperCase() %></div>
+          <% } %>
+          <span class="nav-username"><%= streamer.discord_display_name || streamer.discord_username %></span>
+          <a href="/auth/logout" class="nav-logout" title="Logout">&#x2715;</a>
+        </div>
+      <% } else { %>
+        <a href="/auth/login" class="nav-login">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+          Login
+        </a>
       <% } %>
     </div>
   </nav>
   <div class="container">
+
+  <!-- Lightbox overlay -->
+  <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+    <img id="lightbox-img" src="" alt="">
+  </div>
+  <script>
+    document.addEventListener('click', function(e) {
+      if (e.target.matches('.screenshot img')) {
+        document.getElementById('lightbox-img').src = e.target.src;
+        document.getElementById('lightbox').classList.add('active');
+      }
+    });
+    function closeLightbox() { document.getElementById('lightbox').classList.remove('active'); }
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeLightbox(); });
+  </script>
