@@ -235,6 +235,10 @@ async function pollAllTwitchClips() {
 
 async function pollAllYouTubeFeed() {
   const channels = db.getAllUniqueWatchedYoutubeChannels();
+  if (channels.length > 0 && !pollAllYouTubeFeed._logged) {
+    console.log(`[YouTubeFeed] Polling ${channels.length} channels: ${channels.map(c => c.youtube_channel_id).join(', ')}`);
+    pollAllYouTubeFeed._logged = true;
+  }
   for (const { youtube_channel_id } of channels) {
     try {
       const state = db.getYoutubeChannelState(youtube_channel_id);
@@ -244,8 +248,10 @@ async function pollAllYouTubeFeed() {
       if (result.stateUpdate) db.updateYoutubeChannelState(youtube_channel_id, result.stateUpdate);
 
       if (result.notify && result.embeds) {
+        console.log(`[YouTubeFeed] ${youtube_channel_id}: ${result.embeds.length} new video(s) to notify`);
         const watchers = db.getYoutubeWatchersForChannel(youtube_channel_id)
           .filter((w) => w.notify_videos && w.videos_channel_id);
+        console.log(`[YouTubeFeed] ${youtube_channel_id}: ${watchers.length} watcher(s) with videos_channel_id`);
         for (const w of watchers) {
           for (const embed of result.embeds) {
             try {
