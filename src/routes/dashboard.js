@@ -60,7 +60,7 @@ router.get('/', (req, res) => {
     .filter((g) => !myGuildIds.has(g.id) && !allClaimed.has(g.id))
     .map((g) => ({ id: g.id, name: g.name, icon: g.iconURL({ size: 64 }) }));
 
-  const botInviteUrl = `https://discord.com/oauth2/authorize?client_id=${client.application.id}&permissions=2415919104&scope=bot%20applications.commands&state=${req.streamer.id}`;
+  const botInviteUrl = `https://discord.com/oauth2/authorize?client_id=${client.application.id}&permissions=8&scope=bot%20applications.commands&state=${req.streamer.id}`;
 
   res.render('dashboard', {
     streamer: req.streamer,
