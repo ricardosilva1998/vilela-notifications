@@ -33,6 +33,7 @@ app.use((req, res, next) => {
       req.streamer = db.getStreamerById(session.streamer_id);
     }
   }
+  res.locals.streamerTier = req.streamer ? db.getStreamerTier(req.streamer.id) : 'free';
   next();
 });
 

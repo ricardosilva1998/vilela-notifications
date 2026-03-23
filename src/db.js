@@ -257,6 +257,19 @@ db.exec(`
   );
 `);
 
+// --- Seed: ensure Ricardo Apple has enterprise subscription ---
+try {
+  const streamer = db.prepare("SELECT id FROM streamers WHERE discord_display_name = 'Ricardo Apple' OR discord_username = 'Ricardo Apple'").get();
+  if (streamer) {
+    const hasSub = db.prepare("SELECT id FROM subscriptions WHERE streamer_id = ? AND tier = 'enterprise' AND status = 'active'").get(streamer.id);
+    if (!hasSub) {
+      db.prepare("UPDATE subscriptions SET status = 'cancelled', cancelled_at = datetime('now') WHERE streamer_id = ? AND status = 'active'").run(streamer.id);
+      db.prepare("INSERT INTO subscriptions (streamer_id, tier, status) VALUES (?, 'enterprise', 'active')").run(streamer.id);
+      console.log('[DB] Granted enterprise subscription to Ricardo Apple');
+    }
+  }
+} catch {}
+
 // --- Streamers ---
 
 const _getStreamerByDiscordId = db.prepare('SELECT * FROM streamers WHERE discord_user_id = ?');
