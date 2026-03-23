@@ -40,4 +40,68 @@ function buildEmbed({ color, author, title, url, description, image, fields, foo
   return embed;
 }
 
-module.exports = { client, sendNotification, buildEmbed };
+function formatDuration(seconds) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
+function buildRecapEmbed({ twitchUsername, title, category, duration, thumbnailUrl, clips }) {
+  const fields = [
+    { name: 'Category', value: category || 'Unknown', inline: true },
+    { name: 'Duration', value: formatDuration(duration), inline: true },
+  ];
+  if (clips && clips.length > 0) {
+    const clipList = clips
+      .map((clip, i) => `${i + 1}. [${clip.title}](${clip.url}) (${clip.viewCount} views)`)
+      .join('\n');
+    fields.push({ name: 'Top Clips', value: clipList });
+  }
+  return buildEmbed({
+    color: 0x9146ff,
+    author: { name: `${twitchUsername} stream recap` },
+    title,
+    url: `https://twitch.tv/${twitchUsername}`,
+    image: thumbnailUrl || undefined,
+    fields,
+    footer: { text: 'Stream Recap' },
+    timestamp: new Date(),
+  });
+}
+
+function buildWeeklyDigestEmbed({ streamCount, totalHours, categories, topClip }) {
+  const fields = [
+    { name: 'Streams', value: String(streamCount), inline: true },
+    { name: 'Total Hours', value: totalHours.toFixed(1), inline: true },
+    { name: 'Categories', value: categories.join(', ') },
+  ];
+  if (topClip) {
+    fields.push({
+      name: 'Top Clip',
+      value: `[${topClip.title}](${topClip.url}) (${topClip.viewCount} views)`,
+    });
+  }
+  return buildEmbed({
+    color: 0x3498db,
+    author: { name: 'Weekly Highlights' },
+    title: 'Your week in streaming',
+    fields,
+    footer: { text: 'Weekly Digest' },
+    timestamp: new Date(),
+  });
+}
+
+function buildMilestoneEmbed({ twitchUsername, milestoneType, count }) {
+  const label = milestoneType === 'subscriber' ? 'subscribers' : 'followers';
+  return buildEmbed({
+    color: 0xf1c40f,
+    title: `\u{1F389} ${twitchUsername} just hit ${count} ${label}!`,
+    url: `https://twitch.tv/${twitchUsername}`,
+    description: 'Congratulations! A new milestone has been reached.',
+    footer: { text: 'Milestone Celebration' },
+    timestamp: new Date(),
+  });
+}
+
+module.exports = { client, sendNotification, buildEmbed, buildRecapEmbed, buildWeeklyDigestEmbed, buildMilestoneEmbed };

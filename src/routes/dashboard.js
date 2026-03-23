@@ -105,6 +105,8 @@ router.get('/guild/:guildId', (req, res) => {
   const watchedTwitchCount = db.getWatchedChannelsForGuild(guildId, req.streamer.id).length;
   const watchedYoutubeCount = db.getWatchedYoutubeChannelsForGuild(guildId, req.streamer.id).length;
 
+  const { tier, limits } = getTierLimits(req.streamer.id);
+
   res.render('guild-config', {
     streamer: req.streamer,
     guild: guildConfig,
@@ -115,6 +117,8 @@ router.get('/guild/:guildId', (req, res) => {
     watchedYoutubeCount,
     hasBroadcasterToken: !!req.streamer.broadcaster_access_token,
     broadcasterAuthUrl: `${config.app.url}/auth/broadcaster`,
+    tier,
+    limits,
   });
 });
 
@@ -136,6 +140,9 @@ router.post('/guild/:guildId', (req, res) => {
     youtube_enabled: req.body.youtube_enabled === 'on',
     welcome_enabled: req.body.welcome_enabled === 'on',
     sub_sync_enabled: req.body.sub_sync_enabled === 'on',
+    recap_enabled: req.body.recap_enabled === 'on',
+    milestones_enabled: req.body.milestones_enabled === 'on',
+    weekly_highlights_enabled: req.body.weekly_highlights_enabled === 'on',
   });
 
   console.log(`[Dashboard] Guild ${guildId} config updated by ${req.streamer.discord_username}`);

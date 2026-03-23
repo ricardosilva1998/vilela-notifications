@@ -68,6 +68,40 @@
     <% } %>
   </div>
 
+  <div class="card">
+    <h3>Activity Feed</h3>
+    <p style="color: #adadb8; font-size: 13px; margin-bottom: 16px;">Automatic posts that keep your server active around stream activity.</p>
+
+    <div class="toggle">
+      <input type="checkbox" name="recap_enabled" id="recap_enabled" <%= guild.recap_enabled ? 'checked' : '' %> <% if (!limits.recaps) { %>disabled<% } %>>
+      <label for="recap_enabled">Stream Recaps</label>
+      <p style="color: #adadb8; font-size: 12px; margin: 2px 0 12px 0;">Post a summary when a stream ends — duration, category, and top clips.</p>
+      <% if (!limits.recaps) { %>
+        <p style="font-size: 12px;"><a href="/dashboard/subscription">Upgrade</a> to enable this feature.</p>
+      <% } %>
+    </div>
+
+    <div class="toggle">
+      <input type="checkbox" name="milestones_enabled" id="milestones_enabled" <%= guild.milestones_enabled ? 'checked' : '' %> <% if (!limits.milestones) { %>disabled<% } %>>
+      <label for="milestones_enabled">Milestone Celebrations</label>
+      <p style="color: #adadb8; font-size: 12px; margin: 2px 0 12px 0;">Announce when a channel hits follower or subscriber milestones.</p>
+      <% if (!limits.milestones) { %>
+        <p style="font-size: 12px;"><a href="/dashboard/subscription">Upgrade</a> to enable this feature.</p>
+      <% } else if (!hasBroadcasterToken) { %>
+        <p style="color: #e67e22; font-size: 12px;">Requires <a href="<%= broadcasterAuthUrl %>">broadcaster authorization</a> to access follower/sub counts.</p>
+      <% } %>
+    </div>
+
+    <div class="toggle">
+      <input type="checkbox" name="weekly_highlights_enabled" id="weekly_highlights_enabled" <%= guild.weekly_highlights_enabled ? 'checked' : '' %> <% if (!limits.weeklyHighlights) { %>disabled<% } %>>
+      <label for="weekly_highlights_enabled">Weekly Highlights</label>
+      <p style="color: #adadb8; font-size: 12px; margin: 2px 0 12px 0;">Post a weekly digest every Monday with stream stats and top clips.</p>
+      <% if (!limits.weeklyHighlights) { %>
+        <p style="font-size: 12px;"><a href="/dashboard/subscription">Upgrade</a> to enable this feature.</p>
+      <% } %>
+    </div>
+  </div>
+
   <button type="submit" class="btn btn-success" style="width: 100%; padding: 14px; font-size: 16px;">Save Settings</button>
 </form>
 

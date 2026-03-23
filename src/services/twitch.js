@@ -59,12 +59,13 @@ async function getUserId(username) {
   return data.data?.[0]?.id || null;
 }
 
-async function getClips(broadcasterId, startedAt) {
+async function getClips(broadcasterId, startedAt, endedAt) {
   const params = new URLSearchParams({
     broadcaster_id: broadcasterId,
     started_at: startedAt,
     first: '10',
   });
+  if (endedAt) params.set('ended_at', endedAt);
   const data = await apiCall(`/clips?${params}`);
   return data.data || [];
 }
@@ -99,4 +100,49 @@ async function getSubscribers(broadcasterId, broadcasterAccessToken) {
   return subs;
 }
 
-module.exports = { getStream, getUserId, getClips, getSubscribers };
+async function getVideos(broadcasterId, startedAfter) {
+  const params = new URLSearchParams({
+    user_id: broadcasterId,
+    type: 'archive',
+    first: '20',
+  });
+  const data = await apiCall(`/videos?${params}`);
+  const videos = data.data || [];
+  if (startedAfter) {
+    return videos.filter((v) => v.created_at >= startedAfter);
+  }
+  return videos;
+}
+
+async function getFollowerCount(broadcasterId, broadcasterAccessToken) {
+  const params = new URLSearchParams({
+    broadcaster_id: broadcasterId,
+    first: '1',
+  });
+
+  const res = await fetch(`https://api.twitch.tv/helix/channels/followers?${params}`, {
+    headers: {
+      Authorization: `Bearer ${broadcasterAccessToken}`,
+      'Client-Id': config.twitch.clientId,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Followers API error: ${res.status} ${await res.text()}`);
+  }
+
+  const data = await res.json();
+  return data.total || 0;
+}
+
+async function getGameNames(gameIds) {
+  if (!gameIds || gameIds.length === 0) return [];
+  const params = new URLSearchParams();
+  for (const id of gameIds) {
+    params.append('id', id);
+  }
+  const data = await apiCall(`/games?${params}`);
+  return (data.data || []).map((g) => g.name);
+}
+
+module.exports = { getStream, getUserId, getClips, getSubscribers, getVideos, getFollowerCount, getGameNames };

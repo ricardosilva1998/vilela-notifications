@@ -50,6 +50,29 @@ try {
   }
 } catch {}
 
+// Migration 4: add activity feed toggle columns to guilds
+try {
+  const cols = db.prepare("PRAGMA table_info(guilds)").all();
+  if (cols.length > 0 && !cols.find((c) => c.name === 'recap_enabled')) {
+    db.exec('ALTER TABLE guilds ADD COLUMN recap_enabled INTEGER DEFAULT 0');
+    db.exec('ALTER TABLE guilds ADD COLUMN milestones_enabled INTEGER DEFAULT 0');
+    db.exec('ALTER TABLE guilds ADD COLUMN weekly_highlights_enabled INTEGER DEFAULT 0');
+    console.log('[DB] Added activity feed toggle columns to guilds');
+  }
+} catch {}
+
+// Migration 5: add stream session columns to channel_state
+try {
+  const cols = db.prepare("PRAGMA table_info(channel_state)").all();
+  if (cols.length > 0 && !cols.find((c) => c.name === 'stream_title')) {
+    db.exec('ALTER TABLE channel_state ADD COLUMN stream_title TEXT');
+    db.exec('ALTER TABLE channel_state ADD COLUMN stream_category TEXT');
+    db.exec('ALTER TABLE channel_state ADD COLUMN stream_thumbnail_url TEXT');
+    db.exec('ALTER TABLE channel_state ADD COLUMN stream_started_at TEXT');
+    console.log('[DB] Added stream session columns to channel_state');
+  }
+} catch {}
+
 // --- Schema ---
 
 db.exec(`
@@ -219,6 +242,19 @@ db.exec(`
     is_live INTEGER DEFAULT 0,
     live_video_id TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS weekly_digest_state (
+    guild_id TEXT PRIMARY KEY,
+    last_digest_date TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS channel_milestones (
+    twitch_username TEXT PRIMARY KEY,
+    last_follower_count INTEGER DEFAULT 0,
+    last_subscriber_count INTEGER DEFAULT 0,
+    last_follower_milestone INTEGER DEFAULT 0,
+    last_subscriber_milestone INTEGER DEFAULT 0
+  );
 `);
 
 // --- Streamers ---
@@ -311,7 +347,10 @@ const _updateGuildConfig = db.prepare(`
     twitch_clips_enabled = ?,
     youtube_enabled = ?,
     welcome_enabled = ?,
-    sub_sync_enabled = ?
+    sub_sync_enabled = ?,
+    recap_enabled = ?,
+    milestones_enabled = ?,
+    weekly_highlights_enabled = ?
   WHERE guild_id = ? AND streamer_id = ?
 `);
 const _deleteGuild = db.prepare('DELETE FROM guilds WHERE guild_id = ? AND streamer_id = ?');
@@ -351,6 +390,9 @@ function updateGuildConfig(guildId, streamerId, config) {
     config.youtube_enabled ? 1 : 0,
     config.welcome_enabled ? 1 : 0,
     config.sub_sync_enabled ? 1 : 0,
+    config.recap_enabled ? 1 : 0,
+    config.milestones_enabled ? 1 : 0,
+    config.weekly_highlights_enabled ? 1 : 0,
     guildId,
     streamerId
   );
@@ -528,7 +570,11 @@ const _updateChannelState = db.prepare(`
   UPDATE channel_state SET
     twitch_broadcaster_id = COALESCE(?, twitch_broadcaster_id),
     is_live = COALESCE(?, is_live),
-    last_clip_created_at = COALESCE(?, last_clip_created_at)
+    last_clip_created_at = COALESCE(?, last_clip_created_at),
+    stream_title = COALESCE(?, stream_title),
+    stream_category = COALESCE(?, stream_category),
+    stream_thumbnail_url = COALESCE(?, stream_thumbnail_url),
+    stream_started_at = COALESCE(?, stream_started_at)
   WHERE twitch_username = ?
 `);
 
@@ -564,8 +610,116 @@ function updateChannelState(twitchUsername, updates) {
     updates.twitch_broadcaster_id ?? null,
     updates.is_live ?? null,
     updates.last_clip_created_at ?? null,
+    updates.stream_title ?? null,
+    updates.stream_category ?? null,
+    updates.stream_thumbnail_url ?? null,
+    updates.stream_started_at ?? null,
     twitchUsername.toLowerCase()
   );
+}
+
+// --- Watched Channel Feature Queries ---
+
+const _getWatchersForChannelWithFeatures = db.prepare(`
+  SELECT wc.*, g.recap_enabled, g.milestones_enabled, g.weekly_highlights_enabled,
+         s.id AS owner_id, s.enabled AS streamer_enabled
+  FROM watched_channels wc
+  JOIN guilds g ON wc.guild_id = g.guild_id AND wc.streamer_id = g.streamer_id
+  JOIN streamers s ON wc.streamer_id = s.id
+  WHERE wc.twitch_username = ? AND wc.enabled = 1 AND s.enabled = 1
+`);
+
+function getWatchersForChannelWithFeatures(twitchUsername) {
+  return _getWatchersForChannelWithFeatures.all(twitchUsername.toLowerCase());
+}
+
+// --- Channel Milestones ---
+
+const _getChannelMilestones = db.prepare('SELECT * FROM channel_milestones WHERE twitch_username = ?');
+const _upsertChannelMilestones = db.prepare(`
+  INSERT INTO channel_milestones (twitch_username) VALUES (?)
+  ON CONFLICT(twitch_username) DO NOTHING
+`);
+const _updateChannelMilestones = db.prepare(`
+  UPDATE channel_milestones SET
+    last_follower_count = COALESCE(?, last_follower_count),
+    last_subscriber_count = COALESCE(?, last_subscriber_count),
+    last_follower_milestone = COALESCE(?, last_follower_milestone),
+    last_subscriber_milestone = COALESCE(?, last_subscriber_milestone)
+  WHERE twitch_username = ?
+`);
+
+function getChannelMilestones(twitchUsername) {
+  _upsertChannelMilestones.run(twitchUsername.toLowerCase());
+  return _getChannelMilestones.get(twitchUsername.toLowerCase());
+}
+
+function updateChannelMilestones(twitchUsername, updates) {
+  _updateChannelMilestones.run(
+    updates.last_follower_count ?? null,
+    updates.last_subscriber_count ?? null,
+    updates.last_follower_milestone ?? null,
+    updates.last_subscriber_milestone ?? null,
+    twitchUsername.toLowerCase()
+  );
+}
+
+// --- Weekly Digest State ---
+
+const _getWeeklyDigestState = db.prepare('SELECT * FROM weekly_digest_state WHERE guild_id = ?');
+const _upsertWeeklyDigestDate = db.prepare(`
+  INSERT INTO weekly_digest_state (guild_id, last_digest_date) VALUES (?, ?)
+  ON CONFLICT(guild_id) DO UPDATE SET last_digest_date = excluded.last_digest_date
+`);
+
+function getWeeklyDigestState(guildId) {
+  return _getWeeklyDigestState.get(guildId);
+}
+
+function updateWeeklyDigestDate(guildId, dateStr) {
+  _upsertWeeklyDigestDate.run(guildId, dateStr);
+}
+
+// --- Weekly Highlights Guilds ---
+
+const _getGuildsWithWeeklyHighlights = db.prepare(`
+  SELECT g.guild_id, MIN(g.streamer_id) AS streamer_id
+  FROM guilds g
+  JOIN streamers s ON g.streamer_id = s.id
+  WHERE g.weekly_highlights_enabled = 1 AND s.enabled = 1
+  GROUP BY g.guild_id
+`);
+
+function getGuildsWithWeeklyHighlights() {
+  return _getGuildsWithWeeklyHighlights.all();
+}
+
+// --- Digest Channel ---
+
+const _getDigestChannelForGuild = db.prepare(`
+  SELECT wc.live_channel_id FROM watched_channels wc
+  WHERE wc.guild_id = ? AND wc.live_channel_id IS NOT NULL
+  ORDER BY wc.id ASC LIMIT 1
+`);
+
+function getDigestChannelForGuild(guildId) {
+  const row = _getDigestChannelForGuild.get(guildId);
+  return row?.live_channel_id || null;
+}
+
+// --- Clear Stream Session ---
+
+const _clearStreamSession = db.prepare(`
+  UPDATE channel_state SET
+    stream_title = NULL,
+    stream_category = NULL,
+    stream_thumbnail_url = NULL,
+    stream_started_at = NULL
+  WHERE twitch_username = ?
+`);
+
+function clearStreamSession(twitchUsername) {
+  _clearStreamSession.run(twitchUsername.toLowerCase());
 }
 
 // --- Watched YouTube Channels ---
@@ -867,4 +1021,12 @@ module.exports = {
   getUsersOverTime,
   getNotificationsOverTime,
   getServersOverTime,
+  getWatchersForChannelWithFeatures,
+  getChannelMilestones,
+  updateChannelMilestones,
+  getWeeklyDigestState,
+  updateWeeklyDigestDate,
+  getGuildsWithWeeklyHighlights,
+  getDigestChannelForGuild,
+  clearStreamSession,
 };

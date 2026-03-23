@@ -44,6 +44,7 @@ module.exports = {
     youtubeFeed: parseInt(process.env.YOUTUBE_FEED_INTERVAL) || 300_000,
     youtubeLive: parseInt(process.env.YOUTUBE_LIVE_INTERVAL) || 120_000,
     subSync: parseInt(process.env.SUB_SYNC_INTERVAL) || 600_000,
+    weeklyDigest: parseInt(process.env.WEEKLY_DIGEST_INTERVAL) || 3_600_000,
   },
   tiers: {
     free: {
@@ -63,6 +64,9 @@ module.exports = {
       webhooks: false,
       whiteLabel: false,
       delayMinutes: 5,
+      recaps: false,
+      milestones: false,
+      weeklyHighlights: false,
     },
     starter: {
       name: 'Starter',
@@ -81,6 +85,9 @@ module.exports = {
       webhooks: false,
       whiteLabel: false,
       delayMinutes: 0,
+      recaps: true,
+      milestones: true,
+      weeklyHighlights: false,
     },
     pro: {
       name: 'Pro',
@@ -99,6 +106,9 @@ module.exports = {
       webhooks: false,
       whiteLabel: false,
       delayMinutes: 0,
+      recaps: true,
+      milestones: true,
+      weeklyHighlights: true,
     },
     enterprise: {
       name: 'Enterprise',
@@ -117,6 +127,9 @@ module.exports = {
       webhooks: true,
       whiteLabel: true,
       delayMinutes: 0,
+      recaps: true,
+      milestones: true,
+      weeklyHighlights: true,
     },
   },
 };
