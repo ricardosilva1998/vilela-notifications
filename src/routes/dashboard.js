@@ -72,6 +72,14 @@ router.get('/account', (req, res) => {
   });
 });
 
+// Save YouTube API key
+router.post('/account/youtube-api-key', (req, res) => {
+  const apiKey = (req.body.youtube_api_key || '').trim();
+  db.updateStreamerYoutube(req.streamer.id, req.streamer.youtube_channel_id, apiKey || null);
+  console.log(`[Dashboard] YouTube API key ${apiKey ? 'saved' : 'cleared'} for ${req.streamer.discord_username}`);
+  res.redirect('/dashboard/account');
+});
+
 // Dashboard home — list guilds
 router.get('/', (req, res) => {
   const guilds = db.getGuildsForStreamer(req.streamer.id);
