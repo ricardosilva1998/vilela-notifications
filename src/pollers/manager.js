@@ -281,8 +281,8 @@ async function pollAllYouTubeLive() {
         .filter((w) => w.notify_live && w.live_channel_id);
       if (watchers.length === 0) continue;
 
-      // Use the first watcher's API key (if any)
-      const apiKey = watchers.find((w) => w.youtube_api_key)?.youtube_api_key;
+      // Use global YouTube API key
+      const apiKey = config.youtube.apiKey;
       if (!apiKey) continue;
 
       const state = db.getYoutubeChannelState(youtube_channel_id);
