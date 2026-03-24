@@ -31,7 +31,18 @@ async function resolveProfile(username) {
     }
   }
 
-  return { username: clean, displayName, profileImageUrl };
+  // Verify the unavatar URL returns a real image (not the default smiley)
+  try {
+    const check = await fetch(profileImageUrl, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(5000) });
+    if (check.ok && check.headers.get('content-type')?.includes('image')) {
+      const finalUrl = check.url || profileImageUrl;
+      if (!finalUrl.includes('fallback') && !finalUrl.includes('default')) {
+        return { username: clean, displayName, profileImageUrl };
+      }
+    }
+  } catch (e) {}
+
+  return { username: clean, displayName, profileImageUrl: null };
 }
 
 async function getLatestTweets(username) {

@@ -30,13 +30,32 @@ async function resolveProfile(username) {
     }
   }
 
-  // Verify the unavatar URL actually returns an image
+  // Verify the unavatar URL returns a real profile image (not the default smiley)
   try {
-    const check = await fetch(profileImageUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+    const check = await fetch(profileImageUrl, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(5000) });
     if (check.ok && check.headers.get('content-type')?.includes('image')) {
-      return { username: clean, displayName, profileImageUrl };
+      const finalUrl = check.url || profileImageUrl;
+      if (!finalUrl.includes('fallback') && !finalUrl.includes('default')) {
+        return { username: clean, displayName, profileImageUrl };
+      }
     }
   } catch (e) {}
+
+  // Try fetching from RSSHub feed channel image as fallback
+  for (const instance of RSSHUB_INSTANCES) {
+    try {
+      const res = await fetch(`${instance}/tiktok/user/@${clean}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Bot/1.0)' },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) continue;
+      const xml = await res.text();
+      const parsed = parser.parse(xml);
+      const image = parsed.rss?.channel?.image?.url;
+      if (image) return { username: clean, displayName, profileImageUrl: image };
+      break;
+    } catch (e) { continue; }
+  }
 
   return { username: clean, displayName, profileImageUrl: null };
 }
