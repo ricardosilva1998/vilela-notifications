@@ -245,7 +245,7 @@ async function pollAllYouTubeFeed() {
   for (const { youtube_channel_id } of channels) {
     try {
       const state = db.getYoutubeChannelState(youtube_channel_id);
-      const result = await youtubeFeed.check(youtube_channel_id, state);
+      const result = await youtubeFeed.check(youtube_channel_id, state, config.youtube.apiKey);
       if (!result) continue;
 
       if (result.stateUpdate) db.updateYoutubeChannelState(youtube_channel_id, result.stateUpdate);
@@ -261,7 +261,7 @@ async function pollAllYouTubeFeed() {
               await sendNotification(w.videos_channel_id, null, {
                 streamerId: w.streamer_id,
                 guildId: w.guild_id,
-                type: 'youtube_video',
+                type: video.isShort ? 'youtube_short' : 'youtube_video',
                 contentOnly: video.message,
               });
             } catch (e) {

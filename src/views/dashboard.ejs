@@ -106,9 +106,9 @@
 
         <!-- Individual charts per notification type -->
         <%
-          const typeKeys = ['twitch_live', 'twitch_clip', 'twitch_recap', 'twitch_milestone', 'youtube_video', 'youtube_live', 'weekly_digest', 'instagram_post', 'tiktok_video', 'twitter_tweet'];
-          const typeColors = { twitch_live: '#9146ff', twitch_clip: '#bf94ff', twitch_recap: '#6d28d9', twitch_milestone: '#f1c40f', youtube_video: '#f04438', youtube_live: '#ff6b6b', weekly_digest: '#3498db', instagram_post: '#E1306C', tiktok_video: '#010101', twitter_tweet: '#1DA1F2' };
-          const typeNames = { twitch_live: 'Go-Live Alerts', twitch_clip: 'Clip Notifications', twitch_recap: 'Stream Recaps', twitch_milestone: 'Milestones', youtube_video: 'YouTube Video Alerts', youtube_live: 'YouTube Live Alerts', weekly_digest: 'Weekly Digests', instagram_post: 'Instagram Posts', tiktok_video: 'TikTok Videos', twitter_tweet: 'Tweets' };
+          const typeKeys = ['twitch_live', 'twitch_clip', 'twitch_recap', 'twitch_milestone', 'youtube_video', 'youtube_short', 'youtube_live', 'weekly_digest', 'instagram_post', 'tiktok_video', 'twitter_tweet'];
+          const typeColors = { twitch_live: '#9146ff', twitch_clip: '#bf94ff', twitch_recap: '#6d28d9', twitch_milestone: '#f1c40f', youtube_video: '#f04438', youtube_short: '#ff6b6b', youtube_live: '#ff4444', weekly_digest: '#3498db', instagram_post: '#E1306C', tiktok_video: '#010101', twitter_tweet: '#1DA1F2' };
+          const typeNames = { twitch_live: 'Go-Live Alerts', twitch_clip: 'Clip Notifications', twitch_recap: 'Stream Recaps', twitch_milestone: 'Milestones', youtube_video: 'YouTube Video Alerts', youtube_short: 'YouTube Shorts', youtube_live: 'YouTube Live Alerts', weekly_digest: 'Weekly Digests', instagram_post: 'Instagram Posts', tiktok_video: 'TikTok Videos', twitter_tweet: 'Tweets' };
           const activeTypes = typeKeys.filter(function(tk) { return g.chartData.some(function(d) { return (d[tk] || 0) > 0; }); });
         %>
 

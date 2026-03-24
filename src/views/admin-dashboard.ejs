@@ -1,66 +1,285 @@
-<%- include('header', { title: 'Admin Dashboard', streamer: null }) %>
+<%- include('header', { title: 'Admin Panel', streamer: streamer }) %>
 
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-  <h2>Admin Dashboard</h2>
-  <div>
-    <a href="/admin/streamers" class="btn btn-secondary">Streamers</a>
-    <a href="/admin/issues" class="btn btn-secondary" style="margin-left: 8px;">Issues</a>
-    <a href="/admin/logout" class="btn btn-secondary" style="margin-left: 8px;">Logout</a>
+<h2 style="font-size: 24px; font-weight: 700; margin-bottom: 24px;" class="animate-in">Admin Panel</h2>
+
+<% if (msg === 'updated') { %><div class="alert alert-success">Updated successfully.</div><% } %>
+<% if (msg === 'removed') { %><div class="alert alert-success">User removed.</div><% } %>
+<% if (msg === 'tier_updated') { %><div class="alert alert-success">Subscription tier updated.</div><% } %>
+<% if (msg === 'created') { %><div class="alert alert-success">Created successfully.</div><% } %>
+
+<!-- Tab Bar -->
+<div class="tab-bar animate-in animate-in-delay-1">
+  <button class="tab-btn" data-tab="stats">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    Stats
+  </button>
+  <button class="tab-btn" data-tab="users">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Users
+  </button>
+  <button class="tab-btn" data-tab="issues">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    Issues (<%= issues.filter(i => i.status === 'open').length %>)
+  </button>
+  <button class="tab-btn" data-tab="feedback">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    Feedback (<%= feedback.length %>)
+  </button>
+  <button class="tab-btn" data-tab="discounts">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
+    Discounts
+  </button>
+</div>
+
+<!-- ==================== STATS TAB ==================== -->
+<div class="tab-content" id="tab-stats">
+  <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px;">
+    <div class="card" style="text-align: center; padding: 20px;">
+      <div style="font-size: 28px; font-weight: 800; font-family: var(--font-display); color: var(--accent);"><%= stats.total_streamers %></div>
+      <div style="font-size: 12px; color: var(--text-muted);">Total Users</div>
+    </div>
+    <div class="card" style="text-align: center; padding: 20px;">
+      <div style="font-size: 28px; font-weight: 800; font-family: var(--font-display); color: var(--success);"><%= stats.active_streamers %></div>
+      <div style="font-size: 12px; color: var(--text-muted);">Active Users</div>
+    </div>
+    <div class="card" style="text-align: center; padding: 20px;">
+      <div style="font-size: 28px; font-weight: 800; font-family: var(--font-display); color: var(--text-primary);"><%= stats.total_guilds %></div>
+      <div style="font-size: 12px; color: var(--text-muted);">Servers</div>
+    </div>
+    <div class="card" style="text-align: center; padding: 20px;">
+      <div style="font-size: 28px; font-weight: 800; font-family: var(--font-display); color: #3498db;"><%= stats.total_notifications %></div>
+      <div style="font-size: 12px; color: var(--text-muted);">Total Notifications</div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px;">
+    <div class="stat-card" style="padding: 14px;"><div class="stat-value" style="color: var(--success);"><%= stats.notifications_today %></div><div class="stat-label">Today</div></div>
+    <div class="stat-card" style="padding: 14px;"><div class="stat-value" style="color: var(--text-primary);"><%= stats.notifications_week %></div><div class="stat-label">This Week</div></div>
+    <div class="stat-card" style="padding: 14px;"><div class="stat-value" style="color: #f1c40f;"><%= revenueStats.total_revenue.toFixed(2) %> EUR</div><div class="stat-label">Total Revenue</div></div>
+  </div>
+
+  <!-- Tier Breakdown -->
+  <div class="card" style="margin-bottom: 24px; padding: 20px;">
+    <h3 style="font-size: 15px; margin-bottom: 16px;">Subscription Breakdown</h3>
+    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+      <% tierBreakdown.forEach(function(t) { %>
+        <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 12px 20px; border: 1px solid var(--border); text-align: center;">
+          <div style="font-size: 20px; font-weight: 700; font-family: var(--font-display);"><%= t.count %></div>
+          <div style="font-size: 11px; color: var(--text-muted); text-transform: capitalize;"><%= t.tier %></div>
+        </div>
+      <% }); %>
+    </div>
+  </div>
+
+  <!-- Notifications Chart -->
+  <div class="card" style="margin-bottom: 24px; padding: 20px;">
+    <h3 style="font-size: 15px; margin-bottom: 16px;">Notifications (Last 12 Months)</h3>
+    <% if (notifications.length > 0) { %>
+      <% const maxN = Math.max(...notifications.map(d => d.count), 1); %>
+      <div style="display: flex; align-items: flex-end; gap: 4px; height: 120px;">
+        <% notifications.forEach(function(d) { %>
+          <div style="flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end;" title="<%= d.period %>: <%= d.count %>">
+            <div style="width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; height: <%= Math.round(Math.max((d.count / maxN) * 120, d.count > 0 ? 3 : 1)) %>px; opacity: <%= d.count > 0 ? 1 : 0.12 %>;"></div>
+          </div>
+        <% }); %>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-top: 6px;">
+        <span style="font-size: 9px; color: var(--text-muted);"><%= notifications[0]?.period %></span>
+        <span style="font-size: 9px; color: var(--text-muted);"><%= notifications[notifications.length - 1]?.period %></span>
+      </div>
+    <% } else { %>
+      <p style="color: var(--text-muted); text-align: center; padding: 20px;">No data yet</p>
+    <% } %>
+  </div>
+
+  <!-- System Stats -->
+  <div class="card" style="padding: 20px;">
+    <h3 style="font-size: 15px; margin-bottom: 16px;">System</h3>
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+      <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 12px; border: 1px solid var(--border);">
+        <div style="font-size: 16px; font-weight: 700; font-family: var(--font-display);"><%= Math.floor(system.uptime / 3600) %>h <%= Math.floor((system.uptime % 3600) / 60) %>m</div>
+        <div style="font-size: 10px; color: var(--text-muted);">Uptime</div>
+      </div>
+      <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 12px; border: 1px solid var(--border);">
+        <div style="font-size: 16px; font-weight: 700; font-family: var(--font-display);"><%= Math.round(system.memory.rss / 1024 / 1024) %> MB</div>
+        <div style="font-size: 10px; color: var(--text-muted);">Memory (RSS)</div>
+      </div>
+      <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 12px; border: 1px solid var(--border);">
+        <div style="font-size: 16px; font-weight: 700; font-family: var(--font-display);"><%= Math.round(system.memory.heapUsed / 1024 / 1024) %> MB</div>
+        <div style="font-size: 10px; color: var(--text-muted);">Heap Used</div>
+      </div>
+      <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 12px; border: 1px solid var(--border);">
+        <div style="font-size: 16px; font-weight: 700; font-family: var(--font-display);"><%= (system.dbSize / 1024 / 1024).toFixed(1) %> MB</div>
+        <div style="font-size: 10px; color: var(--text-muted);">Database Size</div>
+      </div>
+    </div>
   </div>
 </div>
 
-<div class="features-grid" style="margin-bottom: 24px;">
-  <div class="card" style="text-align: center;">
-    <div style="font-size: 32px; font-weight: 700; color: #9146ff;"><%= stats.total_streamers %></div>
-    <p style="color: #adadb8; font-size: 14px;">Total Streamers (<%= stats.active_streamers %> active)</p>
-  </div>
-  <div class="card" style="text-align: center;">
-    <div style="font-size: 32px; font-weight: 700; color: #5865F2;"><%= stats.total_guilds %></div>
-    <p style="color: #adadb8; font-size: 14px;">Total Servers</p>
-  </div>
-  <div class="card" style="text-align: center;">
-    <div style="font-size: 32px; font-weight: 700; color: #00b894;"><%= stats.notifications_today %></div>
-    <p style="color: #adadb8; font-size: 14px;">Notifications Today</p>
-  </div>
-  <div class="card" style="text-align: center;">
-    <div style="font-size: 32px; font-weight: 700; color: #efeff1;"><%= stats.total_notifications %></div>
-    <p style="color: #adadb8; font-size: 14px;">Total Notifications</p>
-  </div>
+<!-- ==================== USERS TAB ==================== -->
+<div class="tab-content" id="tab-users">
+  <div style="margin-bottom: 16px; font-size: 13px; color: var(--text-secondary);"><%= streamers.length %> registered users</div>
+  <% for (const s of streamers) { %>
+    <div class="card" style="padding: 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 200px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+          <span style="font-weight: 600;"><%= s.discord_display_name || s.discord_username %></span>
+          <% if (s.twitch_username) { %>
+            <span style="font-size: 11px; color: var(--accent);">@<%= s.twitch_username %></span>
+          <% } %>
+          <% if (!s.enabled) { %>
+            <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--danger-bg); color: var(--danger);">DISABLED</span>
+          <% } %>
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted);">
+          <%= s.guild_count %> server<%= s.guild_count !== 1 ? 's' : '' %> &middot;
+          <%= s.total_notifications %> notifications &middot;
+          <%= s.notifications_today %> today
+        </div>
+      </div>
+      <form method="POST" action="/admin/streamers/<%= s.id %>/set-tier" style="margin: 0; display: flex; align-items: center; gap: 6px;">
+        <select name="tier" style="padding: 6px 10px; background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px; cursor: pointer;">
+          <% const currentTier = typeof db !== 'undefined' ? 'free' : 'free'; %>
+          <% ['free', 'starter', 'pro', 'enterprise'].forEach(function(t) { %>
+            <option value="<%= t %>"><%= t.charAt(0).toUpperCase() + t.slice(1) %></option>
+          <% }); %>
+        </select>
+        <button type="submit" class="btn btn-primary" style="padding: 6px 12px; font-size: 11px;">Set</button>
+      </form>
+      <form method="POST" action="/admin/streamers/<%= s.id %>/toggle" style="margin: 0;">
+        <button type="submit" class="btn btn-secondary" style="padding: 6px 12px; font-size: 11px;"><%= s.enabled ? 'Disable' : 'Enable' %></button>
+      </form>
+      <form method="POST" action="/admin/streamers/<%= s.id %>/remove" style="margin: 0;" onsubmit="return confirm('Delete this user and all their data?')">
+        <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 11px;">Remove</button>
+      </form>
+    </div>
+  <% } %>
 </div>
 
-<h3 class="section-title">Recent Notifications</h3>
-
-<% if (recentNotifications.length === 0) { %>
-  <p style="color: #adadb8;">No notifications sent yet.</p>
-<% } else { %>
-  <div class="card" style="overflow-x: auto;">
-    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-      <thead>
-        <tr style="border-bottom: 1px solid #303032; text-align: left;">
-          <th style="padding: 8px; color: #adadb8;">Time</th>
-          <th style="padding: 8px; color: #adadb8;">Streamer</th>
-          <th style="padding: 8px; color: #adadb8;">Type</th>
-          <th style="padding: 8px; color: #adadb8;">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% for (const n of recentNotifications) { %>
-          <tr style="border-bottom: 1px solid #1a1a1d;">
-            <td style="padding: 8px; color: #adadb8;"><%= n.created_at %></td>
-            <td style="padding: 8px;"><%= n.twitch_username || n.discord_username %></td>
-            <td style="padding: 8px;"><%= n.type %></td>
-            <td style="padding: 8px;">
-              <% if (n.success) { %>
-                <span style="color: #00b894;">OK</span>
-              <% } else { %>
-                <span style="color: #e74c3c;">Failed</span>
-              <% } %>
-            </td>
-          </tr>
+<!-- ==================== ISSUES TAB ==================== -->
+<div class="tab-content" id="tab-issues">
+  <% if (issues.length === 0) { %>
+    <div class="card" style="text-align: center; padding: 40px; color: var(--text-muted);">No issues reported yet.</div>
+  <% } else { %>
+    <% for (const issue of issues) { %>
+      <div class="card" style="padding: 16px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+          <div>
+            <div style="font-weight: 600; margin-bottom: 4px;"><%= issue.subject %></div>
+            <div style="font-size: 12px; color: var(--text-muted);">by <%= issue.discord_username || 'Unknown' %> &middot; <%= issue.created_at?.split('T')[0] || '' %></div>
+          </div>
+          <span style="font-size: 10px; padding: 3px 8px; border-radius: 4px; font-weight: 600; text-transform: uppercase;
+            background: <%= issue.status === 'open' ? 'var(--warning-bg)' : issue.status === 'resolved' ? 'var(--success-bg)' : 'var(--accent-glow)' %>;
+            color: <%= issue.status === 'open' ? 'var(--warning)' : issue.status === 'resolved' ? 'var(--success)' : 'var(--accent)' %>;">
+            <%= issue.status %>
+          </span>
+        </div>
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;"><%= issue.description %></p>
+        <% if (issue.admin_reply) { %>
+          <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 10px; margin-bottom: 10px; border-left: 3px solid var(--accent);">
+            <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 4px;">Admin Reply</div>
+            <p style="font-size: 13px; color: var(--text-primary);"><%= issue.admin_reply %></p>
+          </div>
         <% } %>
-      </tbody>
-    </table>
+        <form method="POST" action="/admin/issues/<%= issue.id %>" style="display: flex; gap: 8px; align-items: flex-end;">
+          <div style="flex: 1;">
+            <input type="text" name="admin_reply" placeholder="Reply..." value="<%= issue.admin_reply || '' %>" style="width: 100%; padding: 8px 12px; background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 13px;">
+          </div>
+          <select name="status" style="padding: 8px 10px; background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px;">
+            <% ['open', 'in_progress', 'resolved', 'closed'].forEach(function(s) { %>
+              <option value="<%= s %>" <%= issue.status === s ? 'selected' : '' %>><%= s.replace('_', ' ') %></option>
+            <% }); %>
+          </select>
+          <button type="submit" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px;">Update</button>
+        </form>
+      </div>
+    <% } %>
+  <% } %>
+</div>
+
+<!-- ==================== FEEDBACK TAB ==================== -->
+<div class="tab-content" id="tab-feedback">
+  <% if (feedback.length === 0) { %>
+    <div class="card" style="text-align: center; padding: 40px; color: var(--text-muted);">No feedback submitted yet.</div>
+  <% } else { %>
+    <% for (const fb of feedback) { %>
+      <div class="card" style="padding: 16px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-weight: 600;"><%= fb.discord_username || 'Anonymous' %></span>
+            <span style="font-size: 11px; color: var(--text-muted);"><%= fb.created_at?.split('T')[0] || '' %></span>
+          </div>
+          <div style="font-size: 16px; letter-spacing: 2px;">
+            <% for (let i = 1; i <= 5; i++) { %>
+              <span style="color: <%= i <= fb.rating ? '#f1c40f' : 'var(--text-muted)' %>;">&#9733;</span>
+            <% } %>
+          </div>
+        </div>
+        <p style="font-size: 13px; color: var(--text-secondary);"><%= fb.message %></p>
+      </div>
+    <% } %>
+  <% } %>
+</div>
+
+<!-- ==================== DISCOUNTS TAB ==================== -->
+<div class="tab-content" id="tab-discounts">
+  <div class="card" style="padding: 20px; margin-bottom: 16px;">
+    <h3 style="font-size: 15px; margin-bottom: 16px;">Create Discount Code</h3>
+    <form method="POST" action="/admin/discounts" style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+      <div class="form-group" style="margin: 0; flex: 1; min-width: 120px;">
+        <label>Code</label>
+        <input type="text" name="code" placeholder="e.g. LAUNCH50" required style="text-transform: uppercase;">
+      </div>
+      <div class="form-group" style="margin: 0; min-width: 100px;">
+        <label>Discount %</label>
+        <select name="discount_percent" required>
+          <option value="25">25%</option>
+          <option value="50">50%</option>
+          <option value="75">75%</option>
+          <option value="100">100%</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin: 0; min-width: 100px;">
+        <label>Max Uses</label>
+        <input type="number" name="max_uses" placeholder="Unlimited">
+      </div>
+      <button type="submit" class="btn btn-primary" style="padding: 10px 20px;">Create</button>
+    </form>
   </div>
-<% } %>
+
+  <% if (codes.length === 0) { %>
+    <div class="card" style="text-align: center; padding: 40px; color: var(--text-muted);">No discount codes yet.</div>
+  <% } else { %>
+    <% for (const code of codes) { %>
+      <div class="card" style="padding: 14px; display: flex; align-items: center; gap: 14px; margin-bottom: 8px; flex-wrap: wrap;">
+        <code style="background: var(--bg-base); padding: 4px 10px; border-radius: 4px; font-weight: 700; font-size: 14px; letter-spacing: 1px;"><%= code.code %></code>
+        <span style="font-size: 13px; color: var(--accent); font-weight: 600;"><%= code.discount_percent %>% off</span>
+        <span style="font-size: 12px; color: var(--text-muted);"><%= code.current_uses %><%= code.max_uses ? '/' + code.max_uses : '' %> uses</span>
+        <span style="font-size: 10px; padding: 2px 8px; border-radius: 4px; background: <%= code.active ? 'var(--success-bg)' : 'var(--danger-bg)' %>; color: <%= code.active ? 'var(--success)' : 'var(--danger)' %>; font-weight: 600;"><%= code.active ? 'ACTIVE' : 'DISABLED' %></span>
+        <form method="POST" action="/admin/discounts/<%= code.id %>/toggle" style="margin: 0; margin-left: auto;">
+          <button type="submit" class="btn btn-secondary" style="padding: 5px 12px; font-size: 11px;"><%= code.active ? 'Disable' : 'Enable' %></button>
+        </form>
+      </div>
+    <% } %>
+  <% } %>
+</div>
+
+<script>
+  var adminTabs = document.querySelectorAll('.tab-btn');
+  var adminPanes = document.querySelectorAll('.tab-content');
+  function switchAdminTab(tabName) {
+    adminTabs.forEach(function(t) { t.classList.toggle('active', t.dataset.tab === tabName); });
+    adminPanes.forEach(function(p) { p.classList.toggle('active', p.id === 'tab-' + tabName); });
+  }
+  adminTabs.forEach(function(t) { t.addEventListener('click', function() { switchAdminTab(t.dataset.tab); }); });
+  switchAdminTab('<%= activeTab || "stats" %>');
+</script>
+
+<style>
+  @media (max-width: 640px) {
+    div[style*="grid-template-columns: repeat(4, 1fr)"] { grid-template-columns: repeat(2, 1fr) !important; }
+    div[style*="grid-template-columns: repeat(3, 1fr)"] { grid-template-columns: 1fr !important; }
+  }
+</style>
 
 <%- include('footer') %>

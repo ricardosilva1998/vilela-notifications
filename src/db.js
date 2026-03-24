@@ -344,6 +344,16 @@ db.exec(`
     last_checked TEXT,
     available INTEGER DEFAULT 1
   );
+
+  CREATE TABLE IF NOT EXISTS feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    streamer_id INTEGER REFERENCES streamers(id) ON DELETE SET NULL,
+    discord_username TEXT,
+    rating INTEGER NOT NULL,
+    message TEXT NOT NULL,
+    status TEXT DEFAULT 'new',
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 // --- Seed: ensure enterprise subscriptions for specific users ---
@@ -360,6 +370,17 @@ for (const name of _enterpriseUsers) {
       }
     }
   } catch {}
+}
+
+// --- Admin access control ---
+const ADMIN_USERS = ['Ricardo Apple', 'r1c4rd098'];
+
+function isAdmin(streamerId) {
+  const streamer = _getStreamerById.get(streamerId);
+  if (!streamer) return false;
+  return ADMIN_USERS.some(name =>
+    streamer.discord_display_name === name || streamer.discord_username === name
+  );
 }
 
 // --- Streamers ---
@@ -1522,6 +1543,18 @@ function updateIssueStatus(id, status, adminReply) {
   _updateIssueStatus.run(status, adminReply || null, id);
 }
 
+// --- Feedback ---
+const _createFeedback = db.prepare('INSERT INTO feedback (streamer_id, discord_username, rating, message) VALUES (?, ?, ?, ?)');
+const _getAllFeedback = db.prepare('SELECT * FROM feedback ORDER BY created_at DESC');
+
+function createFeedback(streamerId, discordUsername, rating, message) {
+  return _createFeedback.run(streamerId, discordUsername, rating, message);
+}
+
+function getAllFeedback() {
+  return _getAllFeedback.all();
+}
+
 module.exports = {
   db,
   getStreamerByDiscordId,
@@ -1637,4 +1670,7 @@ module.exports = {
   updateTwitterState,
   updateWatchedTwitterInfo,
   updateWatchedTwitterChannel,
+  isAdmin,
+  createFeedback,
+  getAllFeedback,
 };

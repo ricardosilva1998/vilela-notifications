@@ -63,6 +63,29 @@ async function checkLiveStatus(videoIds, apiKey) {
   return null;
 }
 
+async function getVideoDetails(videoIds, apiKey) {
+  if (!videoIds.length || !apiKey) return {};
+  const ids = videoIds.join(',');
+  const params = new URLSearchParams({
+    part: 'contentDetails',
+    id: ids,
+    key: apiKey,
+  });
+  const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?${params}`);
+  if (!res.ok) return {};
+  const data = await res.json();
+
+  const details = {};
+  for (const item of data.items || []) {
+    const duration = item.contentDetails?.duration || '';
+    // Parse ISO 8601 duration (PT1M30S, PT59S, etc.)
+    const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+    const totalSeconds = (parseInt(match?.[1] || 0) * 3600) + (parseInt(match?.[2] || 0) * 60) + parseInt(match?.[3] || 0);
+    details[item.id] = { duration: totalSeconds, isShort: totalSeconds > 0 && totalSeconds <= 60 };
+  }
+  return details;
+}
+
 function parseChannelPage(html) {
   // Extract channel ID
   const canonicalMatch = html.match(/https:\/\/www\.youtube\.com\/channel\/(UC[a-zA-Z0-9_-]+)/);
@@ -124,4 +147,4 @@ async function getChannelInfo(channelId) {
   return parseChannelPage(html);
 }
 
-module.exports = { getLatestVideos, checkLiveStatus, resolveChannelId, getChannelInfo };
+module.exports = { getLatestVideos, checkLiveStatus, getVideoDetails, resolveChannelId, getChannelInfo };

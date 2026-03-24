@@ -72,6 +72,7 @@ router.get('/account', (req, res) => {
     notificationsOverTime,
     notificationsByType,
     subscription,
+    feedbackMsg: req.query.feedback,
   });
 });
 
@@ -559,6 +560,26 @@ router.post('/guild/:guildId/twitter/:id/remove', (req, res) => {
   const { guildId, id } = req.params;
   db.removeWatchedTwitter(parseInt(id), req.streamer.id);
   res.redirect(`/dashboard/guild/${guildId}?tab=twitter&msg=removed`);
+});
+
+// --- Feedback ---
+
+router.post('/feedback', (req, res) => {
+  const rating = parseInt(req.body.rating);
+  const message = (req.body.message || '').trim();
+
+  if (!rating || rating < 1 || rating > 5 || !message) {
+    return res.redirect('/dashboard/account');
+  }
+
+  db.createFeedback(
+    req.streamer.id,
+    req.streamer.discord_display_name || req.streamer.discord_username,
+    rating,
+    message
+  );
+  console.log(`[Dashboard] Feedback from ${req.streamer.discord_username}: ${rating}/5`);
+  res.redirect('/dashboard/account?feedback=submitted');
 });
 
 // --- Report an Issue ---

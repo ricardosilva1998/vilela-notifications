@@ -153,6 +153,52 @@
   </div>
 </div>
 
+<!-- Feedback -->
+<div class="card animate-in animate-in-delay-4" style="margin-bottom: 16px;">
+  <h3 style="font-size: 15px; margin-bottom: 4px;">Give Feedback</h3>
+  <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 14px;">Help us improve! Rate your experience and share your thoughts.</p>
+  <% if (typeof feedbackMsg !== 'undefined' && feedbackMsg === 'submitted') { %>
+    <div class="alert alert-success" style="margin-bottom: 12px;">Thanks for your feedback!</div>
+  <% } %>
+  <form method="POST" action="/dashboard/feedback">
+    <div style="margin-bottom: 12px;">
+      <label style="font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 6px;">Rating</label>
+      <div style="display: flex; gap: 4px;" id="star-rating">
+        <% for (let i = 1; i <= 5; i++) { %>
+          <label style="cursor: pointer; font-size: 28px; color: var(--text-muted); transition: color 0.15s;" onmouseover="highlightStars(<%= i %>)" onmouseout="resetStars()">
+            <input type="radio" name="rating" value="<%= i %>" required style="display: none;">
+            <span class="star" data-value="<%= i %>">&#9733;</span>
+          </label>
+        <% } %>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom: 12px;">
+      <label>Your feedback</label>
+      <textarea name="message" placeholder="What do you like? What could be better?" required style="min-height: 80px;"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary" style="padding: 8px 20px; font-size: 13px;">Submit Feedback</button>
+  </form>
+</div>
+
+<script>
+  var selectedRating = 0;
+  function highlightStars(n) {
+    document.querySelectorAll('#star-rating .star').forEach(function(s) {
+      s.style.color = parseInt(s.dataset.value) <= n ? '#f1c40f' : 'var(--text-muted)';
+    });
+  }
+  function resetStars() {
+    document.querySelectorAll('#star-rating .star').forEach(function(s) {
+      s.style.color = parseInt(s.dataset.value) <= selectedRating ? '#f1c40f' : 'var(--text-muted)';
+    });
+  }
+  document.querySelectorAll('#star-rating input').forEach(function(input) {
+    input.addEventListener('change', function() {
+      selectedRating = parseInt(this.value);
+      highlightStars(selectedRating);
+    });
+  });
+</script>
 
 <style>
   @media (max-width: 640px) {

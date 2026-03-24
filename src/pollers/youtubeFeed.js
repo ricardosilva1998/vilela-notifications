@@ -1,6 +1,6 @@
-const { getLatestVideos } = require('../services/youtube');
+const { getLatestVideos, getVideoDetails } = require('../services/youtube');
 
-async function check(youtubeChannelId, channelState) {
+async function check(youtubeChannelId, channelState, apiKey) {
   const videos = await getLatestVideos(youtubeChannelId);
   const knownIds = JSON.parse(channelState.known_video_ids || '[]');
   const liveVideoId = channelState.live_video_id;
@@ -18,10 +18,19 @@ async function check(youtubeChannelId, channelState) {
     return null;
   }
 
+  // Enrich with Shorts detection if API key is available
+  let videoDetails = {};
+  if (apiKey) {
+    videoDetails = await getVideoDetails(newVideos.map(v => v.id), apiKey);
+  }
+
   // Send as plain text messages so Discord auto-generates the video player
   const videoData = newVideos.map((video) => {
-    const message = `**${video.author || 'New'} uploaded a new video!** — ${video.title}\n${video.url}`;
-    return { message };
+    const isShort = videoDetails[video.id]?.isShort || false;
+    const message = isShort
+      ? `📱 **${video.author || 'New'} posted a Short!** — ${video.title}\n${video.url}`
+      : `🎬 **${video.author || 'New'} uploaded a new video!** — ${video.title}\n${video.url}`;
+    return { message, isShort };
   });
 
   return {

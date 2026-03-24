@@ -196,7 +196,7 @@ router.get('/broadcaster/callback', async (req, res) => {
 
 router.get('/link', (req, res) => {
   const { streamer_id, discord_id } = req.query;
-  if (!streamer_id || !discord_id) return res.status(400).send('Missing parameters');
+  if (!streamer_id || !discord_id) return res.status(400).render('link-result', { success: false, twitchName: null, streamer: null });
 
   const params = new URLSearchParams({
     client_id: config.twitch.clientId,
@@ -210,10 +210,10 @@ router.get('/link', (req, res) => {
 
 router.get('/link/callback', async (req, res) => {
   const { code, state } = req.query;
-  if (!code || !state) return res.status(400).send('Missing parameters');
+  if (!code || !state) return res.status(400).render('link-result', { success: false, twitchName: null, streamer: null });
 
   const [streamerId, discordId] = state.split(':');
-  if (!streamerId || !discordId) return res.status(400).send('Invalid state');
+  if (!streamerId || !discordId) return res.status(400).render('link-result', { success: false, twitchName: null, streamer: null });
 
   try {
     const tokenRes = await fetch('https://id.twitch.tv/oauth2/token', {
@@ -244,10 +244,10 @@ router.get('/link/callback', async (req, res) => {
     db.linkUser(parseInt(streamerId), discordId, twitchUser.id, twitchUser.login);
     console.log(`[Auth] Linked Discord ${discordId} -> Twitch ${twitchUser.login}`);
 
-    res.send(`Linked! Your Twitch account (${twitchUser.display_name}) is now connected. You can close this page.`);
+    res.render('link-result', { success: true, twitchName: twitchUser.display_name, streamer: null });
   } catch (error) {
     console.error(`[Auth] Link error: ${error.message}`);
-    res.status(500).send('Linking failed');
+    res.status(500).render('link-result', { success: false, twitchName: null, streamer: null });
   }
 });
 
