@@ -483,7 +483,8 @@ function startAll() {
   setInterval(pollWeeklyDigest, config.intervals.weeklyDigest);
   setInterval(pollAllInstagram, config.intervals.instagramFeed);
   setInterval(pollAllTikTok, config.intervals.tiktokFeed);
-  setInterval(pollAllTwitter, config.intervals.twitterFeed);
+  // Twitter disabled — no free API tier available
+  // setInterval(pollAllTwitter, config.intervals.twitterFeed);
 
   console.log('[Manager] All pollers started');
 
@@ -493,7 +494,6 @@ function startAll() {
   pollAllSubSync();
   pollAllInstagram();
   pollAllTikTok();
-  pollAllTwitter();
 }
 
 module.exports = { startAll };
