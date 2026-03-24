@@ -481,8 +481,9 @@ function startAll() {
   setInterval(pollAllYouTubeLive, config.intervals.youtubeLive);
   setInterval(pollAllSubSync, config.intervals.subSync);
   setInterval(pollWeeklyDigest, config.intervals.weeklyDigest);
-  setInterval(pollAllInstagram, config.intervals.instagramFeed);
-  setInterval(pollAllTikTok, config.intervals.tiktokFeed);
+  // Instagram and TikTok disabled — no reliable free API/scraping available
+  // setInterval(pollAllInstagram, config.intervals.instagramFeed);
+  // setInterval(pollAllTikTok, config.intervals.tiktokFeed);
   // Twitter disabled — no free API tier available
   // setInterval(pollAllTwitter, config.intervals.twitterFeed);
 
@@ -492,8 +493,8 @@ function startAll() {
   pollAllTwitchLive();
   pollAllTwitchClips();
   pollAllSubSync();
-  pollAllInstagram();
-  pollAllTikTok();
+  // pollAllInstagram();
+  // pollAllTikTok();
 }
 
 module.exports = { startAll };
