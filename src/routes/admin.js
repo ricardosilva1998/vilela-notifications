@@ -146,6 +146,7 @@ router.post('/test/recap/:username', requireAdmin, async (req, res) => {
     let clips = [];
     let vodUrl = null;
     let followerCount = null;
+    let vodThumbnail = null;
     if (broadcasterId) {
       const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const allClips = await getClips(broadcasterId, since);
