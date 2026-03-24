@@ -42,24 +42,34 @@ async function login() {
     .update(IRACING_PASSWORD + IRACING_EMAIL.toLowerCase())
     .digest('base64');
 
-  const res = await fetch(`${BASE_URL}/auth`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: IRACING_EMAIL, password: hash }),
-    redirect: 'manual',
-  });
+  try {
+    const res = await fetch(`${BASE_URL}/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: IRACING_EMAIL, password: hash }),
+    });
 
-  // Collect all Set-Cookie headers
-  const setCookies = res.headers.getSetCookie?.() || [];
-  if (setCookies.length > 0) {
-    cookies = setCookies.map((c) => c.split(';')[0]).join('; ');
-    console.log('[iRacing] Authenticated successfully');
-    return true;
+    const body = await res.json().catch(() => ({}));
+    console.log(`[iRacing] Auth response: ${res.status}, authcode: ${!!body.authcode}`);
+
+    if (res.status === 200 && body.authcode) {
+      // Collect cookies from response
+      const setCookies = res.headers.getSetCookie?.() || [];
+      if (setCookies.length > 0) {
+        cookies = setCookies.map((c) => c.split(';')[0]).join('; ');
+      }
+      console.log('[iRacing] Authenticated successfully');
+      return true;
+    }
+
+    console.error(`[iRacing] Authentication failed: ${res.status}`, JSON.stringify(body));
+    cookies = '';
+    return false;
+  } catch (e) {
+    console.error(`[iRacing] Auth error: ${e.message}`);
+    cookies = '';
+    return false;
   }
-
-  console.error('[iRacing] Authentication failed:', res.status);
-  cookies = '';
-  return false;
 }
 
 /**
