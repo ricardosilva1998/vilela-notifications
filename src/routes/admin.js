@@ -30,8 +30,11 @@ router.get('/dashboard', requireAdmin, (req, res) => {
   const tierBreakdown = db.getSubscriptionsByTier();
   const revenueStats = db.getRevenueStats();
 
-  // Users tab data
-  const streamers = db.getAllStreamersAdmin();
+  // Users tab data — enrich with current tier
+  const streamers = db.getAllStreamersAdmin().map(s => ({
+    ...s,
+    currentTier: db.getStreamerTier(s.id),
+  }));
 
   // Issues tab data
   const issues = db.getAllIssues();
