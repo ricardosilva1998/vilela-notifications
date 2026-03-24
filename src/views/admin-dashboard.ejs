@@ -9,6 +9,7 @@
 <% if (msg && msg.startsWith('test_sent_')) { %><div class="alert alert-success">Test notification sent to <%= msg.split('_')[2] %> channel(s).</div><% } %>
 <% if (msg === 'test_error') { %><div class="alert alert-danger">Test failed. Check logs or verify the username exists.</div><% } %>
 <% if (msg === 'test_no_data') { %><div class="alert alert-warning">No data found for this channel (no clips, videos, etc.).</div><% } %>
+<% if (msg === 'iracing_not_configured') { %><div class="alert alert-danger">iRacing API not configured. Add IRACING_EMAIL and IRACING_PASSWORD environment variables on Railway.</div><% } %>
 
 <!-- Tab Bar -->
 <div class="tab-bar animate-in animate-in-delay-1">
@@ -379,7 +380,7 @@
     <!-- iRacing Race Result -->
     <div class="card" style="padding: 20px;">
       <h3 style="font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
-        <span style="color: #1a1a2e;">&#9889;</span> iRacing Race Result
+        <span style="color: var(--text-primary);">&#127946;</span> iRacing Race Result
       </h3>
       <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Posts the most recent race result for an iRacing driver.</p>
       <form method="POST" action="" id="form-iracing" style="display: flex; gap: 8px;">

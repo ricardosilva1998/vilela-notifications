@@ -440,7 +440,7 @@ router.post('/test/welcome', requireAdmin, async (req, res) => {
 router.post('/test/iracing/:customerId', requireAdmin, async (req, res) => {
   const customerId = req.params.customerId;
   try {
-    if (!iracing.isConfigured()) return res.redirect(`/admin/dashboard?tab=testing&msg=test_error`);
+    if (!iracing.isConfigured()) return res.redirect(`/admin/dashboard?tab=testing&msg=iracing_not_configured`);
 
     const recentRaces = await iracing.getRecentRaces(customerId);
     if (!recentRaces || recentRaces.length === 0) return res.redirect(`/admin/dashboard?tab=testing&msg=test_no_data`);
