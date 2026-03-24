@@ -187,20 +187,21 @@ router.post('/test/recap/:username', requireAdmin, async (req, res) => {
     let sent = 0;
     for (const w of watchers) {
       try {
-        await sendNotification(w.live_channel_id, embed, {
-          streamerId: w.streamer_id,
-          guildId: w.guild_id,
-          type: 'twitch_recap',
-        });
-        // Send VOD as plain text for Discord video player
+        // Send VOD first as plain text (Discord video player)
         if (recapData.vodUrl) {
           await sendNotification(w.live_channel_id, null, {
             streamerId: w.streamer_id,
             guildId: w.guild_id,
             type: 'twitch_recap',
-            contentOnly: `📺 **Watch the full VOD:** ${recapData.vodUrl}`,
+            contentOnly: `📺 **${username} stream recap**\n${recapData.vodUrl}`,
           });
         }
+        // Then send stats embed below
+        await sendNotification(w.live_channel_id, embed, {
+          streamerId: w.streamer_id,
+          guildId: w.guild_id,
+          type: 'twitch_recap',
+        });
         sent++;
       } catch (e) {
         console.error(`[TestRecap] Send failed: ${e.message}`);
