@@ -32,8 +32,16 @@ async function pollAllTwitchLive() {
         continue;
       }
 
-      if (result.stateUpdate) db.updateChannelState(twitch_username, result.stateUpdate);
-      if (result.clearSession) db.clearStreamSession(twitch_username);
+      if (result.stateUpdate) {
+        db.updateChannelState(twitch_username, result.stateUpdate);
+        if (result.stateUpdate.is_live === 1) {
+          console.log(`[TwitchLive] ${twitch_username} went LIVE — "${result.stateUpdate.stream_title}" (${result.stateUpdate.stream_category})`);
+        }
+      }
+      if (result.clearSession) {
+        console.log(`[TwitchLive] ${twitch_username} went OFFLINE — clearing session`);
+        db.clearStreamSession(twitch_username);
+      }
 
       // Go-live notification (existing behavior)
       if (result.notify) {
@@ -53,6 +61,7 @@ async function pollAllTwitchLive() {
 
       // Stream recap on offline
       if (result.recapData) {
+        console.log(`[Recap] ${twitch_username} went offline — duration: ${Math.floor(result.recapData.duration / 60)}m, clips: ${result.recapData.clips.length}`);
         await sendRecaps(twitch_username, result.recapData);
       }
 

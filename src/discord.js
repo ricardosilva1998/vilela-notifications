@@ -54,7 +54,7 @@ function buildRecapEmbed({ twitchUsername, title, category, duration, thumbnailU
   ];
   if (clips && clips.length > 0) {
     const clipList = clips
-      .map((clip, i) => `${i + 1}. [${clip.title}](${clip.url}) (${clip.viewCount} views)`)
+      .map((clip, i) => `${i + 1}. [${clip.title}](${clip.url}) (${clip.view_count || 0} views)`)
       .join('\n');
     fields.push({ name: 'Top Clips', value: clipList });
   }
