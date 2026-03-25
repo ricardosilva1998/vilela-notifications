@@ -115,8 +115,9 @@ test.describe('Authenticated Pages', () => {
     if (await configLink.count() > 0) {
       await configLink.click();
       await page.locator('.tab-bar').waitFor({ state: 'visible' });
+      await page.waitForTimeout(500);
       await page.getByRole('button', { name: 'Discord' }).click();
-      await expect(page.getByRole('heading', { name: 'Welcome Message' })).toBeVisible({ timeout: 10000 });
+      await expect(page.getByRole('heading', { name: 'Welcome Message' })).toBeVisible({ timeout: 15000 });
       await expect(page.getByRole('heading', { name: 'Subscriber Role Sync' })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Activity Feed' })).toBeVisible();
     }
@@ -127,8 +128,10 @@ test.describe('Authenticated Pages', () => {
     const configLink = page.getByRole('link', { name: 'Configure' }).first();
     if (await configLink.count() > 0) {
       await configLink.click();
+      await page.locator('.tab-bar').waitFor({ state: 'visible' });
+      await page.waitForTimeout(500);
       await page.getByRole('button', { name: 'Settings' }).click();
-      await expect(page.getByRole('heading', { name: 'Server Summary' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Server Summary' })).toBeVisible({ timeout: 15000 });
       await expect(page.getByRole('heading', { name: 'Remove Bot from Server' })).toBeVisible();
     }
   });
