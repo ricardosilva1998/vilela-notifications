@@ -377,17 +377,7 @@
       </form>
     </div>
 
-    <!-- iRacing Race Result -->
-    <div class="card" style="padding: 20px;">
-      <h3 style="font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
-        <span style="color: var(--text-primary);">&#127946;</span> iRacing Race Result
-      </h3>
-      <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Posts the most recent race result for an iRacing driver.</p>
-      <form method="POST" action="" id="form-iracing" style="display: flex; gap: 8px;">
-        <input type="text" id="input-iracing" placeholder="iRacing Customer ID" style="flex: 1; padding: 8px 12px; background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 13px;">
-        <button type="submit" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px; white-space: nowrap;" onclick="this.form.action='/admin/test/iracing/' + document.getElementById('input-iracing').value; return !!document.getElementById('input-iracing').value;">Send</button>
-      </form>
-    </div>
+    <!-- iRacing Race Result — disabled, OAuth credentials paused by iRacing -->
 
   </div>
 </div>

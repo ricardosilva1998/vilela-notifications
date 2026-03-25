@@ -563,7 +563,8 @@ function startAll() {
   // setInterval(pollAllTikTok, config.intervals.tiktokFeed);
   // Twitter disabled — no free API tier available
   // setInterval(pollAllTwitter, config.intervals.twitterFeed);
-  setInterval(pollAllIracingResults, config.intervals.iracingResults);
+  // iRacing disabled — OAuth client credentials paused by iRacing
+  // setInterval(pollAllIracingResults, config.intervals.iracingResults);
 
   console.log('[Manager] All pollers started');
 
