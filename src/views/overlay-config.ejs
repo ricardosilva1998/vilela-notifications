@@ -1,8 +1,8 @@
 <%- include('header', { title: 'Overlay Config', streamer: streamer }) %>
 
-<a href="/dashboard" style="color: var(--text-secondary); font-size: 13px; font-family: var(--font-display); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+<a href="/dashboard/twitch" style="color: var(--text-secondary); font-size: 13px; font-family: var(--font-display); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-  Back to Dashboard
+  Back to Twitch
 </a>
 <h2 style="margin: 16px 0 8px; font-size: 24px; font-weight: 700;" class="animate-in">Overlay Configuration</h2>
 <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 24px;">Set up your stream overlay to show live alerts for follows, subscriptions, bits, and donations.</p>
@@ -39,7 +39,7 @@
     <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">
       Generate a unique overlay URL to use in OBS as a Browser Source.
     </p>
-    <form method="POST" action="/dashboard/overlay/generate-token" style="margin: 0;">
+    <form method="POST" action="/dashboard/twitch/overlay/generate-token" style="margin: 0;">
       <button type="submit" class="btn btn-primary">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
         Generate Overlay URL
@@ -49,7 +49,7 @@
 </div>
 
 <!-- Main Settings Form -->
-<form method="POST" action="/dashboard/overlay">
+<form method="POST" action="/dashboard/twitch/overlay">
 
   <!-- Enable/Disable -->
   <div class="card animate-in animate-in-delay-1">
@@ -277,7 +277,7 @@
     const fb = document.getElementById('test-feedback');
     fb.style.display = 'none';
 
-    fetch('/dashboard/overlay/test/' + type, { method: 'POST' })
+    fetch('/dashboard/twitch/overlay/test/' + type, { method: 'POST' })
       .then(r => r.json())
       .then(data => {
         if (data.ok) {
