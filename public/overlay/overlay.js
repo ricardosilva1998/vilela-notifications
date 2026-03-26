@@ -1,5 +1,6 @@
 const container = document.getElementById('notification-container');
 let overlayConfig = {};
+let overlayDesigns = {};
 const queue = [];
 let isPlaying = false;
 
@@ -177,6 +178,7 @@ evtSource.onmessage = (e) => {
 
   if (data.type === 'config') {
     overlayConfig = data.config;
+    if (data.designs) overlayDesigns = data.designs;
     return;
   }
 
@@ -240,6 +242,9 @@ function showNotification(event) {
   card.className = `alert-card ${cardClass}${isSubLike ? ' sub-shake' : ''} entering`;
   card.innerHTML = buildBannerContent(event);
   container.appendChild(card);
+
+  // Apply custom overlay design if available
+  applyCustomDesign(card, event.type);
 
   // Spawn full-screen effects
   spawnEffects(event.type);
@@ -501,6 +506,89 @@ function spawnRobots() {
   const glow = document.createElement('div');
   glow.className = 'screen-effect edge-glow';
   container.appendChild(glow);
+}
+
+// ─── Custom design application ─────────────────────────────────
+function darken(hex, factor) {
+  if (!factor) factor = 0.35;
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgb(${Math.round(r*factor)},${Math.round(g*factor)},${Math.round(b*factor)})`;
+}
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function applyCustomDesign(card, eventType) {
+  const design = overlayDesigns[eventType];
+  if (!design) return;
+
+  // Background
+  const dark = darken(design.bg_color);
+  card.style.background = `linear-gradient(160deg, ${dark}, ${design.bg_color} 40%, ${dark})`;
+
+  // Border & shadow
+  card.style.borderColor = hexToRgba(design.border_color, 0.5);
+  card.style.boxShadow = `0 8px 32px ${hexToRgba(design.border_color, 0.25)}, 0 4px 24px rgba(0,0,0,0.6)`;
+  card.style.borderRadius = (design.border_radius || 16) + 'px';
+  card.style.width = (design.card_width || 420) + 'px';
+
+  // Position
+  const pos = design.card_position || 'top-center';
+  const [vPos, hPos] = pos.split('-');
+  card.style.position = 'absolute';
+  if (vPos === 'top') { card.style.top = '16px'; card.style.bottom = ''; }
+  else if (vPos === 'bot') { card.style.bottom = '16px'; card.style.top = ''; }
+  else { card.style.top = '50%'; card.style.bottom = ''; }
+
+  if (hPos === 'center' || !hPos) {
+    card.style.left = '50%';
+    card.style.right = '';
+    const offset = vPos === 'mid' ? '-50%' : '-50%';
+    card.style.transform = vPos === 'mid' ? 'translate(-50%,-50%)' : 'translateX(-50%)';
+  } else if (hPos === 'left') {
+    card.style.left = '16px';
+    card.style.right = '';
+    card.style.transform = vPos === 'mid' ? 'translateY(-50%)' : 'none';
+  } else {
+    card.style.right = '16px';
+    card.style.left = '';
+    card.style.transform = vPos === 'mid' ? 'translateY(-50%)' : 'none';
+  }
+
+  // Top accent
+  const accent = card.querySelector('.top-accent');
+  if (accent) {
+    const accentDark = darken(design.accent_color, 0.6);
+    accent.style.background = `linear-gradient(90deg, ${accentDark}, ${design.accent_color}, ${accentDark})`;
+    accent.style.borderRadius = (design.border_radius || 16) + 'px ' + (design.border_radius || 16) + 'px 0 0';
+  }
+
+  // Event label color
+  const labelEl = card.querySelector('.event-label');
+  if (labelEl) {
+    labelEl.style.color = design.accent_color;
+    if (design.event_label) labelEl.textContent = design.event_label;
+  }
+
+  // Username font & color
+  const usernameEl = card.querySelector('.username');
+  if (usernameEl) {
+    usernameEl.style.color = design.text_color || '#ffffff';
+    if (design.username_size) usernameEl.style.fontSize = design.username_size + 'px';
+    if (design.font_family && design.font_family !== 'System Default') {
+      usernameEl.style.fontFamily = design.font_family;
+    }
+  }
+
+  // Car track accent
+  const track = card.querySelector('.car-track');
+  if (track) track.style.background = hexToRgba(design.accent_color, 0.06);
 }
 
 // ─── Utilities ─────────────────────────────────────────────────

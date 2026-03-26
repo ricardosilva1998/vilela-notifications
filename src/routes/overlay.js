@@ -42,7 +42,13 @@ router.get('/events/:token', (req, res) => {
     donation: { enabled: streamer.overlay_donation_enabled, duration: streamer.overlay_donation_duration },
     volume: streamer.overlay_volume,
   };
-  res.write(`data: ${JSON.stringify({ type: 'config', config })}\n\n`);
+
+  // Include overlay designs keyed by event type
+  const designs = db.getAllOverlayDesigns(streamer.id);
+  const designMap = {};
+  designs.forEach(d => { designMap[d.event_type] = d; });
+
+  res.write(`data: ${JSON.stringify({ type: 'config', config, designs: designMap })}\n\n`);
 
   // Listen for events on the bus
   const listener = (event) => {
