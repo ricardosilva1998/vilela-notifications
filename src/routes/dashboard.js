@@ -938,40 +938,30 @@ router.post('/youtube-chatbot/test/:eventType', (req, res) => {
 // Connect to YouTube live stream
 router.post('/youtube-chatbot/connect', async (req, res) => {
   try {
-    const { getLiveChatId, findActiveLiveStream } = require('../services/youtube');
-    const appConfig = require('../config');
+    const { refreshStreamerYoutubeToken, getActiveBroadcast } = require('../services/youtube');
+    const streamer = req.streamer;
 
-    // Find the streamer's YouTube channel
-    let channelId = req.streamer.youtube_channel_id;
-    if (!channelId) {
-      // Fallback: find from watched YouTube channels
-      const allWatched = db.getAllUniqueWatchedYoutubeChannels();
-      // Get guilds for this streamer to find their channels
-      const guilds = db.getGuildsForStreamer(req.streamer.id);
-      for (const g of guilds) {
-        const ytChannels = db.getWatchedYoutubeChannelsForGuild(g.guild_id, req.streamer.id);
-        if (ytChannels.length > 0) {
-          channelId = ytChannels[0].youtube_channel_id;
-          break;
-        }
+    if (!streamer.yt_access_token) {
+      return res.redirect('/dashboard/youtube-chatbot?error=YouTube account not connected. Click "Connect YouTube Account" first.');
+    }
+
+    // Refresh token if expired
+    let accessToken = streamer.yt_access_token;
+    if (streamer.yt_token_expires_at && Date.now() >= streamer.yt_token_expires_at) {
+      accessToken = await refreshStreamerYoutubeToken(streamer);
+      if (!accessToken) {
+        return res.redirect('/dashboard/youtube-chatbot?error=Failed to refresh YouTube token. Try reconnecting your account.');
       }
     }
-    if (!channelId) {
-      return res.redirect('/dashboard/youtube-chatbot?error=No YouTube channel linked. Add a YouTube channel in your guild config first.');
-    }
 
-    const videoId = await findActiveLiveStream(channelId, appConfig.youtube.apiKey);
-    if (!videoId) {
-      return res.redirect('/dashboard/youtube-chatbot?error=No active live stream found on your YouTube channel.');
-    }
-
-    const liveChatId = await getLiveChatId(videoId, appConfig.youtube.apiKey);
-    if (!liveChatId) {
-      return res.redirect('/dashboard/youtube-chatbot?error=Could not find live chat for your stream.');
+    // Find active broadcast using the streamer's own token
+    const broadcast = await getActiveBroadcast(accessToken);
+    if (!broadcast || !broadcast.liveChatId) {
+      return res.redirect('/dashboard/youtube-chatbot?error=No active live stream found. Make sure you are live on YouTube.');
     }
 
     const { youtubeChatManager } = require('../services/youtubeLiveChat');
-    youtubeChatManager.startPolling(req.streamer.id, liveChatId);
+    youtubeChatManager.startPolling(req.streamer.id, broadcast.liveChatId);
 
     res.redirect('/dashboard/youtube-chatbot?connected=1');
   } catch (e) {

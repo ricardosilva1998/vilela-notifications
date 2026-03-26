@@ -194,6 +194,69 @@ router.get('/broadcaster/callback', async (req, res) => {
   }
 });
 
+// --- YouTube OAuth (streamer links their YouTube account) ---
+
+router.get('/youtube', (req, res) => {
+  if (!req.streamer) return res.redirect('/auth/login');
+  const redirectUri = `${config.app.url}/auth/youtube/callback`;
+  const params = new URLSearchParams({
+    client_id: config.youtube.botClientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: 'https://www.googleapis.com/auth/youtube.readonly',
+    access_type: 'offline',
+    prompt: 'consent',
+    state: String(req.streamer.id),
+  });
+  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+});
+
+router.get('/youtube/callback', async (req, res) => {
+  const { code, state: streamerId, error } = req.query;
+  if (error) return res.redirect('/dashboard/youtube-chatbot?error=' + encodeURIComponent(error));
+  if (!code || !streamerId) return res.redirect('/dashboard/youtube-chatbot?error=Missing parameters');
+
+  try {
+    const redirectUri = `${config.app.url}/auth/youtube/callback`;
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: config.youtube.botClientId,
+        client_secret: config.youtube.botClientSecret,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: redirectUri,
+      }),
+    });
+    if (!tokenRes.ok) throw new Error(`Token exchange failed: ${tokenRes.status}`);
+    const tokenData = await tokenRes.json();
+
+    // Get the user's YouTube channel info
+    const channelRes = await fetch('https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+    let channelName = null;
+    if (channelRes.ok) {
+      const channelData = await channelRes.json();
+      channelName = channelData.items?.[0]?.snippet?.title || null;
+    }
+
+    db.updateStreamerYoutubeTokens(
+      parseInt(streamerId),
+      tokenData.access_token,
+      tokenData.refresh_token,
+      Date.now() + tokenData.expires_in * 1000 - 60_000,
+      channelName
+    );
+
+    res.redirect('/dashboard/youtube-chatbot?connected_yt=1');
+  } catch (err) {
+    console.error('[Auth] YouTube OAuth error:', err.message);
+    res.redirect('/dashboard/youtube-chatbot?error=' + encodeURIComponent(err.message));
+  }
+});
+
 // --- User Linking (community members link Twitch for sub sync) ---
 
 router.get('/link', (req, res) => {

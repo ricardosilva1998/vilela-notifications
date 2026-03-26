@@ -232,4 +232,46 @@ async function findActiveLiveStream(channelId, apiKey) {
   return data.items[0].id.videoId;
 }
 
-module.exports = { getLatestVideos, checkLiveStatus, getVideoDetails, resolveChannelId, getChannelInfo, getLiveChatId, refreshYoutubeBotToken, sendYoutubeChatMessage, fetchLiveChatMessages, findActiveLiveStream };
+async function refreshStreamerYoutubeToken(streamer) {
+  const db = require('../db');
+  if (!streamer.yt_refresh_token) return null;
+
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: config.youtube.botClientId,
+      client_secret: config.youtube.botClientSecret,
+      refresh_token: streamer.yt_refresh_token,
+      grant_type: 'refresh_token',
+    }),
+  });
+
+  if (!res.ok) return null;
+  const data = await res.json();
+
+  db.updateStreamerYoutubeTokens(
+    streamer.id,
+    data.access_token,
+    data.refresh_token || streamer.yt_refresh_token,
+    Date.now() + data.expires_in * 1000 - 60_000,
+    streamer.yt_channel_name
+  );
+
+  return data.access_token;
+}
+
+async function getActiveBroadcast(accessToken) {
+  const res = await fetch('https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet&broadcastStatus=active&mine=true', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!data.items || data.items.length === 0) return null;
+  return {
+    liveChatId: data.items[0].snippet.liveChatId,
+    title: data.items[0].snippet.title,
+  };
+}
+
+module.exports = { getLatestVideos, checkLiveStatus, getVideoDetails, resolveChannelId, getChannelInfo, getLiveChatId, refreshYoutubeBotToken, sendYoutubeChatMessage, fetchLiveChatMessages, findActiveLiveStream, refreshStreamerYoutubeToken, getActiveBroadcast };

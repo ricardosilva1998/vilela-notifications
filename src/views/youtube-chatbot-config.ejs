@@ -34,30 +34,38 @@
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
     Live Stream Connection
   </h3>
-  <% if (ytPolling) { %>
-    <p style="color: var(--success); font-size: 14px; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+  <% if (streamer.yt_access_token) { %>
+    <p style="color: var(--success); font-size: 14px; display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-      Bot is connected and polling live chat
+      YouTube account connected<%= streamer.yt_channel_name ? ': <strong>' + streamer.yt_channel_name + '</strong>' : '' %>
     </p>
-    <form method="POST" action="/dashboard/youtube-chatbot/disconnect" style="margin: 0;">
-      <button type="submit" class="btn btn-secondary" style="font-size: 13px; padding: 8px 16px;">Disconnect</button>
-    </form>
+    <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 12px;">
+      <a href="/auth/youtube" style="color: var(--accent);">Reconnect with a different account</a>
+    </p>
   <% } else { %>
     <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px; line-height: 1.5;">
-      Connect the bot to your active YouTube live stream. It will automatically detect your stream and start polling chat.
+      Connect your YouTube account so we can detect your live streams and join your chat.
     </p>
-    <% if (!hasYoutubeChannel) { %>
-      <p style="color: var(--warning, #f7c948); font-size: 13px; margin-bottom: 12px;">
-        ⚠️ No YouTube channel linked. Set your YouTube channel in the guild config first.
-      </p>
-    <% } else { %>
-      <form method="POST" action="/dashboard/youtube-chatbot/connect">
-        <button type="submit" class="btn btn-primary" style="font-size: 13px; padding: 10px 20px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-          Connect to My Live Stream
-        </button>
+    <a href="/auth/youtube" class="btn btn-primary" style="font-size: 13px; padding: 10px 20px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.5 7.7a2.8 2.8 0 0 0-2-2C18.9 5 12 5 12 5s-6.9 0-8.5.7a2.8 2.8 0 0 0-2 2A29 29 0 0 0 1 12a29 29 0 0 0 .5 4.3 2.8 2.8 0 0 0 2 2c1.6.7 8.5.7 8.5.7s6.9 0 8.5-.7a2.8 2.8 0 0 0 2-2A29 29 0 0 0 23 12a29 29 0 0 0-.5-4.3z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/></svg>
+      Connect YouTube Account
+    </a>
+  <% } %>
+
+  <% if (ytPolling) { %>
+    <div style="margin-top: 12px; padding: 12px 16px; background: rgba(62,207,142,0.08); border: 1px solid rgba(62,207,142,0.2); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: space-between;">
+      <span style="color: var(--success); font-size: 13px; font-weight: 600;">● Bot is polling live chat</span>
+      <form method="POST" action="/dashboard/youtube-chatbot/disconnect" style="margin: 0;">
+        <button type="submit" class="btn btn-secondary" style="font-size: 12px; padding: 6px 14px;">Disconnect</button>
       </form>
-    <% } %>
+    </div>
+  <% } else if (streamer.yt_access_token) { %>
+    <form method="POST" action="/dashboard/youtube-chatbot/connect" style="margin-top: 12px;">
+      <button type="submit" class="btn btn-primary" style="font-size: 13px; padding: 10px 20px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        Connect to My Live Stream
+      </button>
+    </form>
   <% } %>
 </div>
 

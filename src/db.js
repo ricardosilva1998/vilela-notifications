@@ -223,6 +223,20 @@ try {
   }
 }
 
+// Migration: Add YouTube OAuth columns to streamers
+{
+  const cols = db.pragma('table_info(streamers)').map(c => c.name);
+  if (!cols.includes('yt_access_token')) {
+    db.exec(`
+      ALTER TABLE streamers ADD COLUMN yt_access_token TEXT;
+      ALTER TABLE streamers ADD COLUMN yt_refresh_token TEXT;
+      ALTER TABLE streamers ADD COLUMN yt_token_expires_at INTEGER;
+      ALTER TABLE streamers ADD COLUMN yt_channel_name TEXT;
+    `);
+    console.log('[DB] Added YouTube OAuth columns to streamers');
+  }
+}
+
 // --- Schema ---
 
 db.exec(`
@@ -2008,6 +2022,13 @@ function updateYoutubeChatbotConfig(streamerId, config) {
   db.prepare(`UPDATE streamers SET ${fields.join(', ')} WHERE id = ?`).run(...values);
 }
 
+function updateStreamerYoutubeTokens(streamerId, accessToken, refreshToken, expiresAt, channelName) {
+  db.prepare(`
+    UPDATE streamers SET yt_access_token = ?, yt_refresh_token = ?, yt_token_expires_at = ?, yt_channel_name = ?
+    WHERE id = ?
+  `).run(accessToken, refreshToken, expiresAt, channelName, streamerId);
+}
+
 function getYoutubeChatbotEnabledStreamers() {
   return db.prepare(`
     SELECT * FROM streamers
@@ -2163,4 +2184,5 @@ module.exports = {
   updateChatbotConfig,
   updateYoutubeChatbotConfig,
   getYoutubeChatbotEnabledStreamers,
+  updateStreamerYoutubeTokens,
 };
