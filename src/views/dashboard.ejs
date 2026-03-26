@@ -1,5 +1,12 @@
 <%- include('header', { title: 'Dashboard', streamer: streamer }) %>
 
+<style>
+  .tab-discord.active { background: #5865F2; }
+  .tab-twitch.active { background: #9146ff; }
+  .tab-youtube.active { background: #ff0000; }
+  .tab-kick.active { background: #53fc18; color: #000; }
+</style>
+
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px;" class="animate-in">
   <div style="display: flex; align-items: center; gap: 12px;">
     <h2 style="font-size: 24px; font-weight: 700;"><%= t('dashboard.title') %></h2>
@@ -13,6 +20,28 @@
 <% if (msg === 'youtube_saved') { %><div class="alert alert-success"><%= t('dashboard.youtubeSaved') %></div><% } %>
 <% if (msg === 'guild_limit') { %><div class="alert alert-warning"><%= t('dashboard.guildLimit') %></div><% } %>
 <% if (msg === 'already_claimed') { %><div class="alert alert-danger"><%= t('dashboard.alreadyClaimed') %></div><% } %>
+
+<!-- Platform Tabs -->
+<div class="tab-bar animate-in animate-in-delay-1">
+  <button class="tab-btn tab-discord" data-tab="discord">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.9 5a19.5 19.5 0 0 0-4.8-1.5 14.6 14.6 0 0 0-.6 1.3 18 18 0 0 0-5 0A14 14 0 0 0 7.9 3.5 19.5 19.5 0 0 0 3.1 5 20.6 20.6 0 0 0 .5 17.6a19.6 19.6 0 0 0 6 3 14.8 14.8 0 0 0 1.3-2 12.7 12.7 0 0 1-2-.9l.5-.4a14 14 0 0 0 11.9 0l.5.4a12.7 12.7 0 0 1-2 .9 14.8 14.8 0 0 0 1.3 2 19.6 19.6 0 0 0 6-3A20.6 20.6 0 0 0 21 5z"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/></svg>
+    Discord
+  </button>
+  <button class="tab-btn tab-twitch" data-tab="twitch">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2H3v16h5v4l4-4h5l4-4V2zM11 11V7M16 11V7"/></svg>
+    Twitch
+  </button>
+  <button class="tab-btn tab-youtube" data-tab="youtube">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.5 7.7a2.8 2.8 0 0 0-2-2C18.9 5 12 5 12 5s-6.9 0-8.5.7a2.8 2.8 0 0 0-2 2A29 29 0 0 0 1 12a29 29 0 0 0 .5 4.3 2.8 2.8 0 0 0 2 2c1.6.7 8.5.7 8.5.7s6.9 0 8.5-.7a2.8 2.8 0 0 0 2-2A29 29 0 0 0 23 12a29 29 0 0 0-.5-4.3z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/></svg>
+    YouTube
+  </button>
+  <button class="tab-btn tab-kick" data-tab="kick">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    Kick
+  </button>
+</div>
+
+<div class="tab-content active" id="tab-discord">
 
 <!-- Quick Links -->
 <div style="display: flex; gap: 8px; margin-bottom: 28px; flex-wrap: wrap;" class="animate-in animate-in-delay-1">
@@ -254,6 +283,60 @@
   </div>
 <% } %>
 
+</div><!-- end tab-discord -->
+
+<div class="tab-content" id="tab-twitch">
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+
+    <!-- Overlay Card -->
+    <div class="card animate-in" style="padding: 24px;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+        <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(145,71,255,0.15); display: flex; align-items: center; justify-content: center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9146ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <h3 style="font-size: 16px; font-weight: 700;">OBS Overlay</h3>
+      </div>
+      <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px; line-height: 1.5;">
+        Configure animated notification banners for follows, subs, bits, donations, and raids in your OBS stream.
+      </p>
+      <a href="/dashboard/overlay" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px; text-decoration: none;">Configure Overlay</a>
+    </div>
+
+    <!-- Chatbot Card -->
+    <div class="card animate-in animate-in-delay-1" style="padding: 24px;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+        <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(145,71,255,0.15); display: flex; align-items: center; justify-content: center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9146ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <h3 style="font-size: 16px; font-weight: 700;">Chatbot</h3>
+      </div>
+      <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px; line-height: 1.5;">
+        Manage your Twitch chatbot — thank-you messages for events and custom chat commands.
+      </p>
+      <a href="/dashboard/chatbot" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px; text-decoration: none;">Configure Chatbot</a>
+    </div>
+
+  </div>
+</div>
+
+<div class="tab-content" id="tab-youtube">
+  <div class="card" style="text-align: center; padding: 48px 24px;">
+    <div style="font-size: 48px; margin-bottom: 16px;">🎬</div>
+    <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">YouTube</h3>
+    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 4px;">Coming Soon</p>
+    <p style="color: var(--text-muted); font-size: 13px;">Chatbot and overlay support for YouTube live streams is on the way.</p>
+  </div>
+</div>
+
+<div class="tab-content" id="tab-kick">
+  <div class="card" style="text-align: center; padding: 48px 24px;">
+    <div style="font-size: 48px; margin-bottom: 16px;">⚡</div>
+    <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">Kick</h3>
+    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 4px;">Coming Soon</p>
+    <p style="color: var(--text-muted); font-size: 13px;">Kick.com integration with chatbot and overlay support is coming.</p>
+  </div>
+</div>
+
 <script>
 function toggleStats(guildId) {
   var panel = document.getElementById('stats-' + guildId);
@@ -275,5 +358,16 @@ function toggleStats(guildId) {
     div[style*="grid-template-columns: repeat(2, 1fr)"] { grid-template-columns: 1fr !important; }
   }
 </style>
+
+<script>
+  const tabs = document.querySelectorAll('.tab-btn');
+  const panes = document.querySelectorAll('.tab-content');
+  function switchTab(tabName) {
+    tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+    panes.forEach(p => p.classList.toggle('active', p.id === 'tab-' + tabName));
+  }
+  tabs.forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+  switchTab('discord');
+</script>
 
 <%- include('footer') %>
