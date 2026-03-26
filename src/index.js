@@ -22,6 +22,13 @@ client.once('ready', async () => {
     // Start all pollers
     startAll();
 
+    const { eventSubManager } = require('./services/eventsub');
+    const { streamElementsManager } = require('./services/streamelements');
+
+    // Start overlay event sources
+    eventSubManager.startAll();
+    streamElementsManager.startAll();
+
     // Start web dashboard
     server.start();
 
