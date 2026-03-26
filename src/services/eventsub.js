@@ -102,6 +102,9 @@ class EventSubClient {
         this.ws = new WebSocket(reconnectUrl);
         this.ws.on('message', (data) => this.handleMessage(data));
         this.ws.on('open', () => oldWs.close());
+        this.ws.on('error', (err) => {
+          console.error(`[EventSub] Reconnect error for streamer ${this.streamerId}:`, err.message);
+        });
         this.ws.on('close', (code) => {
           if (this.running && code !== 1000) {
             setTimeout(() => this.connect(), this.reconnectDelay);

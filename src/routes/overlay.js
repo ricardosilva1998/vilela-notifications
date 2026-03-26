@@ -17,7 +17,7 @@ router.get('/:token', (req, res) => {
 </head>
 <body>
   <div id="notification-container"></div>
-  <script>window.OVERLAY_TOKEN = '${streamer.overlay_token}';</script>
+  <script>window.OVERLAY_TOKEN = ${JSON.stringify(streamer.overlay_token)};</script>
   <script src="/overlay/overlay.js"></script>
 </body>
 </html>`);
