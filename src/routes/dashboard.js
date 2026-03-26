@@ -1135,4 +1135,29 @@ router.post('/report', (req, res) => {
   res.redirect('/dashboard/report?msg=submitted');
 });
 
+// --- Overlay Builder ---
+
+router.get('/overlay-builder', (req, res) => {
+  const designs = db.getAllOverlayDesigns(req.streamer.id);
+  const overlayUrl = req.streamer.overlay_token
+    ? `${config.app.url}/overlay/${req.streamer.overlay_token}`
+    : null;
+  res.render('overlay-builder', { streamer: req.streamer, designs: JSON.stringify(designs), overlayUrl });
+});
+
+router.post('/overlay-builder/save', (req, res) => {
+  const { eventType, design } = req.body;
+  if (!eventType || !design) return res.status(400).json({ error: 'Missing data' });
+  const parsed = typeof design === 'string' ? JSON.parse(design) : design;
+  db.saveOverlayDesign(req.streamer.id, eventType, parsed);
+  res.json({ ok: true });
+});
+
+router.post('/overlay-builder/reset', (req, res) => {
+  const { eventType } = req.body;
+  if (!eventType) return res.status(400).json({ error: 'Missing event type' });
+  db.deleteOverlayDesign(req.streamer.id, eventType);
+  res.json({ ok: true });
+});
+
 module.exports = router;
