@@ -262,7 +262,8 @@ async function refreshStreamerYoutubeToken(streamer) {
 }
 
 async function getActiveBroadcast(accessToken) {
-  const res = await fetch('https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet&broadcastStatus=active&mine=true', {
+  // Use mine=true to get all broadcasts, then filter for active ones
+  const res = await fetch('https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet,status&mine=true&maxResults=10', {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!res.ok) {
@@ -271,11 +272,18 @@ async function getActiveBroadcast(accessToken) {
     return null;
   }
   const data = await res.json();
-  console.log(`[YouTube] liveBroadcasts.list: ${data.items?.length || 0} active broadcasts`);
-  if (!data.items || data.items.length === 0) return null;
+  // Find one that is currently live
+  const active = (data.items || []).find(item =>
+    item.status?.lifeCycleStatus === 'live' || item.status?.lifeCycleStatus === 'liveStarting'
+  );
+  if (!active) {
+    console.log(`[YouTube] No active broadcast found (${data.items?.length || 0} total broadcasts)`);
+    return null;
+  }
+  console.log(`[YouTube] Found active broadcast: "${active.snippet.title}"`);
   return {
-    liveChatId: data.items[0].snippet.liveChatId,
-    title: data.items[0].snippet.title,
+    liveChatId: active.snippet.liveChatId,
+    title: active.snippet.title,
   };
 }
 
