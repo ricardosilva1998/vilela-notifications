@@ -32,74 +32,60 @@
 <!-- ==================== CONNECTION TAB ==================== -->
 <div class="tab-content" id="tab-connection">
 
-  <% if (bot_linked == '1') { %>
-    <div style="background: var(--success-bg); border: 1px solid rgba(62,207,142,0.2); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 20px; font-size: 14px; color: var(--success); display: flex; align-items: center; gap: 8px;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-      Bot account connected successfully!
-    </div>
-  <% } %>
-  <% if (bot_error) { %>
-    <div style="background: var(--danger-bg); border: 1px solid rgba(240,68,56,0.2); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 20px; font-size: 14px; color: var(--danger); display: flex; align-items: center; gap: 8px;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      Failed to connect bot account: <%= bot_error %>
-    </div>
-  <% } %>
-
-  <!-- Bot Connection -->
   <div class="card animate-in">
     <h3>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      Bot Account
+      Bot Status
     </h3>
-    <% if (streamer.bot_username) { %>
+    <% if (botConnected && botUsername) { %>
       <p style="color: var(--success); font-size: 14px; display: flex; align-items: center; gap: 8px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        Connected as <strong><%= streamer.bot_username %></strong>
+        Bot <strong><%= botUsername %></strong> is online
       </p>
       <% if (streamer.twitch_username) { %>
         <p style="color: var(--text-secondary); font-size: 13px; margin-top: 8px;">
-          Bot will join channel: <strong style="color: var(--accent);">#<%= streamer.twitch_username %></strong>
-        </p>
-      <% } else { %>
-        <p style="color: var(--warning, #f7c948); font-size: 13px; margin-top: 8px;">
-          ⚠️ No Twitch account linked. The bot needs your Twitch username to know which channel to join.
-          <a href="/auth/twitch" style="color: var(--accent);">Link your Twitch account</a>
+          Channel: <strong style="color: var(--accent);">#<%= streamer.twitch_username %></strong>
         </p>
       <% } %>
-      <p style="color: var(--text-muted); font-size: 13px; margin-top: 8px;">
-        To switch bots, <a href="/auth/bot" style="color: var(--accent);">re-authenticate with a different account</a>.
+    <% } else if (botUsername) { %>
+      <p style="color: var(--warning, #f7c948); font-size: 14px; display: flex; align-items: center; gap: 8px;">
+        ⚠️ Bot <strong><%= botUsername %></strong> is configured but not connected. Check server logs.
       </p>
     <% } else { %>
-      <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">
-        Connect a Twitch account to use as your chat bot. This can be your main account or a dedicated bot account.
+      <p style="color: var(--text-muted); font-size: 14px;">
+        ⚠️ Bot not configured. The admin needs to set <code>BOT_TWITCH_USERNAME</code> and <code>BOT_TWITCH_TOKEN</code> environment variables.
       </p>
-      <a href="/auth/bot" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        Connect Bot Account
-      </a>
+    <% } %>
+    <% if (!streamer.twitch_username) { %>
+      <p style="color: var(--warning, #f7c948); font-size: 13px; margin-top: 12px;">
+        ⚠️ No Twitch account linked. <a href="/auth/twitch" style="color: var(--accent);">Link your Twitch account</a> so the bot knows which channel to join.
+      </p>
     <% } %>
   </div>
 
-  <!-- Chatbot Enable/Disable -->
-  <form method="POST" action="/dashboard/chatbot">
-    <div class="card animate-in animate-in-delay-1">
-      <h3>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/></svg>
-        Chatbot Status
-      </h3>
-      <div class="toggle">
-        <input type="checkbox" id="chatbot_enabled" name="chatbot_enabled" value="1" <%= streamer.chatbot_enabled ? 'checked' : '' %>>
-        <label for="chatbot_enabled">Enable chatbot (connect to your Twitch chat)</label>
+  <!-- Enable/Disable Toggle -->
+  <div class="card animate-in" style="margin-top: 16px;">
+    <form method="POST" action="/dashboard/chatbot">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <input type="checkbox" id="chatbot_enabled" name="chatbot_enabled" value="1" <%= streamer.chatbot_enabled ? 'checked' : '' %> style="width: 18px; height: 18px; accent-color: var(--accent);">
+        <label for="chatbot_enabled" style="font-weight: 600; font-size: 15px;">Enable chatbot on my channel</label>
       </div>
-      <p style="color: var(--text-muted); font-size: 13px;">When enabled, the bot will join your channel and send messages for configured events.</p>
-    </div>
-    <div style="display: flex; justify-content: flex-end; margin-bottom: 24px;">
-      <button type="submit" class="btn btn-primary" style="padding: 12px 32px; font-size: 14px;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-        Save Settings
-      </button>
-    </div>
-  </form>
+      <!-- Hidden fields to preserve existing template values when saving from this tab -->
+      <input type="hidden" name="chat_follow_enabled" value="<%= streamer.chat_follow_enabled ? '1' : '' %>">
+      <input type="hidden" name="chat_sub_enabled" value="<%= streamer.chat_sub_enabled ? '1' : '' %>">
+      <input type="hidden" name="chat_giftsub_enabled" value="<%= streamer.chat_giftsub_enabled ? '1' : '' %>">
+      <input type="hidden" name="chat_bits_enabled" value="<%= streamer.chat_bits_enabled ? '1' : '' %>">
+      <input type="hidden" name="chat_donation_enabled" value="<%= streamer.chat_donation_enabled ? '1' : '' %>">
+      <input type="hidden" name="chat_raid_enabled" value="<%= streamer.chat_raid_enabled ? '1' : '' %>">
+      <input type="hidden" name="chat_follow_template" value="<%= streamer.chat_follow_template || '' %>">
+      <input type="hidden" name="chat_sub_template" value="<%= streamer.chat_sub_template || '' %>">
+      <input type="hidden" name="chat_giftsub_template" value="<%= streamer.chat_giftsub_template || '' %>">
+      <input type="hidden" name="chat_bits_template" value="<%= streamer.chat_bits_template || '' %>">
+      <input type="hidden" name="chat_donation_template" value="<%= streamer.chat_donation_template || '' %>">
+      <input type="hidden" name="chat_raid_template" value="<%= streamer.chat_raid_template || '' %>">
+      <button type="submit" class="btn btn-primary">Save</button>
+    </form>
+  </div>
 
 </div>
 
