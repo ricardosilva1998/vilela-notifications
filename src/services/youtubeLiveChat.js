@@ -93,6 +93,31 @@ function handleChatMessage(streamerId, item) {
       const now = Date.now();
       const lastUsed = cooldowns.get(cooldownKey) || 0;
 
+      if (commandName === 'song') {
+        const streamer = db.getStreamerById(streamerId);
+        if (streamer) {
+          const { getCurrentlyPlaying } = require('./spotify');
+          getCurrentlyPlaying(streamer).then(result => {
+            let msg;
+            switch (result.status) {
+              case 'playing': msg = `🎵 Now playing: ${result.track} by ${result.artist}`; break;
+              case 'paused': msg = `⏸️ Paused: ${result.track} by ${result.artist}`; break;
+              case 'nothing_playing': msg = `🔇 Nothing playing on Spotify right now`; break;
+              default: msg = null;
+            }
+            if (msg) {
+              const poller = activePollers.get(streamerId);
+              if (poller) {
+                ensureBotToken().then(token => {
+                  if (token) sendYoutubeChatMessage(poller.liveChatId, msg, token);
+                });
+              }
+            }
+          }).catch(() => {});
+        }
+        return;
+      }
+
       const cmd = db.getChatCommand(streamerId, commandName);
       if (!cmd) return;
       if (now - lastUsed < cmd.cooldown * 1000) return;
