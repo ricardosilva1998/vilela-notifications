@@ -179,24 +179,19 @@ async function refreshYoutubeBotToken() {
 }
 
 async function sendYoutubeChatMessage(liveChatId, message, accessToken) {
-  console.log(`[YouTube] Sending chat message to chatId: ${liveChatId}, message: "${message.substring(0, 50)}..."`);
-  const body = {
-    snippet: {
-      liveChatId: liveChatId,
-      type: 'textMessageEvent',
-      textMessageDetails: {
-        messageText: message,
-      },
-    },
-  };
-  console.log(`[YouTube] Request body:`, JSON.stringify(body));
   const res = await fetch('https://www.googleapis.com/youtube/v3/liveChat/messages?part=snippet', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      snippet: {
+        liveChatId,
+        type: 'textMessageEvent',
+        textMessageDetails: { messageText: message },
+      },
+    }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
