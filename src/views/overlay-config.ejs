@@ -9,18 +9,23 @@
   .pill-toggle input:checked + .slider { background: var(--accent); border-color: var(--accent); }
   .pill-toggle input:checked + .slider:before { transform: translateX(20px); }
 
-  /* Alert card */
-  .alert-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 14px; transition: border-color 0.2s; }
+  /* Alert card — Option A compact layout */
+  .alert-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 12px; transition: border-color 0.2s; }
   .alert-card:hover { border-color: rgba(145,70,255,0.3); }
-  .alert-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .alert-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .alert-card-info { display: flex; align-items: center; gap: 10px; }
+  .alert-card-icon { font-size: 20px; }
   .alert-card-title { font-size: 15px; font-weight: 700; color: var(--text-primary); }
-  .alert-card-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-  .alert-card-body { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-  @media (max-width: 600px) { .alert-card-body { grid-template-columns: 1fr; } }
-  .alert-field label { display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; font-family: var(--font-display); }
-  .alert-card-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding-top: 14px; border-top: 1px solid var(--border); }
-  .sound-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .sound-badge { font-size: 11px; padding: 2px 8px; border-radius: 4px; background: var(--bg-elevated); color: var(--text-muted); font-weight: 500; }
+  .alert-card-desc { font-size: 11px; color: var(--text-muted); }
+  .alert-card-controls { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .alert-ctrl { display: flex; align-items: center; gap: 6px; }
+  .alert-ctrl-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .alert-ctrl input[type=number] { width: 56px; padding: 5px 8px; background: var(--bg-base); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 13px; outline: none; text-align: center; }
+  .alert-ctrl input[type=range] { width: 90px; accent-color: var(--accent); cursor: pointer; }
+  .alert-ctrl .vol-val { font-size: 12px; color: var(--text-muted); min-width: 30px; }
+  .alert-card-footer { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 12px; }
+  .sound-row { display: flex; align-items: center; gap: 6px; margin-right: auto; }
+  .sound-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; background: var(--bg-elevated); color: var(--text-muted); font-weight: 600; }
   .sound-badge.custom { background: rgba(145,71,255,0.15); color: #9146ff; }
 
   /* Volume slider */
@@ -127,313 +132,351 @@
         </h3>
         <p style="color: var(--text-secondary); font-size: 13px; margin: 0;">Configure each event alert individually.</p>
       </div>
-      <!-- Master Volume -->
-      <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-        <span style="font-size: 12px; color: var(--text-secondary); font-family: var(--font-display); font-weight: 600; white-space: nowrap;">Master Volume</span>
-        <div class="vol-row" style="width: 130px;">
-          <input type="range" name="overlay_volume" id="overlay_volume"
-            min="0" max="1" step="0.05" value="<%= streamer.overlay_volume != null ? streamer.overlay_volume : 0.8 %>"
-            oninput="document.getElementById('volume-val').textContent = Math.round(this.value * 100) + '%'">
-          <span class="vol-val" id="volume-val"><%= Math.round((streamer.overlay_volume != null ? streamer.overlay_volume : 0.8) * 100) %>%</span>
-        </div>
-      </div>
     </div>
+    <input type="hidden" name="overlay_volume" value="<%= streamer.overlay_volume != null ? streamer.overlay_volume : 0.8 %>">
 
     <!-- Follow -->
     <div class="alert-card">
       <div class="alert-card-header">
+        <div class="alert-card-info">
+          <span class="alert-card-icon">🏁</span>
+          <div>
+            <div class="alert-card-title">Follow</div>
+            <div class="alert-card-desc">Alert when someone follows your channel</div>
+          </div>
+        </div>
         <label class="pill-toggle">
           <input type="checkbox" name="overlay_follow_enabled" value="1" <%= streamer.overlay_follow_enabled !== 0 ? 'checked' : '' %>>
           <span class="slider"></span>
         </label>
-        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(145,70,255,0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        </div>
-        <div>
-          <div class="alert-card-title">&#127937; Follow</div>
-          <div class="alert-card-desc">Show an alert when someone follows</div>
-        </div>
       </div>
-      <div class="alert-card-body">
-        <div class="alert-field">
-          <label>Duration (seconds)</label>
-          <input type="number" name="overlay_follow_duration" value="<%= streamer.overlay_follow_duration || 5 %>" min="1" max="30"
-            style="width: 90px; padding: 7px 10px; background: var(--bg-base); border: 1px solid var(--border);
-                   border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body);
-                   font-size: 14px; outline: none; text-align: center;">
+      <div class="alert-card-controls">
+        <div class="alert-ctrl">
+          <span class="alert-ctrl-label">Duration</span>
+          <input type="number" name="overlay_follow_duration" value="<%= streamer.overlay_follow_duration || 5 %>" min="1" max="30">
+          <span style="font-size: 12px; color: var(--text-muted);">s</span>
         </div>
-        <div class="alert-field" style="opacity:0; pointer-events:none;"></div>
-      </div>
-      <div class="alert-card-footer">
-        <div class="sound-row">
-          <span style="font-size: 12px; color: var(--text-secondary); font-weight: 600; font-family: var(--font-display);">Sound:</span>
+        <div class="alert-ctrl">
+          <span class="alert-ctrl-label">Volume</span>
+          <input type="range" min="0" max="100" value="<%= Math.round((streamer.overlay_volume != null ? streamer.overlay_volume : 0.8) * 100) %>">
+          <span class="vol-val">80%</span>
+        </div>
+        <div class="sound-row" style="margin-left: auto;">
           <span class="sound-badge" id="sound-status-follow">Default</span>
-          <button type="button" onclick="previewSound('follow')" class="btn btn-secondary" style="font-size: 12px; padding: 5px 10px;">&#9654; Preview</button>
-          <button type="button" onclick="openTrimModal('follow')" class="btn btn-primary" style="font-size: 12px; padding: 5px 10px;">Upload</button>
-          <button type="button" onclick="removeSound('follow')" class="btn btn-secondary" id="remove-btn-follow" style="font-size: 12px; padding: 5px 10px; color: var(--danger); display: none;">Remove</button>
+          <button type="button" onclick="previewSound('follow')" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">▶</button>
+          <button type="button" onclick="openTrimModal('follow')" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">Upload</button>
+          <button type="button" onclick="removeSound('follow')" class="btn btn-secondary" id="remove-btn-follow" style="font-size: 11px; padding: 4px 10px; color: var(--danger); display: none;">✕</button>
         </div>
-        <% if (overlayUrl) { %>
-        <button type="button" onclick="openPreview('follow')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; gap: 6px;">
+      </div>
+      <% if (overlayUrl) { %>
+      <div class="alert-card-footer">
+        <button type="button" onclick="openPreview('follow')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--accent); background: rgba(145,71,255,0.1); color: var(--accent);">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Preview Alert
         </button>
-        <% } %>
       </div>
+      <% } %>
     </div>
 
     <!-- Subscription -->
     <div class="alert-card">
       <div class="alert-card-header">
+        <div class="alert-card-info">
+          <span class="alert-card-icon">🏆</span>
+          <div>
+            <div class="alert-card-title">Subscription</div>
+            <div class="alert-card-desc">Alert for new subs and resubs</div>
+          </div>
+        </div>
         <label class="pill-toggle">
           <input type="checkbox" name="overlay_sub_enabled" value="1" <%= streamer.overlay_sub_enabled !== 0 ? 'checked' : '' %>>
           <span class="slider"></span>
         </label>
-        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(145,70,255,0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2H3v16h5v4l4-4h5l4-4V2zM11 11V7M16 11V7"/></svg>
-        </div>
-        <div>
-          <div class="alert-card-title">&#127942; Subscription</div>
-          <div class="alert-card-desc">Show an alert for new subs and resubs</div>
-        </div>
       </div>
-      <div class="alert-card-body">
-        <div class="alert-field">
-          <label>Duration (seconds)</label>
-          <input type="number" name="overlay_sub_duration" value="<%= streamer.overlay_sub_duration || 7 %>" min="1" max="30"
-            style="width: 90px; padding: 7px 10px; background: var(--bg-base); border: 1px solid var(--border);
-                   border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body);
-                   font-size: 14px; outline: none; text-align: center;">
+      <div class="alert-card-controls">
+        <div class="alert-ctrl">
+          <span class="alert-ctrl-label">Duration</span>
+          <input type="number" name="overlay_sub_duration" value="<%= streamer.overlay_sub_duration || 7 %>" min="1" max="30">
+          <span style="font-size: 12px; color: var(--text-muted);">s</span>
         </div>
-        <div class="alert-field" style="opacity:0; pointer-events:none;"></div>
-      </div>
-      <div class="alert-card-footer">
-        <div class="sound-row">
-          <span style="font-size: 12px; color: var(--text-secondary); font-weight: 600; font-family: var(--font-display);">Sound:</span>
+        <div class="alert-ctrl">
+          <span class="alert-ctrl-label">Volume</span>
+          <input type="range" min="0" max="100" value="<%= Math.round((streamer.overlay_volume != null ? streamer.overlay_volume : 0.8) * 100) %>">
+          <span class="vol-val">80%</span>
+        </div>
+        <div class="sound-row" style="margin-left: auto;">
           <span class="sound-badge" id="sound-status-subscription">Default</span>
-          <button type="button" onclick="previewSound('subscription')" class="btn btn-secondary" style="font-size: 12px; padding: 5px 10px;">&#9654; Preview</button>
-          <button type="button" onclick="openTrimModal('subscription')" class="btn btn-primary" style="font-size: 12px; padding: 5px 10px;">Upload</button>
-          <button type="button" onclick="removeSound('subscription')" class="btn btn-secondary" id="remove-btn-subscription" style="font-size: 12px; padding: 5px 10px; color: var(--danger); display: none;">Remove</button>
+          <button type="button" onclick="previewSound('subscription')" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">▶</button>
+          <button type="button" onclick="openTrimModal('subscription')" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">Upload</button>
+          <button type="button" onclick="removeSound('subscription')" class="btn btn-secondary" id="remove-btn-subscription" style="font-size: 11px; padding: 4px 10px; color: var(--danger); display: none;">✕</button>
         </div>
-        <% if (overlayUrl) { %>
-        <button type="button" onclick="openPreview('subscription')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; gap: 6px;">
+      </div>
+      <% if (overlayUrl) { %>
+      <div class="alert-card-footer">
+        <button type="button" onclick="openPreview('subscription')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--accent); background: rgba(145,71,255,0.1); color: var(--accent);">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Preview Alert
         </button>
-        <% } %>
       </div>
+      <% } %>
     </div>
 
     <!-- Bits -->
     <div class="alert-card">
       <div class="alert-card-header">
+        <div class="alert-card-info">
+          <span class="alert-card-icon">⛽</span>
+          <div>
+            <div class="alert-card-title">Bits / Cheers</div>
+            <div class="alert-card-desc">Alert when someone cheers bits</div>
+          </div>
+        </div>
         <label class="pill-toggle">
           <input type="checkbox" name="overlay_bits_enabled" value="1" <%= streamer.overlay_bits_enabled !== 0 ? 'checked' : '' %>>
           <span class="slider"></span>
         </label>
-        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(145,70,255,0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        </div>
-        <div>
-          <div class="alert-card-title">&#9889; Bits / Cheers</div>
-          <div class="alert-card-desc">Show an alert when someone cheers bits</div>
-        </div>
       </div>
-      <div class="alert-card-body">
-        <div class="alert-field">
-          <label>Duration (seconds)</label>
-          <input type="number" name="overlay_bits_duration" value="<%= streamer.overlay_bits_duration || 6 %>" min="1" max="30"
-            style="width: 90px; padding: 7px 10px; background: var(--bg-base); border: 1px solid var(--border);
-                   border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body);
-                   font-size: 14px; outline: none; text-align: center;">
+      <div class="alert-card-controls">
+        <div class="alert-ctrl">
+          <span class="alert-ctrl-label">Duration</span>
+          <input type="number" name="overlay_bits_duration" value="<%= streamer.overlay_bits_duration || 6 %>" min="1" max="30">
+          <span style="font-size: 12px; color: var(--text-muted);">s</span>
         </div>
-        <div class="alert-field" style="opacity:0; pointer-events:none;"></div>
-      </div>
-      <div class="alert-card-footer">
-        <div class="sound-row">
-          <span style="font-size: 12px; color: var(--text-secondary); font-weight: 600; font-family: var(--font-display);">Sound:</span>
+        <div class="alert-ctrl">
+          <span class="alert-ctrl-label">Volume</span>
+          <input type="range" min="0" max="100" value="<%= Math.round((streamer.overlay_volume != null ? streamer.overlay_volume : 0.8) * 100) %>">
+          <span class="vol-val">80%</span>
+        </div>
+        <div class="sound-row" style="margin-left: auto;">
           <span class="sound-badge" id="sound-status-bits">Default</span>
-          <button type="button" onclick="previewSound('bits')" class="btn btn-secondary" style="font-size: 12px; padding: 5px 10px;">&#9654; Preview</button>
-          <button type="button" onclick="openTrimModal('bits')" class="btn btn-primary" style="font-size: 12px; padding: 5px 10px;">Upload</button>
-          <button type="button" onclick="removeSound('bits')" class="btn btn-secondary" id="remove-btn-bits" style="font-size: 12px; padding: 5px 10px; color: var(--danger); display: none;">Remove</button>
+          <button type="button" onclick="previewSound('bits')" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">▶</button>
+          <button type="button" onclick="openTrimModal('bits')" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">Upload</button>
+          <button type="button" onclick="removeSound('bits')" class="btn btn-secondary" id="remove-btn-bits" style="font-size: 11px; padding: 4px 10px; color: var(--danger); display: none;">✕</button>
         </div>
-        <% if (overlayUrl) { %>
-        <button type="button" onclick="openPreview('bits')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; gap: 6px;">
+      </div>
+      <% if (overlayUrl) { %>
+      <div class="alert-card-footer">
+        <button type="button" onclick="openPreview('bits')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--accent); background: rgba(145,71,255,0.1); color: var(--accent);">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Preview Alert
         </button>
-        <% } %>
       </div>
+      <% } %>
     </div>
 
     <!-- Donation -->
     <div class="alert-card">
       <div class="alert-card-header">
+        <div class="alert-card-info">
+          <span class="alert-card-icon">💰</span>
+          <div>
+            <div class="alert-card-title">Donation</div>
+            <div class="alert-card-desc">Alert for StreamElements donations</div>
+          </div>
+        </div>
         <label class="pill-toggle">
           <input type="checkbox" name="overlay_donation_enabled" value="1" <%= streamer.overlay_donation_enabled !== 0 ? 'checked' : '' %>>
           <span class="slider"></span>
         </label>
-        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(62,207,142,0.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-        </div>
-        <div>
-          <div class="alert-card-title">&#128176; Donation</div>
-          <div class="alert-card-desc">Show an alert for StreamElements donations</div>
-        </div>
       </div>
-      <div class="alert-card-body">
-        <div class="alert-field">
-          <label>Duration (seconds)</label>
-          <input type="number" name="overlay_donation_duration" value="<%= streamer.overlay_donation_duration || 6 %>" min="1" max="30"
-            style="width: 90px; padding: 7px 10px; background: var(--bg-base); border: 1px solid var(--border);
-                   border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body);
-                   font-size: 14px; outline: none; text-align: center;">
+      <div class="alert-card-controls">
+        <div class="alert-ctrl">
+          <span class="alert-ctrl-label">Duration</span>
+          <input type="number" name="overlay_donation_duration" value="<%= streamer.overlay_donation_duration || 6 %>" min="1" max="30">
+          <span style="font-size: 12px; color: var(--text-muted);">s</span>
         </div>
-        <div class="alert-field" style="opacity:0; pointer-events:none;"></div>
-      </div>
-      <div class="alert-card-footer">
-        <div class="sound-row">
-          <span style="font-size: 12px; color: var(--text-secondary); font-weight: 600; font-family: var(--font-display);">Sound:</span>
+        <div class="alert-ctrl">
+          <span class="alert-ctrl-label">Volume</span>
+          <input type="range" min="0" max="100" value="<%= Math.round((streamer.overlay_volume != null ? streamer.overlay_volume : 0.8) * 100) %>">
+          <span class="vol-val">80%</span>
+        </div>
+        <div class="sound-row" style="margin-left: auto;">
           <span class="sound-badge" id="sound-status-donation">Default</span>
-          <button type="button" onclick="previewSound('donation')" class="btn btn-secondary" style="font-size: 12px; padding: 5px 10px;">&#9654; Preview</button>
-          <button type="button" onclick="openTrimModal('donation')" class="btn btn-primary" style="font-size: 12px; padding: 5px 10px;">Upload</button>
-          <button type="button" onclick="removeSound('donation')" class="btn btn-secondary" id="remove-btn-donation" style="font-size: 12px; padding: 5px 10px; color: var(--danger); display: none;">Remove</button>
+          <button type="button" onclick="previewSound('donation')" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">▶</button>
+          <button type="button" onclick="openTrimModal('donation')" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">Upload</button>
+          <button type="button" onclick="removeSound('donation')" class="btn btn-secondary" id="remove-btn-donation" style="font-size: 11px; padding: 4px 10px; color: var(--danger); display: none;">✕</button>
         </div>
-        <% if (overlayUrl) { %>
-        <button type="button" onclick="openPreview('donation')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; gap: 6px;">
+      </div>
+      <% if (overlayUrl) { %>
+      <div class="alert-card-footer">
+        <button type="button" onclick="openPreview('donation')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--accent); background: rgba(145,71,255,0.1); color: var(--accent);">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Preview Alert
         </button>
-        <% } %>
       </div>
+      <% } %>
     </div>
 
     <!-- Raid -->
     <div class="alert-card">
       <div class="alert-card-header">
+        <div class="alert-card-info">
+          <span class="alert-card-icon">🏎️</span>
+          <div>
+            <div class="alert-card-title">Raid</div>
+            <div class="alert-card-desc">Alert when someone raids your channel</div>
+          </div>
+        </div>
         <label class="pill-toggle">
-          <input type="checkbox" name="overlay_raid_enabled" value="1" disabled>
+          <input type="checkbox" name="overlay_raid_enabled" value="1" <%= streamer.overlay_raid_enabled !== 0 ? 'checked' : '' %>>
           <span class="slider"></span>
         </label>
-        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(255,140,0,0.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <span style="font-size: 18px; line-height: 1;">&#127950;</span>
+      </div>
+      <div class="alert-card-controls">
+        <div class="alert-ctrl">
+          <span class="alert-ctrl-label">Duration</span>
+          <input type="number" name="overlay_raid_duration" value="<%= streamer.overlay_raid_duration || 7 %>" min="1" max="30">
+          <span style="font-size: 12px; color: var(--text-muted);">s</span>
         </div>
-        <div>
-          <div class="alert-card-title">&#127950; Raid</div>
-          <div class="alert-card-desc">Show an alert when another streamer raids your channel</div>
+        <div class="alert-ctrl">
+          <span class="alert-ctrl-label">Volume</span>
+          <input type="range" min="0" max="100" value="<%= Math.round((streamer.overlay_volume != null ? streamer.overlay_volume : 0.8) * 100) %>">
+          <span class="vol-val">80%</span>
+        </div>
+        <div class="sound-row" style="margin-left: auto;">
+          <span class="sound-badge" id="sound-status-raid">Default</span>
+          <button type="button" onclick="previewSound('raid')" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">▶</button>
+          <button type="button" onclick="openTrimModal('raid')" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">Upload</button>
+          <button type="button" onclick="removeSound('raid')" class="btn btn-secondary" id="remove-btn-raid" style="font-size: 11px; padding: 4px 10px; color: var(--danger); display: none;">✕</button>
         </div>
       </div>
+      <% if (overlayUrl) { %>
       <div class="alert-card-footer">
-        <div class="sound-row">
-          <span style="font-size: 12px; color: var(--text-secondary); font-weight: 600; font-family: var(--font-display);">Sound:</span>
-          <span class="sound-badge" id="sound-status-raid">Default</span>
-          <button type="button" onclick="previewSound('raid')" class="btn btn-secondary" style="font-size: 12px; padding: 5px 10px;">&#9654; Preview</button>
-          <button type="button" onclick="openTrimModal('raid')" class="btn btn-primary" style="font-size: 12px; padding: 5px 10px;">Upload</button>
-          <button type="button" onclick="removeSound('raid')" class="btn btn-secondary" id="remove-btn-raid" style="font-size: 12px; padding: 5px 10px; color: var(--danger); display: none;">Remove</button>
-        </div>
-        <% if (overlayUrl) { %>
-        <button type="button" onclick="openPreview('raid')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; gap: 6px;">
+        <button type="button" onclick="openPreview('raid')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--accent); background: rgba(145,71,255,0.1); color: var(--accent);">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Preview Alert
         </button>
-        <% } %>
       </div>
+      <% } %>
     </div>
 
     <!-- YT Super Chat -->
     <div class="alert-card">
       <div class="alert-card-header">
+        <div class="alert-card-info">
+          <span class="alert-card-icon">💬</span>
+          <div>
+            <div class="alert-card-title">YT Super Chat</div>
+            <div class="alert-card-desc">YouTube Super Chat alerts</div>
+          </div>
+        </div>
         <label class="pill-toggle">
           <input type="checkbox" name="yt_overlay_superchat_enabled" value="1" <%= (streamer.yt_overlay_superchat_enabled !== 0) ? 'checked' : '' %>>
           <span class="slider"></span>
         </label>
-        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(255,0,0,0.10); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <span style="font-size: 18px; line-height: 1;">&#128172;</span>
+      </div>
+      <div class="alert-card-controls">
+        <div class="alert-ctrl">
+          <span class="alert-ctrl-label">Duration</span>
+          <input type="number" name="yt_overlay_superchat_duration" value="<%= streamer.yt_overlay_superchat_duration || 6 %>" min="1" max="30">
+          <span style="font-size: 12px; color: var(--text-muted);">s</span>
         </div>
-        <div>
-          <div class="alert-card-title">&#128172; YT Super Chat</div>
-          <div class="alert-card-desc">Show an alert for YouTube Super Chats</div>
+        <div class="alert-ctrl">
+          <span class="alert-ctrl-label">Volume</span>
+          <input type="range" min="0" max="100" value="<%= Math.round((streamer.overlay_volume != null ? streamer.overlay_volume : 0.8) * 100) %>">
+          <span class="vol-val">80%</span>
+        </div>
+        <div class="sound-row" style="margin-left: auto;">
+          <span class="sound-badge" id="sound-status-yt_superchat">Default</span>
+          <button type="button" onclick="previewSound('yt_superchat')" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">▶</button>
+          <button type="button" onclick="openTrimModal('yt_superchat')" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">Upload</button>
+          <button type="button" onclick="removeSound('yt_superchat')" class="btn btn-secondary" id="remove-btn-yt_superchat" style="font-size: 11px; padding: 4px 10px; color: var(--danger); display: none;">✕</button>
         </div>
       </div>
+      <% if (overlayUrl) { %>
       <div class="alert-card-footer">
-        <div class="sound-row">
-          <span style="font-size: 12px; color: var(--text-secondary); font-weight: 600; font-family: var(--font-display);">Sound:</span>
-          <span class="sound-badge" id="sound-status-yt_superchat">Default</span>
-          <button type="button" onclick="previewSound('yt_superchat')" class="btn btn-secondary" style="font-size: 12px; padding: 5px 10px;">&#9654; Preview</button>
-          <button type="button" onclick="openTrimModal('yt_superchat')" class="btn btn-primary" style="font-size: 12px; padding: 5px 10px;">Upload</button>
-          <button type="button" onclick="removeSound('yt_superchat')" class="btn btn-secondary" id="remove-btn-yt_superchat" style="font-size: 12px; padding: 5px 10px; color: var(--danger); display: none;">Remove</button>
-        </div>
-        <% if (overlayUrl) { %>
-        <button type="button" onclick="openPreview('yt_superchat')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; gap: 6px;">
+        <button type="button" onclick="openPreview('yt_superchat')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--accent); background: rgba(145,71,255,0.1); color: var(--accent);">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Preview Alert
         </button>
-        <% } %>
       </div>
+      <% } %>
     </div>
 
     <!-- YT Member -->
     <div class="alert-card">
       <div class="alert-card-header">
+        <div class="alert-card-info">
+          <span class="alert-card-icon">⭐</span>
+          <div>
+            <div class="alert-card-title">YT New Member</div>
+            <div class="alert-card-desc">YouTube membership alerts</div>
+          </div>
+        </div>
         <label class="pill-toggle">
           <input type="checkbox" name="yt_overlay_member_enabled" value="1" <%= (streamer.yt_overlay_member_enabled !== 0) ? 'checked' : '' %>>
           <span class="slider"></span>
         </label>
-        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(255,200,0,0.10); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <span style="font-size: 18px; line-height: 1;">&#11088;</span>
+      </div>
+      <div class="alert-card-controls">
+        <div class="alert-ctrl">
+          <span class="alert-ctrl-label">Duration</span>
+          <input type="number" name="yt_overlay_member_duration" value="<%= streamer.yt_overlay_member_duration || 5 %>" min="1" max="30">
+          <span style="font-size: 12px; color: var(--text-muted);">s</span>
         </div>
-        <div>
-          <div class="alert-card-title">&#11088; YT Member</div>
-          <div class="alert-card-desc">Show an alert for new YouTube Members</div>
+        <div class="alert-ctrl">
+          <span class="alert-ctrl-label">Volume</span>
+          <input type="range" min="0" max="100" value="<%= Math.round((streamer.overlay_volume != null ? streamer.overlay_volume : 0.8) * 100) %>">
+          <span class="vol-val">80%</span>
+        </div>
+        <div class="sound-row" style="margin-left: auto;">
+          <span class="sound-badge" id="sound-status-yt_member">Default</span>
+          <button type="button" onclick="previewSound('yt_member')" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">▶</button>
+          <button type="button" onclick="openTrimModal('yt_member')" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">Upload</button>
+          <button type="button" onclick="removeSound('yt_member')" class="btn btn-secondary" id="remove-btn-yt_member" style="font-size: 11px; padding: 4px 10px; color: var(--danger); display: none;">✕</button>
         </div>
       </div>
+      <% if (overlayUrl) { %>
       <div class="alert-card-footer">
-        <div class="sound-row">
-          <span style="font-size: 12px; color: var(--text-secondary); font-weight: 600; font-family: var(--font-display);">Sound:</span>
-          <span class="sound-badge" id="sound-status-yt_member">Default</span>
-          <button type="button" onclick="previewSound('yt_member')" class="btn btn-secondary" style="font-size: 12px; padding: 5px 10px;">&#9654; Preview</button>
-          <button type="button" onclick="openTrimModal('yt_member')" class="btn btn-primary" style="font-size: 12px; padding: 5px 10px;">Upload</button>
-          <button type="button" onclick="removeSound('yt_member')" class="btn btn-secondary" id="remove-btn-yt_member" style="font-size: 12px; padding: 5px 10px; color: var(--danger); display: none;">Remove</button>
-        </div>
-        <% if (overlayUrl) { %>
-        <button type="button" onclick="openPreview('yt_member')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; gap: 6px;">
+        <button type="button" onclick="openPreview('yt_member')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--accent); background: rgba(145,71,255,0.1); color: var(--accent);">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Preview Alert
         </button>
-        <% } %>
       </div>
+      <% } %>
     </div>
 
     <!-- YT Gift Member -->
     <div class="alert-card">
       <div class="alert-card-header">
+        <div class="alert-card-info">
+          <span class="alert-card-icon">🎁</span>
+          <div>
+            <div class="alert-card-title">YT Gift Member</div>
+            <div class="alert-card-desc">YouTube gifted membership alerts</div>
+          </div>
+        </div>
         <label class="pill-toggle">
           <input type="checkbox" name="yt_overlay_giftmember_enabled" value="1" <%= (streamer.yt_overlay_giftmember_enabled !== 0) ? 'checked' : '' %>>
           <span class="slider"></span>
         </label>
-        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(145,70,255,0.10); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <span style="font-size: 18px; line-height: 1;">&#127873;</span>
+      </div>
+      <div class="alert-card-controls">
+        <div class="alert-ctrl">
+          <span class="alert-ctrl-label">Duration</span>
+          <input type="number" name="yt_overlay_giftmember_duration" value="<%= streamer.yt_overlay_giftmember_duration || 6 %>" min="1" max="30">
+          <span style="font-size: 12px; color: var(--text-muted);">s</span>
         </div>
-        <div>
-          <div class="alert-card-title">&#127873; YT Gift Member</div>
-          <div class="alert-card-desc">Show an alert when memberships are gifted</div>
+        <div class="alert-ctrl">
+          <span class="alert-ctrl-label">Volume</span>
+          <input type="range" min="0" max="100" value="<%= Math.round((streamer.overlay_volume != null ? streamer.overlay_volume : 0.8) * 100) %>">
+          <span class="vol-val">80%</span>
+        </div>
+        <div class="sound-row" style="margin-left: auto;">
+          <span class="sound-badge" id="sound-status-yt_giftmember">Default</span>
+          <button type="button" onclick="previewSound('yt_giftmember')" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">▶</button>
+          <button type="button" onclick="openTrimModal('yt_giftmember')" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">Upload</button>
+          <button type="button" onclick="removeSound('yt_giftmember')" class="btn btn-secondary" id="remove-btn-yt_giftmember" style="font-size: 11px; padding: 4px 10px; color: var(--danger); display: none;">✕</button>
         </div>
       </div>
+      <% if (overlayUrl) { %>
       <div class="alert-card-footer">
-        <div class="sound-row">
-          <span style="font-size: 12px; color: var(--text-secondary); font-weight: 600; font-family: var(--font-display);">Sound:</span>
-          <span class="sound-badge" id="sound-status-yt_giftmember">Default</span>
-          <button type="button" onclick="previewSound('yt_giftmember')" class="btn btn-secondary" style="font-size: 12px; padding: 5px 10px;">&#9654; Preview</button>
-          <button type="button" onclick="openTrimModal('yt_giftmember')" class="btn btn-primary" style="font-size: 12px; padding: 5px 10px;">Upload</button>
-          <button type="button" onclick="removeSound('yt_giftmember')" class="btn btn-secondary" id="remove-btn-yt_giftmember" style="font-size: 12px; padding: 5px 10px; color: var(--danger); display: none;">Remove</button>
-        </div>
-        <% if (overlayUrl) { %>
-        <button type="button" onclick="openPreview('yt_giftmember')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; gap: 6px;">
+        <button type="button" onclick="openPreview('yt_giftmember')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--accent); background: rgba(145,71,255,0.1); color: var(--accent);">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Preview Alert
         </button>
-        <% } %>
       </div>
+      <% } %>
     </div>
   </div>
 
