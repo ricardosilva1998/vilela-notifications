@@ -32,6 +32,10 @@ module.exports = {
     botClientId: process.env.YOUTUBE_BOT_CLIENT_ID || '',
     botClientSecret: process.env.YOUTUBE_BOT_CLIENT_SECRET || '',
   },
+  spotify: {
+    clientId: process.env.SPOTIFY_CLIENT_ID || '',
+    clientSecret: process.env.SPOTIFY_CLIENT_SECRET || '',
+  },
   paypal: {
     clientId: process.env.PAYPAL_CLIENT_ID || '',
     clientSecret: process.env.PAYPAL_CLIENT_SECRET || '',

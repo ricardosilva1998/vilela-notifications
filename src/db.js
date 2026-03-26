@@ -237,6 +237,19 @@ try {
   }
 }
 
+// Migration: Add Spotify OAuth columns to streamers
+{
+  const cols = db.pragma('table_info(streamers)').map(c => c.name);
+  if (!cols.includes('spotify_access_token')) {
+    db.exec(`
+      ALTER TABLE streamers ADD COLUMN spotify_access_token TEXT;
+      ALTER TABLE streamers ADD COLUMN spotify_refresh_token TEXT;
+      ALTER TABLE streamers ADD COLUMN spotify_token_expires_at INTEGER;
+    `);
+    console.log('[DB] Added Spotify columns to streamers');
+  }
+}
+
 // --- Schema ---
 
 db.exec(`
@@ -2038,6 +2051,11 @@ function getYoutubeChatbotEnabledStreamers() {
   `).all();
 }
 
+function updateSpotifyTokens(streamerId, accessToken, refreshToken, expiresAt) {
+  db.prepare('UPDATE streamers SET spotify_access_token = ?, spotify_refresh_token = ?, spotify_token_expires_at = ? WHERE id = ?')
+    .run(accessToken, refreshToken, expiresAt, streamerId);
+}
+
 module.exports = {
   db,
   getStreamerByDiscordId,
@@ -2185,4 +2203,5 @@ module.exports = {
   updateYoutubeChatbotConfig,
   getYoutubeChatbotEnabledStreamers,
   updateStreamerYoutubeTokens,
+  updateSpotifyTokens,
 };
