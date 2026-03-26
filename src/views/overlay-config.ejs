@@ -1,0 +1,303 @@
+<%- include('header', { title: 'Overlay Config', streamer: streamer }) %>
+
+<a href="/dashboard" style="color: var(--text-secondary); font-size: 13px; font-family: var(--font-display); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  Back to Dashboard
+</a>
+<h2 style="margin: 16px 0 8px; font-size: 24px; font-weight: 700;" class="animate-in">Overlay Configuration</h2>
+<p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 24px;">Set up your stream overlay to show live alerts for follows, subscriptions, bits, and donations.</p>
+
+<% if (needsReauth) { %>
+  <div class="alert alert-warning">
+    <strong>Broadcaster re-authentication required.</strong>
+    Your Twitch broadcaster token is missing required scopes (<code>moderator:read:followers</code>, <code>bits:read</code>).
+    <a href="/auth/broadcaster" style="color: var(--warning); text-decoration: underline; margin-left: 6px;">Re-authenticate now &rarr;</a>
+  </div>
+<% } %>
+
+<!-- Overlay URL -->
+<div class="card animate-in">
+  <h3>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>
+    OBS Overlay URL
+  </h3>
+  <% if (overlayUrl) { %>
+    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">
+      Add this as a Browser Source in OBS. Recommended size: <strong>1920 &times; 1080</strong>.
+    </p>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <input type="text" id="overlay-url-input" value="<%= overlayUrl %>" readonly
+        style="flex: 1; padding: 10px 14px; background: var(--bg-base); border: 1px solid var(--border);
+               border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body);
+               font-size: 13px; outline: none;">
+      <button onclick="copyOverlayUrl()" class="btn btn-secondary" id="copy-btn" style="flex-shrink: 0;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy URL
+      </button>
+    </div>
+  <% } else { %>
+    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">
+      Generate a unique overlay URL to use in OBS as a Browser Source.
+    </p>
+    <form method="POST" action="/dashboard/overlay/generate-token" style="margin: 0;">
+      <button type="submit" class="btn btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        Generate Overlay URL
+      </button>
+    </form>
+  <% } %>
+</div>
+
+<!-- Main Settings Form -->
+<form method="POST" action="/dashboard/overlay">
+
+  <!-- Enable/Disable -->
+  <div class="card animate-in animate-in-delay-1">
+    <h3>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/></svg>
+      Overlay Status
+    </h3>
+    <div class="toggle">
+      <input type="checkbox" id="overlay_enabled" name="overlay_enabled" value="1" <%= streamer.overlay_enabled ? 'checked' : '' %>>
+      <label for="overlay_enabled">Enable overlay (connect EventSub + StreamElements)</label>
+    </div>
+    <p style="color: var(--text-muted); font-size: 13px;">When enabled, the overlay will receive live events from Twitch and StreamElements.</p>
+  </div>
+
+  <!-- Event Toggles & Durations -->
+  <div class="card animate-in animate-in-delay-2">
+    <h3>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+      Event Settings
+    </h3>
+    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
+      Choose which events to show and how long each notification stays on screen (in seconds).
+    </p>
+
+    <!-- Follow -->
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border);">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(145,70,255,0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div>
+          <div class="toggle" style="margin-bottom: 0;">
+            <input type="checkbox" id="overlay_follow_enabled" name="overlay_follow_enabled" value="1" <%= streamer.overlay_follow_enabled !== 0 ? 'checked' : '' %>>
+            <label for="overlay_follow_enabled" style="font-size: 14px; font-weight: 600; color: var(--text-primary);">Follows</label>
+          </div>
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px; margin-left: 28px;">Show an alert when someone follows</div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+        <label style="font-size: 12px; color: var(--text-secondary); font-family: var(--font-display); font-weight: 500;">Duration (s)</label>
+        <input type="number" name="overlay_follow_duration" value="<%= streamer.overlay_follow_duration || 5 %>" min="1" max="30"
+          style="width: 70px; padding: 6px 10px; background: var(--bg-base); border: 1px solid var(--border);
+                 border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body);
+                 font-size: 13px; outline: none; text-align: center;">
+      </div>
+    </div>
+
+    <!-- Subscription -->
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border);">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(145,70,255,0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2H3v16h5v4l4-4h5l4-4V2zM11 11V7M16 11V7"/></svg>
+        </div>
+        <div>
+          <div class="toggle" style="margin-bottom: 0;">
+            <input type="checkbox" id="overlay_sub_enabled" name="overlay_sub_enabled" value="1" <%= streamer.overlay_sub_enabled !== 0 ? 'checked' : '' %>>
+            <label for="overlay_sub_enabled" style="font-size: 14px; font-weight: 600; color: var(--text-primary);">Subscriptions</label>
+          </div>
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px; margin-left: 28px;">Show an alert for new subs and resubs</div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+        <label style="font-size: 12px; color: var(--text-secondary); font-family: var(--font-display); font-weight: 500;">Duration (s)</label>
+        <input type="number" name="overlay_sub_duration" value="<%= streamer.overlay_sub_duration || 7 %>" min="1" max="30"
+          style="width: 70px; padding: 6px 10px; background: var(--bg-base); border: 1px solid var(--border);
+                 border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body);
+                 font-size: 13px; outline: none; text-align: center;">
+      </div>
+    </div>
+
+    <!-- Bits -->
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border);">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(145,70,255,0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <div>
+          <div class="toggle" style="margin-bottom: 0;">
+            <input type="checkbox" id="overlay_bits_enabled" name="overlay_bits_enabled" value="1" <%= streamer.overlay_bits_enabled !== 0 ? 'checked' : '' %>>
+            <label for="overlay_bits_enabled" style="font-size: 14px; font-weight: 600; color: var(--text-primary);">Bits / Cheers</label>
+          </div>
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px; margin-left: 28px;">Show an alert when someone cheers bits</div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+        <label style="font-size: 12px; color: var(--text-secondary); font-family: var(--font-display); font-weight: 500;">Duration (s)</label>
+        <input type="number" name="overlay_bits_duration" value="<%= streamer.overlay_bits_duration || 6 %>" min="1" max="30"
+          style="width: 70px; padding: 6px 10px; background: var(--bg-base); border: 1px solid var(--border);
+                 border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body);
+                 font-size: 13px; outline: none; text-align: center;">
+      </div>
+    </div>
+
+    <!-- Donation -->
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(62,207,142,0.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <div>
+          <div class="toggle" style="margin-bottom: 0;">
+            <input type="checkbox" id="overlay_donation_enabled" name="overlay_donation_enabled" value="1" <%= streamer.overlay_donation_enabled !== 0 ? 'checked' : '' %>>
+            <label for="overlay_donation_enabled" style="font-size: 14px; font-weight: 600; color: var(--text-primary);">Donations</label>
+          </div>
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px; margin-left: 28px;">Show an alert for StreamElements donations</div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+        <label style="font-size: 12px; color: var(--text-secondary); font-family: var(--font-display); font-weight: 500;">Duration (s)</label>
+        <input type="number" name="overlay_donation_duration" value="<%= streamer.overlay_donation_duration || 6 %>" min="1" max="30"
+          style="width: 70px; padding: 6px 10px; background: var(--bg-base); border: 1px solid var(--border);
+                 border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body);
+                 font-size: 13px; outline: none; text-align: center;">
+      </div>
+    </div>
+  </div>
+
+  <!-- Volume -->
+  <div class="card animate-in animate-in-delay-3">
+    <h3>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+      Alert Volume
+    </h3>
+    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">Set the volume for notification sound effects in the overlay.</p>
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <input type="range" name="overlay_volume" id="overlay_volume"
+        min="0" max="1" step="0.1" value="<%= streamer.overlay_volume != null ? streamer.overlay_volume : 0.8 %>"
+        oninput="document.getElementById('volume-val').textContent = Math.round(this.value * 100) + '%'"
+        style="flex: 1; accent-color: var(--accent); cursor: pointer;">
+      <span id="volume-val" style="font-family: var(--font-display); font-weight: 600; font-size: 14px; min-width: 40px; text-align: right;">
+        <%= Math.round((streamer.overlay_volume != null ? streamer.overlay_volume : 0.8) * 100) %>%
+      </span>
+    </div>
+  </div>
+
+  <!-- StreamElements JWT -->
+  <div class="card animate-in animate-in-delay-4">
+    <h3>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      StreamElements Integration
+    </h3>
+    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">
+      Connect your StreamElements account to receive donation alerts. Find your JWT token in
+      <strong>StreamElements Dashboard &rarr; Account &rarr; Channels &rarr; Show Token</strong>.
+    </p>
+    <div class="form-group" style="margin-bottom: 0;">
+      <label for="streamelements_jwt">StreamElements JWT Token</label>
+      <input type="password" name="streamelements_jwt" id="streamelements_jwt"
+        placeholder="eyJhbGciOi..."
+        value="<%= streamer.streamelements_jwt || '' %>"
+        autocomplete="off">
+    </div>
+    <% if (streamer.streamelements_jwt) { %>
+      <p style="color: var(--success); font-size: 13px; margin-top: 8px; display: flex; align-items: center; gap: 6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        JWT token is saved. Leave blank to remove it.
+      </p>
+    <% } %>
+  </div>
+
+  <!-- Save Button -->
+  <div style="display: flex; justify-content: flex-end; margin-bottom: 24px;">
+    <button type="submit" class="btn btn-primary" style="padding: 12px 32px; font-size: 14px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Save Settings
+    </button>
+  </div>
+
+</form>
+
+<!-- Test Notifications -->
+<% if (overlayUrl) { %>
+<div class="card animate-in">
+  <h3>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.38 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.5a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.72 16z"/></svg>
+    Test Notifications
+  </h3>
+  <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
+    Fire a test alert to preview how each event looks on your overlay. Make sure your OBS Browser Source is open.
+  </p>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px;" id="test-btns">
+    <button onclick="fireTest('follow')" class="btn btn-secondary" data-type="follow">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Test Follow
+    </button>
+    <button onclick="fireTest('subscription')" class="btn btn-secondary" data-type="subscription">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2H3v16h5v4l4-4h5l4-4V2zM11 11V7M16 11V7"/></svg>
+      Test Sub
+    </button>
+    <button onclick="fireTest('bits')" class="btn btn-secondary" data-type="bits">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      Test Bits
+    </button>
+    <button onclick="fireTest('donation')" class="btn btn-secondary" data-type="donation">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      Test Donation
+    </button>
+  </div>
+  <div id="test-feedback" style="margin-top: 12px; font-size: 13px; display: none;"></div>
+</div>
+<% } %>
+
+<script>
+  function copyOverlayUrl() {
+    const input = document.getElementById('overlay-url-input');
+    if (!input) return;
+    navigator.clipboard.writeText(input.value).then(() => {
+      const btn = document.getElementById('copy-btn');
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
+      btn.style.color = 'var(--success)';
+      btn.style.borderColor = 'var(--success)';
+      setTimeout(() => {
+        btn.innerHTML = orig;
+        btn.style.color = '';
+        btn.style.borderColor = '';
+      }, 2000);
+    }).catch(() => {
+      input.select();
+      document.execCommand('copy');
+    });
+  }
+
+  function fireTest(type) {
+    const fb = document.getElementById('test-feedback');
+    fb.style.display = 'none';
+
+    fetch('/dashboard/overlay/test/' + type, { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          fb.style.display = 'block';
+          fb.style.color = 'var(--success)';
+          fb.textContent = 'Test ' + type + ' notification sent!';
+        } else {
+          fb.style.display = 'block';
+          fb.style.color = 'var(--danger)';
+          fb.textContent = 'Error: ' + (data.error || 'Unknown error');
+        }
+        setTimeout(() => { fb.style.display = 'none'; }, 3000);
+      })
+      .catch(err => {
+        fb.style.display = 'block';
+        fb.style.color = 'var(--danger)';
+        fb.textContent = 'Request failed: ' + err.message;
+        setTimeout(() => { fb.style.display = 'none'; }, 3000);
+      });
+  }
+</script>
+
+<%- include('footer') %>

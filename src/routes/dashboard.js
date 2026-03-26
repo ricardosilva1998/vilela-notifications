@@ -669,6 +669,83 @@ router.post('/feedback', (req, res) => {
   res.redirect('/dashboard/account?feedback=submitted');
 });
 
+// --- Overlay Config ---
+
+// Overlay config page
+router.get('/overlay', (req, res) => {
+  const streamer = req.streamer;
+  const appUrl = config.app.url || `${req.protocol}://${req.get('host')}`;
+  const overlayUrl = streamer.overlay_token ? `${appUrl}/overlay/${streamer.overlay_token}` : null;
+  const needsReauth = !streamer.broadcaster_scopes ||
+    !streamer.broadcaster_scopes.includes('moderator:read:followers') ||
+    !streamer.broadcaster_scopes.includes('bits:read');
+
+  res.render('overlay-config', {
+    streamer,
+    overlayUrl,
+    needsReauth,
+    appUrl,
+  });
+});
+
+// Save overlay settings
+router.post('/overlay', (req, res) => {
+  const b = req.body;
+  db.updateOverlayConfig(req.streamer.id, {
+    overlay_enabled: b.overlay_enabled ? 1 : 0,
+    overlay_follow_enabled: b.overlay_follow_enabled ? 1 : 0,
+    overlay_sub_enabled: b.overlay_sub_enabled ? 1 : 0,
+    overlay_bits_enabled: b.overlay_bits_enabled ? 1 : 0,
+    overlay_donation_enabled: b.overlay_donation_enabled ? 1 : 0,
+    overlay_follow_duration: parseInt(b.overlay_follow_duration) || 5,
+    overlay_sub_duration: parseInt(b.overlay_sub_duration) || 7,
+    overlay_bits_duration: parseInt(b.overlay_bits_duration) || 6,
+    overlay_donation_duration: parseInt(b.overlay_donation_duration) || 6,
+    overlay_volume: parseFloat(b.overlay_volume) || 0.8,
+    streamelements_jwt: b.streamelements_jwt || '',
+  });
+
+  try {
+    const { eventSubManager } = require('../services/eventsub');
+    const { streamElementsManager } = require('../services/streamelements');
+    if (b.overlay_enabled) {
+      eventSubManager.startForStreamer(req.streamer.id);
+      if (b.streamelements_jwt) streamElementsManager.startForStreamer(req.streamer.id);
+    } else {
+      eventSubManager.stopForStreamer(req.streamer.id);
+      streamElementsManager.stopForStreamer(req.streamer.id);
+    }
+  } catch (e) {
+    // EventSub/StreamElements services not yet available
+  }
+
+  res.redirect('/dashboard/overlay');
+});
+
+// Generate overlay token
+router.post('/overlay/generate-token', (req, res) => {
+  db.generateOverlayToken(req.streamer.id);
+  res.redirect('/dashboard/overlay');
+});
+
+// Test notification
+router.post('/overlay/test/:eventType', (req, res) => {
+  const bus = require('../services/overlayBus');
+  const type = req.params.eventType;
+  const testEvents = {
+    follow: { type: 'follow', data: { username: 'TestRacer' } },
+    subscription: { type: 'subscription', data: { username: 'SpeedDemon', message: 'Love the stream!', tier: '1', months: 6 } },
+    bits: { type: 'bits', data: { username: 'NitroFan', amount: 500, message: 'Take my bits!' } },
+    donation: { type: 'donation', data: { username: 'BigSponsor', amount: 25, message: 'Keep racing!', currency: 'USD' } },
+  };
+
+  const event = testEvents[type];
+  if (!event) return res.status(400).json({ error: 'Invalid event type' });
+
+  bus.emit(`overlay:${req.streamer.id}`, event);
+  res.json({ ok: true });
+});
+
 // --- Report an Issue ---
 
 router.get('/report', (req, res) => {
