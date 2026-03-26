@@ -217,6 +217,26 @@
       padding: 16px 20px; border-top: 1px solid var(--border);
       font-size: 11px; color: var(--text-muted);
     }
+    .sidebar-sub-link {
+      display: flex; align-items: center; gap: 12px;
+      padding: 8px 20px 8px 50px;
+      color: var(--text-secondary);
+      font-family: var(--font-display);
+      font-size: 13px; font-weight: 500;
+      transition: all var(--transition); border-left: 2px solid transparent;
+    }
+    .sidebar-sub-link:hover {
+      background: var(--bg-hover); color: var(--text-primary);
+      border-left-color: var(--accent);
+    }
+    .sidebar-sub-link svg { width: 15px; height: 15px; fill: currentColor; flex-shrink: 0; opacity: 0.7; }
+    .sidebar-sub-link:hover svg { opacity: 1; }
+    .sidebar-badge-soon {
+      font-size: 9px; padding: 2px 6px;
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      border-radius: 4px; color: var(--text-muted);
+      margin-left: auto; text-transform: uppercase; letter-spacing: 0.5px;
+    }
 
     /* Container */
     .container {
@@ -571,22 +591,53 @@
       </div>
       <button class="sidebar-close" onclick="closeSidebar()">&times;</button>
     </div>
+    <% var currentPath = (typeof currentPath !== 'undefined' && currentPath) ? currentPath : (typeof locals !== 'undefined' && locals.currentPath ? locals.currentPath : ''); %>
     <div class="sidebar-nav">
-      <div class="sidebar-section"><%= t('nav.navigation') %></div>
-      <a href="/dashboard" class="sidebar-link">
-        <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
-        <%= t('nav.dashboard') %>
-      </a>
+
       <% if (typeof streamer !== 'undefined' && streamer) { %>
-      <a href="/dashboard/overlay" class="sidebar-link">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
-        Overlay
+      <!-- PLATFORMS section -->
+      <div class="sidebar-section"><%= t('nav.platforms') %></div>
+
+      <!-- Discord -->
+      <a href="/dashboard" class="sidebar-link" style="<%= currentPath === '/dashboard' ? 'color: #5865F2; border-left-color: #5865F2; background: rgba(88,101,242,0.08);' : '' %>">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:<%= currentPath === '/dashboard' ? '#5865F2' : 'currentColor' %>;flex-shrink:0;opacity:<%= currentPath === '/dashboard' ? '1' : '0.7' %>"><path d="M20.317 4.492c-1.53-.69-3.17-1.2-4.885-1.49a.075.075 0 0 0-.079.036c-.21.369-.444.85-.608 1.23a18.566 18.566 0 0 0-5.487 0 12.36 12.36 0 0 0-.617-1.23A.077.077 0 0 0 8.562 3c-1.714.29-3.354.8-4.885 1.491a.07.07 0 0 0-.032.027C.533 9.093-.32 13.555.099 17.961a.08.08 0 0 0 .031.055 20.03 20.03 0 0 0 5.993 2.98.078.078 0 0 0 .084-.026c.462-.62.874-1.275 1.226-1.963.021-.04.001-.088-.041-.104a13.201 13.201 0 0 1-1.872-.878.075.075 0 0 1-.008-.125c.126-.093.252-.19.372-.287a.075.075 0 0 1 .078-.01c3.927 1.764 8.18 1.764 12.061 0a.075.075 0 0 1 .079.009c.12.098.245.195.372.288a.075.075 0 0 1-.006.125c-.598.344-1.22.635-1.873.877a.075.075 0 0 0-.041.105c.36.687.772 1.341 1.225 1.962a.077.077 0 0 0 .084.028 19.963 19.963 0 0 0 6.002-2.981.076.076 0 0 0 .032-.054c.5-5.094-.838-9.52-3.549-13.442a.06.06 0 0 0-.031-.028z"/></svg>
+        <%= t('nav.discord') %>
       </a>
-      <a href="/dashboard/chatbot" class="sidebar-link">
+
+      <!-- Twitch -->
+      <a href="/dashboard/twitch" class="sidebar-link" style="<%= currentPath && currentPath.startsWith('/dashboard/twitch') ? 'color: #9146ff; border-left-color: #9146ff; background: rgba(145,70,255,0.08);' : '' %>">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:<%= currentPath && currentPath.startsWith('/dashboard/twitch') ? '#9146ff' : 'currentColor' %>;flex-shrink:0;opacity:<%= currentPath && currentPath.startsWith('/dashboard/twitch') ? '1' : '0.7' %>"><path d="M4.265 3L3 6.236v13.223h4.502V21l2.531.001 2.196-2.196h3.325l4.411-4.411V3H4.265zm14.462 10.715l-2.564 2.564H12l-2.196 2.196v-2.196H5.502V4.502h13.225v9.213zm-2.564-5.862v4.567h-1.502V7.853h1.502zm-4.011 0v4.567H10.65V7.853h1.502z"/></svg>
+        <%= t('nav.twitch') %>
+      </a>
+      <!-- Twitch sub-items -->
+      <a href="/dashboard/twitch/overlay" class="sidebar-sub-link" style="<%= currentPath && currentPath.startsWith('/dashboard/twitch/overlay') ? 'color: #9146ff; border-left-color: #9146ff; background: rgba(145,70,255,0.06);' : '' %>">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>
+        <%= t('nav.overlay') %>
+      </a>
+      <a href="/dashboard/twitch/chatbot" class="sidebar-sub-link" style="<%= currentPath && currentPath.startsWith('/dashboard/twitch/chatbot') ? 'color: #9146ff; border-left-color: #9146ff; background: rgba(145,70,255,0.06);' : '' %>">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        Chatbot
+        <%= t('nav.chatbot') %>
       </a>
+
+      <!-- YouTube -->
+      <a href="/dashboard/youtube" class="sidebar-link" style="<%= currentPath === '/dashboard/youtube' ? 'color: #ff0000; border-left-color: #ff0000; background: rgba(255,0,0,0.08);' : '' %>">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:<%= currentPath === '/dashboard/youtube' ? '#ff0000' : 'currentColor' %>;flex-shrink:0;opacity:<%= currentPath === '/dashboard/youtube' ? '1' : '0.7' %>"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        <%= t('nav.youtube') %>
+        <span class="sidebar-badge-soon"><%= t('nav.comingSoon') %></span>
+      </a>
+
+      <!-- Kick -->
+      <a href="/dashboard/kick" class="sidebar-link" style="<%= currentPath === '/dashboard/kick' ? 'color: #53fc18; border-left-color: #53fc18; background: rgba(83,252,24,0.08);' : '' %>">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:<%= currentPath === '/dashboard/kick' ? '#53fc18' : 'currentColor' %>;flex-shrink:0;opacity:<%= currentPath === '/dashboard/kick' ? '1' : '0.7' %>"><path d="M2 2h4v7l5-7h5L9 12l7 10h-5L6 15v7H2V2z"/></svg>
+        <%= t('nav.kick') %>
+        <span class="sidebar-badge-soon"><%= t('nav.comingSoon') %></span>
+      </a>
+
+      <div class="sidebar-divider"></div>
       <% } %>
+
+      <!-- GENERAL section -->
+      <div class="sidebar-section"><%= t('nav.general') %></div>
       <a href="/tutorial" class="sidebar-link">
         <svg viewBox="0 0 24 24"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>
         <%= t('nav.setupGuide') %>
@@ -605,9 +656,8 @@
         </a>
       <% } %>
 
-      <div class="sidebar-divider"></div>
-      <div class="sidebar-section"><%= t('nav.resources') %></div>
       <% if (typeof streamerTier !== 'undefined' && streamerTier === 'enterprise') { %>
+      <div class="sidebar-divider"></div>
       <a href="https://github.com/ricardosilva1998/atleta-notifications-helper" target="_blank" class="sidebar-link">
         <svg viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
         GitHub
@@ -623,6 +673,10 @@
       <% if (typeof streamer !== 'undefined' && streamer) { %>
         <div class="sidebar-divider"></div>
         <div class="sidebar-section"><%= t('nav.account') %></div>
+        <a href="/dashboard/account" class="sidebar-link">
+          <svg viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+          <%= t('nav.account') %>
+        </a>
         <a href="/auth/logout" class="sidebar-link">
           <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
           <%= t('nav.logout') %>

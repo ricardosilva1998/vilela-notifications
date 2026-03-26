@@ -37,6 +37,7 @@ app.use((req, res, next) => {
   }
   res.locals.streamerTier = req.streamer ? db.getStreamerTier(req.streamer.id) : 'free';
   res.locals.isAdmin = req.streamer ? db.isAdmin(req.streamer.id) : false;
+  res.locals.currentPath = req.path;
 
   // i18n
   const lang = SUPPORTED_LANGS.includes(req.cookies?.lang) ? req.cookies.lang : 'en';
