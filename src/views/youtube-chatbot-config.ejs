@@ -128,7 +128,7 @@
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
-        <button type="button" onclick="testOverlay('yt_superchat', this)" class="btn btn-secondary" style="font-size: 13px; padding: 8px 16px;">Test Overlay</button>
+        <button type="button" onclick="testEvent('yt_superchat', this)" class="btn btn-secondary" style="font-size: 13px; padding: 8px 16px;">Test Event</button>
         <button type="button" onclick="previewMessage('superchat')" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px;">Preview Message</button>
       </div>
     </div>
@@ -165,7 +165,7 @@
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
-        <button type="button" onclick="testOverlay('yt_member', this)" class="btn btn-secondary" style="font-size: 13px; padding: 8px 16px;">Test Overlay</button>
+        <button type="button" onclick="testEvent('yt_member', this)" class="btn btn-secondary" style="font-size: 13px; padding: 8px 16px;">Test Event</button>
         <button type="button" onclick="previewMessage('member')" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px;">Preview Message</button>
       </div>
     </div>
@@ -202,7 +202,7 @@
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
-        <button type="button" onclick="testOverlay('yt_giftmember', this)" class="btn btn-secondary" style="font-size: 13px; padding: 8px 16px;">Test Overlay</button>
+        <button type="button" onclick="testEvent('yt_giftmember', this)" class="btn btn-secondary" style="font-size: 13px; padding: 8px 16px;">Test Event</button>
         <button type="button" onclick="previewMessage('giftmember')" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px;">Preview Message</button>
       </div>
     </div>
@@ -220,18 +220,24 @@
 </form>
 
 <script>
-async function testOverlay(eventType, btn) {
+async function testEvent(eventType, btn) {
   const orig = btn.textContent;
   btn.textContent = 'Sending...';
   btn.disabled = true;
   try {
     const res = await fetch(`/dashboard/youtube-chatbot/test/${eventType}`, { method: 'POST' });
     const data = await res.json();
-    btn.textContent = data.ok ? 'Sent!' : 'Error';
+    if (data.ok && data.chatSent) {
+      btn.textContent = 'Overlay + Chat sent!';
+    } else if (data.ok) {
+      btn.textContent = 'Overlay sent!';
+    } else {
+      btn.textContent = 'Error';
+    }
   } catch (e) {
     btn.textContent = 'Error';
   }
-  setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000);
+  setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2500);
 }
 
 const sampleData = {

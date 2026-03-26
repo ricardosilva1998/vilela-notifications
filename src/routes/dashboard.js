@@ -921,7 +921,7 @@ router.post('/youtube-chatbot', (req, res) => {
 });
 
 // Test YouTube chat event
-router.post('/youtube-chatbot/test/:eventType', (req, res) => {
+router.post('/youtube-chatbot/test/:eventType', async (req, res) => {
   const bus = require('../services/overlayBus');
   const type = req.params.eventType;
   const testEvents = {
@@ -931,8 +931,41 @@ router.post('/youtube-chatbot/test/:eventType', (req, res) => {
   };
   const event = testEvents[type];
   if (!event) return res.status(400).json({ error: 'Invalid event type' });
+
+  // Send to overlay
   bus.emit(`overlay:${req.streamer.id}`, event);
-  res.json({ ok: true });
+
+  // Send chat message if bot is polling live chat
+  let chatSent = false;
+  try {
+    const { youtubeChatManager } = require('../services/youtubeLiveChat');
+    if (youtubeChatManager.isPolling(req.streamer.id)) {
+      const streamer = req.streamer;
+      const typeMap = { yt_superchat: 'superchat', yt_member: 'member', yt_giftmember: 'giftmember' };
+      const mappedType = typeMap[type];
+      const templateKey = `yt_chat_${mappedType}_template`;
+      const template = streamer[templateKey];
+      if (template) {
+        let message = template;
+        for (const [key, value] of Object.entries(event.data)) {
+          message = message.replace(new RegExp(`\\{${key}\\}`, 'g'), value ?? '');
+        }
+        const { refreshYoutubeBotToken, sendYoutubeChatMessage } = require('../services/youtube');
+        const token = await refreshYoutubeBotToken();
+        if (token) {
+          const liveChatId = youtubeChatManager.getLiveChatId(req.streamer.id);
+          if (liveChatId) {
+            await sendYoutubeChatMessage(liveChatId, message, token);
+            chatSent = true;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[YT Chat] Test chat error:', e.message);
+  }
+
+  res.json({ ok: true, chatSent });
 });
 
 // Connect to YouTube live stream

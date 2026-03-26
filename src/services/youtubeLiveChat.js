@@ -194,6 +194,11 @@ const youtubeChatManager = {
   isPolling(streamerId) {
     return activePollers.has(streamerId);
   },
+
+  getLiveChatId(streamerId) {
+    const poller = activePollers.get(streamerId);
+    return poller ? poller.liveChatId : null;
+  },
 };
 
 module.exports = { youtubeChatManager };
