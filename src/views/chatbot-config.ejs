@@ -1,0 +1,226 @@
+<%- include('header', { title: 'Chatbot Config', streamer: streamer }) %>
+
+<a href="/dashboard" style="color: var(--text-secondary); font-size: 13px; font-family: var(--font-display); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  Back to Dashboard
+</a>
+<h2 style="margin: 16px 0 8px; font-size: 24px; font-weight: 700;" class="animate-in">Chatbot Configuration</h2>
+<p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 24px;">Set up your chat bot to send automatic messages for follows, subscriptions, bits, donations, and raids.</p>
+
+<% if (bot_linked == '1') { %>
+  <div style="background: var(--success-bg); border: 1px solid rgba(62,207,142,0.2); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 20px; font-size: 14px; color: var(--success); display: flex; align-items: center; gap: 8px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    Bot account connected successfully!
+  </div>
+<% } %>
+<% if (bot_error) { %>
+  <div style="background: var(--danger-bg); border: 1px solid rgba(240,68,56,0.2); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 20px; font-size: 14px; color: var(--danger); display: flex; align-items: center; gap: 8px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    Failed to connect bot account: <%= bot_error %>
+  </div>
+<% } %>
+
+<!-- Bot Connection -->
+<div class="card animate-in">
+  <h3>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    Bot Account
+  </h3>
+  <% if (streamer.bot_username) { %>
+    <p style="color: var(--success); font-size: 14px; display: flex; align-items: center; gap: 8px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Connected as <strong><%= streamer.bot_username %></strong>
+    </p>
+    <p style="color: var(--text-muted); font-size: 13px; margin-top: 8px;">
+      To switch bots, <a href="/auth/bot" style="color: var(--accent);">re-authenticate with a different account</a>.
+    </p>
+  <% } else { %>
+    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">
+      Connect a Twitch account to use as your chat bot. This can be your main account or a dedicated bot account.
+    </p>
+    <a href="/auth/bot" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Connect Bot Account
+    </a>
+  <% } %>
+</div>
+
+<!-- Main Settings Form -->
+<form method="POST" action="/dashboard/chatbot">
+
+  <!-- Enable/Disable -->
+  <div class="card animate-in animate-in-delay-1">
+    <h3>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/></svg>
+      Chatbot Status
+    </h3>
+    <div class="toggle">
+      <input type="checkbox" id="chatbot_enabled" name="chatbot_enabled" value="1" <%= streamer.chatbot_enabled ? 'checked' : '' %>>
+      <label for="chatbot_enabled">Enable chatbot (connect to your Twitch chat)</label>
+    </div>
+    <p style="color: var(--text-muted); font-size: 13px;">When enabled, the bot will join your channel and send messages for configured events.</p>
+  </div>
+
+  <!-- Event Templates -->
+  <div class="card animate-in animate-in-delay-2">
+    <h3>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+      Event Messages
+    </h3>
+    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
+      Configure which events trigger a chat message and what that message says. Use variables to personalize each message.
+    </p>
+
+    <!-- Follow -->
+    <div style="padding: 18px 0; border-bottom: 1px solid var(--border);">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(145,70,255,0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="toggle" style="margin-bottom: 0;">
+          <input type="checkbox" id="chat_follow_enabled" name="chat_follow_enabled" value="1" <%= streamer.chat_follow_enabled ? 'checked' : '' %>>
+          <label for="chat_follow_enabled" style="font-size: 14px; font-weight: 600; color: var(--text-primary);">Follows</label>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom: 4px;">
+        <textarea name="chat_follow_template" rows="2"
+          placeholder="Thanks for the follow, {username}! Welcome to the stream!"
+          style="width: 100%; padding: 10px 14px; background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body); font-size: 13px; outline: none; resize: vertical; transition: border-color var(--transition);"
+          onfocus="this.style.borderColor='var(--border-focus)'" onblur="this.style.borderColor='var(--border)'"
+        ><%= streamer.chat_follow_template || '' %></textarea>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted);">Variables: <code style="background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px;">{username}</code></p>
+    </div>
+
+    <!-- Subscription -->
+    <div style="padding: 18px 0; border-bottom: 1px solid var(--border);">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(145,70,255,0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2H3v16h5v4l4-4h5l4-4V2zM11 11V7M16 11V7"/></svg>
+        </div>
+        <div class="toggle" style="margin-bottom: 0;">
+          <input type="checkbox" id="chat_sub_enabled" name="chat_sub_enabled" value="1" <%= streamer.chat_sub_enabled ? 'checked' : '' %>>
+          <label for="chat_sub_enabled" style="font-size: 14px; font-weight: 600; color: var(--text-primary);">Subscriptions</label>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom: 4px;">
+        <textarea name="chat_sub_template" rows="2"
+          placeholder="Thank you {username} for the Tier {tier} sub! ({months} months)"
+          style="width: 100%; padding: 10px 14px; background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body); font-size: 13px; outline: none; resize: vertical; transition: border-color var(--transition);"
+          onfocus="this.style.borderColor='var(--border-focus)'" onblur="this.style.borderColor='var(--border)'"
+        ><%= streamer.chat_sub_template || '' %></textarea>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted);">Variables: <code style="background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px;">{username}</code> <code style="background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px;">{tier}</code> <code style="background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px;">{months}</code> <code style="background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px;">{message}</code></p>
+    </div>
+
+    <!-- Gift Sub -->
+    <div style="padding: 18px 0; border-bottom: 1px solid var(--border);">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(145,70,255,0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+        </div>
+        <div class="toggle" style="margin-bottom: 0;">
+          <input type="checkbox" id="chat_giftsub_enabled" name="chat_giftsub_enabled" value="1" <%= streamer.chat_giftsub_enabled ? 'checked' : '' %>>
+          <label for="chat_giftsub_enabled" style="font-size: 14px; font-weight: 600; color: var(--text-primary);">Gift Subscriptions</label>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom: 4px;">
+        <textarea name="chat_giftsub_template" rows="2"
+          placeholder="Huge thanks to {username} for gifting {amount} Tier {tier} subs!"
+          style="width: 100%; padding: 10px 14px; background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body); font-size: 13px; outline: none; resize: vertical; transition: border-color var(--transition);"
+          onfocus="this.style.borderColor='var(--border-focus)'" onblur="this.style.borderColor='var(--border)'"
+        ><%= streamer.chat_giftsub_template || '' %></textarea>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted);">Variables: <code style="background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px;">{username}</code> <code style="background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px;">{amount}</code> <code style="background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px;">{tier}</code></p>
+    </div>
+
+    <!-- Bits -->
+    <div style="padding: 18px 0; border-bottom: 1px solid var(--border);">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(145,70,255,0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <div class="toggle" style="margin-bottom: 0;">
+          <input type="checkbox" id="chat_bits_enabled" name="chat_bits_enabled" value="1" <%= streamer.chat_bits_enabled ? 'checked' : '' %>>
+          <label for="chat_bits_enabled" style="font-size: 14px; font-weight: 600; color: var(--text-primary);">Bits / Cheers</label>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom: 4px;">
+        <textarea name="chat_bits_template" rows="2"
+          placeholder="Thanks {username} for the {amount} bits! {message}"
+          style="width: 100%; padding: 10px 14px; background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body); font-size: 13px; outline: none; resize: vertical; transition: border-color var(--transition);"
+          onfocus="this.style.borderColor='var(--border-focus)'" onblur="this.style.borderColor='var(--border)'"
+        ><%= streamer.chat_bits_template || '' %></textarea>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted);">Variables: <code style="background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px;">{username}</code> <code style="background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px;">{amount}</code> <code style="background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px;">{message}</code></p>
+    </div>
+
+    <!-- Donation -->
+    <div style="padding: 18px 0; border-bottom: 1px solid var(--border);">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(62,207,142,0.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <div class="toggle" style="margin-bottom: 0;">
+          <input type="checkbox" id="chat_donation_enabled" name="chat_donation_enabled" value="1" <%= streamer.chat_donation_enabled ? 'checked' : '' %>>
+          <label for="chat_donation_enabled" style="font-size: 14px; font-weight: 600; color: var(--text-primary);">Donations</label>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom: 4px;">
+        <textarea name="chat_donation_template" rows="2"
+          placeholder="Thank you {username} for the {amount} {currency} donation! {message}"
+          style="width: 100%; padding: 10px 14px; background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body); font-size: 13px; outline: none; resize: vertical; transition: border-color var(--transition);"
+          onfocus="this.style.borderColor='var(--border-focus)'" onblur="this.style.borderColor='var(--border)'"
+        ><%= streamer.chat_donation_template || '' %></textarea>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted);">Variables: <code style="background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px;">{username}</code> <code style="background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px;">{amount}</code> <code style="background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px;">{currency}</code> <code style="background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px;">{message}</code></p>
+    </div>
+
+    <!-- Raid -->
+    <div style="padding: 18px 0;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(247,144,9,0.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <div class="toggle" style="margin-bottom: 0;">
+          <input type="checkbox" id="chat_raid_enabled" name="chat_raid_enabled" value="1" <%= streamer.chat_raid_enabled ? 'checked' : '' %>>
+          <label for="chat_raid_enabled" style="font-size: 14px; font-weight: 600; color: var(--text-primary);">Raids</label>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom: 4px;">
+        <textarea name="chat_raid_template" rows="2"
+          placeholder="Welcome raiders! Thanks {username} for bringing {viewers} viewers!"
+          style="width: 100%; padding: 10px 14px; background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body); font-size: 13px; outline: none; resize: vertical; transition: border-color var(--transition);"
+          onfocus="this.style.borderColor='var(--border-focus)'" onblur="this.style.borderColor='var(--border)'"
+        ><%= streamer.chat_raid_template || '' %></textarea>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted);">Variables: <code style="background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px;">{username}</code> <code style="background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px;">{viewers}</code></p>
+    </div>
+  </div>
+
+  <!-- Save Button -->
+  <div style="display: flex; justify-content: flex-end; margin-bottom: 24px;">
+    <button type="submit" class="btn btn-primary" style="padding: 12px 32px; font-size: 14px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Save Settings
+    </button>
+  </div>
+
+</form>
+
+<!-- Custom Commands -->
+<div class="card animate-in">
+  <h3>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+    Custom Commands
+  </h3>
+  <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">
+    Create custom chat commands like <code style="background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px;">!discord</code> or <code style="background: var(--bg-elevated); padding: 1px 5px; border-radius: 4px;">!schedule</code> that viewers can trigger.
+  </p>
+  <a href="/dashboard/chatbot/commands" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+    Manage Custom Commands
+  </a>
+</div>
+
+<%- include('footer') %>

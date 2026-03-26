@@ -746,6 +746,50 @@ router.post('/overlay/test/:eventType', (req, res) => {
   res.json({ ok: true });
 });
 
+// --- Chatbot Config ---
+
+// Chatbot config page
+router.get('/chatbot', (req, res) => {
+  const streamer = req.streamer;
+  res.render('chatbot-config', {
+    streamer,
+    bot_linked: req.query.bot_linked || null,
+    bot_error: req.query.bot_error || null,
+  });
+});
+
+// Save chatbot settings
+router.post('/chatbot', (req, res) => {
+  const b = req.body;
+  db.updateChatbotConfig(req.streamer.id, {
+    chatbot_enabled: b.chatbot_enabled ? 1 : 0,
+    chat_follow_enabled: b.chat_follow_enabled ? 1 : 0,
+    chat_sub_enabled: b.chat_sub_enabled ? 1 : 0,
+    chat_giftsub_enabled: b.chat_giftsub_enabled ? 1 : 0,
+    chat_bits_enabled: b.chat_bits_enabled ? 1 : 0,
+    chat_donation_enabled: b.chat_donation_enabled ? 1 : 0,
+    chat_raid_enabled: b.chat_raid_enabled ? 1 : 0,
+    chat_follow_template: b.chat_follow_template || '',
+    chat_sub_template: b.chat_sub_template || '',
+    chat_giftsub_template: b.chat_giftsub_template || '',
+    chat_bits_template: b.chat_bits_template || '',
+    chat_donation_template: b.chat_donation_template || '',
+    chat_raid_template: b.chat_raid_template || '',
+  });
+
+  // Start/stop chat bot
+  try {
+    const { chatManager } = require('../services/twitchChat');
+    if (b.chatbot_enabled) {
+      chatManager.startForStreamer(req.streamer.id);
+    } else {
+      chatManager.stopForStreamer(req.streamer.id);
+    }
+  } catch (e) {}
+
+  res.redirect('/dashboard/chatbot');
+});
+
 // --- Report an Issue ---
 
 router.get('/report', (req, res) => {
