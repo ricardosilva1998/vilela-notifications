@@ -19,7 +19,9 @@
     "discord.js": "^14.16.0",
     "ejs": "^5.0.1",
     "express": "^5.2.1",
-    "fast-xml-parser": "^5.5.8"
+    "fast-xml-parser": "^5.5.8",
+    "socket.io-client": "^2.5.0",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
