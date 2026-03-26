@@ -874,28 +874,40 @@ router.post('/chatbot/commands/:id/delete', (req, res) => {
 // --- YouTube Chatbot ---
 
 // YouTube chatbot config page
-router.get('/youtube-chatbot', (req, res) => {
+router.get('/youtube-chatbot', async (req, res) => {
   const commands = db.getChatCommands(req.streamer.id);
   let ytPolling = false;
   try {
     const { youtubeChatManager } = require('../services/youtubeLiveChat');
     ytPolling = youtubeChatManager.isPolling(req.streamer.id);
   } catch (e) {}
-  // Check if streamer has a YouTube channel linked (directly or via watched channels)
-  let hasYoutubeChannel = !!req.streamer.youtube_channel_id;
-  if (!hasYoutubeChannel) {
-    const guilds = db.getGuildsForStreamer(req.streamer.id);
-    for (const g of guilds) {
-      const ytChannels = db.getWatchedYoutubeChannelsForGuild(g.guild_id, req.streamer.id);
-      if (ytChannels.length > 0) { hasYoutubeChannel = true; break; }
-    }
+
+  // Check if streamer is live on YouTube
+  let ytLive = false;
+  let ytLiveTitle = null;
+  if (req.streamer.yt_access_token) {
+    try {
+      const { refreshStreamerYoutubeToken, getActiveBroadcast } = require('../services/youtube');
+      let accessToken = req.streamer.yt_access_token;
+      if (req.streamer.yt_token_expires_at && Date.now() >= req.streamer.yt_token_expires_at) {
+        accessToken = await refreshStreamerYoutubeToken(req.streamer);
+      }
+      if (accessToken) {
+        const broadcast = await getActiveBroadcast(accessToken);
+        if (broadcast) {
+          ytLive = true;
+          ytLiveTitle = broadcast.title;
+        }
+      }
+    } catch (e) {}
   }
 
   res.render('youtube-chatbot-config', {
     streamer: req.streamer,
     commands,
     ytPolling,
-    hasYoutubeChannel,
+    ytLive,
+    ytLiveTitle,
     connected: req.query.connected,
     disconnected: req.query.disconnected,
     error: req.query.error,
