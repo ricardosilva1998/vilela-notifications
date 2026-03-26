@@ -1,4 +1,5 @@
 const config = require('../config');
+const db = require('../db');
 
 let accessToken = null;
 let tokenExpiresAt = 0;
@@ -152,4 +153,30 @@ async function getGameNames(gameIds) {
   return (data.data || []).map((g) => g.name);
 }
 
-module.exports = { getStream, getUserId, getUserProfile, getClips, getSubscribers, getVideos, getFollowerCount, getGameNames };
+async function refreshBroadcasterToken(streamer) {
+  const params = new URLSearchParams({
+    client_id: config.twitch.clientId,
+    client_secret: config.twitch.clientSecret,
+    grant_type: 'refresh_token',
+    refresh_token: streamer.broadcaster_refresh_token,
+  });
+
+  const res = await fetch('https://id.twitch.tv/oauth2/token', {
+    method: 'POST',
+    body: params,
+  });
+
+  if (!res.ok) throw new Error(`Token refresh failed: ${res.status}`);
+
+  const data = await res.json();
+  db.updateStreamerBroadcasterTokens(
+    streamer.id,
+    data.access_token,
+    data.refresh_token,
+    Date.now() + data.expires_in * 1000 - 60_000
+  );
+
+  return data.access_token;
+}
+
+module.exports = { getStream, getUserId, getUserProfile, getClips, getSubscribers, getVideos, getFollowerCount, getGameNames, refreshBroadcasterToken };
