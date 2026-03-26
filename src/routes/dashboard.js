@@ -876,7 +876,19 @@ router.post('/chatbot/commands/:id/delete', (req, res) => {
 // YouTube chatbot config page
 router.get('/youtube-chatbot', (req, res) => {
   const commands = db.getChatCommands(req.streamer.id);
-  res.render('youtube-chatbot-config', { streamer: req.streamer, commands });
+  let ytPolling = false;
+  try {
+    const { youtubeChatManager } = require('../services/youtubeLiveChat');
+    ytPolling = youtubeChatManager.isPolling(req.streamer.id);
+  } catch (e) {}
+  res.render('youtube-chatbot-config', {
+    streamer: req.streamer,
+    commands,
+    ytPolling,
+    connected: req.query.connected,
+    disconnected: req.query.disconnected,
+    error: req.query.error,
+  });
 });
 
 // Save YouTube chatbot settings
@@ -910,6 +922,48 @@ router.post('/youtube-chatbot/test/:eventType', (req, res) => {
   if (!event) return res.status(400).json({ error: 'Invalid event type' });
   bus.emit(`overlay:${req.streamer.id}`, event);
   res.json({ ok: true });
+});
+
+// Connect to YouTube live stream manually
+router.post('/youtube-chatbot/connect', async (req, res) => {
+  const { video_url } = req.body;
+  if (!video_url) return res.redirect('/dashboard/youtube-chatbot?error=No video URL provided');
+
+  try {
+    // Extract video ID from URL or raw ID
+    let videoId = video_url.trim();
+    const urlMatch = videoId.match(/(?:v=|youtu\.be\/|\/live\/)([a-zA-Z0-9_-]{11})/);
+    if (urlMatch) videoId = urlMatch[1];
+
+    if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+      return res.redirect('/dashboard/youtube-chatbot?error=Invalid video URL or ID');
+    }
+
+    const { getLiveChatId } = require('../services/youtube');
+    const appConfig = require('../config');
+    const liveChatId = await getLiveChatId(videoId, appConfig.youtube.apiKey);
+
+    if (!liveChatId) {
+      return res.redirect('/dashboard/youtube-chatbot?error=Could not find live chat. Make sure the stream is live.');
+    }
+
+    const { youtubeChatManager } = require('../services/youtubeLiveChat');
+    youtubeChatManager.startPolling(req.streamer.id, liveChatId);
+
+    res.redirect('/dashboard/youtube-chatbot?connected=1');
+  } catch (e) {
+    console.error('[YT Chat] Manual connect error:', e.message);
+    res.redirect('/dashboard/youtube-chatbot?error=' + encodeURIComponent(e.message));
+  }
+});
+
+// Disconnect from YouTube live chat
+router.post('/youtube-chatbot/disconnect', (req, res) => {
+  try {
+    const { youtubeChatManager } = require('../services/youtubeLiveChat');
+    youtubeChatManager.stopPolling(req.streamer.id);
+  } catch (e) {}
+  res.redirect('/dashboard/youtube-chatbot?disconnected=1');
 });
 
 // --- Report an Issue ---

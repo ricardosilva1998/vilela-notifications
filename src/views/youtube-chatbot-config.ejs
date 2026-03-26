@@ -11,13 +11,57 @@
 <h2 style="margin: 16px 0 8px; font-size: 24px; font-weight: 700;" class="animate-in">YouTube Chatbot Configuration</h2>
 <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 24px;">Set up your YouTube live chat bot to respond to Super Chats, new Members, and Gift events.</p>
 
+<% if (connected) { %>
+  <div style="background: rgba(62,207,142,0.1); border: 1px solid rgba(62,207,142,0.2); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 20px; font-size: 14px; color: var(--success); display: flex; align-items: center; gap: 8px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    Connected to YouTube live chat! Bot is now polling for events.
+  </div>
+<% } %>
+<% if (disconnected) { %>
+  <div style="background: rgba(247,144,9,0.1); border: 1px solid rgba(247,144,9,0.2); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 20px; font-size: 14px; color: var(--warning);">
+    Disconnected from YouTube live chat.
+  </div>
+<% } %>
+<% if (error) { %>
+  <div style="background: rgba(240,68,56,0.1); border: 1px solid rgba(240,68,56,0.2); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 20px; font-size: 14px; color: var(--danger);">
+    <%= error %>
+  </div>
+<% } %>
+
+<!-- Live Stream Connection -->
+<div class="card animate-in" style="margin-bottom: 16px;">
+  <h3 style="margin-bottom: 16px;">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+    Live Stream Connection
+  </h3>
+  <% if (ytPolling) { %>
+    <p style="color: var(--success); font-size: 14px; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Bot is connected and polling live chat
+    </p>
+    <form method="POST" action="/dashboard/youtube-chatbot/disconnect" style="margin: 0;">
+      <button type="submit" class="btn btn-secondary" style="font-size: 13px; padding: 8px 16px;">Disconnect</button>
+    </form>
+  <% } else { %>
+    <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px; line-height: 1.5;">
+      Paste your YouTube live stream URL to connect the bot to your chat. The bot will also connect automatically when your stream is detected.
+    </p>
+    <form method="POST" action="/dashboard/youtube-chatbot/connect" style="display: flex; gap: 8px; align-items: center;">
+      <input type="text" name="video_url" placeholder="https://youtube.com/live/... or video ID" required
+        style="flex: 1; padding: 10px 14px; background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 13px; outline: none;"
+        onfocus="this.style.borderColor='var(--border-focus)'" onblur="this.style.borderColor='var(--border)'">
+      <button type="submit" class="btn btn-primary" style="font-size: 13px; padding: 10px 20px; white-space: nowrap;">Connect to Stream</button>
+    </form>
+  <% } %>
+</div>
+
 <form method="POST" action="/dashboard/youtube-chatbot">
 
   <!-- Enable/Disable Toggle -->
   <div class="card animate-in" style="margin-bottom: 16px;">
     <h3 style="margin-bottom: 16px;">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      Bot Status
+      Bot Settings
     </h3>
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
       <input type="checkbox" id="yt_chatbot_enabled" name="yt_chatbot_enabled" value="1" <%= streamer.yt_chatbot_enabled ? 'checked' : '' %> style="width: 18px; height: 18px; accent-color: #ff0000;">
@@ -25,7 +69,6 @@
     </div>
     <p style="color: var(--text-muted); font-size: 13px; line-height: 1.5;">
       The chatbot will automatically respond to Super Chats, new Members, and Gift Memberships during your live streams.
-      Requires YouTube Bot credentials configured by the admin (<code>YOUTUBE_BOT_REFRESH_TOKEN</code>, <code>YOUTUBE_BOT_CLIENT_ID</code>, <code>YOUTUBE_BOT_CLIENT_SECRET</code>).
     </p>
   </div>
 
