@@ -12,6 +12,7 @@
   /* Alert card — Option A compact layout */
   .alert-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 12px; transition: border-color 0.2s; }
   .alert-card:hover { border-color: rgba(145,70,255,0.3); }
+  .alert-card { display: flex; flex-direction: column; }
   .alert-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
   .alert-card-info { display: flex; align-items: center; gap: 10px; }
   .alert-card-icon { font-size: 20px; }
@@ -170,8 +171,8 @@
         </div>
       </div>
       <% if (overlayUrl) { %>
-      <div class="alert-card-footer">
-        <button type="button" onclick="openPreview('follow')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--accent); background: rgba(145,71,255,0.1); color: var(--accent);">
+      <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+        <button type="button" onclick="openPreview('follow')" class="btn btn-primary" style="font-size: 13px; padding: 8px 18px; display: flex; align-items: center; gap: 6px;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Preview Alert
         </button>
@@ -213,8 +214,8 @@
         </div>
       </div>
       <% if (overlayUrl) { %>
-      <div class="alert-card-footer">
-        <button type="button" onclick="openPreview('subscription')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--accent); background: rgba(145,71,255,0.1); color: var(--accent);">
+      <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+        <button type="button" onclick="openPreview('subscription')" class="btn btn-primary" style="font-size: 13px; padding: 8px 18px; display: flex; align-items: center; gap: 6px;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Preview Alert
         </button>
@@ -256,8 +257,8 @@
         </div>
       </div>
       <% if (overlayUrl) { %>
-      <div class="alert-card-footer">
-        <button type="button" onclick="openPreview('bits')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--accent); background: rgba(145,71,255,0.1); color: var(--accent);">
+      <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+        <button type="button" onclick="openPreview('bits')" class="btn btn-primary" style="font-size: 13px; padding: 8px 18px; display: flex; align-items: center; gap: 6px;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Preview Alert
         </button>
@@ -299,8 +300,8 @@
         </div>
       </div>
       <% if (overlayUrl) { %>
-      <div class="alert-card-footer">
-        <button type="button" onclick="openPreview('donation')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--accent); background: rgba(145,71,255,0.1); color: var(--accent);">
+      <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+        <button type="button" onclick="openPreview('donation')" class="btn btn-primary" style="font-size: 13px; padding: 8px 18px; display: flex; align-items: center; gap: 6px;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Preview Alert
         </button>
@@ -342,8 +343,8 @@
         </div>
       </div>
       <% if (overlayUrl) { %>
-      <div class="alert-card-footer">
-        <button type="button" onclick="openPreview('raid')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--accent); background: rgba(145,71,255,0.1); color: var(--accent);">
+      <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+        <button type="button" onclick="openPreview('raid')" class="btn btn-primary" style="font-size: 13px; padding: 8px 18px; display: flex; align-items: center; gap: 6px;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Preview Alert
         </button>
@@ -385,8 +386,8 @@
         </div>
       </div>
       <% if (overlayUrl) { %>
-      <div class="alert-card-footer">
-        <button type="button" onclick="openPreview('yt_superchat')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--accent); background: rgba(145,71,255,0.1); color: var(--accent);">
+      <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+        <button type="button" onclick="openPreview('yt_superchat')" class="btn btn-primary" style="font-size: 13px; padding: 8px 18px; display: flex; align-items: center; gap: 6px;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Preview Alert
         </button>
@@ -428,8 +429,8 @@
         </div>
       </div>
       <% if (overlayUrl) { %>
-      <div class="alert-card-footer">
-        <button type="button" onclick="openPreview('yt_member')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--accent); background: rgba(145,71,255,0.1); color: var(--accent);">
+      <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+        <button type="button" onclick="openPreview('yt_member')" class="btn btn-primary" style="font-size: 13px; padding: 8px 18px; display: flex; align-items: center; gap: 6px;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Preview Alert
         </button>
@@ -471,8 +472,8 @@
         </div>
       </div>
       <% if (overlayUrl) { %>
-      <div class="alert-card-footer">
-        <button type="button" onclick="openPreview('yt_giftmember')" class="btn btn-primary" style="font-size: 12px; padding: 6px 14px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--accent); background: rgba(145,71,255,0.1); color: var(--accent);">
+      <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+        <button type="button" onclick="openPreview('yt_giftmember')" class="btn btn-primary" style="font-size: 13px; padding: 8px 18px; display: flex; align-items: center; gap: 6px;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Preview Alert
         </button>
