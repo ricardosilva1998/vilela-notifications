@@ -1,4 +1,6 @@
 const { Router } = require('express');
+const fs = require('fs');
+const path = require('path');
 const config = require('../config');
 const db = require('../db');
 const { client } = require('../discord');
@@ -759,6 +761,44 @@ router.post('/overlay/test/:eventType', (req, res) => {
 
   bus.emit(`overlay:${req.streamer.id}`, event);
   res.json({ ok: true });
+});
+
+// Upload custom sound for an event type
+router.post('/overlay/sounds/:eventType', (req, res) => {
+  const validTypes = ['follow', 'subscription', 'bits', 'donation', 'raid', 'yt_superchat', 'yt_member', 'yt_giftmember'];
+  const type = req.params.eventType;
+  if (!validTypes.includes(type)) return res.status(400).json({ error: 'Invalid event type' });
+
+  const chunks = [];
+  req.on('data', chunk => chunks.push(chunk));
+  req.on('end', () => {
+    const soundDir = path.join(__dirname, '..', '..', 'public', 'overlay', 'sounds');
+    if (!fs.existsSync(soundDir)) fs.mkdirSync(soundDir, { recursive: true });
+    fs.writeFileSync(path.join(soundDir, `${type}.mp3`), Buffer.concat(chunks));
+    res.json({ ok: true });
+  });
+});
+
+// Delete custom sound
+router.post('/overlay/sounds/:eventType/delete', (req, res) => {
+  const validTypes = ['follow', 'subscription', 'bits', 'donation', 'raid', 'yt_superchat', 'yt_member', 'yt_giftmember'];
+  const type = req.params.eventType;
+  if (!validTypes.includes(type)) return res.status(400).json({ error: 'Invalid event type' });
+
+  const soundPath = path.join(__dirname, '..', '..', 'public', 'overlay', 'sounds', `${type}.mp3`);
+  if (fs.existsSync(soundPath)) fs.unlinkSync(soundPath);
+  res.json({ ok: true });
+});
+
+// Check which custom sounds exist
+router.get('/overlay/sounds/status', (req, res) => {
+  const soundDir = path.join(__dirname, '..', '..', 'public', 'overlay', 'sounds');
+  const types = ['follow', 'subscription', 'bits', 'donation', 'raid', 'yt_superchat', 'yt_member', 'yt_giftmember'];
+  const status = {};
+  types.forEach(type => {
+    status[type] = fs.existsSync(path.join(soundDir, `${type}.mp3`));
+  });
+  res.json(status);
 });
 
 // --- Chatbot Config ---

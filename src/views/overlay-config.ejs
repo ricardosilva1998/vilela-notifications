@@ -220,6 +220,129 @@
 
 </form>
 
+<!-- Sound Management -->
+<div class="card animate-in">
+  <h3>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+    Alert Sounds
+  </h3>
+  <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
+    Preview or upload custom MP3 sounds for each event type. Uploaded sounds replace the built-in synthesized tones.
+  </p>
+
+  <!-- Follow -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border);">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 18px;">🏁</span>
+      <span style="font-weight: 600; font-size: 14px;">Follow</span>
+      <span class="sound-status" id="sound-status-follow" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; background: var(--bg-elevated); color: var(--text-muted);">Default</span>
+    </div>
+    <div style="display: flex; gap: 6px;">
+      <button type="button" onclick="previewSound('follow')" class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px;">&#9654; Preview</button>
+      <button type="button" onclick="uploadSound('follow')" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">Upload</button>
+      <button type="button" onclick="removeSound('follow')" class="btn btn-secondary" id="remove-btn-follow" style="font-size: 12px; padding: 6px 12px; color: var(--danger); display: none;">Remove</button>
+    </div>
+  </div>
+
+  <!-- Subscription -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border);">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 18px;">🏆</span>
+      <span style="font-weight: 600; font-size: 14px;">Subscription</span>
+      <span class="sound-status" id="sound-status-subscription" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; background: var(--bg-elevated); color: var(--text-muted);">Default</span>
+    </div>
+    <div style="display: flex; gap: 6px;">
+      <button type="button" onclick="previewSound('subscription')" class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px;">&#9654; Preview</button>
+      <button type="button" onclick="uploadSound('subscription')" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">Upload</button>
+      <button type="button" onclick="removeSound('subscription')" class="btn btn-secondary" id="remove-btn-subscription" style="font-size: 12px; padding: 6px 12px; color: var(--danger); display: none;">Remove</button>
+    </div>
+  </div>
+
+  <!-- Bits -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border);">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 18px;">&#9939;</span>
+      <span style="font-weight: 600; font-size: 14px;">Bits</span>
+      <span class="sound-status" id="sound-status-bits" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; background: var(--bg-elevated); color: var(--text-muted);">Default</span>
+    </div>
+    <div style="display: flex; gap: 6px;">
+      <button type="button" onclick="previewSound('bits')" class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px;">&#9654; Preview</button>
+      <button type="button" onclick="uploadSound('bits')" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">Upload</button>
+      <button type="button" onclick="removeSound('bits')" class="btn btn-secondary" id="remove-btn-bits" style="font-size: 12px; padding: 6px 12px; color: var(--danger); display: none;">Remove</button>
+    </div>
+  </div>
+
+  <!-- Donation -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border);">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 18px;">💰</span>
+      <span style="font-weight: 600; font-size: 14px;">Donation</span>
+      <span class="sound-status" id="sound-status-donation" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; background: var(--bg-elevated); color: var(--text-muted);">Default</span>
+    </div>
+    <div style="display: flex; gap: 6px;">
+      <button type="button" onclick="previewSound('donation')" class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px;">&#9654; Preview</button>
+      <button type="button" onclick="uploadSound('donation')" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">Upload</button>
+      <button type="button" onclick="removeSound('donation')" class="btn btn-secondary" id="remove-btn-donation" style="font-size: 12px; padding: 6px 12px; color: var(--danger); display: none;">Remove</button>
+    </div>
+  </div>
+
+  <!-- Raid -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border);">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 18px;">🏎️</span>
+      <span style="font-weight: 600; font-size: 14px;">Raid</span>
+      <span class="sound-status" id="sound-status-raid" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; background: var(--bg-elevated); color: var(--text-muted);">Default</span>
+    </div>
+    <div style="display: flex; gap: 6px;">
+      <button type="button" onclick="previewSound('raid')" class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px;">&#9654; Preview</button>
+      <button type="button" onclick="uploadSound('raid')" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">Upload</button>
+      <button type="button" onclick="removeSound('raid')" class="btn btn-secondary" id="remove-btn-raid" style="font-size: 12px; padding: 6px 12px; color: var(--danger); display: none;">Remove</button>
+    </div>
+  </div>
+
+  <!-- YT Super Chat -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border);">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 18px;">💬</span>
+      <span style="font-weight: 600; font-size: 14px;">YT Super Chat</span>
+      <span class="sound-status" id="sound-status-yt_superchat" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; background: var(--bg-elevated); color: var(--text-muted);">Default</span>
+    </div>
+    <div style="display: flex; gap: 6px;">
+      <button type="button" onclick="previewSound('yt_superchat')" class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px;">&#9654; Preview</button>
+      <button type="button" onclick="uploadSound('yt_superchat')" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">Upload</button>
+      <button type="button" onclick="removeSound('yt_superchat')" class="btn btn-secondary" id="remove-btn-yt_superchat" style="font-size: 12px; padding: 6px 12px; color: var(--danger); display: none;">Remove</button>
+    </div>
+  </div>
+
+  <!-- YT Member -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border);">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 18px;">⭐</span>
+      <span style="font-weight: 600; font-size: 14px;">YT Member</span>
+      <span class="sound-status" id="sound-status-yt_member" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; background: var(--bg-elevated); color: var(--text-muted);">Default</span>
+    </div>
+    <div style="display: flex; gap: 6px;">
+      <button type="button" onclick="previewSound('yt_member')" class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px;">&#9654; Preview</button>
+      <button type="button" onclick="uploadSound('yt_member')" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">Upload</button>
+      <button type="button" onclick="removeSound('yt_member')" class="btn btn-secondary" id="remove-btn-yt_member" style="font-size: 12px; padding: 6px 12px; color: var(--danger); display: none;">Remove</button>
+    </div>
+  </div>
+
+  <!-- YT Gift Member -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 18px;">🎁</span>
+      <span style="font-weight: 600; font-size: 14px;">YT Gift Member</span>
+      <span class="sound-status" id="sound-status-yt_giftmember" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; background: var(--bg-elevated); color: var(--text-muted);">Default</span>
+    </div>
+    <div style="display: flex; gap: 6px;">
+      <button type="button" onclick="previewSound('yt_giftmember')" class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px;">&#9654; Preview</button>
+      <button type="button" onclick="uploadSound('yt_giftmember')" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">Upload</button>
+      <button type="button" onclick="removeSound('yt_giftmember')" class="btn btn-secondary" id="remove-btn-yt_giftmember" style="font-size: 12px; padding: 6px 12px; color: var(--danger); display: none;">Remove</button>
+    </div>
+  </div>
+</div>
+
 <!-- Test Notifications -->
 <% if (overlayUrl) { %>
 <div class="card animate-in">
@@ -253,6 +376,93 @@
 <% } %>
 
 <script>
+  // Web Audio for sound preview
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  function playTone(frequencies, durations, type = 'sine', vol = 0.3) {
+    let time = audioCtx.currentTime;
+    frequencies.forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(vol, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + (durations[i] || 0.2));
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(time);
+      osc.stop(time + (durations[i] || 0.2));
+      time += (durations[i] || 0.2) * 0.8;
+    });
+  }
+
+  const defaultSounds = {
+    follow:         () => playTone([880, 1100], [0.1, 0.15], 'sine'),
+    subscription:   () => playTone([660, 880, 1100], [0.12, 0.12, 0.2], 'sine'),
+    bits:           () => playTone([1200, 1400, 1600, 1400], [0.08, 0.08, 0.08, 0.12], 'square', 0.15),
+    donation:       () => playTone([523, 659, 784, 1047], [0.15, 0.15, 0.15, 0.25], 'sine'),
+    raid:           () => playTone([440, 550, 660, 880, 1100], [0.1, 0.1, 0.1, 0.1, 0.2], 'sawtooth', 0.12),
+    yt_superchat:   () => playTone([784, 988, 1175], [0.15, 0.15, 0.25], 'sine'),
+    yt_member:      () => playTone([660, 784, 988], [0.12, 0.12, 0.2], 'triangle'),
+    yt_giftmember:  () => playTone([880, 1047, 1175, 1319], [0.1, 0.1, 0.1, 0.2], 'sine'),
+  };
+
+  let customSounds = {};
+
+  async function loadSoundStatus() {
+    const res = await fetch('/dashboard/overlay/sounds/status');
+    customSounds = await res.json();
+    Object.keys(customSounds).forEach(type => {
+      const statusEl = document.getElementById('sound-status-' + type);
+      const removeBtn = document.getElementById('remove-btn-' + type);
+      if (customSounds[type]) {
+        if (statusEl) { statusEl.textContent = 'Custom'; statusEl.style.background = 'rgba(145,71,255,0.15)'; statusEl.style.color = '#9146ff'; }
+        if (removeBtn) removeBtn.style.display = '';
+      } else {
+        if (statusEl) { statusEl.textContent = 'Default'; statusEl.style.background = 'var(--bg-elevated)'; statusEl.style.color = 'var(--text-muted)'; }
+        if (removeBtn) removeBtn.style.display = 'none';
+      }
+    });
+  }
+
+  function previewSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (customSounds[type]) {
+      const audio = new Audio('/overlay/sounds/' + type + '.mp3?t=' + Date.now());
+      audio.volume = 0.8;
+      audio.play().catch(() => {});
+    } else if (defaultSounds[type]) {
+      defaultSounds[type]();
+    }
+  }
+
+  function uploadSound(type) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'audio/mpeg,audio/mp3,.mp3';
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) return;
+      const data = await file.arrayBuffer();
+      const res = await fetch('/dashboard/overlay/sounds/' + type, {
+        method: 'POST',
+        headers: { 'Content-Type': 'audio/mpeg' },
+        body: data,
+      });
+      const result = await res.json();
+      if (result.ok) loadSoundStatus();
+    };
+    input.click();
+  }
+
+  async function removeSound(type) {
+    if (!confirm('Remove custom sound and revert to default?')) return;
+    await fetch('/dashboard/overlay/sounds/' + type + '/delete', { method: 'POST' });
+    loadSoundStatus();
+  }
+
+  loadSoundStatus();
+
   function copyOverlayUrl() {
     const input = document.getElementById('overlay-url-input');
     if (!input) return;

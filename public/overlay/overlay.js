@@ -72,10 +72,18 @@ function showNotification(event) {
   const typeConfig = overlayConfig[event.type] || {};
   const duration = (typeConfig.duration || 5) * 1000;
 
-  // Play notification sound
+  // Play notification sound — try custom mp3 first, fall back to synthesized
   if (audioCtx.state === 'suspended') audioCtx.resume();
-  const playSound = soundEffects[event.type];
-  if (playSound) playSound();
+  const soundUrl = `/overlay/sounds/${event.type}.mp3`;
+  const audio = new Audio(soundUrl);
+  audio.volume = overlayConfig.volume || 0.8;
+  audio.play().then(() => {
+    // Custom sound played successfully
+  }).catch(() => {
+    // No custom sound file, use synthesized
+    const playSound = soundEffects[event.type];
+    if (playSound) playSound();
+  });
 
   const banner = document.createElement('div');
   banner.className = `banner banner-${event.type} engine-idle`;
