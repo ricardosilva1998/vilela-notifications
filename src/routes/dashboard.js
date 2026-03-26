@@ -960,6 +960,11 @@ router.post('/youtube-chatbot/connect', async (req, res) => {
       return res.redirect('/dashboard/youtube-chatbot?error=No active live stream found. Make sure you are live on YouTube.');
     }
 
+    // Auto-enable chatbot when connecting
+    if (!streamer.yt_chatbot_enabled) {
+      db.updateYoutubeChatbotConfig(req.streamer.id, { yt_chatbot_enabled: 1 });
+    }
+
     const { youtubeChatManager } = require('../services/youtubeLiveChat');
     youtubeChatManager.startPolling(req.streamer.id, broadcast.liveChatId);
 
