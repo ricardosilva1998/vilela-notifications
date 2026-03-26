@@ -1,183 +1,173 @@
 const tmi = require('tmi.js');
+const config = require('../config');
 const db = require('../db');
-const { refreshBotToken } = require('./twitch');
 
-class TwitchChatClient {
-  constructor(streamerId) {
-    this.streamerId = streamerId;
-    this.client = null;
-    this.running = false;
-    this.cooldowns = new Map(); // command -> last used timestamp
-  }
+let client = null;
+const channelMap = new Map(); // channelName -> streamerId
+const cooldowns = new Map(); // "streamerId:command" -> timestamp
 
-  async connect() {
-    let streamer = db.getStreamerById(this.streamerId);
-    if (!streamer || !streamer.bot_access_token || !streamer.twitch_username) {
-      console.log(`[Chat] Streamer ${this.streamerId}: bot not configured, skipping`);
+const chatTypeMap = { subscription: 'sub', follow: 'follow', giftsub: 'giftsub', bits: 'bits', donation: 'donation', raid: 'raid' };
+
+function getStreamerIdForChannel(channel) {
+  const clean = channel.replace(/^#/, '').toLowerCase();
+  return channelMap.get(clean);
+}
+
+function handleMessage(channel, tags, message, self) {
+  if (self) return;
+  if (!message.startsWith('!')) return;
+
+  const commandName = message.split(' ')[0].substring(1).toLowerCase();
+  const streamerId = getStreamerIdForChannel(channel);
+  if (!streamerId) return;
+
+  console.log(`[Chat] Command received: !${commandName} from ${tags.username} in ${channel}`);
+
+  const cmd = db.getChatCommand(streamerId, commandName);
+  if (!cmd) return;
+
+  const cooldownKey = `${streamerId}:${commandName}`;
+  const now = Date.now();
+  const lastUsed = cooldowns.get(cooldownKey) || 0;
+  if (now - lastUsed < cmd.cooldown * 1000) return;
+
+  cooldowns.set(cooldownKey, now);
+  console.log(`[Chat] Sending response for !${commandName} in ${channel}`);
+  client.say(channel, cmd.response).catch((err) => {
+    console.error(`[Chat] Failed to send !${commandName} response:`, err.message);
+  });
+}
+
+const chatManager = {
+  connect() {
+    const { twitchUsername, twitchToken } = config.bot;
+    if (!twitchUsername || !twitchToken) {
+      console.log('[Chat] Bot not configured (BOT_TWITCH_USERNAME / BOT_TWITCH_TOKEN not set)');
       return;
     }
 
-    // Refresh token if expired
-    let token = streamer.bot_access_token;
-    if (streamer.bot_token_expires_at && Date.now() >= streamer.bot_token_expires_at) {
-      try {
-        token = await refreshBotToken(streamer);
-        streamer = db.getStreamerById(this.streamerId);
-      } catch (err) {
-        console.error(`[Chat] Bot token refresh failed for streamer ${this.streamerId}:`, err.message);
-        return;
-      }
-    }
+    console.log(`[Chat] Connecting as ${twitchUsername}...`);
 
-    this.running = true;
-    const channel = streamer.twitch_username;
-
-    console.log(`[Chat] Connecting bot to #${channel}...`);
-
-    this.client = new tmi.Client({
+    client = new tmi.Client({
       options: { debug: false },
       connection: { reconnect: true, secure: true },
       identity: {
-        username: streamer.bot_username,
-        password: `oauth:${token}`,
+        username: twitchUsername,
+        password: twitchToken.startsWith('oauth:') ? twitchToken : `oauth:${twitchToken}`,
       },
-      channels: [channel],
+      channels: [],
     });
 
-    this.client.on('connected', () => {
-      console.log(`[Chat] Bot connected to #${channel}`);
+    client.on('connected', () => {
+      console.log(`[Chat] Bot connected as ${twitchUsername}`);
+
+      const streamers = db.getChatbotEnabledStreamers();
+      let joinDelay = 0;
+      for (const s of streamers) {
+        if (s.twitch_username) {
+          setTimeout(() => {
+            this.joinChannel(s.id, s.twitch_username);
+          }, joinDelay);
+          joinDelay += 500;
+        }
+      }
+      console.log(`[Chat] Queued ${streamers.length} channel joins`);
     });
 
-    this.client.on('disconnected', (reason) => {
-      console.log(`[Chat] Bot disconnected from #${channel}: ${reason}`);
+    client.on('disconnected', (reason) => {
+      console.log(`[Chat] Bot disconnected: ${reason}`);
     });
 
-    // Handle chat commands
-    this.client.on('message', (ch, tags, message, self) => {
-      if (self) return;
-      if (!message.startsWith('!')) return;
-
-      const commandName = message.split(' ')[0].substring(1).toLowerCase();
-      console.log(`[Chat] Command received: !${commandName} from ${tags.username} in ${ch}`);
-      this.handleCommand(ch, commandName, tags);
+    client.on('join', (channel, username, self) => {
+      if (self) console.log(`[Chat] Joined ${channel}`);
     });
 
-    this.client.on('join', (channel, username, self) => {
-      if (self) console.log(`[Chat] Bot successfully joined ${channel}`);
+    client.on('part', (channel, username, self) => {
+      if (self) console.log(`[Chat] Left ${channel}`);
     });
 
-    this.client.connect().catch((err) => {
-      console.error(`[Chat] Failed to connect bot to #${channel}:`, err.message);
-    });
-  }
+    client.on('message', handleMessage);
 
-  handleCommand(channel, commandName, tags) {
-    const cmd = db.getChatCommand(this.streamerId, commandName);
-    if (!cmd) {
-      console.log(`[Chat] Command !${commandName} not found for streamer ${this.streamerId}`);
-      return;
+    client.connect().catch((err) => {
+      console.error(`[Chat] Failed to connect:`, err.message);
+    });
+  },
+
+  disconnect() {
+    if (client) {
+      client.disconnect().catch(() => {});
+      client = null;
     }
+    channelMap.clear();
+    cooldowns.clear();
+  },
 
-    // Check cooldown
-    const now = Date.now();
-    const lastUsed = this.cooldowns.get(commandName) || 0;
-    if (now - lastUsed < cmd.cooldown * 1000) {
-      console.log(`[Chat] Command !${commandName} on cooldown`);
-      return;
-    }
-
-    this.cooldowns.set(commandName, now);
-    console.log(`[Chat] Sending response for !${commandName} in ${channel}: ${cmd.response}`);
-    this.client.say(channel, cmd.response).catch((err) => {
-      console.error(`[Chat] Failed to send !${commandName} response:`, err.message);
+  joinChannel(streamerId, channel) {
+    if (!client) return;
+    const clean = channel.toLowerCase();
+    channelMap.set(clean, streamerId);
+    client.join(clean).catch((err) => {
+      console.error(`[Chat] Failed to join #${clean}:`, err.message);
     });
-  }
+  },
 
-  sendMessage(message) {
-    if (!this.client) return;
-    const streamer = db.getStreamerById(this.streamerId);
-    if (!streamer || !streamer.twitch_username) return;
-
-    this.client.say(streamer.twitch_username, message).catch((err) => {
-      console.error(`[Chat] Failed to send message for streamer ${this.streamerId}:`, err.message);
+  partChannel(channel) {
+    if (!client) return;
+    const clean = channel.toLowerCase();
+    channelMap.delete(clean);
+    client.part(clean).catch((err) => {
+      console.error(`[Chat] Failed to leave #${clean}:`, err.message);
     });
-  }
+  },
 
-  sendEventMessage(eventType, data) {
-    const streamer = db.getStreamerById(this.streamerId);
-    if (!streamer || !streamer.chatbot_enabled) return;
+  isConnected() {
+    return client !== null && client.readyState() === 'OPEN';
+  },
 
-    // Map event types to DB column names (subscription -> sub)
-    const chatTypeMap = { subscription: 'sub', follow: 'follow', giftsub: 'giftsub', bits: 'bits', donation: 'donation', raid: 'raid' };
+  getJoinedChannels() {
+    return Array.from(channelMap.keys());
+  },
+
+  sendEventMessage(streamerId, eventType, data) {
+    if (!client) return;
+
+    const streamer = db.getStreamerById(streamerId);
+    if (!streamer || !streamer.chatbot_enabled || !streamer.twitch_username) return;
+
     const mappedType = chatTypeMap[eventType] || eventType;
 
-    // Check if this event type is enabled
     const enabledKey = `chat_${mappedType}_enabled`;
     if (!streamer[enabledKey]) return;
 
-    // Get template
     const templateKey = `chat_${mappedType}_template`;
     const template = streamer[templateKey];
     if (!template) return;
 
-    // Replace variables
     let message = template;
     for (const [key, value] of Object.entries(data)) {
       message = message.replace(new RegExp(`\\{${key}\\}`, 'g'), value ?? '');
     }
 
-    this.sendMessage(message);
-  }
-
-  disconnect() {
-    this.running = false;
-    if (this.client) {
-      this.client.disconnect().catch(() => {});
-      this.client = null;
-    }
-  }
-}
-
-const clients = new Map();
-
-const chatManager = {
-  startAll() {
-    const streamers = db.getChatbotEnabledStreamers();
-    for (const s of streamers) {
-      this.startForStreamer(s.id);
-    }
-    console.log(`[Chat] Started ${streamers.length} bot connections`);
+    client.say(streamer.twitch_username, message).catch((err) => {
+      console.error(`[Chat] Failed to send event message for streamer ${streamerId}:`, err.message);
+    });
   },
 
+  // Backward-compatible aliases
+  startAll() { this.connect(); },
   startForStreamer(streamerId) {
-    this.stopForStreamer(streamerId);
-    const client = new TwitchChatClient(streamerId);
-    clients.set(streamerId, client);
-    client.connect();
+    const streamer = db.getStreamerById(streamerId);
+    if (streamer && streamer.twitch_username) {
+      this.joinChannel(streamerId, streamer.twitch_username);
+    }
   },
-
   stopForStreamer(streamerId) {
-    const client = clients.get(streamerId);
-    if (client) {
-      client.disconnect();
-      clients.delete(streamerId);
+    const streamer = db.getStreamerById(streamerId);
+    if (streamer && streamer.twitch_username) {
+      this.partChannel(streamer.twitch_username);
     }
   },
-
-  stopAll() {
-    for (const [id, client] of clients) {
-      client.disconnect();
-    }
-    clients.clear();
-  },
-
-  // Called by EventSub/StreamElements when an event occurs
-  sendEventMessage(streamerId, eventType, data) {
-    const client = clients.get(streamerId);
-    if (client) {
-      client.sendEventMessage(eventType, data);
-    }
-  },
+  stopAll() { this.disconnect(); },
 };
 
 module.exports = { chatManager };
