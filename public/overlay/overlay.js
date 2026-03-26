@@ -46,6 +46,9 @@ function showNotification(event) {
     bits: '/overlay/sounds/bits.mp3',
     donation: '/overlay/sounds/donation.mp3',
     raid: '/overlay/sounds/raid.mp3',
+    yt_superchat: '/overlay/sounds/yt_superchat.mp3',
+    yt_member: '/overlay/sounds/yt_member.mp3',
+    yt_giftmember: '/overlay/sounds/yt_giftmember.mp3',
   };
   const soundUrl = soundMap[event.type];
   if (soundUrl) {
@@ -139,6 +142,41 @@ function buildBannerContent(event) {
       <div class="banner-name">${esc(event.data.username)}</div>
       <div class="banner-sub">raiding with <span style="color:#ff4444;font-weight:bold">${event.data.viewers} viewers</span>! 🏁</div>
     </div></div>`;
+
+    case 'yt_superchat':
+      return `${checkers}
+        <div class="follow-car">🏎️</div>
+        <div class="banner-content"><div style="text-align:center">
+          <div class="banner-title">Super Chat!</div>
+          <div class="banner-name">${esc(event.data.username)}</div>
+          <div class="banner-sub">sent <span style="color:#ff4444;font-weight:bold">${esc(event.data.amount)}</span>${event.data.message ? ' — ' + esc(event.data.message) : ''}</div>
+        </div></div>`;
+
+    case 'yt_member':
+      return `${checkers}
+        <div class="sub-car-left">🏎️</div>
+        <div class="sub-car-right">🏎️</div>
+        <div class="banner-content">
+          <div class="banner-emoji">⭐</div>
+          <div style="text-align:center">
+            <div class="banner-title">New Member!</div>
+            <div class="banner-name">${esc(event.data.username)}</div>
+            <div class="banner-sub">just became a ${esc(event.data.level || 'member')}!</div>
+          </div>
+          <div class="banner-emoji">⭐</div>
+        </div>`;
+
+    case 'yt_giftmember':
+      return `${checkers}
+        <div class="burnout-car-right">🏎️</div>
+        <div class="fire-single fire-behind-right">🔥</div>
+        <div class="burnout-car-left">🏎️</div>
+        <div class="fire-single fire-behind-left">🔥</div>
+        <div class="banner-content"><div style="text-align:center">
+          <div class="banner-title">Gift Alert!</div>
+          <div class="banner-name">${esc(event.data.username)}</div>
+          <div class="banner-sub">gifted <span style="color:#4285f4;font-weight:bold">${event.data.amount} memberships</span>!</div>
+        </div></div>`;
 
     default: return '';
   }

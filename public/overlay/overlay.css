@@ -200,3 +200,21 @@ body {
   0% { left: -50px; opacity: 0; } 20% { left: 7%; opacity: 1; }
   80% { left: 7%; opacity: 1; } 100% { left: -50px; opacity: 0; }
 }
+
+/* YouTube Super Chat: red theme */
+.banner-yt_superchat { background: linear-gradient(90deg, #2e0a0a, #4a1515 50%, #2e0a0a); }
+.banner-yt_superchat .checker-top { background: repeating-linear-gradient(90deg, #ff0000 0px, #ff0000 8px, #660000 8px, #660000 16px); }
+.banner-yt_superchat .checker-bottom { background: repeating-linear-gradient(90deg, #660000 0px, #660000 8px, #ff0000 8px, #ff0000 16px); }
+.banner-yt_superchat .banner-title { color: #ff4444; }
+
+/* YouTube New Member: green theme */
+.banner-yt_member { background: linear-gradient(90deg, #0a2e15, #154a28 50%, #0a2e15); }
+.banner-yt_member .checker-top { background: repeating-linear-gradient(90deg, #0f9d58 0px, #0f9d58 8px, #064d2b 8px, #064d2b 16px); }
+.banner-yt_member .checker-bottom { background: repeating-linear-gradient(90deg, #064d2b 0px, #064d2b 8px, #0f9d58 8px, #0f9d58 16px); }
+.banner-yt_member .banner-title { color: #0f9d58; }
+
+/* YouTube Gift Member: blue theme */
+.banner-yt_giftmember { background: linear-gradient(90deg, #0a152e, #15284a 50%, #0a152e); }
+.banner-yt_giftmember .checker-top { background: repeating-linear-gradient(90deg, #4285f4 0px, #4285f4 8px, #1a3d7a 8px, #1a3d7a 16px); }
+.banner-yt_giftmember .checker-bottom { background: repeating-linear-gradient(90deg, #1a3d7a 0px, #1a3d7a 8px, #4285f4 8px, #4285f4 16px); }
+.banner-yt_giftmember .banner-title { color: #4285f4; }
