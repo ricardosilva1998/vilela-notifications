@@ -29,6 +29,9 @@ client.once('ready', async () => {
     eventSubManager.startAll();
     streamElementsManager.startAll();
 
+    const { chatManager } = require('./services/twitchChat');
+    chatManager.startAll();
+
     // Start web dashboard
     server.start();
 
