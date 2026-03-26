@@ -199,16 +199,21 @@ async function sendYoutubeChatMessage(liveChatId, message, accessToken) {
   }
 }
 
-async function fetchLiveChatMessages(liveChatId, pageToken, apiKey) {
+async function fetchLiveChatMessages(liveChatId, pageToken, accessToken) {
   const params = new URLSearchParams({
     liveChatId,
     part: 'id,snippet,authorDetails',
-    key: apiKey,
   });
   if (pageToken) params.set('pageToken', pageToken);
 
-  const res = await fetch(`https://www.googleapis.com/youtube/v3/liveChat/messages?${params}`);
-  if (!res.ok) return null;
+  const res = await fetch(`https://www.googleapis.com/youtube/v3/liveChat/messages?${params}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => '');
+    console.error(`[YouTube] fetchLiveChatMessages failed: ${res.status}`, err.substring(0, 200));
+    return null;
+  }
   return res.json();
 }
 

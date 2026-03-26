@@ -131,8 +131,13 @@ async function pollChat(streamerId) {
   if (!poller) return;
 
   try {
-    const apiKey = config.youtube.apiKey;
-    const data = await fetchLiveChatMessages(poller.liveChatId, poller.pageToken, apiKey);
+    const token = await ensureBotToken();
+    if (!token) {
+      console.error(`[YT Chat] No bot token available for streamer ${streamerId}`);
+      poller.timer = setTimeout(() => pollChat(streamerId), 30000);
+      return;
+    }
+    const data = await fetchLiveChatMessages(poller.liveChatId, poller.pageToken, token);
 
     if (!data) {
       console.log(`[YT Chat] Failed to fetch messages for streamer ${streamerId}, retrying...`);
