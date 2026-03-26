@@ -179,4 +179,33 @@ async function refreshBroadcasterToken(streamer) {
   return data.access_token;
 }
 
-module.exports = { getStream, getUserId, getUserProfile, getClips, getSubscribers, getVideos, getFollowerCount, getGameNames, refreshBroadcasterToken };
+async function refreshBotToken(streamer) {
+  if (!streamer.bot_refresh_token) throw new Error('No bot refresh token');
+
+  const params = new URLSearchParams({
+    client_id: config.twitch.clientId,
+    client_secret: config.twitch.clientSecret,
+    grant_type: 'refresh_token',
+    refresh_token: streamer.bot_refresh_token,
+  });
+
+  const res = await fetch('https://id.twitch.tv/oauth2/token', {
+    method: 'POST',
+    body: params,
+  });
+
+  if (!res.ok) throw new Error(`Bot token refresh failed: ${res.status}`);
+
+  const data = await res.json();
+  db.updateBotTokens(
+    streamer.id,
+    data.access_token,
+    data.refresh_token,
+    Date.now() + data.expires_in * 1000 - 60_000,
+    streamer.bot_username
+  );
+
+  return data.access_token;
+}
+
+module.exports = { getStream, getUserId, getUserProfile, getClips, getSubscribers, getVideos, getFollowerCount, getGameNames, refreshBroadcasterToken, refreshBotToken };

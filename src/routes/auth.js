@@ -194,6 +194,69 @@ router.get('/broadcaster/callback', async (req, res) => {
   }
 });
 
+// --- Bot account OAuth ---
+router.get('/bot', (req, res) => {
+  if (!req.streamer) return res.redirect('/auth/login');
+  const streamerId = req.streamer.id;
+  const redirectUri = `${config.app.url}/auth/bot/callback`;
+  const params = new URLSearchParams({
+    client_id: config.twitch.clientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: 'chat:edit chat:read',
+    state: String(streamerId),
+  });
+  res.redirect(`https://id.twitch.tv/oauth2/authorize?${params}`);
+});
+
+router.get('/bot/callback', async (req, res) => {
+  const { code, state: streamerId } = req.query;
+  if (!code || !streamerId) return res.status(400).send('Missing parameters');
+
+  try {
+    const redirectUri = `${config.app.url}/auth/bot/callback`;
+    const params = new URLSearchParams({
+      client_id: config.twitch.clientId,
+      client_secret: config.twitch.clientSecret,
+      code,
+      grant_type: 'authorization_code',
+      redirect_uri: redirectUri,
+    });
+
+    const tokenRes = await fetch('https://id.twitch.tv/oauth2/token', {
+      method: 'POST',
+      body: params,
+    });
+    if (!tokenRes.ok) throw new Error(`Token exchange failed: ${tokenRes.status}`);
+    const tokenData = await tokenRes.json();
+
+    // Get bot user info
+    const userRes = await fetch('https://api.twitch.tv/helix/users', {
+      headers: {
+        Authorization: `Bearer ${tokenData.access_token}`,
+        'Client-Id': config.twitch.clientId,
+      },
+    });
+    if (!userRes.ok) throw new Error('Failed to get bot user info');
+    const userData = await userRes.json();
+    const botUser = userData.data[0];
+
+    db.updateBotTokens(
+      parseInt(streamerId),
+      tokenData.access_token,
+      tokenData.refresh_token,
+      Date.now() + tokenData.expires_in * 1000 - 60_000,
+      botUser.login
+    );
+
+    // Redirect back to chatbot config with success
+    res.redirect('/dashboard/chatbot?bot_linked=1');
+  } catch (err) {
+    console.error('[Auth] Bot OAuth error:', err);
+    res.redirect('/dashboard/chatbot?bot_error=' + encodeURIComponent(err.message));
+  }
+});
+
 // --- User Linking (community members link Twitch for sub sync) ---
 
 router.get('/link', (req, res) => {
