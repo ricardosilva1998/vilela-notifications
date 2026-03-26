@@ -120,6 +120,30 @@ try {
   }
 } catch {}
 
+// Migration: Add overlay notification columns to streamers
+{
+  const cols = db.pragma('table_info(streamers)').map(c => c.name);
+  if (!cols.includes('overlay_token')) {
+    db.exec(`
+      ALTER TABLE streamers ADD COLUMN overlay_token TEXT;
+      ALTER TABLE streamers ADD COLUMN overlay_enabled INTEGER DEFAULT 0;
+      ALTER TABLE streamers ADD COLUMN streamelements_jwt TEXT;
+      ALTER TABLE streamers ADD COLUMN overlay_follow_enabled INTEGER DEFAULT 1;
+      ALTER TABLE streamers ADD COLUMN overlay_sub_enabled INTEGER DEFAULT 1;
+      ALTER TABLE streamers ADD COLUMN overlay_bits_enabled INTEGER DEFAULT 1;
+      ALTER TABLE streamers ADD COLUMN overlay_donation_enabled INTEGER DEFAULT 1;
+      ALTER TABLE streamers ADD COLUMN overlay_follow_duration INTEGER DEFAULT 5;
+      ALTER TABLE streamers ADD COLUMN overlay_sub_duration INTEGER DEFAULT 7;
+      ALTER TABLE streamers ADD COLUMN overlay_bits_duration INTEGER DEFAULT 6;
+      ALTER TABLE streamers ADD COLUMN overlay_donation_duration INTEGER DEFAULT 6;
+      ALTER TABLE streamers ADD COLUMN overlay_volume REAL DEFAULT 0.8;
+      ALTER TABLE streamers ADD COLUMN broadcaster_scopes TEXT;
+    `);
+    db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_streamers_overlay_token ON streamers(overlay_token) WHERE overlay_token IS NOT NULL');
+    console.log('[DB] Added overlay notification columns to streamers');
+  }
+}
+
 // --- Schema ---
 
 db.exec(`
@@ -1778,6 +1802,52 @@ function getAllFeedback() {
   return _getAllFeedback.all();
 }
 
+// --- Overlay ---
+
+function getStreamerByOverlayToken(token) {
+  return db.prepare('SELECT * FROM streamers WHERE overlay_token = ?').get(token);
+}
+
+function getOverlayEnabledStreamers() {
+  return db.prepare(`
+    SELECT * FROM streamers
+    WHERE overlay_enabled = 1
+    AND broadcaster_access_token IS NOT NULL
+    AND broadcaster_access_token != ''
+  `).all();
+}
+
+const OVERLAY_COLUMNS = new Set([
+  'overlay_enabled', 'overlay_follow_enabled', 'overlay_sub_enabled',
+  'overlay_bits_enabled', 'overlay_donation_enabled',
+  'overlay_follow_duration', 'overlay_sub_duration',
+  'overlay_bits_duration', 'overlay_donation_duration',
+  'overlay_volume', 'streamelements_jwt',
+]);
+
+function updateOverlayConfig(streamerId, config) {
+  const fields = [];
+  const values = [];
+  for (const [key, value] of Object.entries(config)) {
+    if (!OVERLAY_COLUMNS.has(key)) continue; // Whitelist columns
+    fields.push(`${key} = ?`);
+    values.push(value);
+  }
+  if (fields.length === 0) return;
+  values.push(streamerId);
+  db.prepare(`UPDATE streamers SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+}
+
+function generateOverlayToken(streamerId) {
+  const token = require('crypto').randomUUID();
+  db.prepare('UPDATE streamers SET overlay_token = ? WHERE id = ?').run(token, streamerId);
+  return token;
+}
+
+function updateBroadcasterScopes(streamerId, scopes) {
+  db.prepare('UPDATE streamers SET broadcaster_scopes = ? WHERE id = ?').run(scopes, streamerId);
+}
+
 module.exports = {
   db,
   getStreamerByDiscordId,
@@ -1909,4 +1979,9 @@ module.exports = {
   searchIracingQualifying,
   getIracingDriverStats,
   updateWatchedIracingDriverChannel,
+  getStreamerByOverlayToken,
+  getOverlayEnabledStreamers,
+  updateOverlayConfig,
+  generateOverlayToken,
+  updateBroadcasterScopes,
 };
