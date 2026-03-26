@@ -48,6 +48,12 @@
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     <%= t('dashboard.addBot') %>
   </a>
+  <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+    <a href="/admin" class="btn btn-secondary" style="padding: 8px 16px; font-size: 13px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+      Admin Panel
+    </a>
+  <% } %>
 </div>
 
 <h3 class="section-title animate-in animate-in-delay-2" style="display: flex; align-items: center; gap: 10px;">
