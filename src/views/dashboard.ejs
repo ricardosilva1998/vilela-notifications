@@ -359,12 +359,55 @@
 </div>
 
 <div class="tab-content" id="tab-youtube">
-  <div class="card" style="text-align: center; padding: 48px 24px;">
-    <div style="margin-bottom: 16px;">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="#ff0000"><path d="M22.5 7.7a2.8 2.8 0 0 0-2-2C18.9 5 12 5 12 5s-6.9 0-8.5.7a2.8 2.8 0 0 0-2 2A29 29 0 0 0 1 12a29 29 0 0 0 .5 4.3 2.8 2.8 0 0 0 2 2c1.6.7 8.5.7 8.5.7s6.9 0 8.5-.7a2.8 2.8 0 0 0 2-2A29 29 0 0 0 23 12a29 29 0 0 0-.5-4.3z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="#fff"/></svg>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+
+    <!-- YouTube Overlay Card -->
+    <div class="card animate-in" style="padding: 24px;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+        <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(255,0,0,0.15); display: flex; align-items: center; justify-content: center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff0000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <div>
+          <h3 style="font-size: 16px; font-weight: 700;">OBS Overlay</h3>
+          <% if (streamer.overlay_enabled) { %>
+            <span style="color: var(--success); font-size: 12px; font-weight: 600;">● Shared with Twitch</span>
+          <% } else { %>
+            <span style="color: var(--text-muted); font-size: 12px;">● Not configured</span>
+          <% } %>
+        </div>
+      </div>
+      <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px; line-height: 1.5;">
+        YouTube Super Chats, Members, and Gift events show on the same overlay URL as Twitch events.
+      </p>
+      <a href="/dashboard/overlay" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px; text-decoration: none;"><%= streamer.overlay_enabled ? 'Overlay Settings' : 'Configure Overlay' %></a>
     </div>
-    <p style="color: var(--text-secondary); font-size: 16px; font-weight: 600; margin-bottom: 4px;">Coming Soon</p>
-    <p style="color: var(--text-muted); font-size: 13px;">Chatbot and overlay support for YouTube live streams is on the way.</p>
+
+    <!-- YouTube Chatbot Card -->
+    <div class="card animate-in animate-in-delay-1" style="padding: 24px;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+        <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(255,0,0,0.15); display: flex; align-items: center; justify-content: center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff0000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div style="line-height: 1.2;">
+          <h3 style="font-size: 16px; font-weight: 700; margin: 0;">YouTube Chatbot</h3>
+          <% if (streamer.yt_chatbot_enabled) { %>
+            <span style="color: var(--success); font-size: 12px; font-weight: 600;">● Enabled</span>
+          <% } else { %>
+            <span style="color: var(--text-muted); font-size: 12px;">● Not enabled</span>
+          <% } %>
+        </div>
+      </div>
+      <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px; line-height: 1.5;">
+        <% if (streamer.yt_chatbot_enabled) { %>
+          YouTube chatbot is active — responding to Super Chats, Members, and Gift events in your live chat.
+        <% } else { %>
+          Set up a chatbot for your YouTube live chat with automatic thank-you messages for Super Chats, Members, and Gifts.
+        <% } %>
+      </p>
+      <a href="/dashboard/youtube-chatbot" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px; text-decoration: none;"><%= streamer.yt_chatbot_enabled ? 'Chatbot Settings' : 'Configure Chatbot' %></a>
+    </div>
+
   </div>
 </div>
 

@@ -871,6 +871,47 @@ router.post('/chatbot/commands/:id/delete', (req, res) => {
   res.redirect('/dashboard/chatbot');
 });
 
+// --- YouTube Chatbot ---
+
+// YouTube chatbot config page
+router.get('/youtube-chatbot', (req, res) => {
+  const commands = db.getChatCommands(req.streamer.id);
+  res.render('youtube-chatbot-config', { streamer: req.streamer, commands });
+});
+
+// Save YouTube chatbot settings
+router.post('/youtube-chatbot', (req, res) => {
+  const b = req.body;
+  db.updateYoutubeChatbotConfig(req.streamer.id, {
+    yt_chatbot_enabled: b.yt_chatbot_enabled ? 1 : 0,
+    yt_chat_superchat_enabled: b.yt_chat_superchat_enabled ? 1 : 0,
+    yt_chat_member_enabled: b.yt_chat_member_enabled ? 1 : 0,
+    yt_chat_giftmember_enabled: b.yt_chat_giftmember_enabled ? 1 : 0,
+    yt_chat_superchat_template: b.yt_chat_superchat_template || '',
+    yt_chat_member_template: b.yt_chat_member_template || '',
+    yt_chat_giftmember_template: b.yt_chat_giftmember_template || '',
+    yt_overlay_superchat_enabled: b.yt_overlay_superchat_enabled ? 1 : 0,
+    yt_overlay_member_enabled: b.yt_overlay_member_enabled ? 1 : 0,
+    yt_overlay_giftmember_enabled: b.yt_overlay_giftmember_enabled ? 1 : 0,
+  });
+  res.redirect('/dashboard/youtube-chatbot');
+});
+
+// Test YouTube chat event
+router.post('/youtube-chatbot/test/:eventType', (req, res) => {
+  const bus = require('../services/overlayBus');
+  const type = req.params.eventType;
+  const testEvents = {
+    yt_superchat: { type: 'yt_superchat', data: { username: 'TestViewer', amount: '$10.00', message: 'Great stream!' } },
+    yt_member: { type: 'yt_member', data: { username: 'NewFan', level: 'Member' } },
+    yt_giftmember: { type: 'yt_giftmember', data: { username: 'GenerousViewer', amount: 5, level: 'Member' } },
+  };
+  const event = testEvents[type];
+  if (!event) return res.status(400).json({ error: 'Invalid event type' });
+  bus.emit(`overlay:${req.streamer.id}`, event);
+  res.json({ ok: true });
+});
+
 // --- Report an Issue ---
 
 router.get('/report', (req, res) => {
