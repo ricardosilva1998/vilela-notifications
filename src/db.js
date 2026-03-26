@@ -250,6 +250,33 @@ try {
   }
 }
 
+// Migration: Create overlay_designs table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS overlay_designs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    streamer_id INTEGER NOT NULL,
+    event_type TEXT NOT NULL,
+    bg_color TEXT DEFAULT '#1a1a3e',
+    accent_color TEXT DEFAULT '#8888cc',
+    border_color TEXT DEFAULT '#8888cc',
+    text_color TEXT DEFAULT '#ffffff',
+    font_family TEXT DEFAULT 'System Default',
+    username_size INTEGER DEFAULT 24,
+    event_label TEXT,
+    detail_text TEXT,
+    entrance_animation TEXT DEFAULT 'slideDown',
+    car_animation TEXT DEFAULT 'zoomLR',
+    screen_effect TEXT DEFAULT 'default',
+    animation_speed REAL DEFAULT 1.0,
+    card_width INTEGER DEFAULT 420,
+    card_position TEXT DEFAULT 'top-center',
+    border_radius INTEGER DEFAULT 16,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (streamer_id) REFERENCES streamers(id),
+    UNIQUE(streamer_id, event_type)
+  )
+`);
+
 // --- Schema ---
 
 db.exec(`
@@ -2056,6 +2083,75 @@ function updateSpotifyTokens(streamerId, accessToken, refreshToken, expiresAt) {
     .run(accessToken, refreshToken, expiresAt, streamerId);
 }
 
+// ─── Overlay Designs ────────────────────────────────────────────
+
+const DEFAULT_OVERLAY_LABELS = {
+  follow:        { event_label: 'New Pit Crew Member', detail_text: 'just joined the race 🏁' },
+  subscription:  { event_label: 'Podium Finish',       detail_text: '' },
+  bits:          { event_label: 'Nitro Boost',         detail_text: '' },
+  donation:      { event_label: 'Sponsor Alert',       detail_text: '' },
+  raid:          { event_label: 'Incoming Raid',       detail_text: '' },
+  yt_superchat:  { event_label: 'Super Chat',          detail_text: '' },
+  yt_member:     { event_label: 'New Member',          detail_text: '' },
+  yt_giftmember: { event_label: 'Gift Alert',          detail_text: '' },
+};
+
+function getOverlayDesign(streamerId, eventType) {
+  return db.prepare('SELECT * FROM overlay_designs WHERE streamer_id = ? AND event_type = ?')
+    .get(streamerId, eventType) || null;
+}
+
+function getAllOverlayDesigns(streamerId) {
+  return db.prepare('SELECT * FROM overlay_designs WHERE streamer_id = ?')
+    .all(streamerId);
+}
+
+const OVERLAY_DESIGN_COLUMNS = new Set([
+  'bg_color', 'accent_color', 'border_color', 'text_color', 'font_family',
+  'username_size', 'event_label', 'detail_text', 'entrance_animation',
+  'car_animation', 'screen_effect', 'animation_speed', 'card_width',
+  'card_position', 'border_radius',
+]);
+
+function saveOverlayDesign(streamerId, eventType, design) {
+  const defaults = DEFAULT_OVERLAY_LABELS[eventType] || {};
+  const row = {
+    bg_color: design.bg_color || '#1a1a3e',
+    accent_color: design.accent_color || '#8888cc',
+    border_color: design.border_color || '#8888cc',
+    text_color: design.text_color || '#ffffff',
+    font_family: design.font_family || 'System Default',
+    username_size: design.username_size != null ? design.username_size : 24,
+    event_label: design.event_label != null ? design.event_label : (defaults.event_label || ''),
+    detail_text: design.detail_text != null ? design.detail_text : (defaults.detail_text || ''),
+    entrance_animation: design.entrance_animation || 'slideDown',
+    car_animation: design.car_animation || 'zoomLR',
+    screen_effect: design.screen_effect || 'default',
+    animation_speed: design.animation_speed != null ? design.animation_speed : 1.0,
+    card_width: design.card_width != null ? design.card_width : 420,
+    card_position: design.card_position || 'top-center',
+    border_radius: design.border_radius != null ? design.border_radius : 16,
+  };
+  db.prepare(`
+    INSERT OR REPLACE INTO overlay_designs
+      (streamer_id, event_type, bg_color, accent_color, border_color, text_color,
+       font_family, username_size, event_label, detail_text, entrance_animation,
+       car_animation, screen_effect, animation_speed, card_width, card_position, border_radius)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    streamerId, eventType,
+    row.bg_color, row.accent_color, row.border_color, row.text_color,
+    row.font_family, row.username_size, row.event_label, row.detail_text,
+    row.entrance_animation, row.car_animation, row.screen_effect,
+    row.animation_speed, row.card_width, row.card_position, row.border_radius,
+  );
+}
+
+function deleteOverlayDesign(streamerId, eventType) {
+  db.prepare('DELETE FROM overlay_designs WHERE streamer_id = ? AND event_type = ?')
+    .run(streamerId, eventType);
+}
+
 module.exports = {
   db,
   getStreamerByDiscordId,
@@ -2204,4 +2300,8 @@ module.exports = {
   getYoutubeChatbotEnabledStreamers,
   updateStreamerYoutubeTokens,
   updateSpotifyTokens,
+  getOverlayDesign,
+  getAllOverlayDesigns,
+  saveOverlayDesign,
+  deleteOverlayDesign,
 };
