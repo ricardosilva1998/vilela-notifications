@@ -72,7 +72,7 @@
 
       <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
         <button type="button" onclick="testOverlay('yt_superchat', this)" class="btn btn-secondary" style="font-size: 13px; padding: 8px 16px;">Test Overlay</button>
-        <button type="button" onclick="testChat('yt_superchat', this)" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px;">Test in Chat</button>
+        <button type="button" onclick="previewMessage('superchat')" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px;">Preview Message</button>
       </div>
     </div>
 
@@ -109,7 +109,7 @@
 
       <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
         <button type="button" onclick="testOverlay('yt_member', this)" class="btn btn-secondary" style="font-size: 13px; padding: 8px 16px;">Test Overlay</button>
-        <button type="button" onclick="testChat('yt_member', this)" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px;">Test in Chat</button>
+        <button type="button" onclick="previewMessage('member')" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px;">Preview Message</button>
       </div>
     </div>
 
@@ -146,7 +146,7 @@
 
       <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
         <button type="button" onclick="testOverlay('yt_giftmember', this)" class="btn btn-secondary" style="font-size: 13px; padding: 8px 16px;">Test Overlay</button>
-        <button type="button" onclick="testChat('yt_giftmember', this)" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px;">Test in Chat</button>
+        <button type="button" onclick="previewMessage('giftmember')" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px;">Preview Message</button>
       </div>
     </div>
 
@@ -177,7 +177,34 @@ async function testOverlay(eventType, btn) {
   setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000);
 }
 
-function testChat(eventType, btn) {
-  alert('Chat test will only work when you are live on YouTube. Save your settings first, then go live to test.');
+const sampleData = {
+  superchat: { username: 'TestViewer', amount: '$10.00', message: 'Great stream!' },
+  member: { username: 'NewFan', level: 'Member' },
+  giftmember: { username: 'GenerousViewer', amount: '5', level: 'Member' },
+};
+
+function previewMessage(type) {
+  const textarea = document.querySelector(`textarea[name="yt_chat_${type}_template"]`);
+  if (!textarea) return;
+
+  let message = textarea.value || '(empty template)';
+  const data = sampleData[type];
+  for (const [key, value] of Object.entries(data)) {
+    message = message.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+  }
+
+  // Remove existing preview if any
+  const existing = textarea.parentElement.parentElement.querySelector('.chat-preview');
+  if (existing) existing.remove();
+
+  const preview = document.createElement('div');
+  preview.className = 'chat-preview';
+  preview.style.cssText = 'margin-top: 10px; padding: 10px 14px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; color: var(--text-primary); display: flex; align-items: flex-start; gap: 8px;';
+  preview.innerHTML = `<span style="color: var(--text-muted); font-size: 12px; flex-shrink: 0;">Preview:</span><span>${message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`;
+
+  // Insert after the test buttons row
+  const buttonsRow = textarea.closest('[style*="padding: 18px"]') || textarea.closest('.card');
+  const targetRow = buttonsRow.querySelector('[style*="justify-content: flex-end"]');
+  if (targetRow) targetRow.after(preview);
 }
 </script>
