@@ -1,0 +1,24 @@
+<%- include('header', { title: platformName, streamer: streamer }) %>
+
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; text-align: center;" class="animate-in">
+
+  <div style="font-size: 64px; margin-bottom: 24px; line-height: 1;">🚀</div>
+
+  <h2 style="font-size: 32px; font-weight: 700; margin: 0 0 8px; font-family: var(--font-display);">
+    <%= platformName %>
+  </h2>
+
+  <div style="display: inline-block; background: rgba(145,70,255,0.12); border: 1px solid rgba(145,70,255,0.3);
+              border-radius: 20px; padding: 4px 16px; font-size: 13px; font-weight: 600;
+              color: var(--accent); font-family: var(--font-display); letter-spacing: 0.5px;
+              text-transform: uppercase; margin-bottom: 24px;">
+    Coming Soon
+  </div>
+
+  <p style="color: var(--text-secondary); font-size: 16px; max-width: 480px; line-height: 1.6; margin: 0;">
+    We're working on bringing <%= platformName %> support to the platform. Stay tuned!
+  </p>
+
+</div>
+
+<%- include('footer') %>
