@@ -23,6 +23,32 @@ function handleMessage(channel, tags, message, self) {
 
   console.log(`[Chat] Command received: !${commandName} from ${tags.username} in ${channel}`);
 
+  // Built-in !song command
+  if (commandName === 'song') {
+    const songCooldownKey = `${streamerId}:song`;
+    const now = Date.now();
+    const lastUsed = cooldowns.get(songCooldownKey) || 0;
+    if (now - lastUsed < 5000) return;
+    cooldowns.set(songCooldownKey, now);
+
+    const streamer = db.getStreamerById(streamerId);
+    if (streamer) {
+      const { getCurrentlyPlaying } = require('./spotify');
+      getCurrentlyPlaying(streamer).then(result => {
+        let msg;
+        switch (result.status) {
+          case 'playing': msg = `🎵 Now playing: ${result.track} by ${result.artist}`; break;
+          case 'paused': msg = `⏸️ Paused: ${result.track} by ${result.artist}`; break;
+          case 'nothing_playing': msg = `🔇 Nothing playing on Spotify right now`; break;
+          case 'not_connected': msg = `Spotify not connected`; break;
+          default: msg = `Could not fetch current song`;
+        }
+        if (client) client.say(channel, msg).catch(() => {});
+      }).catch(() => {});
+    }
+    return;
+  }
+
   const cmd = db.getChatCommand(streamerId, commandName);
   if (!cmd) return;
 
