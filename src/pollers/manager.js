@@ -328,6 +328,27 @@ async function pollAllYouTubeLive() {
       if (result.stateUpdate) db.updateYoutubeChannelState(youtube_channel_id, result.stateUpdate);
 
       if (result.notify) {
+        // Start YouTube chat polling if chatbot is enabled
+        const videoId = result.stateUpdate?.live_video_id;
+        if (videoId) {
+          for (const w of watchers) {
+            const streamer = db.getStreamerById(w.streamer_id);
+            if (streamer && streamer.youtube_channel_id === youtube_channel_id) {
+              try {
+                const { youtubeChatManager } = require('../services/youtubeLiveChat');
+                const { getLiveChatId } = require('../services/youtube');
+                const liveChatId = await getLiveChatId(videoId, apiKey);
+                if (liveChatId) {
+                  youtubeChatManager.startPolling(streamer.id, liveChatId);
+                }
+              } catch (e) {
+                console.error('[YT Live] Failed to start chat polling:', e.message);
+              }
+              break;
+            }
+          }
+        }
+
         for (const w of watchers) {
           try {
             await sendNotification(w.live_channel_id, result.embed, {
@@ -337,6 +358,19 @@ async function pollAllYouTubeLive() {
             });
           } catch (e) {
             console.error(`[YouTubeLive] Send failed for ${youtube_channel_id} to ${w.guild_id}: ${e.message}`);
+          }
+        }
+      }
+
+      if (!result.notify && result.stateUpdate?.is_live === 0) {
+        for (const w of watchers) {
+          const streamer = db.getStreamerById(w.streamer_id);
+          if (streamer && streamer.youtube_channel_id === youtube_channel_id) {
+            try {
+              const { youtubeChatManager } = require('../services/youtubeLiveChat');
+              youtubeChatManager.stopPolling(streamer.id);
+            } catch (e) {}
+            break;
           }
         }
       }
