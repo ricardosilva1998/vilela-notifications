@@ -147,4 +147,69 @@ async function getChannelInfo(channelId) {
   return parseChannelPage(html);
 }
 
-module.exports = { getLatestVideos, checkLiveStatus, getVideoDetails, resolveChannelId, getChannelInfo };
+async function getLiveChatId(videoId, apiKey) {
+  const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${videoId}&key=${apiKey}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.items?.[0]?.liveStreamingDetails?.activeLiveChatId || null;
+}
+
+async function refreshYoutubeBotToken() {
+  const config = require('../config');
+  const { botRefreshToken, botClientId, botClientSecret } = config.youtube;
+  if (!botRefreshToken || !botClientId || !botClientSecret) return null;
+
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: botClientId,
+      client_secret: botClientSecret,
+      refresh_token: botRefreshToken,
+      grant_type: 'refresh_token',
+    }),
+  });
+
+  if (!res.ok) {
+    console.error('[YouTube] Bot token refresh failed:', res.status);
+    return null;
+  }
+  const data = await res.json();
+  return data.access_token;
+}
+
+async function sendYoutubeChatMessage(liveChatId, message, accessToken) {
+  const res = await fetch('https://www.googleapis.com/youtube/v3/liveChat/messages?part=snippet', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      snippet: {
+        liveChatId,
+        type: 'textMessageEvent',
+        textMessageDetails: { messageText: message },
+      },
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    console.error('[YouTube] Failed to send chat message:', err.error?.message || res.status);
+  }
+}
+
+async function fetchLiveChatMessages(liveChatId, pageToken, apiKey) {
+  const params = new URLSearchParams({
+    liveChatId,
+    part: 'id,snippet,authorDetails',
+    key: apiKey,
+  });
+  if (pageToken) params.set('pageToken', pageToken);
+
+  const res = await fetch(`https://www.googleapis.com/youtube/v3/liveChat/messages?${params}`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
+module.exports = { getLatestVideos, checkLiveStatus, getVideoDetails, resolveChannelId, getChannelInfo, getLiveChatId, refreshYoutubeBotToken, sendYoutubeChatMessage, fetchLiveChatMessages };

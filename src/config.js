@@ -28,6 +28,9 @@ module.exports = {
   },
   youtube: {
     apiKey: process.env.YOUTUBE_API_KEY || '',
+    botRefreshToken: process.env.YOUTUBE_BOT_REFRESH_TOKEN || '',
+    botClientId: process.env.YOUTUBE_BOT_CLIENT_ID || '',
+    botClientSecret: process.env.YOUTUBE_BOT_CLIENT_SECRET || '',
   },
   paypal: {
     clientId: process.env.PAYPAL_CLIENT_ID || '',
