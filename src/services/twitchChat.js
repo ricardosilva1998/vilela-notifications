@@ -58,7 +58,12 @@ class TwitchChatClient {
       if (!message.startsWith('!')) return;
 
       const commandName = message.split(' ')[0].substring(1).toLowerCase();
+      console.log(`[Chat] Command received: !${commandName} from ${tags.username} in ${ch}`);
       this.handleCommand(ch, commandName, tags);
+    });
+
+    this.client.on('join', (channel, username, self) => {
+      if (self) console.log(`[Chat] Bot successfully joined ${channel}`);
     });
 
     this.client.connect().catch((err) => {
@@ -68,15 +73,24 @@ class TwitchChatClient {
 
   handleCommand(channel, commandName, tags) {
     const cmd = db.getChatCommand(this.streamerId, commandName);
-    if (!cmd) return;
+    if (!cmd) {
+      console.log(`[Chat] Command !${commandName} not found for streamer ${this.streamerId}`);
+      return;
+    }
 
     // Check cooldown
     const now = Date.now();
     const lastUsed = this.cooldowns.get(commandName) || 0;
-    if (now - lastUsed < cmd.cooldown * 1000) return;
+    if (now - lastUsed < cmd.cooldown * 1000) {
+      console.log(`[Chat] Command !${commandName} on cooldown`);
+      return;
+    }
 
     this.cooldowns.set(commandName, now);
-    this.client.say(channel, cmd.response).catch(() => {});
+    console.log(`[Chat] Sending response for !${commandName} in ${channel}: ${cmd.response}`);
+    this.client.say(channel, cmd.response).catch((err) => {
+      console.error(`[Chat] Failed to send !${commandName} response:`, err.message);
+    });
   }
 
   sendMessage(message) {
