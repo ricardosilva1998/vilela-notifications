@@ -1,6 +1,7 @@
 const tmi = require('tmi.js');
 const config = require('../config');
 const db = require('../db');
+const bus = require('./overlayBus');
 
 let client = null;
 const channelMap = new Map(); // channelName -> streamerId
@@ -46,6 +47,56 @@ function handleMessage(channel, tags, message, self) {
         if (client) client.say(channel, msg).catch(() => {});
       }).catch(() => {});
     }
+    return;
+  }
+
+  // Custom overlay commands — streamer and mods only
+  const overlayCmd = db.getCustomOverlayByCommand(streamerId, commandName);
+  if (overlayCmd) {
+    const isBroadcaster = tags.badges && tags.badges.broadcaster === '1';
+    const isMod = tags.mod;
+    if (!isBroadcaster && !isMod) return;
+
+    const cooldownKey = `${streamerId}:overlay:${commandName}`;
+    const now = Date.now();
+    const lastUsed = cooldowns.get(cooldownKey) || 0;
+    if (now - lastUsed < 2000) return; // 2s cooldown
+    cooldowns.set(cooldownKey, now);
+
+    if (overlayCmd.type === 'custom-alert') {
+      // Fire-and-forget — just trigger the alert
+      const parsed = { ...overlayCmd, config: JSON.parse(overlayCmd.config || '{}') };
+      bus.emit(`custom-overlay:${streamerId}`, { type: 'custom-alert-trigger', overlay: parsed });
+    } else {
+      // Toggle scene/bar
+      const toggled = db.toggleCustomOverlay(overlayCmd.id, streamerId);
+      if (toggled) {
+        const parsed = { ...toggled, config: JSON.parse(toggled.config || '{}') };
+
+        // Parse optional countdown duration: "!starting 5" → 5 minutes
+        if (toggled.type === 'scene' && toggled.is_active) {
+          const args = message.split(' ');
+          if (args.length > 1) {
+            const minutes = parseInt(args[1]);
+            if (minutes > 0) parsed.config.countdownMinutes = minutes;
+          }
+        }
+
+        bus.emit(`custom-overlay:${streamerId}`, { type: `${toggled.type}-toggle`, overlay: parsed });
+
+        // If scene was activated, deactivate other scenes
+        if (toggled.type === 'scene' && toggled.is_active) {
+          const allScenes = db.getCustomOverlaysByType(streamerId, 'scene');
+          for (const scene of allScenes) {
+            if (scene.id !== toggled.id) {
+              const s = { ...scene, config: JSON.parse(scene.config || '{}'), is_active: 0 };
+              bus.emit(`custom-overlay:${streamerId}`, { type: 'scene-toggle', overlay: s });
+            }
+          }
+        }
+      }
+    }
+
     return;
   }
 
