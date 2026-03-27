@@ -1689,6 +1689,12 @@ function attachSponsorDragHandlers() {
 
 async function toggleSponsorRotation(enabled) {
   sponsorRotationEnabled = enabled;
+  if (!enabled) {
+    // Stop preview cycling and show the regular card preview
+    stopSponsorPreview();
+  } else {
+    updateSponsorPreview();
+  }
   await fetch('/dashboard/sponsors/settings', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sponsor_rotation_enabled: enabled ? '1' : '', sponsor_interval_seconds: 30, sponsor_send_chat: '' }),
@@ -1789,7 +1795,7 @@ function updateSponsorPreview() {
   const container = document.getElementById('preview-card-container');
   const card = document.getElementById('preview-card');
   const enabled = sponsorImages.filter(s => s.enabled);
-  if (enabled.length === 0) {
+  if (!sponsorRotationEnabled || enabled.length === 0) {
     card.style.display = '';
     container.querySelector('.preview-sponsor-img')?.remove();
     return;
