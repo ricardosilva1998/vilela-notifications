@@ -575,6 +575,42 @@
       object-fit: contain; border-radius: inherit;
     }
 
+    /* ── Overlay border guide ── */
+    .overlay-guide {
+      position: absolute;
+      pointer-events: none;
+      border: 2px dashed rgba(145,70,255,0.4);
+      border-radius: inherit;
+      z-index: 20;
+      transition: opacity 0.2s;
+    }
+    #preview-card-container:hover .overlay-guide,
+    #preview-card-container.resizing .overlay-guide {
+      border-color: rgba(145,70,255,0.7);
+    }
+    #preview-card-container:not(:hover) .overlay-guide {
+      border-color: rgba(145,70,255,0.25);
+    }
+
+    /* Resize handles */
+    .resize-handle {
+      position: absolute;
+      background: var(--accent);
+      border: 2px solid #fff;
+      border-radius: 50%;
+      width: 10px; height: 10px;
+      z-index: 25;
+      cursor: nwse-resize;
+      opacity: 0;
+      transition: opacity 0.15s;
+      pointer-events: auto;
+    }
+    #preview-card-container:hover .resize-handle { opacity: 1; }
+    .resize-handle.corner-se { bottom: -5px; right: -5px; cursor: nwse-resize; }
+    .resize-handle.corner-sw { bottom: -5px; left: -5px; cursor: nesw-resize; }
+    .resize-handle.edge-e { top: 50%; right: -5px; transform: translateY(-50%); cursor: ew-resize; }
+    .resize-handle.edge-w { top: 50%; left: -5px; transform: translateY(-50%); cursor: ew-resize; }
+
     /* Font picker */
     .font-picker { position: relative; min-width: 150px; width: 100%; }
     .font-picker-selected {
@@ -901,6 +937,9 @@
 
         <!-- ALERT CARD PREVIEW (positioned dynamically) -->
         <div class="preview-card-container" id="preview-card-container">
+          <div class="overlay-guide" id="overlay-guide"></div>
+          <div class="resize-handle corner-se" id="resize-se"></div>
+          <div class="resize-handle edge-e" id="resize-e"></div>
           <div class="preview-alert-card" id="preview-card">
             <div class="top-accent" id="preview-top-accent"></div>
             <div class="card-body">
@@ -1016,8 +1055,8 @@ function getControlValues() {
     animation_speed: parseFloat(document.getElementById('ctrl-animation-speed').value),
     card_width: parseInt(document.getElementById('ctrl-card-width').value),
     card_position: document.querySelector('.pos-cell.active')?.dataset.pos || 'top-center',
-    card_custom_x: workingDesigns[currentType]?.card_custom_x || null,
-    card_custom_y: workingDesigns[currentType]?.card_custom_y || null,
+    card_custom_x: workingDesigns[currentType]?.card_custom_x != null ? workingDesigns[currentType].card_custom_x : null,
+    card_custom_y: workingDesigns[currentType]?.card_custom_y != null ? workingDesigns[currentType].card_custom_y : null,
     border_radius: parseInt(document.getElementById('ctrl-border-radius').value),
   };
 }
@@ -1129,11 +1168,33 @@ function updatePreview() {
   // Position card in the preview screen
   positionCard(d.card_position, d.card_width);
 
+  // Update overlay guide border
+  updateOverlayGuide();
+
   // Load font if needed
   if (d.font_family !== 'System Default') loadGoogleFont(d.font_family);
 
   // Show screen effect preview
   renderScreenEffect(d.screen_effect);
+}
+
+function updateOverlayGuide() {
+  const container = document.getElementById('preview-card-container');
+  const guide = document.getElementById('overlay-guide');
+  const card = document.getElementById('preview-card');
+  const sponsorImg = container.querySelector('.preview-sponsor-img');
+  const target = (sponsorImg && sponsorImg.style.display !== 'none') ? sponsorImg : card;
+
+  // Wait a frame so layout is computed
+  requestAnimationFrame(() => {
+    const w = target.offsetWidth || parseInt(target.style.width) || 420;
+    const h = target.offsetHeight || 140;
+    guide.style.width = w + 'px';
+    guide.style.height = h + 'px';
+    guide.style.top = '0';
+    guide.style.left = '0';
+    guide.style.borderRadius = (workingDesigns[currentType]?.border_radius || 16) + 'px';
+  });
 }
 
 function renderScreenEffect(effect) {
@@ -1676,6 +1737,7 @@ function showSponsorInPreview(sponsor) {
   img.style.width = (d.card_width || 500) + 'px';
   img.style.maxHeight = '200px';
   img.style.borderRadius = (d.border_radius || 12) + 'px';
+  setTimeout(() => updateOverlayGuide(), 100);
 }
 
 function stopSponsorPreview() {
@@ -1700,15 +1762,33 @@ window.addEventListener('resize', () => {
 
 // ─── Drag overlay card ──────────────────────────────────────────
 let isDragging = false;
+let isResizing = false;
 let dragOffsetX = 0;
 let dragOffsetY = 0;
+let resizeStartX = 0;
+let resizeStartWidth = 0;
 
 const dragTarget = document.getElementById('preview-card-container');
 const dragScreen = document.getElementById('preview-screen');
 
 dragTarget.style.cursor = 'grab';
 
+// Resize handles
+document.querySelectorAll('.resize-handle').forEach(handle => {
+  handle.addEventListener('mousedown', e => {
+    e.stopPropagation();
+    e.preventDefault();
+    isResizing = true;
+    dragTarget.classList.add('resizing');
+    resizeStartX = e.clientX;
+    const scale = dragScreen.offsetWidth / 1920;
+    resizeStartWidth = workingDesigns[currentType]?.card_width || 420;
+  });
+});
+
 dragTarget.addEventListener('mousedown', e => {
+  if (isResizing) return;
+  if (e.target.closest('.resize-handle')) return;
   isDragging = true;
   dragTarget.style.cursor = 'grabbing';
   const rect = dragTarget.getBoundingClientRect();
@@ -1718,6 +1798,27 @@ dragTarget.addEventListener('mousedown', e => {
 });
 
 document.addEventListener('mousemove', e => {
+  if (isResizing) {
+    const scale = dragScreen.offsetWidth / 1920;
+    const deltaX = (e.clientX - resizeStartX) / scale;
+    let newWidth = Math.round(resizeStartWidth + deltaX);
+    newWidth = Math.max(200, Math.min(900, newWidth));
+
+    // Update the width control and preview
+    document.getElementById('ctrl-card-width').value = newWidth;
+    document.getElementById('val-card-width').textContent = newWidth + 'px';
+    workingDesigns[currentType].card_width = newWidth;
+
+    // Update visible element width
+    const card = document.getElementById('preview-card');
+    const sponsorImg = dragTarget.querySelector('.preview-sponsor-img');
+    card.style.width = newWidth + 'px';
+    if (sponsorImg) sponsorImg.style.width = newWidth + 'px';
+
+    updateOverlayGuide();
+    return;
+  }
+
   if (!isDragging) return;
   const screenRect = dragScreen.getBoundingClientRect();
   let x = e.clientX - screenRect.left - dragOffsetX;
@@ -1737,6 +1838,12 @@ document.addEventListener('mousemove', e => {
 });
 
 document.addEventListener('mouseup', e => {
+  if (isResizing) {
+    isResizing = false;
+    dragTarget.classList.remove('resizing');
+    return;
+  }
+
   if (!isDragging) return;
   isDragging = false;
   dragTarget.style.cursor = 'grab';
