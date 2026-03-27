@@ -963,31 +963,44 @@ function positionCard(pos, cardWidth) {
   const screenW = screen.offsetWidth;
   const screenH = screen.offsetHeight;
 
-  // Scale factor (card is designed for 1920px wide streams, preview is smaller)
+  // Scale the card to fit the preview screen (designed for 1920px)
   const scale = screenW / 1920;
-  const scaledW = cardWidth * scale;
   container.style.transform = `scale(${scale})`;
   container.style.transformOrigin = 'top left';
 
   const [vPos, hPos] = pos.split('-');
-  const margin = 16; // px in screen space (pre-scale)
+  const margin = 20;
 
-  let left, top;
-  const unscaledW = cardWidth;
-  const unscaledH = 120; // approx card height in native px
+  // Reset
+  container.style.left = '';
+  container.style.top = '';
+  container.style.right = '';
+  container.style.bottom = '';
 
-  // Horizontal
-  if (hPos === 'left') left = margin / scale;
-  else if (hPos === 'right') left = (screenW - scaledW - margin) / scale;
-  else left = (screenW - scaledW) / 2 / scale; // center
+  // Work in unscaled coordinates (since transform-origin is top-left and we set left/top)
+  // The container is positioned in screen pixels, then scaled
 
-  // Vertical
-  if (vPos === 'top') top = margin / scale;
-  else if (vPos === 'bot') top = (screenH - unscaledH * scale - margin) / scale;
-  else top = (screenH / 2 - (unscaledH * scale) / 2) / scale;
+  // Horizontal position
+  if (hPos === 'left') {
+    container.style.left = margin + 'px';
+    container.style.transformOrigin = 'top left';
+  } else if (hPos === 'right') {
+    container.style.left = (screenW - cardWidth * scale - margin) + 'px';
+    container.style.transformOrigin = 'top left';
+  } else {
+    container.style.left = (screenW / 2 - (cardWidth * scale) / 2) + 'px';
+    container.style.transformOrigin = 'top left';
+  }
 
-  container.style.left = left + 'px';
-  container.style.top = top + 'px';
+  // Vertical position (estimate card height ~140px unscaled)
+  const cardH = 140 * scale;
+  if (vPos === 'top') {
+    container.style.top = margin + 'px';
+  } else if (vPos === 'bot') {
+    container.style.top = (screenH - cardH - margin) + 'px';
+  } else {
+    container.style.top = (screenH / 2 - cardH / 2) + 'px';
+  }
 }
 
 // ─── Play animation ───────────────────────────────────────────────────────────
