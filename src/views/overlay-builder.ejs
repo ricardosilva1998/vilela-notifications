@@ -305,6 +305,10 @@
       position: absolute; inset: 0;
       background: linear-gradient(160deg, #0a0e1a 0%, #0d1220 50%, #080b15 100%);
     }
+    .stream-bg {
+      background-size: cover;
+      background-position: center;
+    }
     .fake-hud-tl {
       display: none;
     }
@@ -340,8 +344,15 @@
     /* The preview card container — positions it in the screen */
     .preview-card-container {
       position: absolute;
-      pointer-events: none;
+      pointer-events: auto;
       transition: all 0.3s ease;
+    }
+    #preview-card-container { cursor: grab; }
+    #preview-card-container:active { cursor: grabbing; }
+    #preview-card-container:hover .preview-alert-card,
+    #preview-card-container:hover #preview-card {
+      outline: 2px dashed rgba(145,71,255,0.4);
+      outline-offset: 4px;
     }
 
     /* Preview alert card (mirrors overlay.css structure) */
@@ -734,7 +745,7 @@
     <div class="preview-canvas-wrap">
       <div class="preview-screen" id="preview-screen">
         <!-- Fake game background -->
-        <div class="fake-game-bg"></div>
+        <div class="fake-game-bg stream-bg" <% if (streamThumbnail) { %>style="background-image: url('<%= streamThumbnail %>'); background-size: cover; background-position: center;"<% } %>></div>
 
         <!-- Live badge -->
         <div class="fake-live-badge">● LIVE</div>
@@ -755,6 +766,12 @@
 
         <!-- Stream label -->
         <div class="fake-stream-label">Stream preview — alerts will appear here</div>
+
+        <% if (streamThumbnail) { %>
+          <div style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); font-size: 9px; color: rgba(255,255,255,0.3); z-index: 1; pointer-events: none;">
+            Stream screenshot from your last broadcast
+          </div>
+        <% } %>
 
         <!-- ALERT CARD PREVIEW (positioned dynamically) -->
         <div class="preview-card-container" id="preview-card-container">
@@ -1312,6 +1329,70 @@ updatePreview();
 window.addEventListener('resize', () => {
   const d = workingDesigns[currentType];
   positionCard(d.card_position, d.card_width);
+});
+
+// ─── Drag overlay card ──────────────────────────────────────────
+let isDragging = false;
+let dragOffsetX = 0;
+let dragOffsetY = 0;
+
+const dragTarget = document.getElementById('preview-card-container');
+const dragScreen = document.getElementById('preview-screen');
+
+dragTarget.style.cursor = 'grab';
+
+dragTarget.addEventListener('mousedown', e => {
+  isDragging = true;
+  dragTarget.style.cursor = 'grabbing';
+  const rect = dragTarget.getBoundingClientRect();
+  dragOffsetX = e.clientX - rect.left;
+  dragOffsetY = e.clientY - rect.top;
+  e.preventDefault();
+});
+
+document.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  const screenRect = dragScreen.getBoundingClientRect();
+  let x = e.clientX - screenRect.left - dragOffsetX;
+  let y = e.clientY - screenRect.top - dragOffsetY;
+
+  // Clamp within screen bounds
+  x = Math.max(0, Math.min(x, screenRect.width - 50));
+  y = Math.max(0, Math.min(y, screenRect.height - 30));
+
+  dragTarget.style.left = x + 'px';
+  dragTarget.style.top = y + 'px';
+  dragTarget.style.transform = `scale(${dragScreen.offsetWidth / 1920})`;
+  dragTarget.style.transformOrigin = 'top left';
+
+  // Deselect position grid since user is custom-positioning
+  document.querySelectorAll('.pos-cell, .pos-dot').forEach(c => c.classList.remove('active'));
+});
+
+document.addEventListener('mouseup', e => {
+  if (!isDragging) return;
+  isDragging = false;
+  dragTarget.style.cursor = 'grab';
+
+  // Calculate which grid position is closest and update
+  const screenRect = dragScreen.getBoundingClientRect();
+  const x = parseInt(dragTarget.style.left) || 0;
+  const y = parseInt(dragTarget.style.top) || 0;
+  const xRatio = x / screenRect.width;
+  const yRatio = y / screenRect.height;
+
+  // Map to 3x3 grid
+  let hPos = xRatio < 0.33 ? 'left' : xRatio > 0.66 ? 'right' : 'center';
+  let vPos = yRatio < 0.33 ? 'top' : yRatio > 0.66 ? 'bot' : 'mid';
+  const newPos = `${vPos}-${hPos}`;
+
+  // Update position grid UI
+  document.querySelectorAll('.pos-cell, .pos-dot').forEach(c => c.classList.remove('active'));
+  const matchCell = document.querySelector(`.pos-cell[data-pos="${newPos}"], .pos-dot[data-pos="${newPos}"]`);
+  if (matchCell) matchCell.classList.add('active');
+
+  // Update working design
+  workingDesigns[currentType].card_position = newPos;
 });
 </script>
 
