@@ -218,6 +218,7 @@ function getCardClass(type) {
     yt_superchat:  'yt-superchat-card',
     yt_member:     'yt-member-card',
     yt_giftmember: 'yt-giftmember-card',
+    timed:         'timed-card',
   };
   return map[type] || 'follow-card';
 }
@@ -605,6 +606,9 @@ function esc(text) {
 
 // ─── Timed notification banner ─────────────────────────────────
 function showTimedNotification(data) {
+  // Check for custom design from overlay builder
+  const design = overlayDesigns['timed'];
+
   let timedContainer = document.getElementById('timed-container');
   if (!timedContainer) {
     timedContainer = document.createElement('div');
@@ -614,11 +618,23 @@ function showTimedNotification(data) {
 
   const banner = document.createElement('div');
   banner.className = 'timed-banner';
-  banner.style.background = data.bgColor || '#1a1a2e';
-  banner.style.color = data.textColor || '#ffffff';
 
-  // Position
-  const pos = data.position || 'bot-center';
+  // Apply design from builder if available, otherwise use notification colors
+  const bgColor = design ? design.bg_color : (data.bgColor || '#1a1a2e');
+  const textColor = design ? design.text_color : (data.textColor || '#ffffff');
+  const accentColor = design ? design.accent_color : '#f79009';
+  const borderRadius = design ? (design.border_radius || 12) : 12;
+  const cardWidth = design ? (design.card_width || 500) : 500;
+
+  banner.style.background = `linear-gradient(160deg, ${darken(bgColor)}, ${bgColor} 40%, ${darken(bgColor)})`;
+  banner.style.color = textColor;
+  banner.style.borderColor = hexToRgba(accentColor, 0.3);
+  banner.style.boxShadow = `0 4px 20px ${hexToRgba(accentColor, 0.15)}`;
+  banner.style.borderRadius = borderRadius + 'px';
+  banner.style.maxWidth = cardWidth + 'px';
+
+  // Position — use design position if available, otherwise notification position
+  const pos = design ? (design.card_position || 'bot-center') : (data.position || 'bot-center');
   const [vPos, hPos] = pos.split('-');
   if (vPos === 'top') { banner.style.top = '16px'; }
   else if (vPos === 'bot') { banner.style.bottom = '16px'; }

@@ -493,3 +493,10 @@ body {
 .timed-banner .timed-message { font-size: 16px; font-weight: 600; }
 @keyframes timedSlideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 @keyframes timedSlideOut { from { opacity: 1; } to { opacity: 0; transform: translateY(10px); } }
+
+/* Timed card class (used by getCardClass mapping) */
+.timed-card {
+  background: linear-gradient(160deg, #0d0d1a, #1a1a2e 40%, #0d0d1a);
+  border-color: rgba(247,144,9,0.3);
+  box-shadow: 0 4px 20px rgba(247,144,9,0.15);
+}

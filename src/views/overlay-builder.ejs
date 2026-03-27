@@ -539,6 +539,10 @@
           <div class="event-tab" data-type="yt_giftmember"><span style="font-size:16px;">🎁</span><span style="font-size:10px;">Gift</span></div>
         </div>
         <div class="event-tabs-label" style="color: #555;">Kick (coming soon)</div>
+        <div class="event-tabs-label">General</div>
+        <div class="event-tabs-row">
+          <div class="event-tab" data-type="timed"><span style="font-size:16px;">⏰</span><span style="font-size:10px;">Timed</span></div>
+        </div>
       </div>
     </div>
 
@@ -801,17 +805,20 @@ const EVENT_DEFAULTS = {
   yt_superchat:  { bg_color:'#200808', accent_color:'#ff4444', border_color:'#ff4444', text_color:'#ffffff', font_family:'System Default', username_size:24, event_label:'Super Chat',           detail_text:'', entrance_animation:'slideDown', car_animation:'zoomLR', screen_effect:'default', animation_speed:1.0, card_width:420, card_position:'top-center', border_radius:16 },
   yt_member:     { bg_color:'#041a0c', accent_color:'#0f9d58', border_color:'#0f9d58', text_color:'#ffffff', font_family:'System Default', username_size:24, event_label:'New Member',           detail_text:'', entrance_animation:'slideDown', car_animation:'none',   screen_effect:'default', animation_speed:1.0, card_width:420, card_position:'top-center', border_radius:16 },
   yt_giftmember: { bg_color:'#060e20', accent_color:'#4285f4', border_color:'#4285f4', text_color:'#ffffff', font_family:'System Default', username_size:24, event_label:'Gift Alert',           detail_text:'', entrance_animation:'slideDown', car_animation:'zoomLR', screen_effect:'default', animation_speed:1.0, card_width:420, card_position:'top-center', border_radius:16 },
+  timed:         { bg_color:'#1a1a2e', accent_color:'#f79009', border_color:'#f79009', text_color:'#ffffff', font_family:'System Default', username_size:18, event_label:'', detail_text:'', entrance_animation:'slideDown', car_animation:'none', screen_effect:'none', animation_speed:1.0, card_width:500, card_position:'bot-center', border_radius:12 },
 };
 
 const EVENT_NAMES = {
   follow:'Follow', subscription:'Subscription', bits:'Bits', donation:'Donation',
   raid:'Raid', yt_superchat:'YT Super Chat', yt_member:'YT Member', yt_giftmember:'YT Gift Member',
+  timed:'Timed',
 };
 
 const PREVIEW_USERNAMES = {
   follow:'StreamerFan99', subscription:'ProRacer_24', bits:'NitroQueen',
   donation:'SpeedSponsor', raid:'RaidLeader', yt_superchat:'YoutubeViewer',
   yt_member:'NewMember42', yt_giftmember:'GenerousGifter',
+  timed:'TimedMessage',
 };
 
 // In-memory designs (working copy for current session)
@@ -1072,6 +1079,7 @@ function getDetailPreviewText(type) {
     yt_superchat: 'sent $5.00 — Love the stream! 🔥',
     yt_member: 'just became a member! 🥇',
     yt_giftmember: 'gifted 5 memberships! 🎁',
+    timed: 'Your timed message appears here...',
   };
   return map[type] || '';
 }

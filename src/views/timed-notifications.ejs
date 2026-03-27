@@ -1,17 +1,24 @@
 <%- include('header', { title: 'Timed Notifications', streamer: streamer }) %>
 
 <style>
-  /* ── Position grid ───────────────────────────────────────────── */
-  .position-grid { display: grid; grid-template-columns: repeat(3, 28px); gap: 3px; }
-  .position-btn {
-    width: 28px; height: 28px; border-radius: 5px;
-    border: 1px solid var(--border); background: var(--bg-elevated);
-    cursor: pointer; transition: all 0.15s;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 10px; color: var(--text-muted);
+  /* ── Input styles ────────────────────────────────────────────── */
+  .tn-input {
+    width: 100%; padding: 10px 14px;
+    background: var(--bg-base); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text-primary);
+    font-family: var(--font-body); font-size: 13px; outline: none;
+    transition: border-color 0.2s;
   }
-  .position-btn:hover { border-color: var(--accent); background: rgba(145,70,255,0.1); color: var(--accent); }
-  .position-btn.active { border-color: var(--accent); background: rgba(145,70,255,0.2); color: var(--accent); }
+  .tn-input:focus { border-color: var(--accent); }
+  .tn-input::placeholder { color: var(--text-muted); }
+  textarea.tn-input { resize: vertical; min-height: 60px; }
+  select.tn-input { cursor: pointer; }
+  .tn-label {
+    display: block; font-size: 12px; font-weight: 600;
+    color: var(--text-secondary); margin-bottom: 6px;
+    font-family: var(--font-display); text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
 
   /* ── Platform pills ──────────────────────────────────────────── */
   .platform-pill input { display: none; }
@@ -27,32 +34,6 @@
     border-color: var(--pill-color, var(--accent));
     background: rgba(var(--pill-rgb, 145,70,255), 0.1);
     color: var(--pill-color, var(--accent));
-  }
-
-  /* ── Overlay settings reveal ─────────────────────────────────── */
-  .overlay-settings-wrap {
-    overflow: hidden; max-height: 0;
-    transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease;
-    opacity: 0;
-  }
-  .overlay-settings-wrap.visible { max-height: 500px; opacity: 1; }
-  .overlay-settings-inner {
-    margin-top: 16px; padding: 20px; background: var(--bg-elevated);
-    border-radius: 10px; border: 1px solid var(--border);
-  }
-
-  /* ── Color picker with hex ───────────────────────────────────── */
-  .color-row { display: flex; align-items: center; gap: 8px; }
-  .color-row input[type=color] {
-    width: 36px; height: 36px; padding: 2px; border-radius: 6px;
-    border: 1px solid var(--border); background: var(--bg-base);
-    cursor: pointer; flex-shrink: 0;
-  }
-  .color-hex {
-    font-family: var(--font-display); font-size: 12px; font-weight: 600;
-    color: var(--text-secondary); letter-spacing: 0.05em;
-    background: var(--bg-base); border: 1px solid var(--border);
-    border-radius: 6px; padding: 7px 10px; width: 80px;
   }
 
   /* ── Toggle pill (enable/disable) ───────────────────────────── */
@@ -169,12 +150,12 @@
     <!-- Name + Interval -->
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
       <div>
-        <label class="form-label">Name</label>
-        <input type="text" name="name" class="form-control" placeholder="e.g. Discord Reminder" required>
+        <label class="tn-label">Name</label>
+        <input type="text" name="name" class="tn-input" placeholder="e.g. Discord Reminder" required>
       </div>
       <div>
-        <label class="form-label">Interval</label>
-        <select name="interval_minutes" class="form-control">
+        <label class="tn-label">Interval</label>
+        <select name="interval_minutes" class="tn-input">
           <option value="5">Every 5 minutes</option>
           <option value="10">Every 10 minutes</option>
           <option value="15" selected>Every 15 minutes</option>
@@ -188,17 +169,17 @@
 
     <!-- Chat Message -->
     <div style="margin-bottom: 16px;">
-      <label class="form-label">Chat Message</label>
-      <textarea name="message" class="form-control" rows="2" placeholder="Message to send in chat..." required></textarea>
+      <label class="tn-label">Chat Message</label>
+      <textarea name="message" class="tn-input" rows="2" placeholder="Message to send in chat..." required></textarea>
     </div>
 
     <!-- Overlay Text -->
     <div style="margin-bottom: 20px;">
-      <label class="form-label">
+      <label class="tn-label">
         Overlay Text
         <span style="color: var(--text-muted); font-weight: 400; font-size: 12px; margin-left: 4px;">optional — leave blank to use chat message</span>
       </label>
-      <textarea name="overlay_text" class="form-control" rows="2" placeholder="Text shown on the stream overlay (optional)…"></textarea>
+      <textarea name="overlay_text" class="tn-input" rows="2" placeholder="Text shown on the stream overlay (optional)…"></textarea>
     </div>
 
     <!-- Platform pills -->
@@ -230,57 +211,6 @@
           </span>
         </label>
 
-      </div>
-    </div>
-
-    <!-- Overlay Settings (add form) -->
-    <div class="overlay-settings-wrap" id="overlay-settings-add">
-      <div class="overlay-settings-inner">
-        <div class="section-label" style="margin-bottom: 16px;">Overlay Settings</div>
-        <div style="display: grid; grid-template-columns: auto 120px 1fr 1fr; gap: 20px; align-items: start;">
-
-          <!-- Position grid -->
-          <div>
-            <div class="section-label">Position</div>
-            <div class="position-grid" id="pos-grid-add">
-              <button type="button" class="position-btn" data-pos="top-left" title="Top Left">↖</button>
-              <button type="button" class="position-btn" data-pos="top-center" title="Top Center">↑</button>
-              <button type="button" class="position-btn" data-pos="top-right" title="Top Right">↗</button>
-              <button type="button" class="position-btn" data-pos="mid-left" title="Middle Left">←</button>
-              <button type="button" class="position-btn" data-pos="mid-center" title="Center">·</button>
-              <button type="button" class="position-btn" data-pos="mid-right" title="Middle Right">→</button>
-              <button type="button" class="position-btn active" data-pos="bot-left" title="Bottom Left">↙</button>
-              <button type="button" class="position-btn" data-pos="bot-center" title="Bottom Center">↓</button>
-              <button type="button" class="position-btn" data-pos="bot-right" title="Bottom Right">↘</button>
-            </div>
-            <input type="hidden" name="overlay_position" value="bot-left" id="pos-input-add">
-          </div>
-
-          <!-- Duration -->
-          <div>
-            <div class="section-label">Duration (sec)</div>
-            <input type="number" name="overlay_duration" class="form-control" value="8" min="2" max="30">
-          </div>
-
-          <!-- BG Color -->
-          <div>
-            <div class="section-label">Background</div>
-            <div class="color-row">
-              <input type="color" name="overlay_bg_color" value="#1a1a2e" id="add-bg-color" oninput="document.getElementById('add-bg-hex').value=this.value.toUpperCase()">
-              <input type="text" class="color-hex" id="add-bg-hex" value="#1A1A2E" maxlength="7" oninput="syncColorPicker('add-bg-color',this.value)">
-            </div>
-          </div>
-
-          <!-- Text Color -->
-          <div>
-            <div class="section-label">Text Color</div>
-            <div class="color-row">
-              <input type="color" name="overlay_text_color" value="#ffffff" id="add-text-color" oninput="document.getElementById('add-text-hex').value=this.value.toUpperCase()">
-              <input type="text" class="color-hex" id="add-text-hex" value="#FFFFFF" maxlength="7" oninput="syncColorPicker('add-text-color',this.value)">
-            </div>
-          </div>
-
-        </div>
       </div>
     </div>
 
@@ -331,10 +261,6 @@
             <input type="hidden" name="send_to_twitch" value="<%= n.send_to_twitch ? '1' : '' %>">
             <input type="hidden" name="send_to_youtube" value="<%= n.send_to_youtube ? '1' : '' %>">
             <input type="hidden" name="show_overlay" value="<%= n.show_overlay ? '1' : '' %>">
-            <input type="hidden" name="overlay_position" value="<%= n.overlay_position %>">
-            <input type="hidden" name="overlay_duration" value="<%= n.overlay_duration %>">
-            <input type="hidden" name="overlay_bg_color" value="<%= n.overlay_bg_color %>">
-            <input type="hidden" name="overlay_text_color" value="<%= n.overlay_text_color %>">
             <input type="hidden" name="enabled" value="<%= n.enabled ? '' : '1' %>">
             <label class="toggle-pill" title="<%= n.enabled ? 'Enabled — click to disable' : 'Disabled — click to enable' %>">
               <input type="checkbox" <%= n.enabled ? 'checked' : '' %> onchange="this.form.submit()">
@@ -408,12 +334,12 @@
             <!-- Name + Interval -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
               <div>
-                <label class="form-label">Name</label>
-                <input type="text" name="name" class="form-control" value="<%= n.name %>" required>
+                <label class="tn-label">Name</label>
+                <input type="text" name="name" class="tn-input" value="<%= n.name %>" required>
               </div>
               <div>
-                <label class="form-label">Interval</label>
-                <select name="interval_minutes" class="form-control">
+                <label class="tn-label">Interval</label>
+                <select name="interval_minutes" class="tn-input">
                   <option value="5" <%= n.interval_minutes == 5 ? 'selected' : '' %>>Every 5 minutes</option>
                   <option value="10" <%= n.interval_minutes == 10 ? 'selected' : '' %>>Every 10 minutes</option>
                   <option value="15" <%= n.interval_minutes == 15 ? 'selected' : '' %>>Every 15 minutes</option>
@@ -427,17 +353,17 @@
 
             <!-- Chat Message -->
             <div style="margin-bottom: 16px;">
-              <label class="form-label">Chat Message</label>
-              <textarea name="message" class="form-control" rows="2" required><%= n.message %></textarea>
+              <label class="tn-label">Chat Message</label>
+              <textarea name="message" class="tn-input" rows="2" required><%= n.message %></textarea>
             </div>
 
             <!-- Overlay Text -->
             <div style="margin-bottom: 20px;">
-              <label class="form-label">
+              <label class="tn-label">
                 Overlay Text
                 <span style="color: var(--text-muted); font-weight: 400; font-size: 12px; margin-left: 4px;">optional</span>
               </label>
-              <textarea name="overlay_text" class="form-control" rows="2"><%= n.overlay_text || '' %></textarea>
+              <textarea name="overlay_text" class="tn-input" rows="2"><%= n.overlay_text || '' %></textarea>
             </div>
 
             <!-- Platform pills -->
@@ -469,57 +395,6 @@
                   </span>
                 </label>
 
-              </div>
-            </div>
-
-            <!-- Overlay Settings (edit form) -->
-            <div class="overlay-settings-wrap" id="overlay-settings-edit-<%= n.id %>" <%= n.show_overlay ? 'style="max-height:500px;opacity:1;"' : '' %>>
-              <div class="overlay-settings-inner">
-                <div class="section-label" style="margin-bottom: 16px;">Overlay Settings</div>
-                <div style="display: grid; grid-template-columns: auto 120px 1fr 1fr; gap: 20px; align-items: start;">
-
-                  <!-- Position grid -->
-                  <div>
-                    <div class="section-label">Position</div>
-                    <div class="position-grid" id="pos-grid-edit-<%= n.id %>">
-                      <button type="button" class="position-btn <%= n.overlay_position === 'top-left'    ? 'active' : '' %>" data-pos="top-left"    title="Top Left">↖</button>
-                      <button type="button" class="position-btn <%= n.overlay_position === 'top-center'  ? 'active' : '' %>" data-pos="top-center"  title="Top Center">↑</button>
-                      <button type="button" class="position-btn <%= n.overlay_position === 'top-right'   ? 'active' : '' %>" data-pos="top-right"   title="Top Right">↗</button>
-                      <button type="button" class="position-btn <%= n.overlay_position === 'mid-left'    ? 'active' : '' %>" data-pos="mid-left"    title="Middle Left">←</button>
-                      <button type="button" class="position-btn <%= n.overlay_position === 'mid-center'  ? 'active' : '' %>" data-pos="mid-center"  title="Center">·</button>
-                      <button type="button" class="position-btn <%= n.overlay_position === 'mid-right'   ? 'active' : '' %>" data-pos="mid-right"   title="Middle Right">→</button>
-                      <button type="button" class="position-btn <%= n.overlay_position === 'bot-left'    ? 'active' : '' %>" data-pos="bot-left"    title="Bottom Left">↙</button>
-                      <button type="button" class="position-btn <%= n.overlay_position === 'bot-center'  ? 'active' : '' %>" data-pos="bot-center"  title="Bottom Center">↓</button>
-                      <button type="button" class="position-btn <%= n.overlay_position === 'bot-right'   ? 'active' : '' %>" data-pos="bot-right"   title="Bottom Right">↘</button>
-                    </div>
-                    <input type="hidden" name="overlay_position" value="<%= n.overlay_position %>" id="pos-input-edit-<%= n.id %>">
-                  </div>
-
-                  <!-- Duration -->
-                  <div>
-                    <div class="section-label">Duration (sec)</div>
-                    <input type="number" name="overlay_duration" class="form-control" value="<%= n.overlay_duration %>" min="2" max="30">
-                  </div>
-
-                  <!-- BG Color -->
-                  <div>
-                    <div class="section-label">Background</div>
-                    <div class="color-row">
-                      <input type="color" name="overlay_bg_color" value="<%= n.overlay_bg_color %>" id="edit-bg-color-<%= n.id %>" oninput="document.getElementById('edit-bg-hex-<%= n.id %>').value=this.value.toUpperCase()">
-                      <input type="text" class="color-hex" id="edit-bg-hex-<%= n.id %>" value="<%= n.overlay_bg_color.toUpperCase() %>" maxlength="7" oninput="syncColorPicker('edit-bg-color-<%= n.id %>',this.value)">
-                    </div>
-                  </div>
-
-                  <!-- Text Color -->
-                  <div>
-                    <div class="section-label">Text Color</div>
-                    <div class="color-row">
-                      <input type="color" name="overlay_text_color" value="<%= n.overlay_text_color %>" id="edit-text-color-<%= n.id %>" oninput="document.getElementById('edit-text-hex-<%= n.id %>').value=this.value.toUpperCase()">
-                      <input type="text" class="color-hex" id="edit-text-hex-<%= n.id %>" value="<%= n.overlay_text_color.toUpperCase() %>" maxlength="7" oninput="syncColorPicker('edit-text-color-<%= n.id %>',this.value)">
-                    </div>
-                  </div>
-
-                </div>
               </div>
             </div>
 
@@ -561,52 +436,6 @@ function testNotification(id, btn) {
     });
 }
 
-// Position grid logic
-function initPositionGrid(gridId, inputId) {
-  const grid = document.getElementById(gridId);
-  if (!grid) return;
-  const input = document.getElementById(inputId);
-  grid.querySelectorAll('.position-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      grid.querySelectorAll('.position-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      if (input) input.value = btn.dataset.pos;
-    });
-  });
-}
-
-// Color picker ↔ hex text sync
-function syncColorPicker(pickerId, hexVal) {
-  if (/^#[0-9a-fA-F]{6}$/.test(hexVal)) {
-    const picker = document.getElementById(pickerId);
-    if (picker) picker.value = hexVal;
-  }
-}
-
-// Add form
-initPositionGrid('pos-grid-add', 'pos-input-add');
-
-// Edit form position grids
-<% notifications.forEach(function(n) { %>
-initPositionGrid('pos-grid-edit-<%= n.id %>', 'pos-input-edit-<%= n.id %>');
-<% }); %>
-
-// Overlay toggle — add form
-document.querySelectorAll('.toggle-overlay-add').forEach(cb => {
-  cb.addEventListener('change', () => {
-    const settings = document.getElementById('overlay-settings-add');
-    settings.classList.toggle('visible', cb.checked);
-  });
-});
-
-// Overlay toggle — edit forms
-document.querySelectorAll('.toggle-overlay-edit').forEach(cb => {
-  cb.addEventListener('change', () => {
-    const id = cb.dataset.id;
-    const settings = document.getElementById('overlay-settings-edit-' + id);
-    if (settings) settings.classList.toggle('visible', cb.checked);
-  });
-});
 </script>
 
 <%- include('footer') %>
