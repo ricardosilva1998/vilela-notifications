@@ -179,6 +179,13 @@ const chatManager = {
     });
   },
 
+  sendRawMessage(channel, message) {
+    if (!client) return;
+    client.say(channel, message).catch(err => {
+      console.error(`[Chat] Failed to send timed message to ${channel}:`, err.message);
+    });
+  },
+
   // Backward-compatible aliases
   startAll() { this.connect(); },
   startForStreamer(streamerId) {
