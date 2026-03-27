@@ -315,11 +315,18 @@
         </div>
       </div>
       <% if (overlayUrl) { %>
-        <div style="margin-bottom: 12px;">
-          <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 6px;">OBS Browser Source URL</label>
+        <div style="margin-bottom: 8px;">
+          <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px;">Alerts Overlay</label>
           <div style="display: flex; gap: 6px;">
-            <input type="text" value="<%= overlayUrl %>" readonly id="overlay-url-copy" style="flex: 1; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-primary); padding: 8px 10px; border-radius: var(--radius-sm); font-size: 12px; font-family: monospace;">
-            <button onclick="navigator.clipboard.writeText(document.getElementById('overlay-url-copy').value); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy', 1500);" class="btn btn-secondary" style="font-size: 12px; padding: 8px 12px; white-space: nowrap;">Copy</button>
+            <input type="text" value="<%= overlayUrl %>" readonly id="overlay-url-copy" style="flex: 1; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-primary); padding: 6px 8px; border-radius: var(--radius-sm); font-size: 11px; font-family: monospace;">
+            <button onclick="navigator.clipboard.writeText(document.getElementById('overlay-url-copy').value); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy', 1500);" class="btn btn-secondary" style="font-size: 11px; padding: 6px 10px; white-space: nowrap;">Copy</button>
+          </div>
+        </div>
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px;">Sponsors Overlay</label>
+          <div style="display: flex; gap: 6px;">
+            <input type="text" value="<%= overlayUrl.replace('/overlay/', '/overlay/sponsors/') %>" readonly id="sponsor-url-copy" style="flex: 1; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-primary); padding: 6px 8px; border-radius: var(--radius-sm); font-size: 11px; font-family: monospace;">
+            <button onclick="navigator.clipboard.writeText(document.getElementById('sponsor-url-copy').value); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy', 1500);" class="btn btn-secondary" style="font-size: 11px; padding: 6px 10px; white-space: nowrap;">Copy</button>
           </div>
         </div>
       <% } else { %>

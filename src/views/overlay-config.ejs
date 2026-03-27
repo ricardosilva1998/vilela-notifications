@@ -94,17 +94,33 @@
   </h3>
   <% if (overlayUrl) { %>
     <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">
-      Add this as a Browser Source in OBS. Recommended size: <strong>1920 &times; 1080</strong>.
+      Add these as separate Browser Sources in OBS. Recommended size: <strong>1920 &times; 1080</strong>.
     </p>
-    <div style="display: flex; gap: 8px; align-items: center;">
-      <input type="text" id="overlay-url-input" value="<%= overlayUrl %>" readonly
-        style="flex: 1; padding: 10px 14px; background: var(--bg-base); border: 1px solid var(--border);
-               border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body);
-               font-size: 13px; outline: none;">
-      <button onclick="copyOverlayUrl()" class="btn btn-secondary" id="copy-btn" style="flex-shrink: 0;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        Copy URL
-      </button>
+    <div style="margin-bottom: 10px;">
+      <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px;">Alerts (follows, subs, bits, donations, raids)</label>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <input type="text" id="overlay-url-input" value="<%= overlayUrl %>" readonly
+          style="flex: 1; padding: 10px 14px; background: var(--bg-base); border: 1px solid var(--border);
+                 border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body);
+                 font-size: 13px; outline: none;">
+        <button onclick="copyOverlayUrl()" class="btn btn-secondary" id="copy-btn" style="flex-shrink: 0;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy
+        </button>
+      </div>
+    </div>
+    <div>
+      <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px;">Sponsors (image rotation)</label>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <input type="text" id="sponsor-url-input" value="<%= overlayUrl.replace('/overlay/', '/overlay/sponsors/') %>" readonly
+          style="flex: 1; padding: 10px 14px; background: var(--bg-base); border: 1px solid var(--border);
+                 border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body);
+                 font-size: 13px; outline: none;">
+        <button onclick="navigator.clipboard.writeText(document.getElementById('sponsor-url-input').value); this.textContent='Copied!'; setTimeout(() => this.innerHTML='<svg width=14 height=14 viewBox=&quot;0 0 24 24&quot; fill=none stroke=currentColor stroke-width=2><rect x=9 y=9 width=13 height=13 rx=2/><path d=&quot;M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1&quot;/></svg> Copy', 1500);" class="btn btn-secondary" style="flex-shrink: 0;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy
+        </button>
+      </div>
     </div>
   <% } else { %>
     <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">

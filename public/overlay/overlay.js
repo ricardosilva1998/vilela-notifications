@@ -214,11 +214,8 @@ function connectSSE() {
       return;
     }
 
-    if (data.type === 'sponsor') {
-      console.log('[Overlay] Sponsor image received:', data.data);
-      showSponsorImage(data.data);
-      return;
-    }
+    // Sponsor events handled by separate /overlay/sponsors/:token page
+    if (data.type === 'sponsor') return;
 
     // Check if event type is enabled
     const eventType = data.type;

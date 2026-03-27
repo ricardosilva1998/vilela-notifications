@@ -77,6 +77,70 @@ router.get('/debug/:token', (req, res) => {
   });
 });
 
+// Sponsor-only SSE endpoint
+router.get('/sponsors/events/:token', (req, res) => {
+  const streamer = db.getStreamerByOverlayToken(req.params.token);
+  if (!streamer) return res.status(404).send('Invalid overlay token');
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+  });
+
+  // Send design config for sponsor positioning
+  const designs = db.getAllOverlayDesigns(streamer.id);
+  const designMap = {};
+  designs.forEach(d => { designMap[d.event_type] = d; });
+  res.write(`data: ${JSON.stringify({ type: 'config', designs: designMap, serverVersion: SERVER_INSTANCE_ID })}\n\n`);
+
+  // Replay current sponsor
+  try {
+    const { timedNotificationManager } = require('../services/timedNotifications');
+    const currentSponsor = timedNotificationManager.getCurrentSponsor(streamer.id);
+    if (currentSponsor) {
+      res.write(`data: ${JSON.stringify(currentSponsor)}\n\n`);
+    }
+  } catch (e) {}
+
+  const heartbeat = setInterval(() => {
+    try { res.write(`:heartbeat\n\n`); } catch (e) { clearInterval(heartbeat); }
+  }, 30000);
+
+  const listener = (event) => {
+    // Only forward sponsor events
+    if (event.type !== 'sponsor') return;
+    try { res.write(`data: ${JSON.stringify(event)}\n\n`); } catch (e) {}
+  };
+
+  bus.on(`overlay:${streamer.id}`, listener);
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    bus.off(`overlay:${streamer.id}`, listener);
+  });
+});
+
+// Sponsor-only overlay page
+router.get('/sponsors/:token', (req, res) => {
+  const streamer = db.getStreamerByOverlayToken(req.params.token);
+  if (!streamer) return res.status(404).send('Invalid overlay token');
+
+  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sponsor Overlay</title>
+  <link rel="stylesheet" href="/overlay/overlay.css">
+</head>
+<body>
+  <div id="timed-container"></div>
+  <script>window.OVERLAY_TOKEN = ${JSON.stringify(streamer.overlay_token)};</script>
+  <script src="/overlay/sponsors.js"></script>
+</body>
+</html>`);
+});
+
 // Serve overlay page — AFTER /events/:token so the wildcard doesn't catch SSE requests
 router.get('/:token', (req, res) => {
   const streamer = db.getStreamerByOverlayToken(req.params.token);
