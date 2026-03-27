@@ -122,6 +122,45 @@
         </button>
       </div>
     </div>
+    <div style="margin-top: 10px;">
+      <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px;">Scenes</label>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <input type="text" id="scenes-url-input" value="<%= overlayUrl.replace('/overlay/', '/overlay/scenes/') %>" readonly
+          style="flex: 1; padding: 10px 14px; background: var(--bg-base); border: 1px solid var(--border);
+                 border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body);
+                 font-size: 13px; outline: none;">
+        <button onclick="navigator.clipboard.writeText(document.getElementById('scenes-url-input').value); this.textContent='Copied!'; setTimeout(() => this.innerHTML='<svg width=14 height=14 viewBox=&quot;0 0 24 24&quot; fill=none stroke=currentColor stroke-width=2><rect x=9 y=9 width=13 height=13 rx=2/><path d=&quot;M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1&quot;/></svg> Copy', 1500);" class="btn btn-secondary" style="flex-shrink: 0;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy
+        </button>
+      </div>
+    </div>
+    <div style="margin-top: 10px;">
+      <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px;">Info Bar</label>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <input type="text" id="bar-url-input" value="<%= overlayUrl.replace('/overlay/', '/overlay/bar/') %>" readonly
+          style="flex: 1; padding: 10px 14px; background: var(--bg-base); border: 1px solid var(--border);
+                 border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body);
+                 font-size: 13px; outline: none;">
+        <button onclick="navigator.clipboard.writeText(document.getElementById('bar-url-input').value); this.textContent='Copied!'; setTimeout(() => this.innerHTML='<svg width=14 height=14 viewBox=&quot;0 0 24 24&quot; fill=none stroke=currentColor stroke-width=2><rect x=9 y=9 width=13 height=13 rx=2/><path d=&quot;M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1&quot;/></svg> Copy', 1500);" class="btn btn-secondary" style="flex-shrink: 0;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy
+        </button>
+      </div>
+    </div>
+    <div style="margin-top: 10px;">
+      <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px;">Custom Alerts</label>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <input type="text" id="custom-alerts-url-input" value="<%= overlayUrl.replace('/overlay/', '/overlay/custom-alerts/') %>" readonly
+          style="flex: 1; padding: 10px 14px; background: var(--bg-base); border: 1px solid var(--border);
+                 border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body);
+                 font-size: 13px; outline: none;">
+        <button onclick="navigator.clipboard.writeText(document.getElementById('custom-alerts-url-input').value); this.textContent='Copied!'; setTimeout(() => this.innerHTML='<svg width=14 height=14 viewBox=&quot;0 0 24 24&quot; fill=none stroke=currentColor stroke-width=2><rect x=9 y=9 width=13 height=13 rx=2/><path d=&quot;M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1&quot;/></svg> Copy', 1500);" class="btn btn-secondary" style="flex-shrink: 0;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy
+        </button>
+      </div>
+    </div>
   <% } else { %>
     <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">
       Generate a unique overlay URL to use in OBS as a Browser Source.
