@@ -885,6 +885,8 @@ function getControlValues() {
     animation_speed: parseFloat(document.getElementById('ctrl-animation-speed').value),
     card_width: parseInt(document.getElementById('ctrl-card-width').value),
     card_position: document.querySelector('.pos-cell.active')?.dataset.pos || 'top-center',
+    card_custom_x: workingDesigns[currentType]?.card_custom_x || null,
+    card_custom_y: workingDesigns[currentType]?.card_custom_y || null,
     border_radius: parseInt(document.getElementById('ctrl-border-radius').value),
   };
 }
@@ -1108,6 +1110,17 @@ function positionCard(pos, cardWidth) {
   const screenW = screen.offsetWidth;
   const screenH = screen.offsetHeight;
 
+  // If custom x/y from drag, use those
+  const d = workingDesigns[currentType];
+  if (d && d.card_custom_x != null && d.card_custom_y != null) {
+    const scale = screenW / 1920;
+    container.style.transform = `scale(${scale})`;
+    container.style.transformOrigin = 'top left';
+    container.style.left = (d.card_custom_x * screenW) + 'px';
+    container.style.top = (d.card_custom_y * screenH) + 'px';
+    return;
+  }
+
   // Scale the card to fit the preview screen (designed for 1920px)
   const scale = screenW / 1920;
   container.style.transform = `scale(${scale})`;
@@ -1197,6 +1210,11 @@ document.getElementById('position-grid').addEventListener('click', e => {
   if (!cell) return;
   document.querySelectorAll('.pos-cell').forEach(c => c.classList.remove('active'));
   cell.classList.add('active');
+  // Clear custom drag position when grid is clicked
+  if (workingDesigns[currentType]) {
+    workingDesigns[currentType].card_custom_x = null;
+    workingDesigns[currentType].card_custom_y = null;
+  }
   updatePreview();
 });
 
@@ -1391,8 +1409,10 @@ document.addEventListener('mouseup', e => {
   const matchCell = document.querySelector(`.pos-cell[data-pos="${newPos}"], .pos-dot[data-pos="${newPos}"]`);
   if (matchCell) matchCell.classList.add('active');
 
-  // Update working design
+  // Update working design with grid position AND exact x/y percentages
   workingDesigns[currentType].card_position = newPos;
+  workingDesigns[currentType].card_custom_x = x / screenRect.width;
+  workingDesigns[currentType].card_custom_y = y / screenRect.height;
 });
 </script>
 

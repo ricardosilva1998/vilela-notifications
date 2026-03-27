@@ -544,10 +544,19 @@ function applyCustomDesign(card, eventType) {
   card.style.borderRadius = (design.border_radius || 16) + 'px';
   card.style.width = (design.card_width || 420) + 'px';
 
-  // Position
+  // Position — use custom x/y if dragged, otherwise grid position
+  card.style.position = 'absolute';
+  if (design.card_custom_x != null && design.card_custom_y != null) {
+    card.style.left = (design.card_custom_x * 100) + '%';
+    card.style.top = (design.card_custom_y * 100) + '%';
+    card.style.right = '';
+    card.style.bottom = '';
+    card.style.transform = 'none';
+    return;
+  }
+
   const pos = design.card_position || 'top-center';
   const [vPos, hPos] = pos.split('-');
-  card.style.position = 'absolute';
   if (vPos === 'top') { card.style.top = '16px'; card.style.bottom = ''; }
   else if (vPos === 'bot') { card.style.bottom = '16px'; card.style.top = ''; }
   else { card.style.top = '50%'; card.style.bottom = ''; }
