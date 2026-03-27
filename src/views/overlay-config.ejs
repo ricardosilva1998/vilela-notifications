@@ -66,10 +66,15 @@
 </a>
 <div style="display: flex; align-items: center; justify-content: space-between; margin: 16px 0 8px; flex-wrap: wrap; gap: 12px;">
   <h2 style="font-size: 24px; font-weight: 700;" class="animate-in">Overlay Configuration</h2>
-  <a href="/dashboard/overlay-builder" style="font-size: 13px; padding: 8px 14px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; background: rgba(145,71,255,0.1); border: 1px solid rgba(145,71,255,0.25); border-radius: var(--radius-sm); color: #9146ff; font-family: var(--font-display); font-weight: 600; transition: background 0.15s;" onmouseover="this.style.background='rgba(145,71,255,0.2)'" onmouseout="this.style.background='rgba(145,71,255,0.1)'">
+  <a id="builder-link" href="/dashboard/overlay-builder" style="font-size: 13px; padding: 8px 14px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; background: rgba(145,71,255,0.1); border: 1px solid rgba(145,71,255,0.25); border-radius: var(--radius-sm); color: #9146ff; font-family: var(--font-display); font-weight: 600; transition: background 0.15s;" onmouseover="this.style.background='rgba(145,71,255,0.2)'" onmouseout="this.style.background='rgba(145,71,255,0.1)'">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
     Customize Visual Design →
   </a>
+  <script>
+    // Preserve tab context when navigating back to builder
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab) document.getElementById('builder-link').href = '/dashboard/overlay-builder?tab=' + tab;
+  </script>
 </div>
 <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 24px;">Set up your stream overlay to show live alerts for follows, subscriptions, bits, and donations.</p>
 

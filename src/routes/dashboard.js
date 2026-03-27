@@ -1163,7 +1163,8 @@ router.post('/sponsors/upload', (req, res) => {
     fs.writeFileSync(path.join(sponsorDir, filename), Buffer.concat(chunks));
 
     const displayName = req.query.name || 'Sponsor';
-    const result = db.addSponsorImage(streamerId, filename, displayName, null);
+    const displayDuration = parseInt(req.query.dur) || 30;
+    const result = db.addSponsorImage(streamerId, filename, displayName, null, displayDuration);
     const newImage = db.getSponsorImages(streamerId).find(i => i.filename === filename);
     res.json({ ok: true, filename, image: newImage });
   });
@@ -1259,6 +1260,16 @@ router.post('/sponsor-messages/settings', (req, res) => {
     const { timedNotificationManager } = require('../services/timedNotifications');
     timedNotificationManager.restartChatForStreamer(req.streamer.id);
   } catch(e) {}
+  res.json({ ok: true });
+});
+
+router.post('/sponsor-messages/:id/test', (req, res) => {
+  const msg = db.getSponsorMessages(req.streamer.id).find(m => m.id === parseInt(req.params.id));
+  if (!msg) return res.json({ ok: false, error: 'Message not found' });
+  const { chatManager } = require('../services/twitchChat');
+  let fullMessage = msg.message_text;
+  if (msg.url) fullMessage += ' ' + msg.url;
+  chatManager.sendRawMessage(req.streamer.twitch_username, fullMessage);
   res.json({ ok: true });
 });
 

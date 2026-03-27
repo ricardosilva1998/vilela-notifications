@@ -629,7 +629,8 @@ function showSponsorImage(data) {
   const design = overlayDesigns['timed']; // Use timed design for position/size
 
   const banner = document.createElement('div');
-  banner.className = 'sponsor-banner';
+  const sponsorAnim = (design && design.sponsor_animation) || 'fade';
+  banner.className = 'sponsor-banner anim-' + sponsorAnim;
 
   // Apply width from design
   if (design && design.card_width) {
@@ -641,6 +642,12 @@ function showSponsorImage(data) {
   const img = document.createElement('img');
   img.src = data.imageUrl;
   img.alt = data.name || 'Sponsor';
+  const imgScale = design && design.card_image_scale != null ? design.card_image_scale : 1.0;
+  if (imgScale < 1) {
+    img.style.maxWidth = (imgScale * 100) + '%';
+    img.style.margin = '0 auto';
+    img.style.display = 'block';
+  }
   banner.appendChild(img);
 
   // Position — use custom x/y if dragged, otherwise grid position

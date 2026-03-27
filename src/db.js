@@ -2147,14 +2147,16 @@ function saveOverlayDesign(streamerId, eventType, design) {
     card_custom_x: design.card_custom_x != null ? design.card_custom_x : null,
     card_custom_y: design.card_custom_y != null ? design.card_custom_y : null,
     border_radius: design.border_radius != null ? design.border_radius : 16,
+    card_image_scale: design.card_image_scale != null ? design.card_image_scale : 1.0,
+    sponsor_animation: design.sponsor_animation || 'fade',
   };
   db.prepare(`
     INSERT OR REPLACE INTO overlay_designs
       (streamer_id, event_type, bg_color, accent_color, border_color, text_color,
        font_family, username_size, event_label, detail_text, entrance_animation,
        car_animation, screen_effect, animation_speed, card_width, card_position,
-       card_custom_x, card_custom_y, border_radius)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       card_custom_x, card_custom_y, border_radius, card_image_scale, sponsor_animation)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     streamerId, eventType,
     row.bg_color, row.accent_color, row.border_color, row.text_color,
@@ -2162,12 +2164,31 @@ function saveOverlayDesign(streamerId, eventType, design) {
     row.entrance_animation, row.car_animation, row.screen_effect,
     row.animation_speed, row.card_width, row.card_position,
     row.card_custom_x, row.card_custom_y, row.border_radius,
+    row.card_image_scale, row.sponsor_animation,
   );
 }
 
 function deleteOverlayDesign(streamerId, eventType) {
   db.prepare('DELETE FROM overlay_designs WHERE streamer_id = ? AND event_type = ?')
     .run(streamerId, eventType);
+}
+
+// Migration: Add card_image_scale to overlay_designs
+{
+  const cols = db.pragma('table_info(overlay_designs)').map(c => c.name);
+  if (!cols.includes('card_image_scale')) {
+    db.exec(`ALTER TABLE overlay_designs ADD COLUMN card_image_scale REAL DEFAULT 1.0`);
+    console.log('[DB] Added card_image_scale to overlay_designs');
+  }
+}
+
+// Migration: Add sponsor_animation to overlay_designs
+{
+  const cols = db.pragma('table_info(overlay_designs)').map(c => c.name);
+  if (!cols.includes('sponsor_animation')) {
+    db.exec(`ALTER TABLE overlay_designs ADD COLUMN sponsor_animation TEXT DEFAULT 'fade'`);
+    console.log('[DB] Added sponsor_animation to overlay_designs');
+  }
 }
 
 // Migration: Create sponsor_images table
@@ -2264,8 +2285,8 @@ function getSponsorImages(streamerId) {
 function getEnabledSponsorImages(streamerId) {
   return db.prepare('SELECT * FROM sponsor_images WHERE streamer_id = ? AND enabled = 1 ORDER BY sort_order, id').all(streamerId);
 }
-function addSponsorImage(streamerId, filename, displayName, chatMessage) {
-  return db.prepare('INSERT INTO sponsor_images (streamer_id, filename, display_name, chat_message) VALUES (?, ?, ?, ?)').run(streamerId, filename, displayName, chatMessage || null);
+function addSponsorImage(streamerId, filename, displayName, chatMessage, displayDuration) {
+  return db.prepare('INSERT INTO sponsor_images (streamer_id, filename, display_name, chat_message, display_duration) VALUES (?, ?, ?, ?, ?)').run(streamerId, filename, displayName, chatMessage || null, displayDuration || 30);
 }
 function updateSponsorImage(id, streamerId, displayName, chatMessage, enabled, displayDuration) {
   db.prepare('UPDATE sponsor_images SET display_name = ?, chat_message = ?, enabled = ?, display_duration = ? WHERE id = ? AND streamer_id = ?')

@@ -506,9 +506,15 @@ body {
   position: absolute;
   border-radius: 8px;
   overflow: hidden;
-  animation: sponsorFadeIn 0.5s ease-out forwards;
   box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
+.sponsor-banner.anim-fade { animation: sponsorFadeIn 0.5s ease-out forwards; }
+.sponsor-banner.anim-slide-left { animation: sponsorSlideLeft 0.5s ease-out forwards; }
+.sponsor-banner.anim-slide-right { animation: sponsorSlideRight 0.5s ease-out forwards; }
+.sponsor-banner.anim-slide-up { animation: sponsorSlideUp 0.5s ease-out forwards; }
+.sponsor-banner.anim-drop-down { animation: sponsorDropDown 0.5s ease-out forwards; }
+.sponsor-banner.anim-zoom { animation: sponsorZoomIn 0.4s ease-out forwards; }
+.sponsor-banner.anim-none { opacity: 1; }
 .sponsor-banner.dismissing { animation: sponsorFadeOut 0.4s ease-in forwards; }
 .sponsor-banner img { display: block; max-width: 100%; height: auto; }
 @keyframes sponsorFadeIn {
@@ -518,4 +524,24 @@ body {
 @keyframes sponsorFadeOut {
   from { opacity: 1; transform: scale(1); }
   to   { opacity: 0; transform: scale(0.95); }
+}
+@keyframes sponsorSlideLeft {
+  from { opacity: 0; transform: translateX(-100%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes sponsorSlideRight {
+  from { opacity: 0; transform: translateX(100%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes sponsorSlideUp {
+  from { opacity: 0; transform: translateY(100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes sponsorDropDown {
+  from { opacity: 0; transform: translateY(-100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes sponsorZoomIn {
+  from { opacity: 0; transform: scale(0.3); }
+  to   { opacity: 1; transform: scale(1); }
 }

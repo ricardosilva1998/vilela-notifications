@@ -163,6 +163,64 @@
     }
     .section.collapsed .section-body { display: none; }
 
+    /* Popup trigger buttons */
+    .popup-trigger-btn {
+      width: 100%; padding: 10px 14px; font-size: 13px; font-weight: 600;
+      font-family: var(--font-display); color: var(--text-primary);
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .popup-trigger-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .theme-swatch-preview { display: flex; gap: 4px; }
+
+    /* Modal overlay */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      z-index: 1000; display: flex; align-items: center; justify-content: center;
+      opacity: 0; visibility: hidden; transition: all 0.25s;
+    }
+    .modal-overlay.visible { opacity: 1; visibility: visible; }
+    .modal-box {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 28px;
+      width: 520px; max-width: 90vw; max-height: 85vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .modal-box h3 {
+      font-size: 18px; font-weight: 700; margin-bottom: 20px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .modal-actions {
+      display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;
+    }
+    .modal-actions button {
+      padding: 9px 20px; font-size: 13px; font-weight: 600;
+      font-family: var(--font-display); border-radius: var(--radius-sm);
+      cursor: pointer; border: 1px solid var(--border); transition: all 0.2s;
+    }
+    .modal-actions .btn-apply {
+      background: var(--accent); color: white; border-color: var(--accent);
+    }
+    .modal-actions .btn-apply:hover { background: var(--accent-hover); }
+    .modal-actions .btn-cancel {
+      background: var(--bg-elevated); color: var(--text-secondary);
+    }
+    .modal-actions .btn-cancel:hover { color: var(--text-primary); border-color: var(--text-muted); }
+
+    /* Font gallery */
+    .font-gallery {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;
+    }
+    .font-gallery-item {
+      padding: 12px 14px; background: var(--bg-elevated); border: 2px solid var(--border);
+      border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;
+    }
+    .font-gallery-item:hover { border-color: rgba(145,70,255,0.3); }
+    .font-gallery-item.selected { border-color: var(--accent); background: var(--accent-glow); }
+    .font-gallery-item .font-name { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+    .font-gallery-item .font-sample { font-size: 18px; color: var(--text-primary); }
+
     /* Controls */
     .ctrl-row {
       display: flex; align-items: center; justify-content: space-between;
@@ -646,7 +704,7 @@
   <span class="sep">/</span>
   <h1>Overlay Builder</h1>
   <span class="sep">/</span>
-  <a href="/dashboard/overlay" style="font-size:13px;color:var(--text-secondary);font-family:var(--font-display);font-weight:500;">Settings &amp; Sounds</a>
+  <a id="sounds-link" href="/dashboard/overlay" style="font-size:13px;color:var(--text-secondary);font-family:var(--font-display);font-weight:500;">Settings &amp; Sounds</a>
   <div class="spacer"></div>
   <% if (overlayUrl) { %>
   <div class="overlay-url-row">
@@ -703,6 +761,25 @@
               </label>
             </div>
 
+            <div class="sp-anim-row" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <span style="font-size:12px;color:var(--text-secondary);white-space:nowrap;">Animation</span>
+              <select id="ctrl-sponsor-animation" style="flex:1;padding:4px 8px;font-size:12px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);" onchange="updatePreview();">
+                <option value="fade">Fade</option>
+                <option value="slide-left">Slide Left</option>
+                <option value="slide-right">Slide Right</option>
+                <option value="slide-up">Slide Up</option>
+                <option value="drop-down">Drop Down</option>
+                <option value="zoom">Zoom In</option>
+                <option value="none">None</option>
+              </select>
+            </div>
+
+            <div class="sp-scale-row" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <span style="font-size:12px;color:var(--text-secondary);white-space:nowrap;">Image Scale</span>
+              <input type="range" id="ctrl-image-scale" min="0.3" max="1" step="0.05" value="1" style="flex:1;" oninput="document.getElementById('val-image-scale').textContent=Math.round(this.value*100)+'%'; updatePreview();">
+              <span id="val-image-scale" style="font-size:11px;color:var(--text-muted);min-width:32px;">100%</span>
+            </div>
+
             <div class="sponsor-list" id="sponsor-list">
               <!-- Populated by JS -->
             </div>
@@ -722,88 +799,58 @@
       </div>
 
       <!-- Theme Section -->
-      <div class="section" id="section-theme">
+      <div class="section collapsed" id="section-theme">
         <div class="section-header" onclick="toggleSection('theme')">
           <span class="section-title">🎨 Theme</span>
           <span class="section-chevron">▼</span>
         </div>
         <div class="section-body">
-          <div style="display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;">
-            <button type="button" class="theme-preset" data-bg="#1a1a3e" data-accent="#8888cc" data-border="#8888cc" data-text="#ffffff" title="Default Blue" style="width:28px;height:28px;border-radius:6px;border:2px solid rgba(255,255,255,0.1);background:linear-gradient(135deg,#1a1a3e,#8888cc);cursor:pointer;"></button>
-            <button type="button" class="theme-preset" data-bg="#061a10" data-accent="#00ff88" data-border="#00ff88" data-text="#ffffff" title="Green" style="width:28px;height:28px;border-radius:6px;border:2px solid rgba(255,255,255,0.1);background:linear-gradient(135deg,#061a10,#00ff88);cursor:pointer;"></button>
-            <button type="button" class="theme-preset" data-bg="#1c1200" data-accent="#f7c948" data-border="#f7c948" data-text="#ffffff" title="Gold" style="width:28px;height:28px;border-radius:6px;border:2px solid rgba(255,255,255,0.1);background:linear-gradient(135deg,#1c1200,#f7c948);cursor:pointer;"></button>
-            <button type="button" class="theme-preset" data-bg="#110022" data-accent="#bf00ff" data-border="#bf00ff" data-text="#ffffff" title="Purple" style="width:28px;height:28px;border-radius:6px;border:2px solid rgba(255,255,255,0.1);background:linear-gradient(135deg,#110022,#bf00ff);cursor:pointer;"></button>
-            <button type="button" class="theme-preset" data-bg="#1c0505" data-accent="#ff4444" data-border="#ff4444" data-text="#ffffff" title="Red" style="width:28px;height:28px;border-radius:6px;border:2px solid rgba(255,255,255,0.1);background:linear-gradient(135deg,#1c0505,#ff4444);cursor:pointer;"></button>
-            <button type="button" class="theme-preset" data-bg="#0a1520" data-accent="#00b4d8" data-border="#00b4d8" data-text="#ffffff" title="Cyan" style="width:28px;height:28px;border-radius:6px;border:2px solid rgba(255,255,255,0.1);background:linear-gradient(135deg,#0a1520,#00b4d8);cursor:pointer;"></button>
-            <button type="button" class="theme-preset" data-bg="#1a0a00" data-accent="#ff6b35" data-border="#ff6b35" data-text="#ffffff" title="Orange" style="width:28px;height:28px;border-radius:6px;border:2px solid rgba(255,255,255,0.1);background:linear-gradient(135deg,#1a0a00,#ff6b35);cursor:pointer;"></button>
-          </div>
-          <div class="color-row">
-            <div class="color-item">
-              <input type="color" id="ctrl-bg-color" value="#1a1a3e" style="width:36px;height:36px;border-radius:8px;">
-              <span class="color-item-label">Background</span>
-            </div>
-            <div class="color-item">
-              <input type="color" id="ctrl-accent-color" value="#8888cc" style="width:36px;height:36px;border-radius:8px;">
-              <span class="color-item-label">Accent</span>
-            </div>
-            <div class="color-item">
-              <input type="color" id="ctrl-border-color" value="#8888cc" style="width:36px;height:36px;border-radius:8px;">
-              <span class="color-item-label">Border</span>
-            </div>
-            <div class="color-item">
-              <input type="color" id="ctrl-text-color" value="#ffffff" style="width:36px;height:36px;border-radius:8px;">
-              <span class="color-item-label">Text</span>
-            </div>
+          <button type="button" class="popup-trigger-btn" onclick="openThemePopup()">
+            <span class="theme-swatch-preview">
+              <span id="swatch-bg" style="width:16px;height:16px;border-radius:4px;background:#1a1a3e;border:1px solid rgba(255,255,255,0.1);"></span>
+              <span id="swatch-accent" style="width:16px;height:16px;border-radius:4px;background:#8888cc;border:1px solid rgba(255,255,255,0.1);"></span>
+            </span>
+            Change Theme
+          </button>
+          <!-- Hidden color inputs (still used by getControlValues) -->
+          <div style="display:none;">
+            <input type="color" id="ctrl-bg-color" value="#1a1a3e">
+            <input type="color" id="ctrl-accent-color" value="#8888cc">
+            <input type="color" id="ctrl-border-color" value="#8888cc">
+            <input type="color" id="ctrl-text-color" value="#ffffff">
           </div>
         </div>
       </div>
 
       <!-- Text Section -->
-      <div class="section" id="section-text">
+      <div class="section collapsed" id="section-text">
         <div class="section-header" onclick="toggleSection('text')">
           <span class="section-title">✏️ Text &amp; Font</span>
           <span class="section-chevron">▼</span>
         </div>
         <div class="section-body">
-          <div class="ctrl-row" style="display:block;margin-bottom:10px;">
-            <div class="ctrl-label" style="margin-bottom:4px;">Event Label</div>
-            <input type="text" id="ctrl-event-label" placeholder="e.g. New Pit Crew Member" style="width:100%;">
-          </div>
-          <div class="ctrl-row" style="display:block;margin-bottom:10px;">
-            <div class="ctrl-label" style="margin-bottom:4px;">Detail Text <small style="display:inline;text-transform:none;font-size:10px;color:var(--text-muted);">(optional override)</small></div>
-            <input type="text" id="ctrl-detail-text" placeholder="just joined the race 🏁" style="width:100%;">
-          </div>
-          <div class="ctrl-row" style="display:block;margin-bottom:10px;">
-            <div class="ctrl-label" style="margin-bottom:4px;">Font Family</div>
+          <button type="button" class="popup-trigger-btn" onclick="openTextPopup()">
+            <span id="text-font-preview" style="font-size:12px;color:var(--text-muted);">System Default</span>
+            Customize Text
+          </button>
+          <!-- Hidden inputs (still used by getControlValues) -->
+          <div style="display:none;">
+            <input type="text" id="ctrl-event-label" placeholder="e.g. New Pit Crew Member">
+            <input type="text" id="ctrl-detail-text" placeholder="just joined the race 🏁">
             <div class="font-picker" id="font-picker">
-              <div class="font-picker-selected" id="font-picker-selected" onclick="toggleFontPicker()">
+              <div class="font-picker-selected" id="font-picker-selected">
                 <span style="font-family: -apple-system, BlinkMacSystemFont, sans-serif;">System Default</span>
                 <span class="font-picker-arrow">▾</span>
               </div>
-              <div class="font-picker-dropdown" id="font-picker-dropdown">
-                <div class="font-option" data-font="System Default" style="font-family: -apple-system, BlinkMacSystemFont, sans-serif;">System Default</div>
-                <div class="font-option" data-font="Outfit" style="font-family: 'Outfit', sans-serif;">Outfit</div>
-                <div class="font-option" data-font="Inter" style="font-family: 'Inter', sans-serif;">Inter</div>
-                <div class="font-option" data-font="Poppins" style="font-family: 'Poppins', sans-serif;">Poppins</div>
-                <div class="font-option" data-font="Roboto Mono" style="font-family: 'Roboto Mono', monospace;">Roboto Mono</div>
-                <div class="font-option" data-font="Press Start 2P" style="font-family: 'Press Start 2P', cursive;">Press Start 2P</div>
-                <div class="font-option" data-font="Permanent Marker" style="font-family: 'Permanent Marker', cursive;">Permanent Marker</div>
-                <div class="font-option" data-font="Bangers" style="font-family: 'Bangers', cursive;">Bangers</div>
-              </div>
-            </div>
-          </div>
-          <div class="range-row">
-            <div class="range-header">
-              <span class="ctrl-label">Username Size</span>
-              <span class="range-val" id="val-username-size">24px</span>
             </div>
             <input type="range" id="ctrl-username-size" min="14" max="42" step="1" value="24">
+            <span id="val-username-size">24px</span>
           </div>
         </div>
       </div>
 
       <!-- Animation Section -->
-      <div class="section" id="section-animation">
+      <div class="section collapsed" id="section-animation">
         <div class="section-header" onclick="toggleSection('animation')">
           <span class="section-title">⚡ Animation</span>
           <span class="section-chevron">▼</span>
@@ -852,7 +899,7 @@
       </div>
 
       <!-- Size &amp; Position Section -->
-      <div class="section" id="section-size">
+      <div class="section collapsed" id="section-size">
         <div class="section-header" onclick="toggleSection('size')">
           <span class="section-title">📐 Size &amp; Position</span>
           <span class="section-chevron">▼</span>
@@ -1058,6 +1105,8 @@ function getControlValues() {
     card_custom_x: workingDesigns[currentType]?.card_custom_x != null ? workingDesigns[currentType].card_custom_x : null,
     card_custom_y: workingDesigns[currentType]?.card_custom_y != null ? workingDesigns[currentType].card_custom_y : null,
     border_radius: parseInt(document.getElementById('ctrl-border-radius').value),
+    card_image_scale: parseFloat(document.getElementById('ctrl-image-scale').value),
+    sponsor_animation: document.getElementById('ctrl-sponsor-animation').value,
   };
 }
 
@@ -1087,6 +1136,15 @@ function setControlValues(d) {
   document.getElementById('val-card-width').textContent = d.card_width + 'px';
   document.getElementById('ctrl-border-radius').value = d.border_radius;
   document.getElementById('val-border-radius').textContent = d.border_radius + 'px';
+  const imgScale = d.card_image_scale != null ? d.card_image_scale : 1.0;
+  document.getElementById('ctrl-image-scale').value = imgScale;
+  document.getElementById('val-image-scale').textContent = Math.round(imgScale * 100) + '%';
+  document.getElementById('ctrl-sponsor-animation').value = d.sponsor_animation || 'fade';
+  // Update theme button swatches
+  document.getElementById('swatch-bg').style.background = d.bg_color;
+  document.getElementById('swatch-accent').style.background = d.accent_color;
+  // Update text button font preview
+  document.getElementById('text-font-preview').textContent = d.font_family;
 
   // Position grid
   document.querySelectorAll('.pos-cell').forEach(c => c.classList.remove('active'));
@@ -1408,6 +1466,12 @@ function switchTab(type) {
   // Load controls for this type
   setControlValues(workingDesigns[type]);
   updatePreview();
+
+  // Update URL and sounds link to preserve tab context
+  const url = new URL(window.location);
+  url.searchParams.set('tab', type);
+  window.history.replaceState({}, '', url);
+  document.getElementById('sounds-link').href = '/dashboard/overlay?tab=' + type;
 }
 
 // ─── Position grid ────────────────────────────────────────────────────────────
@@ -1676,19 +1740,13 @@ async function uploadSponsor() {
   const ext = spSelectedFile.name.split('.').pop() || 'png';
   const dur = parseInt(document.getElementById('sp-upload-dur').value) || 30;
   try {
-    const res = await fetch(`/dashboard/sponsors/upload?name=${encodeURIComponent(name)}&ext=${encodeURIComponent(ext)}`, {
+    const res = await fetch(`/dashboard/sponsors/upload?name=${encodeURIComponent(name)}&ext=${encodeURIComponent(ext)}&dur=${dur}`, {
       method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: spSelectedFile,
     });
     const data = await res.json();
     if (data.ok && data.image) {
       data.image.display_duration = dur;
       sponsorImages.push(data.image);
-      if (dur !== 30) {
-        await fetch(`/dashboard/sponsors/${data.image.id}/update`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ display_name: name, chat_message: '', enabled: '1', display_duration: dur }),
-        });
-      }
       renderSponsorList();
       updateSponsorPreview();
     }
@@ -1734,7 +1792,8 @@ function showSponsorInPreview(sponsor) {
   img.src = `/sponsors/${STREAMER_ID}/${sponsor.filename}`;
   img.alt = sponsor.display_name || 'Sponsor';
   const d = workingDesigns['timed'];
-  img.style.width = (d.card_width || 500) + 'px';
+  const scale = d.card_image_scale != null ? d.card_image_scale : 1.0;
+  img.style.width = ((d.card_width || 500) * scale) + 'px';
   img.style.maxHeight = '200px';
   img.style.borderRadius = (d.border_radius || 12) + 'px';
   setTimeout(() => updateOverlayGuide(), 100);
@@ -1753,6 +1812,12 @@ setControlValues(workingDesigns['follow']);
 updatePreview();
 renderSponsorList();
 document.getElementById('sp-rotation-toggle').checked = sponsorRotationEnabled;
+
+// Deep-link: ?tab=timed restores active tab
+const urlTab = new URLSearchParams(window.location.search).get('tab');
+if (urlTab && workingDesigns[urlTab]) {
+  switchTab(urlTab);
+}
 
 // Re-position card on window resize
 window.addEventListener('resize', () => {
@@ -1870,6 +1935,289 @@ document.addEventListener('mouseup', e => {
   workingDesigns[currentType].card_custom_x = x / screenRect.width;
   workingDesigns[currentType].card_custom_y = y / screenRect.height;
 });
+</script>
+
+<!-- Theme Popup Modal -->
+<div class="modal-overlay" id="theme-modal" onclick="if(event.target===this)closeThemePopup()">
+  <div class="modal-box">
+    <h3>🎨 Change Theme</h3>
+    <div style="margin-bottom:16px;">
+      <div class="ctrl-label" style="margin-bottom:8px;">Presets</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" class="theme-preset" data-bg="#1a1a3e" data-accent="#8888cc" data-border="#8888cc" data-text="#ffffff" title="Default Blue" style="width:42px;height:42px;border-radius:8px;border:2px solid rgba(255,255,255,0.1);background:linear-gradient(135deg,#1a1a3e,#8888cc);cursor:pointer;"></button>
+        <button type="button" class="theme-preset" data-bg="#061a10" data-accent="#00ff88" data-border="#00ff88" data-text="#ffffff" title="Green" style="width:42px;height:42px;border-radius:8px;border:2px solid rgba(255,255,255,0.1);background:linear-gradient(135deg,#061a10,#00ff88);cursor:pointer;"></button>
+        <button type="button" class="theme-preset" data-bg="#1c1200" data-accent="#f7c948" data-border="#f7c948" data-text="#ffffff" title="Gold" style="width:42px;height:42px;border-radius:8px;border:2px solid rgba(255,255,255,0.1);background:linear-gradient(135deg,#1c1200,#f7c948);cursor:pointer;"></button>
+        <button type="button" class="theme-preset" data-bg="#110022" data-accent="#bf00ff" data-border="#bf00ff" data-text="#ffffff" title="Purple" style="width:42px;height:42px;border-radius:8px;border:2px solid rgba(255,255,255,0.1);background:linear-gradient(135deg,#110022,#bf00ff);cursor:pointer;"></button>
+        <button type="button" class="theme-preset" data-bg="#1c0505" data-accent="#ff4444" data-border="#ff4444" data-text="#ffffff" title="Red" style="width:42px;height:42px;border-radius:8px;border:2px solid rgba(255,255,255,0.1);background:linear-gradient(135deg,#1c0505,#ff4444);cursor:pointer;"></button>
+        <button type="button" class="theme-preset" data-bg="#0a1520" data-accent="#00b4d8" data-border="#00b4d8" data-text="#ffffff" title="Cyan" style="width:42px;height:42px;border-radius:8px;border:2px solid rgba(255,255,255,0.1);background:linear-gradient(135deg,#0a1520,#00b4d8);cursor:pointer;"></button>
+        <button type="button" class="theme-preset" data-bg="#1a0a00" data-accent="#ff6b35" data-border="#ff6b35" data-text="#ffffff" title="Orange" style="width:42px;height:42px;border-radius:8px;border:2px solid rgba(255,255,255,0.1);background:linear-gradient(135deg,#1a0a00,#ff6b35);cursor:pointer;"></button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+      <div>
+        <div class="ctrl-label" style="margin-bottom:6px;">Background</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="color" id="modal-bg-color" value="#1a1a3e" style="width:40px;height:40px;border-radius:8px;">
+          <input type="text" id="modal-bg-hex" value="#1a1a3e" style="width:80px;font-size:12px;font-family:monospace;" oninput="document.getElementById('modal-bg-color').value=this.value;updateThemePreview();">
+        </div>
+      </div>
+      <div>
+        <div class="ctrl-label" style="margin-bottom:6px;">Accent</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="color" id="modal-accent-color" value="#8888cc" style="width:40px;height:40px;border-radius:8px;">
+          <input type="text" id="modal-accent-hex" value="#8888cc" style="width:80px;font-size:12px;font-family:monospace;" oninput="document.getElementById('modal-accent-color').value=this.value;updateThemePreview();">
+        </div>
+      </div>
+      <div>
+        <div class="ctrl-label" style="margin-bottom:6px;">Border</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="color" id="modal-border-color" value="#8888cc" style="width:40px;height:40px;border-radius:8px;">
+          <input type="text" id="modal-border-hex" value="#8888cc" style="width:80px;font-size:12px;font-family:monospace;" oninput="document.getElementById('modal-border-color').value=this.value;updateThemePreview();">
+        </div>
+      </div>
+      <div>
+        <div class="ctrl-label" style="margin-bottom:6px;">Text</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="color" id="modal-text-color" value="#ffffff" style="width:40px;height:40px;border-radius:8px;">
+          <input type="text" id="modal-text-hex" value="#ffffff" style="width:80px;font-size:12px;font-family:monospace;" oninput="document.getElementById('modal-text-color').value=this.value;updateThemePreview();">
+        </div>
+      </div>
+    </div>
+    <div class="ctrl-label" style="margin-bottom:8px;">Preview</div>
+    <div id="theme-preview-card" style="padding:16px;border-radius:12px;border:2px solid #8888cc;background:#1a1a3e;margin-bottom:8px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#8888cc;margin-bottom:4px;">New Follower</div>
+      <div id="theme-preview-username" style="font-size:20px;font-weight:800;color:#ffffff;">RacerName</div>
+      <div style="font-size:13px;color:#ffffff;opacity:0.7;margin-top:2px;">just joined the race</div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel" onclick="closeThemePopup()">Cancel</button>
+      <button type="button" class="btn-apply" onclick="applyTheme()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- Text & Font Popup Modal -->
+<div class="modal-overlay" id="text-modal" onclick="if(event.target===this)closeTextPopup()">
+  <div class="modal-box">
+    <h3>✏️ Customize Text</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+      <div>
+        <div class="ctrl-label" style="margin-bottom:6px;">Event Label</div>
+        <input type="text" id="modal-event-label" placeholder="e.g. New Pit Crew Member" style="width:100%;">
+      </div>
+      <div>
+        <div class="ctrl-label" style="margin-bottom:6px;">Detail Text</div>
+        <input type="text" id="modal-detail-text" placeholder="just joined the race 🏁" style="width:100%;">
+      </div>
+    </div>
+    <div class="ctrl-label" style="margin-bottom:8px;">Font Family</div>
+    <div class="font-gallery" id="font-gallery">
+      <div class="font-gallery-item selected" data-font="System Default">
+        <div class="font-name">System Default</div>
+        <div class="font-sample" style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;">The quick brown fox</div>
+      </div>
+      <div class="font-gallery-item" data-font="Outfit">
+        <div class="font-name">Outfit</div>
+        <div class="font-sample" style="font-family:'Outfit',sans-serif;">The quick brown fox</div>
+      </div>
+      <div class="font-gallery-item" data-font="Inter">
+        <div class="font-name">Inter</div>
+        <div class="font-sample" style="font-family:'Inter',sans-serif;">The quick brown fox</div>
+      </div>
+      <div class="font-gallery-item" data-font="Poppins">
+        <div class="font-name">Poppins</div>
+        <div class="font-sample" style="font-family:'Poppins',sans-serif;">The quick brown fox</div>
+      </div>
+      <div class="font-gallery-item" data-font="Roboto Mono">
+        <div class="font-name">Roboto Mono</div>
+        <div class="font-sample" style="font-family:'Roboto Mono',monospace;">The quick brown fox</div>
+      </div>
+      <div class="font-gallery-item" data-font="Press Start 2P">
+        <div class="font-name">Press Start 2P</div>
+        <div class="font-sample" style="font-family:'Press Start 2P',cursive;font-size:12px;">The quick brown fox</div>
+      </div>
+      <div class="font-gallery-item" data-font="Permanent Marker">
+        <div class="font-name">Permanent Marker</div>
+        <div class="font-sample" style="font-family:'Permanent Marker',cursive;">The quick brown fox</div>
+      </div>
+      <div class="font-gallery-item" data-font="Bangers">
+        <div class="font-name">Bangers</div>
+        <div class="font-sample" style="font-family:'Bangers',cursive;">The quick brown fox</div>
+      </div>
+    </div>
+    <div class="range-row" style="margin-bottom:16px;">
+      <div class="range-header">
+        <span class="ctrl-label">Username Size</span>
+        <span class="range-val" id="modal-val-username-size">24px</span>
+      </div>
+      <input type="range" id="modal-username-size" min="14" max="42" step="1" value="24" oninput="document.getElementById('modal-val-username-size').textContent=this.value+'px';updateTextPreview();">
+    </div>
+    <div class="ctrl-label" style="margin-bottom:8px;">Preview</div>
+    <div id="text-preview-card" style="padding:16px;border-radius:12px;border:2px solid #8888cc;background:#1a1a3e;margin-bottom:8px;">
+      <div id="text-preview-label" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#8888cc;margin-bottom:4px;">New Follower</div>
+      <div id="text-preview-username" style="font-size:24px;font-weight:800;color:#ffffff;">RacerName</div>
+      <div id="text-preview-detail" style="font-size:13px;color:#ffffff;opacity:0.7;margin-top:2px;">just joined the race</div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel" onclick="closeTextPopup()">Cancel</button>
+      <button type="button" class="btn-apply" onclick="applyText()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Theme Popup ─────────────────────────────────────────────
+let themeBackup = {};
+function openThemePopup() {
+  themeBackup = {
+    bg: document.getElementById('ctrl-bg-color').value,
+    accent: document.getElementById('ctrl-accent-color').value,
+    border: document.getElementById('ctrl-border-color').value,
+    text: document.getElementById('ctrl-text-color').value,
+  };
+  document.getElementById('modal-bg-color').value = themeBackup.bg;
+  document.getElementById('modal-bg-hex').value = themeBackup.bg;
+  document.getElementById('modal-accent-color').value = themeBackup.accent;
+  document.getElementById('modal-accent-hex').value = themeBackup.accent;
+  document.getElementById('modal-border-color').value = themeBackup.border;
+  document.getElementById('modal-border-hex').value = themeBackup.border;
+  document.getElementById('modal-text-color').value = themeBackup.text;
+  document.getElementById('modal-text-hex').value = themeBackup.text;
+  updateThemePreview();
+  document.getElementById('theme-modal').classList.add('visible');
+}
+function closeThemePopup() {
+  document.getElementById('theme-modal').classList.remove('visible');
+}
+function updateThemePreview() {
+  const bg = document.getElementById('modal-bg-color').value;
+  const accent = document.getElementById('modal-accent-color').value;
+  const border = document.getElementById('modal-border-color').value;
+  const text = document.getElementById('modal-text-color').value;
+  const card = document.getElementById('theme-preview-card');
+  card.style.background = bg;
+  card.style.borderColor = border;
+  card.querySelector('div:first-child').style.color = accent;
+  document.getElementById('theme-preview-username').style.color = text;
+  card.querySelector('div:last-child').style.color = text;
+}
+function applyTheme() {
+  document.getElementById('ctrl-bg-color').value = document.getElementById('modal-bg-color').value;
+  document.getElementById('ctrl-accent-color').value = document.getElementById('modal-accent-color').value;
+  document.getElementById('ctrl-border-color').value = document.getElementById('modal-border-color').value;
+  document.getElementById('ctrl-text-color').value = document.getElementById('modal-text-color').value;
+  // Update swatches in the button
+  document.getElementById('swatch-bg').style.background = document.getElementById('modal-bg-color').value;
+  document.getElementById('swatch-accent').style.background = document.getElementById('modal-accent-color').value;
+  updatePreview();
+  closeThemePopup();
+}
+
+// Sync color pickers with hex inputs in theme modal
+['bg', 'accent', 'border', 'text'].forEach(key => {
+  document.getElementById('modal-' + key + '-color').addEventListener('input', function() {
+    document.getElementById('modal-' + key + '-hex').value = this.value;
+    updateThemePreview();
+  });
+});
+
+// Theme presets in modal
+document.querySelectorAll('#theme-modal .theme-preset').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('modal-bg-color').value = btn.dataset.bg;
+    document.getElementById('modal-bg-hex').value = btn.dataset.bg;
+    document.getElementById('modal-accent-color').value = btn.dataset.accent;
+    document.getElementById('modal-accent-hex').value = btn.dataset.accent;
+    document.getElementById('modal-border-color').value = btn.dataset.border;
+    document.getElementById('modal-border-hex').value = btn.dataset.border;
+    document.getElementById('modal-text-color').value = btn.dataset.text;
+    document.getElementById('modal-text-hex').value = btn.dataset.text;
+    updateThemePreview();
+  });
+});
+
+// ─── Text & Font Popup ──────────────────────────────────────
+let textBackup = {};
+let modalSelectedFont = 'System Default';
+
+function openTextPopup() {
+  textBackup = {
+    eventLabel: document.getElementById('ctrl-event-label').value,
+    detailText: document.getElementById('ctrl-detail-text').value,
+    font: document.getElementById('font-picker-selected').querySelector('span').textContent,
+    usernameSize: document.getElementById('ctrl-username-size').value,
+  };
+  document.getElementById('modal-event-label').value = textBackup.eventLabel;
+  document.getElementById('modal-detail-text').value = textBackup.detailText;
+  document.getElementById('modal-username-size').value = textBackup.usernameSize;
+  document.getElementById('modal-val-username-size').textContent = textBackup.usernameSize + 'px';
+  modalSelectedFont = textBackup.font;
+  // Select font in gallery
+  document.querySelectorAll('.font-gallery-item').forEach(el => {
+    el.classList.toggle('selected', el.dataset.font === modalSelectedFont);
+  });
+  updateTextPreview();
+  document.getElementById('text-modal').classList.add('visible');
+}
+function closeTextPopup() {
+  document.getElementById('text-modal').classList.remove('visible');
+}
+function updateTextPreview() {
+  const card = document.getElementById('text-preview-card');
+  const d = workingDesigns[currentType];
+  card.style.background = d.bg_color;
+  card.style.borderColor = d.border_color;
+  document.getElementById('text-preview-label').style.color = d.accent_color;
+  const label = document.getElementById('modal-event-label').value || d.event_label || 'New Follower';
+  document.getElementById('text-preview-label').textContent = label;
+  const detail = document.getElementById('modal-detail-text').value || d.detail_text || 'just joined the race';
+  document.getElementById('text-preview-detail').textContent = detail;
+  const size = document.getElementById('modal-username-size').value;
+  const un = document.getElementById('text-preview-username');
+  un.style.fontSize = size + 'px';
+  un.style.color = d.text_color;
+  document.getElementById('text-preview-detail').style.color = d.text_color;
+  const fontFamily = modalSelectedFont === 'System Default'
+    ? '-apple-system, BlinkMacSystemFont, sans-serif'
+    : `'${modalSelectedFont}', sans-serif`;
+  un.style.fontFamily = fontFamily;
+  document.getElementById('text-preview-label').style.fontFamily = fontFamily;
+  document.getElementById('text-preview-detail').style.fontFamily = fontFamily;
+}
+
+// Font gallery click
+document.querySelectorAll('.font-gallery-item').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.font-gallery-item').forEach(i => i.classList.remove('selected'));
+    el.classList.add('selected');
+    modalSelectedFont = el.dataset.font;
+    updateTextPreview();
+  });
+});
+
+// Live preview on text input
+document.getElementById('modal-event-label').addEventListener('input', updateTextPreview);
+document.getElementById('modal-detail-text').addEventListener('input', updateTextPreview);
+
+function applyText() {
+  document.getElementById('ctrl-event-label').value = document.getElementById('modal-event-label').value;
+  document.getElementById('ctrl-detail-text').value = document.getElementById('modal-detail-text').value;
+  document.getElementById('ctrl-username-size').value = document.getElementById('modal-username-size').value;
+  document.getElementById('val-username-size').textContent = document.getElementById('modal-username-size').value + 'px';
+  // Set font
+  const fontSpan = document.getElementById('font-picker-selected').querySelector('span');
+  fontSpan.textContent = modalSelectedFont;
+  if (modalSelectedFont !== 'System Default') {
+    fontSpan.style.fontFamily = modalSelectedFont;
+    loadGoogleFont(modalSelectedFont);
+  } else {
+    fontSpan.style.fontFamily = '-apple-system, BlinkMacSystemFont, sans-serif';
+  }
+  // Update font preview text in the button
+  document.getElementById('text-font-preview').textContent = modalSelectedFont;
+  updatePreview();
+  closeTextPopup();
+}
 </script>
 
 </body>
