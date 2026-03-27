@@ -1135,6 +1135,75 @@ router.post('/report', (req, res) => {
   res.redirect('/dashboard/report?msg=submitted');
 });
 
+// --- Timed Notifications ---
+
+// Timed notifications page
+router.get('/timed-notifications', (req, res) => {
+  const notifications = db.getTimedNotifications(req.streamer.id);
+  res.render('timed-notifications', { streamer: req.streamer, notifications });
+});
+
+// Add timed notification
+router.post('/timed-notifications', (req, res) => {
+  const b = req.body;
+  db.addTimedNotification(req.streamer.id, {
+    name: b.name, message: b.message, overlay_text: b.overlay_text,
+    interval_minutes: parseInt(b.interval_minutes) || 15,
+    send_to_twitch: b.send_to_twitch, send_to_youtube: b.send_to_youtube,
+    show_overlay: b.show_overlay,
+    overlay_position: b.overlay_position, overlay_duration: parseInt(b.overlay_duration) || 8,
+    overlay_bg_color: b.overlay_bg_color, overlay_text_color: b.overlay_text_color,
+  });
+  try { require('../services/timedNotifications').timedNotificationManager.restartForStreamer(req.streamer.id); } catch(e){}
+  res.redirect('/dashboard/timed-notifications');
+});
+
+// Update timed notification
+router.post('/timed-notifications/:id/update', (req, res) => {
+  const b = req.body;
+  db.updateTimedNotification(parseInt(req.params.id), req.streamer.id, {
+    name: b.name, message: b.message, overlay_text: b.overlay_text,
+    interval_minutes: parseInt(b.interval_minutes) || 15,
+    send_to_twitch: b.send_to_twitch, send_to_youtube: b.send_to_youtube,
+    show_overlay: b.show_overlay, enabled: b.enabled,
+    overlay_position: b.overlay_position, overlay_duration: parseInt(b.overlay_duration) || 8,
+    overlay_bg_color: b.overlay_bg_color, overlay_text_color: b.overlay_text_color,
+  });
+  try { require('../services/timedNotifications').timedNotificationManager.restartForStreamer(req.streamer.id); } catch(e){}
+  res.redirect('/dashboard/timed-notifications');
+});
+
+// Delete timed notification
+router.post('/timed-notifications/:id/delete', (req, res) => {
+  db.deleteTimedNotification(parseInt(req.params.id), req.streamer.id);
+  try { require('../services/timedNotifications').timedNotificationManager.restartForStreamer(req.streamer.id); } catch(e){}
+  res.redirect('/dashboard/timed-notifications');
+});
+
+// Test fire a timed notification
+router.post('/timed-notifications/:id/test', (req, res) => {
+  const notifications = db.getTimedNotifications(req.streamer.id);
+  const n = notifications.find(x => x.id === parseInt(req.params.id));
+  if (!n) return res.status(404).json({ error: 'Not found' });
+
+  // Fire it once
+  const bus = require('../services/overlayBus');
+  if (n.show_overlay) {
+    bus.emit(`overlay:${req.streamer.id}`, {
+      type: 'timed',
+      data: {
+        message: n.overlay_text || n.message,
+        name: n.name,
+        position: n.overlay_position || 'bot-center',
+        duration: n.overlay_duration || 8,
+        bgColor: n.overlay_bg_color || '#1a1a2e',
+        textColor: n.overlay_text_color || '#ffffff',
+      },
+    });
+  }
+  res.json({ ok: true });
+});
+
 // --- Overlay Builder ---
 
 router.get('/overlay-builder', (req, res) => {
