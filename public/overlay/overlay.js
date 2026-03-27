@@ -702,10 +702,8 @@ function showSponsorImage(data) {
   img.src = data.imageUrl;
   img.alt = data.name || 'Sponsor';
   img.style.display = 'block';
-  img.style.maxWidth = '100%';
-  img.style.maxHeight = '80vh';
+  img.style.width = '100%';
   img.style.height = 'auto';
-  img.style.objectFit = 'contain';
   const imgScale = data.imageScale != null ? data.imageScale : 1.0;
   if (imgScale < 1) {
     img.style.maxWidth = (imgScale * 100) + '%';
@@ -713,8 +711,11 @@ function showSponsorImage(data) {
   }
   banner.appendChild(img);
 
-  // Position — use grid position (custom x/y from drag is unreliable for sponsor banners)
-  {
+  // Position — use custom x/y from drag if set, otherwise grid position
+  if (design && design.card_custom_x != null && design.card_custom_y != null) {
+    banner.style.left = (design.card_custom_x * 100) + '%';
+    banner.style.top = (design.card_custom_y * 100) + '%';
+  } else {
     const pos = design ? (design.card_position || 'bot-center') : 'bot-center';
     const [vPos, hPos] = pos.split('-');
     let transform = '';
