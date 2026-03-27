@@ -1186,9 +1186,35 @@ router.post('/timed-notifications/:id/test', (req, res) => {
   const n = notifications.find(x => x.id === parseInt(req.params.id));
   if (!n) return res.status(404).json({ error: 'Not found' });
 
-  // Fire it once
-  const bus = require('../services/overlayBus');
+  // Send to Twitch chat
+  if (n.send_to_twitch && req.streamer.twitch_username) {
+    try {
+      const { chatManager } = require('../services/twitchChat');
+      chatManager.sendRawMessage(req.streamer.twitch_username, n.message);
+    } catch (e) {
+      console.error('[Timed Test] Twitch chat error:', e.message);
+    }
+  }
+
+  // Send to YouTube chat if live
+  if (n.send_to_youtube) {
+    try {
+      const { youtubeChatManager } = require('../services/youtubeLiveChat');
+      if (youtubeChatManager.isPolling(req.streamer.id)) {
+        const { refreshYoutubeBotToken, sendYoutubeChatMessage } = require('../services/youtube');
+        const liveChatId = youtubeChatManager.getLiveChatId(req.streamer.id);
+        if (liveChatId) {
+          refreshYoutubeBotToken().then(token => {
+            if (token) sendYoutubeChatMessage(liveChatId, n.message, token);
+          }).catch(() => {});
+        }
+      }
+    } catch (e) {}
+  }
+
+  // Send to overlay
   if (n.show_overlay) {
+    const bus = require('../services/overlayBus');
     bus.emit(`overlay:${req.streamer.id}`, {
       type: 'timed',
       data: {
@@ -1201,6 +1227,7 @@ router.post('/timed-notifications/:id/test', (req, res) => {
       },
     });
   }
+
   res.json({ ok: true });
 });
 
@@ -1227,12 +1254,20 @@ router.get('/overlay-builder', async (req, res) => {
     // If not live, try to get latest VOD thumbnail
     if (!streamThumbnail) {
       try {
-        const { getVideos } = require('../services/twitch');
-        const videos = await getVideos(req.streamer.twitch_user_id);
-        if (videos && videos.length > 0 && videos[0].thumbnail_url) {
-          streamThumbnail = videos[0].thumbnail_url.replace('%{width}', '1280').replace('%{height}', '720').replace('{width}', '1280').replace('{height}', '720');
+        const { getVideos, getUserId } = require('../services/twitch');
+        let broadcasterId = req.streamer.twitch_user_id;
+        if (!broadcasterId && req.streamer.twitch_username) {
+          broadcasterId = await getUserId(req.streamer.twitch_username);
         }
-      } catch (e) {}
+        if (broadcasterId) {
+          const videos = await getVideos(broadcasterId);
+          if (videos && videos.length > 0 && videos[0].thumbnail_url) {
+            streamThumbnail = videos[0].thumbnail_url.replace('%{width}', '1280').replace('%{height}', '720').replace('{width}', '1280').replace('{height}', '720');
+          }
+        }
+      } catch (e) {
+        console.log('[Builder] VOD thumbnail fetch error:', e.message);
+      }
     }
   }
 
