@@ -754,6 +754,7 @@ router.post('/overlay/test/:eventType', (req, res) => {
     subscription: { type: 'subscription', data: { username: 'SpeedDemon', message: 'Love the stream!', tier: '1', months: 6 } },
     bits: { type: 'bits', data: { username: 'NitroFan', amount: 500, message: 'Take my bits!' } },
     donation: { type: 'donation', data: { username: 'BigSponsor', amount: 25, message: 'Keep racing!', currency: 'USD' } },
+    raid: { type: 'raid', data: { username: 'RaidLeader', viewers: 42 } },
   };
 
   const event = testEvents[type];

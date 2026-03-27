@@ -12,6 +12,7 @@ router.get('/:token', (req, res) => {
   const streamer = db.getStreamerByOverlayToken(req.params.token);
   if (!streamer) return res.status(404).send('Invalid overlay token');
 
+  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>

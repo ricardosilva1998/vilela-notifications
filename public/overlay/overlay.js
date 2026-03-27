@@ -646,14 +646,16 @@ function applyCustomDesign(card, eventType) {
     detailEl.innerHTML = design.detail_text;
   }
 
-  // Username font & color
+  // Font — apply to whole card so label/detail inherit it too
+  if (design.font_family && design.font_family !== 'System Default') {
+    card.style.fontFamily = design.font_family;
+  }
+
+  // Username color & size
   const usernameEl = card.querySelector('.username');
   if (usernameEl) {
     usernameEl.style.color = design.text_color || '#ffffff';
     if (design.username_size) usernameEl.style.fontSize = design.username_size + 'px';
-    if (design.font_family && design.font_family !== 'System Default') {
-      usernameEl.style.fontFamily = design.font_family;
-    }
   }
 
   // Car track accent
@@ -728,7 +730,7 @@ function showSponsorImage(data) {
     if (transform) banner.style.transform = transform.trim();
   }
 
-  container.appendChild(banner);
+  document.getElementById('timed-container').appendChild(banner);
 
   // Auto-hide before next image arrives (fade out 2s before displayDuration)
   if (data.displayDuration) {
