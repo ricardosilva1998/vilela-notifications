@@ -695,23 +695,20 @@ function showSponsorImage(data) {
   banner.className = 'sponsor-banner anim-' + sponsorAnim;
 
   // Apply width from design
-  if (design && design.card_width) {
-    banner.style.width = design.card_width + 'px';
-  } else {
-    banner.style.maxWidth = '420px';
-  }
+  const bannerWidth = (design && design.card_width) ? design.card_width : 420;
+  banner.style.width = bannerWidth + 'px';
 
   const img = document.createElement('img');
   img.src = data.imageUrl;
   img.alt = data.name || 'Sponsor';
-  img.style.objectFit = 'contain';
-  img.style.maxWidth = '100%';
-  img.style.maxHeight = '40vh';
+  img.style.display = 'block';
+  img.style.width = '100%';
   img.style.height = 'auto';
+  img.style.objectFit = 'contain';
   const imgScale = data.imageScale != null ? data.imageScale : 1.0;
   if (imgScale < 1) {
-    img.style.maxWidth = (imgScale * 100) + '%';
-    img.style.maxHeight = (imgScale * 40) + 'vh';
+    img.style.width = (imgScale * 100) + '%';
+    img.style.margin = '0 auto'; // center scaled image
   }
   banner.appendChild(img);
 
@@ -743,7 +740,11 @@ function showSponsorImage(data) {
 
   document.getElementById('timed-container').appendChild(banner);
   console.log('[Overlay] Banner appended. Style:', banner.style.cssText);
-  img.onload = () => console.log('[Overlay] Image loaded:', img.naturalWidth, 'x', img.naturalHeight);
+  console.log('[Overlay] Banner rect:', JSON.stringify(banner.getBoundingClientRect()));
+  img.onload = () => {
+    console.log('[Overlay] Image loaded:', img.naturalWidth, 'x', img.naturalHeight);
+    console.log('[Overlay] Banner rect after load:', JSON.stringify(banner.getBoundingClientRect()));
+  };
   img.onerror = () => console.error('[Overlay] Image FAILED to load:', data.imageUrl);
 
   // Auto-hide before next image arrives (fade out 2s before displayDuration)
