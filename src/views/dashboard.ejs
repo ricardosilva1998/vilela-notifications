@@ -297,7 +297,7 @@
     <% } %>
   </div>
 
-  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; align-items: stretch;">
+  <div class="twitch-cards-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; align-items: stretch;">
 
     <!-- Overlay Card -->
     <div class="card animate-in" style="padding: 24px; display: flex; flex-direction: column;">
@@ -501,6 +501,7 @@ function toggleStats(guildId) {
 </script>
 
 <style>
+  .twitch-cards-grid .card { margin-bottom: 0; }
   @media (max-width: 640px) {
     .stat-tooltip { display: none !important; }
   }
