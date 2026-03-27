@@ -1,0 +1,335 @@
+<%- include('header', { title: 'Timed Notifications', streamer: streamer }) %>
+
+<style>
+.position-grid { display: grid; grid-template-columns: repeat(3, 36px); gap: 4px; }
+.position-btn { width: 36px; height: 36px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-elevated); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+.position-btn:hover { border-color: var(--accent); background: rgba(145,70,255,0.1); }
+.position-btn.active { border-color: var(--accent); background: rgba(145,70,255,0.2); }
+.overlay-settings { display: none; margin-top: 12px; padding: 16px; background: var(--bg-elevated); border-radius: 10px; border: 1px solid var(--border); }
+.overlay-settings.visible { display: block; }
+.platform-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.badge-twitch { background: rgba(145,70,255,0.15); color: #9146ff; border: 1px solid rgba(145,70,255,0.3); padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.badge-youtube { background: rgba(255,0,0,0.12); color: #ff4444; border: 1px solid rgba(255,0,0,0.25); padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.badge-overlay { background: rgba(247,144,9,0.12); color: #f79009; border: 1px solid rgba(247,144,9,0.25); padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.notification-row { border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; background: var(--bg-elevated); }
+.notification-row .row-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.notification-row .row-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.inline-edit { display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.inline-edit.visible { display: block; }
+.toggle-pill { position: relative; display: inline-block; width: 44px; height: 24px; }
+.toggle-pill input { opacity: 0; width: 0; height: 0; }
+.toggle-pill-slider { position: absolute; cursor: pointer; inset: 0; background: var(--border); border-radius: 24px; transition: 0.2s; }
+.toggle-pill-slider:before { position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.2s; }
+.toggle-pill input:checked + .toggle-pill-slider { background: var(--success); }
+.toggle-pill input:checked + .toggle-pill-slider:before { transform: translateX(20px); }
+</style>
+
+<a href="/dashboard" style="color: var(--text-secondary); font-size: 13px; font-family: var(--font-display); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  Back to Dashboard
+</a>
+<h2 style="margin: 16px 0 8px; font-size: 24px; font-weight: 700;" class="animate-in">Timed Notifications</h2>
+<p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 24px;">Schedule automatic messages for chat and overlay banners.</p>
+
+<!-- Add Notification Card -->
+<div class="card animate-in" style="margin-bottom: 24px;">
+  <h3 style="margin-bottom: 16px; font-size: 16px; font-weight: 700;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    Add Notification
+  </h3>
+  <form method="POST" action="/dashboard/timed-notifications" id="add-form">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div>
+        <label class="form-label">Name</label>
+        <input type="text" name="name" class="form-control" placeholder="e.g. Discord Reminder" required>
+      </div>
+      <div>
+        <label class="form-label">Interval</label>
+        <select name="interval_minutes" class="form-control">
+          <option value="5">Every 5 minutes</option>
+          <option value="10">Every 10 minutes</option>
+          <option value="15" selected>Every 15 minutes</option>
+          <option value="20">Every 20 minutes</option>
+          <option value="30">Every 30 minutes</option>
+          <option value="45">Every 45 minutes</option>
+          <option value="60">Every 60 minutes</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top: 12px;">
+      <label class="form-label">Chat Message</label>
+      <textarea name="message" class="form-control" rows="2" placeholder="Message to send in chat..." required></textarea>
+    </div>
+    <div style="margin-top: 12px;">
+      <label class="form-label">Overlay Text <span style="color: var(--text-muted); font-weight: 400;">(optional — leave blank to use chat message)</span></label>
+      <textarea name="overlay_text" class="form-control" rows="2" placeholder="Text to show on stream overlay (optional)..."></textarea>
+    </div>
+    <div style="margin-top: 16px;">
+      <label class="form-label" style="margin-bottom: 10px;">Send To</label>
+      <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="checkbox" name="send_to_twitch" value="1" checked style="width: 16px; height: 16px; accent-color: #9146ff;">
+          <span style="font-size: 14px;">Twitch Chat</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="checkbox" name="send_to_youtube" value="1" style="width: 16px; height: 16px; accent-color: #ff0000;">
+          <span style="font-size: 14px;">YouTube Chat</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="checkbox" name="show_overlay" value="1" class="toggle-overlay-add" style="width: 16px; height: 16px; accent-color: #f79009;">
+          <span style="font-size: 14px;">Show Overlay</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Overlay Settings (add form) -->
+    <div class="overlay-settings" id="overlay-settings-add">
+      <div style="display: grid; grid-template-columns: auto 1fr 1fr 1fr; gap: 16px; align-items: start;">
+        <div>
+          <label class="form-label" style="margin-bottom: 8px;">Position</label>
+          <div class="position-grid" id="pos-grid-add">
+            <button type="button" class="position-btn" data-pos="top-left" title="Top Left">↖</button>
+            <button type="button" class="position-btn" data-pos="top-center" title="Top Center">↑</button>
+            <button type="button" class="position-btn" data-pos="top-right" title="Top Right">↗</button>
+            <button type="button" class="position-btn" data-pos="mid-left" title="Middle Left">←</button>
+            <button type="button" class="position-btn" data-pos="mid-center" title="Center">·</button>
+            <button type="button" class="position-btn" data-pos="mid-right" title="Middle Right">→</button>
+            <button type="button" class="position-btn active" data-pos="bot-left" title="Bottom Left">↙</button>
+            <button type="button" class="position-btn" data-pos="bot-center" title="Bottom Center">↓</button>
+            <button type="button" class="position-btn" data-pos="bot-right" title="Bottom Right">↘</button>
+          </div>
+          <input type="hidden" name="overlay_position" value="bot-left" id="pos-input-add">
+        </div>
+        <div>
+          <label class="form-label">Duration (seconds)</label>
+          <input type="number" name="overlay_duration" class="form-control" value="8" min="2" max="30">
+        </div>
+        <div>
+          <label class="form-label">Background Color</label>
+          <input type="color" name="overlay_bg_color" class="form-control" value="#1a1a2e" style="height: 38px; padding: 2px 4px;">
+        </div>
+        <div>
+          <label class="form-label">Text Color</label>
+          <input type="color" name="overlay_text_color" class="form-control" value="#ffffff" style="height: 38px; padding: 2px 4px;">
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 16px;">
+      <button type="submit" class="btn btn-primary">Add Notification</button>
+    </div>
+  </form>
+</div>
+
+<!-- Existing Notifications -->
+<% if (notifications.length === 0) { %>
+  <div class="card animate-in" style="text-align: center; padding: 40px;">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 12px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    <p style="color: var(--text-muted); font-size: 14px;">No timed notifications yet. Add one above to get started.</p>
+  </div>
+<% } else { %>
+  <div class="animate-in">
+    <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--text-secondary);">Active Notifications (<%= notifications.length %>)</h3>
+    <% notifications.forEach(function(n) { %>
+    <div class="notification-row">
+      <div class="row-header">
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <strong style="font-size: 15px;"><%= n.name %></strong>
+            <span style="color: var(--text-muted); font-size: 12px;">Every <%= n.interval_minutes %> min</span>
+            <div class="platform-badges">
+              <% if (n.send_to_twitch) { %><span class="badge-twitch">Twitch</span><% } %>
+              <% if (n.send_to_youtube) { %><span class="badge-youtube">YouTube</span><% } %>
+              <% if (n.show_overlay) { %><span class="badge-overlay">Overlay</span><% } %>
+            </div>
+          </div>
+          <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 500px;">
+            <%= n.message.length > 80 ? n.message.substring(0, 80) + '…' : n.message %>
+          </p>
+        </div>
+        <div class="row-actions">
+          <!-- Enable/disable toggle -->
+          <form method="POST" action="/dashboard/timed-notifications/<%= n.id %>/update" style="display: inline;">
+            <input type="hidden" name="name" value="<%= n.name %>">
+            <input type="hidden" name="message" value="<%= n.message %>">
+            <input type="hidden" name="overlay_text" value="<%= n.overlay_text || '' %>">
+            <input type="hidden" name="interval_minutes" value="<%= n.interval_minutes %>">
+            <input type="hidden" name="send_to_twitch" value="<%= n.send_to_twitch ? '1' : '' %>">
+            <input type="hidden" name="send_to_youtube" value="<%= n.send_to_youtube ? '1' : '' %>">
+            <input type="hidden" name="show_overlay" value="<%= n.show_overlay ? '1' : '' %>">
+            <input type="hidden" name="overlay_position" value="<%= n.overlay_position %>">
+            <input type="hidden" name="overlay_duration" value="<%= n.overlay_duration %>">
+            <input type="hidden" name="overlay_bg_color" value="<%= n.overlay_bg_color %>">
+            <input type="hidden" name="overlay_text_color" value="<%= n.overlay_text_color %>">
+            <input type="hidden" name="enabled" value="<%= n.enabled ? '' : '1' %>">
+            <label class="toggle-pill" title="<%= n.enabled ? 'Enabled — click to disable' : 'Disabled — click to enable' %>">
+              <input type="checkbox" <%= n.enabled ? 'checked' : '' %> onchange="this.form.submit()">
+              <span class="toggle-pill-slider"></span>
+            </label>
+          </form>
+          <!-- Test button -->
+          <button type="button" class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px;" onclick="testNotification(<%= n.id %>, this)">Test</button>
+          <!-- Edit toggle -->
+          <button type="button" class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px;" onclick="toggleEdit(<%= n.id %>)">Edit</button>
+          <!-- Delete -->
+          <form method="POST" action="/dashboard/timed-notifications/<%= n.id %>/delete" style="display: inline;" onsubmit="return confirm('Delete &quot;<%= n.name %>&quot;?')">
+            <button type="submit" class="btn btn-danger" style="font-size: 12px; padding: 6px 12px;">Delete</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Inline Edit Form -->
+      <div class="inline-edit" id="edit-<%= n.id %>">
+        <form method="POST" action="/dashboard/timed-notifications/<%= n.id %>/update">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div>
+              <label class="form-label">Name</label>
+              <input type="text" name="name" class="form-control" value="<%= n.name %>" required>
+            </div>
+            <div>
+              <label class="form-label">Interval</label>
+              <select name="interval_minutes" class="form-control">
+                <option value="5" <%= n.interval_minutes == 5 ? 'selected' : '' %>>Every 5 minutes</option>
+                <option value="10" <%= n.interval_minutes == 10 ? 'selected' : '' %>>Every 10 minutes</option>
+                <option value="15" <%= n.interval_minutes == 15 ? 'selected' : '' %>>Every 15 minutes</option>
+                <option value="20" <%= n.interval_minutes == 20 ? 'selected' : '' %>>Every 20 minutes</option>
+                <option value="30" <%= n.interval_minutes == 30 ? 'selected' : '' %>>Every 30 minutes</option>
+                <option value="45" <%= n.interval_minutes == 45 ? 'selected' : '' %>>Every 45 minutes</option>
+                <option value="60" <%= n.interval_minutes == 60 ? 'selected' : '' %>>Every 60 minutes</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-top: 12px;">
+            <label class="form-label">Chat Message</label>
+            <textarea name="message" class="form-control" rows="2" required><%= n.message %></textarea>
+          </div>
+          <div style="margin-top: 12px;">
+            <label class="form-label">Overlay Text <span style="color: var(--text-muted); font-weight: 400;">(optional)</span></label>
+            <textarea name="overlay_text" class="form-control" rows="2"><%= n.overlay_text || '' %></textarea>
+          </div>
+          <div style="margin-top: 16px;">
+            <label class="form-label" style="margin-bottom: 10px;">Send To</label>
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" name="send_to_twitch" value="1" <%= n.send_to_twitch ? 'checked' : '' %> style="width: 16px; height: 16px; accent-color: #9146ff;">
+                <span style="font-size: 14px;">Twitch Chat</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" name="send_to_youtube" value="1" <%= n.send_to_youtube ? 'checked' : '' %> style="width: 16px; height: 16px; accent-color: #ff0000;">
+                <span style="font-size: 14px;">YouTube Chat</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" name="show_overlay" value="1" <%= n.show_overlay ? 'checked' : '' %> class="toggle-overlay-edit" data-id="<%= n.id %>" style="width: 16px; height: 16px; accent-color: #f79009;">
+                <span style="font-size: 14px;">Show Overlay</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Overlay Settings (edit form) -->
+          <div class="overlay-settings" id="overlay-settings-edit-<%= n.id %>" style="<%= n.show_overlay ? 'display: block;' : '' %>">
+            <div style="display: grid; grid-template-columns: auto 1fr 1fr 1fr; gap: 16px; align-items: start;">
+              <div>
+                <label class="form-label" style="margin-bottom: 8px;">Position</label>
+                <div class="position-grid" id="pos-grid-edit-<%= n.id %>">
+                  <button type="button" class="position-btn <%= n.overlay_position === 'top-left' ? 'active' : '' %>" data-pos="top-left" title="Top Left">↖</button>
+                  <button type="button" class="position-btn <%= n.overlay_position === 'top-center' ? 'active' : '' %>" data-pos="top-center" title="Top Center">↑</button>
+                  <button type="button" class="position-btn <%= n.overlay_position === 'top-right' ? 'active' : '' %>" data-pos="top-right" title="Top Right">↗</button>
+                  <button type="button" class="position-btn <%= n.overlay_position === 'mid-left' ? 'active' : '' %>" data-pos="mid-left" title="Middle Left">←</button>
+                  <button type="button" class="position-btn <%= n.overlay_position === 'mid-center' ? 'active' : '' %>" data-pos="mid-center" title="Center">·</button>
+                  <button type="button" class="position-btn <%= n.overlay_position === 'mid-right' ? 'active' : '' %>" data-pos="mid-right" title="Middle Right">→</button>
+                  <button type="button" class="position-btn <%= n.overlay_position === 'bot-left' ? 'active' : '' %>" data-pos="bot-left" title="Bottom Left">↙</button>
+                  <button type="button" class="position-btn <%= n.overlay_position === 'bot-center' ? 'active' : '' %>" data-pos="bot-center" title="Bottom Center">↓</button>
+                  <button type="button" class="position-btn <%= n.overlay_position === 'bot-right' ? 'active' : '' %>" data-pos="bot-right" title="Bottom Right">↘</button>
+                </div>
+                <input type="hidden" name="overlay_position" value="<%= n.overlay_position %>" id="pos-input-edit-<%= n.id %>">
+              </div>
+              <div>
+                <label class="form-label">Duration (seconds)</label>
+                <input type="number" name="overlay_duration" class="form-control" value="<%= n.overlay_duration %>" min="2" max="30">
+              </div>
+              <div>
+                <label class="form-label">Background Color</label>
+                <input type="color" name="overlay_bg_color" class="form-control" value="<%= n.overlay_bg_color %>" style="height: 38px; padding: 2px 4px;">
+              </div>
+              <div>
+                <label class="form-label">Text Color</label>
+                <input type="color" name="overlay_text_color" class="form-control" value="<%= n.overlay_text_color %>" style="height: 38px; padding: 2px 4px;">
+              </div>
+            </div>
+          </div>
+
+          <input type="hidden" name="enabled" value="<%= n.enabled ? '1' : '' %>">
+          <div style="margin-top: 16px; display: flex; gap: 8px;">
+            <button type="submit" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px;">Save Changes</button>
+            <button type="button" class="btn btn-secondary" style="font-size: 13px; padding: 8px 16px;" onclick="toggleEdit(<%= n.id %>)">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <% }); %>
+  </div>
+<% } %>
+
+<script>
+function toggleEdit(id) {
+  const el = document.getElementById('edit-' + id);
+  el.classList.toggle('visible');
+}
+
+function testNotification(id, btn) {
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Firing…';
+  fetch('/dashboard/timed-notifications/' + id + '/test', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      btn.textContent = data.ok ? 'Fired!' : 'Error';
+      setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
+    })
+    .catch(() => {
+      btn.textContent = 'Error';
+      setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
+    });
+}
+
+// Position grid logic
+function initPositionGrid(gridId, inputId) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+  const input = document.getElementById(inputId);
+  grid.querySelectorAll('.position-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      grid.querySelectorAll('.position-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (input) input.value = btn.dataset.pos;
+    });
+  });
+}
+
+// Add form position grid
+initPositionGrid('pos-grid-add', 'pos-input-add');
+
+// Edit form position grids
+<% notifications.forEach(function(n) { %>
+initPositionGrid('pos-grid-edit-<%= n.id %>', 'pos-input-edit-<%= n.id %>');
+<% }); %>
+
+// Overlay toggle — add form
+document.querySelectorAll('.toggle-overlay-add').forEach(cb => {
+  cb.addEventListener('change', () => {
+    const settings = document.getElementById('overlay-settings-add');
+    settings.classList.toggle('visible', cb.checked);
+  });
+});
+
+// Overlay toggle — edit forms
+document.querySelectorAll('.toggle-overlay-edit').forEach(cb => {
+  cb.addEventListener('change', () => {
+    const id = cb.dataset.id;
+    const settings = document.getElementById('overlay-settings-edit-' + id);
+    if (settings) settings.style.display = cb.checked ? 'block' : 'none';
+  });
+});
+</script>
+
+<%- include('footer') %>
