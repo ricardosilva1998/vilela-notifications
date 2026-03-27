@@ -596,6 +596,22 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_iracing_cache_qualifying ON iracing_race_cache(category, qualifying_time);
   CREATE INDEX IF NOT EXISTS idx_iracing_cache_customer ON iracing_race_cache(customer_id, race_date DESC);
+
+  CREATE TABLE IF NOT EXISTS custom_overlays (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    streamer_id INTEGER NOT NULL,
+    type TEXT NOT NULL CHECK(type IN ('scene','bar','custom-alert')),
+    name TEXT NOT NULL,
+    template TEXT NOT NULL,
+    chat_command TEXT,
+    config TEXT NOT NULL DEFAULT '{}',
+    is_active INTEGER NOT NULL DEFAULT 0,
+    always_on INTEGER NOT NULL DEFAULT 0,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (streamer_id) REFERENCES streamers(id),
+    UNIQUE(streamer_id, chat_command)
+  );
 `);
 
 // --- Seed: ensure enterprise subscriptions for specific users ---
@@ -2376,6 +2392,96 @@ function toggleTimedNotification(id, streamerId, enabled) {
   db.prepare('UPDATE timed_notifications SET enabled = ? WHERE id = ? AND streamer_id = ?').run(enabled ? 1 : 0, id, streamerId);
 }
 
+// Custom Overlays
+const _getCustomOverlays = db.prepare(
+  'SELECT * FROM custom_overlays WHERE streamer_id = ? ORDER BY sort_order, id'
+);
+const _getCustomOverlaysByType = db.prepare(
+  'SELECT * FROM custom_overlays WHERE streamer_id = ? AND type = ? ORDER BY sort_order, id'
+);
+const _getCustomOverlayById = db.prepare(
+  'SELECT * FROM custom_overlays WHERE id = ? AND streamer_id = ?'
+);
+const _getCustomOverlayByCommand = db.prepare(
+  'SELECT * FROM custom_overlays WHERE streamer_id = ? AND chat_command = ?'
+);
+const _getAllCustomOverlayCommands = db.prepare(
+  'SELECT id, streamer_id, type, chat_command FROM custom_overlays WHERE chat_command IS NOT NULL'
+);
+const _addCustomOverlay = db.prepare(`
+  INSERT INTO custom_overlays (streamer_id, type, name, template, chat_command, config, is_active, always_on, sort_order)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`);
+const _updateCustomOverlay = db.prepare(`
+  UPDATE custom_overlays SET name = ?, template = ?, chat_command = ?, config = ?, always_on = ?
+  WHERE id = ? AND streamer_id = ?
+`);
+const _toggleCustomOverlay = db.prepare(
+  'UPDATE custom_overlays SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END WHERE id = ? AND streamer_id = ? RETURNING *'
+);
+const _setCustomOverlayActive = db.prepare(
+  'UPDATE custom_overlays SET is_active = ? WHERE id = ? AND streamer_id = ?'
+);
+const _deleteCustomOverlay = db.prepare(
+  'DELETE FROM custom_overlays WHERE id = ? AND streamer_id = ?'
+);
+const _deactivateAllScenes = db.prepare(
+  "UPDATE custom_overlays SET is_active = 0 WHERE streamer_id = ? AND type = 'scene' AND id != ?"
+);
+
+function getCustomOverlays(streamerId) {
+  return _getCustomOverlays.all(streamerId);
+}
+
+function getCustomOverlaysByType(streamerId, type) {
+  return _getCustomOverlaysByType.all(streamerId, type);
+}
+
+function getCustomOverlayById(id, streamerId) {
+  return _getCustomOverlayById.get(id, streamerId);
+}
+
+function getCustomOverlayByCommand(streamerId, command) {
+  return _getCustomOverlayByCommand.get(streamerId, command);
+}
+
+function getAllCustomOverlayCommands() {
+  return _getAllCustomOverlayCommands.all();
+}
+
+function addCustomOverlay(streamerId, type, name, template, chatCommand, config, alwaysOn) {
+  const sortOrder = getCustomOverlays(streamerId).length;
+  const isActive = alwaysOn ? 1 : 0;
+  const result = _addCustomOverlay.run(
+    streamerId, type, name, template, chatCommand || null,
+    JSON.stringify(config), isActive, alwaysOn ? 1 : 0, sortOrder
+  );
+  return result.lastInsertRowid;
+}
+
+function updateCustomOverlay(id, streamerId, name, template, chatCommand, config, alwaysOn) {
+  _updateCustomOverlay.run(
+    name, template, chatCommand || null, JSON.stringify(config),
+    alwaysOn ? 1 : 0, id, streamerId
+  );
+}
+
+function toggleCustomOverlay(id, streamerId) {
+  const row = _toggleCustomOverlay.get(id, streamerId);
+  if (row && row.type === 'scene' && row.is_active) {
+    _deactivateAllScenes.run(streamerId, id);
+  }
+  return row;
+}
+
+function setCustomOverlayActive(id, streamerId, active) {
+  _setCustomOverlayActive.run(active ? 1 : 0, id, streamerId);
+}
+
+function deleteCustomOverlay(id, streamerId) {
+  _deleteCustomOverlay.run(id, streamerId);
+}
+
 module.exports = {
   db,
   getStreamerByDiscordId,
@@ -2548,4 +2654,14 @@ module.exports = {
   updateTimedNotification,
   deleteTimedNotification,
   toggleTimedNotification,
+  getCustomOverlays,
+  getCustomOverlaysByType,
+  getCustomOverlayById,
+  getCustomOverlayByCommand,
+  getAllCustomOverlayCommands,
+  addCustomOverlay,
+  updateCustomOverlay,
+  toggleCustomOverlay,
+  setCustomOverlayActive,
+  deleteCustomOverlay,
 };
