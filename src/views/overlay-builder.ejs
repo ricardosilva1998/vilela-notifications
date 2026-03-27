@@ -299,7 +299,7 @@
 
     /* Fake stream elements */
     .fake-webcam {
-      position: absolute; bottom: 0; right: 0;
+      position: absolute; bottom: 0; left: 0;
       width: 22%; aspect-ratio: 16/9;
       background: linear-gradient(135deg, #1a1a2e, #16213e);
       border: 1px solid rgba(255,255,255,0.08);
@@ -319,9 +319,10 @@
     .fake-hud-tl .hud-label { font-size: 8px; color: rgba(255,255,255,0.4); font-family: var(--font-display); text-transform: uppercase; letter-spacing: 1px; }
     .fake-hud-tl .hud-val { font-size: 14px; color: #fff; font-family: 'Roboto Mono', monospace; font-weight: 700; }
     .fake-chat {
-      position: absolute; right: 0; top: 0; bottom: 24%;
-      width: 22%; background: rgba(0,0,0,0.45); padding: 8px;
+      position: absolute; right: 0; bottom: 0;
+      width: 22%; height: 40%; background: rgba(0,0,0,0.45); padding: 8px;
       display: flex; flex-direction: column; gap: 4px; overflow: hidden;
+      justify-content: flex-end; border-radius: 6px 0 0 0;
     }
     .fake-chat-msg {
       font-size: 8px; color: rgba(255,255,255,0.5);
@@ -511,14 +512,14 @@
     <div class="event-tabs">
       <div class="event-tabs-label">Event Type</div>
       <div class="event-tabs-grid" id="event-tabs">
-        <div class="event-tab active" data-type="follow">Follow</div>
-        <div class="event-tab" data-type="subscription">Sub</div>
-        <div class="event-tab" data-type="bits">Bits</div>
-        <div class="event-tab" data-type="donation">Donation</div>
-        <div class="event-tab" data-type="raid">Raid</div>
-        <div class="event-tab" data-type="yt_superchat">SC</div>
-        <div class="event-tab" data-type="yt_member">Member</div>
-        <div class="event-tab" data-type="yt_giftmember">Gift</div>
+        <div class="event-tab active" data-type="follow"><span style="font-size:16px;">🏁</span><span style="font-size:10px;">Follow</span></div>
+        <div class="event-tab" data-type="subscription"><span style="font-size:16px;">🏆</span><span style="font-size:10px;">Sub</span></div>
+        <div class="event-tab" data-type="bits"><span style="font-size:16px;">⛽</span><span style="font-size:10px;">Bits</span></div>
+        <div class="event-tab" data-type="donation"><span style="font-size:16px;">💰</span><span style="font-size:10px;">Donation</span></div>
+        <div class="event-tab" data-type="raid"><span style="font-size:16px;">🤖</span><span style="font-size:10px;">Raid</span></div>
+        <div class="event-tab" data-type="yt_superchat"><span style="font-size:16px;">💬</span><span style="font-size:10px;">YT Super</span></div>
+        <div class="event-tab" data-type="yt_member"><span style="font-size:16px;">⭐</span><span style="font-size:10px;">YT Member</span></div>
+        <div class="event-tab" data-type="yt_giftmember"><span style="font-size:16px;">🎁</span><span style="font-size:10px;">YT Gift</span></div>
       </div>
     </div>
 
@@ -935,6 +936,77 @@ function updatePreview() {
 
   // Load font if needed
   if (d.font_family !== 'System Default') loadGoogleFont(d.font_family);
+
+  // Show screen effect preview
+  renderScreenEffect(d.screen_effect);
+}
+
+function renderScreenEffect(effect) {
+  const screen = document.getElementById('preview-screen');
+  // Remove old effects
+  screen.querySelectorAll('.preview-fx').forEach(e => e.remove());
+
+  if (!effect || effect === 'default' || effect === 'none') return;
+
+  const fxContainer = document.createElement('div');
+  fxContainer.className = 'preview-fx';
+  fxContainer.style.cssText = 'position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:5;';
+
+  const colors = {
+    confetti: ['#f7c948','#ff6b35','#00ff88','#9146ff','#ff4444','#4285f4','#fff'],
+    gold: ['🪙','💎','⭐','🏆','✨','💰'],
+    money: ['💵','💰','💲','🪙','💸'],
+    robots: ['🤖'],
+    tiremarks: null,
+  };
+
+  if (effect === 'confetti') {
+    for (let i = 0; i < 30; i++) {
+      const c = document.createElement('div');
+      c.style.cssText = `position:absolute;width:5px;height:5px;border-radius:${Math.random()>0.5?'50%':'1px'};background:${colors.confetti[Math.floor(Math.random()*colors.confetti.length)]};left:${Math.random()*100}%;top:-5%;opacity:0;animation:fxFall ${1.5+Math.random()*2}s linear ${Math.random()*2}s infinite;`;
+      fxContainer.appendChild(c);
+    }
+  } else if (effect === 'gold') {
+    for (let i = 0; i < 20; i++) {
+      const g = document.createElement('div');
+      g.textContent = colors.gold[Math.floor(Math.random()*colors.gold.length)];
+      g.style.cssText = `position:absolute;font-size:14px;left:${Math.random()*100}%;top:-5%;opacity:0;animation:fxFall ${2+Math.random()*2}s linear ${Math.random()*2}s infinite;`;
+      fxContainer.appendChild(g);
+    }
+  } else if (effect === 'money') {
+    for (let i = 0; i < 20; i++) {
+      const m = document.createElement('div');
+      m.textContent = colors.money[Math.floor(Math.random()*colors.money.length)];
+      m.style.cssText = `position:absolute;font-size:14px;left:${Math.random()*100}%;top:-5%;opacity:0;animation:fxFall ${2+Math.random()*2}s linear ${Math.random()*2}s infinite;`;
+      fxContainer.appendChild(m);
+    }
+  } else if (effect === 'robots') {
+    for (let i = 0; i < 15; i++) {
+      const r = document.createElement('div');
+      r.textContent = '🤖';
+      r.style.cssText = `position:absolute;font-size:${12+Math.random()*8}px;left:${Math.random()*95}%;top:-5%;opacity:0;animation:fxFall ${2+Math.random()*2}s linear ${Math.random()*3}s infinite;`;
+      fxContainer.appendChild(r);
+    }
+  } else if (effect === 'tiremarks') {
+    for (let i = 0; i < 2; i++) {
+      const t = document.createElement('div');
+      t.style.cssText = `position:absolute;height:2px;left:0;right:0;top:${48+i*3}%;background:linear-gradient(90deg,transparent,rgba(136,136,204,0.15),transparent);animation:fxTire 2.5s ease-in-out infinite;`;
+      fxContainer.appendChild(t);
+    }
+  }
+
+  screen.appendChild(fxContainer);
+
+  // Inject keyframes if not already there
+  if (!document.getElementById('fx-keyframes')) {
+    const style = document.createElement('style');
+    style.id = 'fx-keyframes';
+    style.textContent = `
+      @keyframes fxFall { 0% { opacity:0; transform:translateY(0) rotate(0); } 5% { opacity:1; } 90% { opacity:0.8; } 100% { opacity:0; transform:translateY(400px) rotate(720deg); } }
+      @keyframes fxTire { 0%,25% { width:0; opacity:0; } 30% { opacity:0.6; } 70% { width:100%; opacity:0.2; } 100% { width:100%; opacity:0; } }
+    `;
+    document.head.appendChild(style);
+  }
 }
 
 function hexToRgba(hex, alpha) {
