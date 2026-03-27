@@ -1,7 +1,6 @@
-<%- include('header', { title: 'Sponsor Rotation', streamer: streamer }) %>
+<%- include('header', { title: 'Sponsor Messages', streamer: streamer }) %>
 
 <style>
-  /* ── Inputs ───────────────────────────────────────────────────── */
   .sp-input {
     width: 100%; padding: 10px 14px;
     background: var(--bg-base); border: 1px solid var(--border);
@@ -11,8 +10,6 @@
   }
   .sp-input:focus { border-color: var(--accent); }
   .sp-input::placeholder { color: var(--text-muted); }
-  textarea.sp-input { resize: vertical; min-height: 54px; }
-  select.sp-input { cursor: pointer; }
   .sp-label {
     display: block; font-size: 12px; font-weight: 600;
     color: var(--text-secondary); margin-bottom: 6px;
@@ -20,7 +17,6 @@
     letter-spacing: 0.5px;
   }
 
-  /* ── Toggle pill ──────────────────────────────────────────────── */
   .toggle-pill { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
   .toggle-pill input { opacity: 0; width: 0; height: 0; }
   .toggle-pill-slider { position: absolute; cursor: pointer; inset: 0; background: var(--border); border-radius: 24px; transition: 0.2s; }
@@ -28,274 +24,195 @@
   .toggle-pill input:checked + .toggle-pill-slider { background: var(--success); }
   .toggle-pill input:checked + .toggle-pill-slider:before { transform: translateX(20px); }
 
-  /* ── Upload zone ──────────────────────────────────────────────── */
-  .upload-zone {
-    border: 2px dashed var(--border); border-radius: var(--radius);
-    padding: 32px 20px; text-align: center; cursor: pointer;
-    transition: border-color 0.2s, background 0.2s;
-    background: var(--bg-base);
-    position: relative;
-  }
-  .upload-zone:hover, .upload-zone.drag-over {
-    border-color: var(--accent);
-    background: rgba(145,70,255,0.04);
-  }
-  .upload-zone input[type="file"] {
-    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
-  }
-  .upload-zone-icon {
-    width: 48px; height: 48px; margin: 0 auto 12px;
-    background: rgba(145,70,255,0.1); border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .upload-zone-text { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
-  .upload-zone-sub { font-size: 12px; color: var(--text-muted); }
-  #upload-preview {
-    margin-top: 14px; display: none;
-    max-height: 120px; border-radius: 8px; object-fit: contain;
-    max-width: 100%;
-  }
+  .settings-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .settings-row:last-child { margin-bottom: 0; }
+  .settings-row-label { flex: 1; font-size: 14px; color: var(--text-primary); font-weight: 500; }
+  .settings-row-sub { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
 
-  /* ── Sponsor card ─────────────────────────────────────────────── */
-  .sponsor-card {
+  .msg-card {
     background: var(--bg-surface); border: 1px solid var(--border);
     border-radius: var(--radius); margin-bottom: 12px;
     transition: border-color 0.2s; overflow: hidden;
   }
-  .sponsor-card:hover { border-color: rgba(145,70,255,0.3); }
-  .sponsor-card-body { padding: 16px 18px; display: flex; align-items: center; gap: 14px; }
-  .sponsor-thumb {
-    width: 120px; height: 60px; object-fit: contain;
-    border-radius: 6px; background: var(--bg-elevated);
-    border: 1px solid var(--border); flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .sponsor-thumb img { max-width: 100%; max-height: 100%; border-radius: 6px; object-fit: contain; }
-  .sponsor-thumb-placeholder { color: var(--text-muted); font-size: 11px; }
-  .sponsor-meta { flex: 1; min-width: 0; }
-  .sponsor-name { font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 3px; }
-  .sponsor-chat { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sponsor-card-footer {
+  .msg-card:hover { border-color: rgba(145,70,255,0.3); }
+  .msg-card-body { padding: 16px 18px; }
+  .msg-text { font-size: 14px; color: var(--text-primary); font-weight: 500; margin-bottom: 4px; word-break: break-word; }
+  .msg-url { font-size: 12px; color: var(--accent); word-break: break-all; }
+  .msg-url a { color: inherit; text-decoration: none; }
+  .msg-url a:hover { text-decoration: underline; }
+  .msg-card-footer {
     border-top: 1px solid var(--border); padding: 12px 18px;
     display: flex; align-items: center; gap: 8px;
     background: var(--bg-elevated);
   }
-  .sponsor-card-footer .btn { font-size: 12px; padding: 6px 13px; }
-  .sponsor-card-footer .spacer { flex: 1; }
+  .msg-card-footer .btn { font-size: 12px; padding: 6px 13px; }
+  .msg-card-footer .spacer { flex: 1; }
 
-  /* ── Inline edit ──────────────────────────────────────────────── */
   .inline-edit-wrap { overflow: hidden; max-height: 0; transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease; opacity: 0; }
   .inline-edit-wrap.visible { max-height: 600px; opacity: 1; }
   .inline-edit-inner { border-top: 2px solid var(--accent); padding: 20px 18px; background: var(--bg-surface); }
   .inline-edit-inner h4 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--accent); margin-bottom: 16px; }
 
-  /* ── Empty state ──────────────────────────────────────────────── */
   .empty-state { text-align: center; padding: 56px 24px; background: var(--bg-surface); border: 1px dashed var(--border); border-radius: var(--radius); }
   .empty-state-icon { width: 56px; height: 56px; margin: 0 auto 16px; background: var(--bg-elevated); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
   .empty-state h4 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
   .empty-state p { font-size: 14px; color: var(--text-muted); }
 
-  /* ── Settings row ─────────────────────────────────────────────── */
-  .settings-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-  .settings-row:last-child { margin-bottom: 0; }
-  .settings-row-label { flex: 1; font-size: 14px; color: var(--text-primary); font-weight: 500; }
-  .settings-row-sub { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+  .status-msg {
+    display: none; padding: 10px 16px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 600; margin-bottom: 16px;
+    background: rgba(62,207,142,0.1); color: var(--success); border: 1px solid rgba(62,207,142,0.2);
+  }
+  .status-msg.visible { display: block; }
 </style>
 
 <a href="/dashboard" style="color: var(--text-secondary); font-size: 13px; font-family: var(--font-display); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
   Back to Dashboard
 </a>
-<h2 style="margin: 16px 0 6px; font-size: 24px; font-weight: 700;" class="animate-in">Sponsor Rotation</h2>
-<p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 28px;">Upload sponsor logos and banners to rotate on your stream overlay.</p>
+<h2 style="margin: 16px 0 6px; font-size: 24px; font-weight: 700;" class="animate-in">Sponsor Chat Messages</h2>
+<p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 28px;">
+  Send rotating sponsor messages to your Twitch chat at set intervals. For sponsor image overlays, use the
+  <a href="/dashboard/overlay-builder" style="color: var(--accent);">Overlay Builder</a> (Timed tab).
+</p>
 
-<!-- ── Settings Card ───────────────────────────────────────────── -->
+<div id="status-msg" class="status-msg"></div>
+
+<!-- Settings Card -->
 <div class="card animate-in" style="margin-bottom: 24px;">
   <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
     <span style="width: 30px; height: 30px; background: rgba(145,70,255,0.12); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9146ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 1 1 4.93 19.07"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.93 19.07l1.41-1.41"/><path d="M17.66 6.34l1.41-1.41"/></svg>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9146ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 1 1 4.93 19.07"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M2 12h2"/><path d="M20 12h2"/></svg>
     </span>
-    Rotation Settings
+    Chat Settings
   </h3>
 
-  <form method="POST" action="/dashboard/sponsors/settings">
-
-    <div class="settings-row">
-      <div class="settings-row-label">
-        Enable Rotation
-        <div class="settings-row-sub">Automatically cycle sponsor images on your overlay</div>
-      </div>
-      <label class="toggle-pill">
-        <input type="checkbox" name="sponsor_rotation_enabled" value="1" <%= streamer.sponsor_rotation_enabled ? 'checked' : '' %> id="rotationToggle">
-        <span class="toggle-pill-slider"></span>
-      </label>
+  <div class="settings-row">
+    <div class="settings-row-label">
+      Enable Chat Messages
+      <div class="settings-row-sub">Automatically send sponsor messages to Twitch chat</div>
     </div>
+    <label class="toggle-pill">
+      <input type="checkbox" id="chat-enabled" <%= streamer.sponsor_send_chat ? 'checked' : '' %>>
+      <span class="toggle-pill-slider"></span>
+    </label>
+  </div>
 
-    <div class="settings-row" style="margin-top: 16px;">
-      <div class="settings-row-label">
-        Rotation Interval
-        <div class="settings-row-sub">How often to switch to the next sponsor</div>
-      </div>
-      <select name="sponsor_interval_seconds" class="sp-input" style="width: auto; min-width: 160px;">
-        <% [10,15,20,30,45,60,90,120].forEach(function(s){ %>
-          <option value="<%= s %>" <%= (streamer.sponsor_interval_seconds || 30) == s ? 'selected' : '' %>>Every <%= s %>s</option>
-        <% }); %>
-      </select>
+  <div class="settings-row" style="margin-top: 16px;">
+    <div class="settings-row-label">
+      Interval Between Messages
+      <div class="settings-row-sub">How long to wait between each chat message</div>
     </div>
+    <select id="chat-interval" class="sp-input" style="width: auto; min-width: 160px;">
+      <% [5,10,15,20,30].forEach(function(m){ %>
+        <option value="<%= m %>" <%= (streamer.sponsor_chat_interval_minutes || 10) == m ? 'selected' : '' %>>Every <%= m %> min</option>
+      <% }); %>
+    </select>
+  </div>
 
-    <div class="settings-row" style="margin-top: 16px;">
-      <div class="settings-row-label">
-        Send Chat Message
-        <div class="settings-row-sub">Post each sponsor's chat message to Twitch when it rotates</div>
-      </div>
-      <label class="toggle-pill">
-        <input type="checkbox" name="sponsor_send_chat" value="1" <%= streamer.sponsor_send_chat ? 'checked' : '' %>>
-        <span class="toggle-pill-slider"></span>
-      </label>
-    </div>
-
-    <div style="margin-top: 20px;">
-      <button type="submit" class="btn btn-primary">Save Settings</button>
-    </div>
-
-  </form>
+  <div style="margin-top: 20px;">
+    <button type="button" class="btn btn-primary" onclick="saveChatSettings()">Save Settings</button>
+  </div>
 </div>
 
-<!-- ── Upload Card ────────────────────────────────────────────── -->
+<!-- Add Message Card -->
 <div class="card animate-in" style="margin-bottom: 24px;">
   <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
     <span style="width: 30px; height: 30px; background: rgba(145,70,255,0.12); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9146ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9146ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </span>
-    Upload Sponsor Image
+    Add Message
   </h3>
 
-  <div class="upload-zone" id="upload-zone">
-    <input type="file" id="file-input" accept="image/png,image/jpeg,image/gif,image/webp">
-    <div class="upload-zone-icon">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9146ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-    </div>
-    <div class="upload-zone-text">Drop image here or click to browse</div>
-    <div class="upload-zone-sub">PNG, JPG, GIF, WebP supported</div>
-    <img id="upload-preview" alt="Preview">
-  </div>
-
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px;">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
     <div>
-      <label class="sp-label">Sponsor Name</label>
-      <input type="text" id="sponsor-name" class="sp-input" placeholder="e.g. Acme Corp" value="Sponsor">
+      <label class="sp-label">Message Text</label>
+      <input type="text" id="new-msg-text" class="sp-input" placeholder="e.g. Check out our sponsor Acme Corp!">
     </div>
     <div>
-      <label class="sp-label">Chat Message <span style="font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--text-muted);">(optional)</span></label>
-      <input type="text" id="sponsor-chat" class="sp-input" placeholder="e.g. Thanks to our sponsor!">
+      <label class="sp-label">URL <span style="font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--text-muted);">(optional)</span></label>
+      <input type="text" id="new-msg-url" class="sp-input" placeholder="e.g. https://acme.com">
     </div>
   </div>
 
-  <div style="margin-top: 16px;">
-    <button type="button" class="btn btn-primary" id="upload-btn" disabled>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
-      Upload Image
-    </button>
-  </div>
-
+  <button type="button" class="btn btn-primary" onclick="addMessage()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Add Message
+  </button>
 </div>
 
-<!-- ── Sponsors List ──────────────────────────────────────────── -->
-<% if (sponsors.length === 0) { %>
+<!-- Messages List -->
+<% if (messages.length === 0) { %>
 
-  <div class="empty-state animate-in">
+  <div class="empty-state animate-in" id="empty-state">
     <div class="empty-state-icon">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
     </div>
-    <h4>No sponsors yet</h4>
-    <p>Upload your first sponsor image above to start rotating logos on your overlay.</p>
+    <h4>No messages yet</h4>
+    <p>Add your first sponsor chat message above.</p>
   </div>
 
 <% } else { %>
 
-  <div class="animate-in">
+  <div class="animate-in" id="messages-container">
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
       <h3 style="font-size: 14px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em;">
-        Sponsors
-        <span style="font-size: 12px; font-weight: 600; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 20px; padding: 1px 8px; margin-left: 6px; color: var(--text-muted); letter-spacing: 0;"><%= sponsors.length %></span>
+        Messages
+        <span style="font-size: 12px; font-weight: 600; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 20px; padding: 1px 8px; margin-left: 6px; color: var(--text-muted); letter-spacing: 0;" id="msg-count"><%= messages.length %></span>
       </h3>
-      <span style="font-size: 12px; color: var(--text-muted);">Position controlled by Overlay Builder &rarr; Timed event</span>
     </div>
 
-    <% sponsors.forEach(function(s) { %>
-    <div class="sponsor-card">
-      <div class="sponsor-card-body">
-
-        <!-- Thumbnail -->
-        <div class="sponsor-thumb">
-          <img src="/sponsors/<%= streamer.id %>/<%= s.filename %>" alt="<%= s.display_name || 'Sponsor' %>" onerror="this.style.display='none'">
-        </div>
-
-        <!-- Meta -->
-        <div class="sponsor-meta">
-          <div class="sponsor-name"><%= s.display_name || 'Sponsor' %></div>
-          <% if (s.chat_message) { %>
-            <div class="sponsor-chat">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 3px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              <%= s.chat_message.length > 80 ? s.chat_message.substring(0, 80) + '...' : s.chat_message %>
-            </div>
-          <% } else { %>
-            <div class="sponsor-chat" style="font-style: italic;">No chat message</div>
-          <% } %>
-        </div>
-
-        <!-- Enable toggle -->
-        <form method="POST" action="/dashboard/sponsors/<%= s.id %>/update" style="display: contents;">
-          <input type="hidden" name="display_name" value="<%= s.display_name || '' %>">
-          <input type="hidden" name="chat_message" value="<%= s.chat_message || '' %>">
-          <input type="hidden" name="enabled" value="<%= s.enabled ? '' : '1' %>">
-          <label class="toggle-pill" title="<%= s.enabled ? 'Enabled — click to disable' : 'Disabled — click to enable' %>">
-            <input type="checkbox" <%= s.enabled ? 'checked' : '' %> onchange="this.form.submit()">
-            <span class="toggle-pill-slider"></span>
-          </label>
-        </form>
-
+    <% messages.forEach(function(m) { %>
+    <div class="msg-card" id="msg-card-<%= m.id %>">
+      <div class="msg-card-body">
+        <div class="msg-text"><%= m.message_text %></div>
+        <% if (m.url) { %>
+          <div class="msg-url">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 3px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            <a href="<%= m.url %>" target="_blank" rel="noopener"><%= m.url.length > 60 ? m.url.substring(0, 60) + '...' : m.url %></a>
+          </div>
+        <% } %>
       </div>
 
-      <!-- Footer actions -->
-      <div class="sponsor-card-footer">
-        <button type="button" class="btn btn-secondary" onclick="toggleEdit(<%= s.id %>)">
+      <div class="msg-card-footer">
+        <button type="button" class="btn btn-secondary" onclick="toggleEdit(<%= m.id %>)">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Edit
         </button>
+
+        <label class="toggle-pill" title="<%= m.enabled ? 'Enabled' : 'Disabled' %>">
+          <input type="checkbox" <%= m.enabled ? 'checked' : '' %> onchange="toggleMessage(<%= m.id %>, this.checked)">
+          <span class="toggle-pill-slider"></span>
+        </label>
+
         <div class="spacer"></div>
-        <form method="POST" action="/dashboard/sponsors/<%= s.id %>/delete" style="display: inline;" onsubmit="return confirm('Delete this sponsor image?')">
-          <button type="submit" class="btn btn-danger">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-            Delete
-          </button>
-        </form>
+
+        <button type="button" class="btn btn-danger" onclick="deleteMessage(<%= m.id %>)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          Delete
+        </button>
       </div>
 
       <!-- Inline edit -->
-      <div class="inline-edit-wrap" id="edit-<%= s.id %>">
+      <div class="inline-edit-wrap" id="edit-<%= m.id %>">
         <div class="inline-edit-inner">
-          <h4>Edit Sponsor</h4>
-          <form method="POST" action="/dashboard/sponsors/<%= s.id %>/update">
-            <input type="hidden" name="enabled" value="<%= s.enabled ? '1' : '' %>">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
-              <div>
-                <label class="sp-label">Sponsor Name</label>
-                <input type="text" name="display_name" class="sp-input" value="<%= s.display_name || '' %>" placeholder="Sponsor name">
-              </div>
-              <div>
-                <label class="sp-label">Chat Message</label>
-                <input type="text" name="chat_message" class="sp-input" value="<%= s.chat_message || '' %>" placeholder="Optional chat message">
-              </div>
+          <h4>Edit Message</h4>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+            <div>
+              <label class="sp-label">Message Text</label>
+              <input type="text" id="edit-text-<%= m.id %>" class="sp-input" value="<%= m.message_text %>">
             </div>
-            <div style="display: flex; gap: 8px;">
-              <button type="submit" class="btn btn-primary" style="padding: 9px 20px;">Save Changes</button>
-              <button type="button" class="btn btn-secondary" style="padding: 9px 20px;" onclick="toggleEdit(<%= s.id %>)">Cancel</button>
+            <div>
+              <label class="sp-label">URL</label>
+              <input type="text" id="edit-url-<%= m.id %>" class="sp-input" value="<%= m.url || '' %>" placeholder="https://...">
             </div>
-          </form>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-primary" style="padding: 9px 20px;" onclick="saveMessage(<%= m.id %>)">Save Changes</button>
+            <button type="button" class="btn btn-secondary" style="padding: 9px 20px;" onclick="toggleEdit(<%= m.id %>)">Cancel</button>
+          </div>
         </div>
       </div>
-
     </div>
     <% }); %>
   </div>
@@ -303,68 +220,76 @@
 <% } %>
 
 <script>
+function showStatus(text) {
+  const el = document.getElementById('status-msg');
+  el.textContent = text;
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 3000);
+}
+
 function toggleEdit(id) {
-  const el = document.getElementById('edit-' + id);
-  el.classList.toggle('visible');
+  document.getElementById('edit-' + id).classList.toggle('visible');
 }
 
-// ── Upload logic ──────────────────────────────────────────────────
-const fileInput = document.getElementById('file-input');
-const uploadZone = document.getElementById('upload-zone');
-const preview = document.getElementById('upload-preview');
-const uploadBtn = document.getElementById('upload-btn');
-let selectedFile = null;
-
-fileInput.addEventListener('change', function() {
-  if (this.files[0]) selectFile(this.files[0]);
-});
-
-uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
-uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-uploadZone.addEventListener('drop', e => {
-  e.preventDefault();
-  uploadZone.classList.remove('drag-over');
-  const f = e.dataTransfer.files[0];
-  if (f && f.type.startsWith('image/')) selectFile(f);
-});
-
-function selectFile(file) {
-  selectedFile = file;
-  const reader = new FileReader();
-  reader.onload = e => {
-    preview.src = e.target.result;
-    preview.style.display = 'block';
-  };
-  reader.readAsDataURL(file);
-  uploadBtn.disabled = false;
+async function saveChatSettings() {
+  const enabled = document.getElementById('chat-enabled').checked;
+  const interval = parseInt(document.getElementById('chat-interval').value) || 10;
+  await fetch('/dashboard/sponsor-messages/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: enabled ? '1' : '', interval_minutes: interval }),
+  });
+  showStatus('Settings saved!');
 }
 
-uploadBtn.addEventListener('click', async () => {
-  if (!selectedFile) return;
-  uploadBtn.disabled = true;
-  uploadBtn.textContent = 'Uploading...';
+async function addMessage() {
+  const text = document.getElementById('new-msg-text').value.trim();
+  const url = document.getElementById('new-msg-url').value.trim();
+  if (!text) return alert('Please enter a message');
+  const res = await fetch('/dashboard/sponsor-messages/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message_text: text, url: url || null }),
+  });
+  const data = await res.json();
+  if (data.ok) window.location.reload();
+}
 
-  const name = document.getElementById('sponsor-name').value || 'Sponsor';
-  const ext = selectedFile.name.split('.').pop() || 'png';
+async function saveMessage(id) {
+  const text = document.getElementById('edit-text-' + id).value.trim();
+  const url = document.getElementById('edit-url-' + id).value.trim();
+  if (!text) return alert('Message text is required');
+  await fetch(`/dashboard/sponsor-messages/${id}/update`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message_text: text, url: url || null, enabled: '1' }),
+  });
+  window.location.reload();
+}
 
-  try {
-    const res = await fetch(`/dashboard/sponsors/upload?name=${encodeURIComponent(name)}&ext=${encodeURIComponent(ext)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/octet-stream' },
-      body: selectedFile,
-    });
-    const data = await res.json();
-    if (data.ok) {
-      window.location.reload();
-    } else {
-      uploadBtn.textContent = 'Error — try again';
-      uploadBtn.disabled = false;
-    }
-  } catch(e) {
-    uploadBtn.textContent = 'Error — try again';
-    uploadBtn.disabled = false;
-  }
-});
+async function toggleMessage(id, enabled) {
+  const card = document.getElementById('msg-card-' + id);
+  const textEl = card.querySelector('.msg-text');
+  const text = textEl?.textContent || '';
+  const urlEl = card.querySelector('.msg-url a');
+  const url = urlEl?.getAttribute('href') || '';
+  await fetch(`/dashboard/sponsor-messages/${id}/update`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message_text: text, url: url || null, enabled: enabled ? '1' : '' }),
+  });
+}
+
+async function deleteMessage(id) {
+  if (!confirm('Delete this message?')) return;
+  await fetch(`/dashboard/sponsor-messages/${id}/delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  const card = document.getElementById('msg-card-' + id);
+  if (card) card.remove();
+  showStatus('Message deleted');
+}
 </script>
 
 <%- include('footer') %>

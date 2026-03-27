@@ -1139,8 +1139,14 @@ router.post('/report', (req, res) => {
 
 // Sponsor rotation page
 router.get('/timed-notifications', (req, res) => {
-  const sponsors = db.getSponsorImages(req.streamer.id);
-  res.render('timed-notifications', { streamer: req.streamer, sponsors });
+  const messages = db.getSponsorMessages(req.streamer.id);
+  res.render('timed-notifications', { streamer: req.streamer, messages });
+});
+
+// --- Sponsor Images (JSON API for overlay builder) ---
+
+router.get('/sponsors/list', (req, res) => {
+  res.json(db.getSponsorImages(req.streamer.id));
 });
 
 // Upload sponsor image (raw body)
@@ -1157,8 +1163,9 @@ router.post('/sponsors/upload', (req, res) => {
     fs.writeFileSync(path.join(sponsorDir, filename), Buffer.concat(chunks));
 
     const displayName = req.query.name || 'Sponsor';
-    db.addSponsorImage(streamerId, filename, displayName, null);
-    res.json({ ok: true, filename });
+    const result = db.addSponsorImage(streamerId, filename, displayName, null);
+    const newImage = db.getSponsorImages(streamerId).find(i => i.filename === filename);
+    res.json({ ok: true, filename, image: newImage });
   });
 });
 
@@ -1172,16 +1179,29 @@ router.post('/sponsors/:id/delete', (req, res) => {
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     db.deleteSponsorImage(parseInt(req.params.id), streamerId);
   }
-  res.redirect('/dashboard/timed-notifications');
+  res.json({ ok: true });
 });
 
 // Update sponsor image
 router.post('/sponsors/:id/update', (req, res) => {
   db.updateSponsorImage(
     parseInt(req.params.id), req.streamer.id,
-    req.body.display_name, req.body.chat_message, req.body.enabled
+    req.body.display_name, req.body.chat_message,
+    req.body.enabled, parseInt(req.body.display_duration) || 30
   );
-  res.redirect('/dashboard/timed-notifications');
+  try {
+    const { timedNotificationManager } = require('../services/timedNotifications');
+    timedNotificationManager.restartForStreamer(req.streamer.id);
+  } catch(e) {}
+  res.json({ ok: true });
+});
+
+// Reorder sponsor images
+router.post('/sponsors/reorder', (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids)) return res.status(400).json({ error: 'ids must be an array' });
+  db.updateSponsorImageOrder(req.streamer.id, ids);
+  res.json({ ok: true });
 });
 
 // Save sponsor rotation settings
@@ -1196,7 +1216,50 @@ router.post('/sponsors/settings', (req, res) => {
     const { timedNotificationManager } = require('../services/timedNotifications');
     timedNotificationManager.restartForStreamer(req.streamer.id);
   } catch(e) {}
-  res.redirect('/dashboard/timed-notifications');
+  res.json({ ok: true });
+});
+
+// --- Sponsor Chat Messages ---
+
+router.post('/sponsor-messages/add', (req, res) => {
+  const { message_text, url } = req.body;
+  if (!message_text) return res.status(400).json({ error: 'Message text required' });
+  db.addSponsorMessage(req.streamer.id, message_text, url);
+  res.json({ ok: true });
+});
+
+router.post('/sponsor-messages/:id/update', (req, res) => {
+  db.updateSponsorMessage(
+    parseInt(req.params.id), req.streamer.id,
+    req.body.message_text, req.body.url, req.body.enabled
+  );
+  try {
+    const { timedNotificationManager } = require('../services/timedNotifications');
+    timedNotificationManager.restartChatForStreamer(req.streamer.id);
+  } catch(e) {}
+  res.json({ ok: true });
+});
+
+router.post('/sponsor-messages/:id/delete', (req, res) => {
+  db.deleteSponsorMessage(parseInt(req.params.id), req.streamer.id);
+  try {
+    const { timedNotificationManager } = require('../services/timedNotifications');
+    timedNotificationManager.restartChatForStreamer(req.streamer.id);
+  } catch(e) {}
+  res.json({ ok: true });
+});
+
+router.post('/sponsor-messages/settings', (req, res) => {
+  db.updateSponsorChatSettings(
+    req.streamer.id,
+    parseInt(req.body.interval_minutes) || 10,
+    req.body.enabled
+  );
+  try {
+    const { timedNotificationManager } = require('../services/timedNotifications');
+    timedNotificationManager.restartChatForStreamer(req.streamer.id);
+  } catch(e) {}
+  res.json({ ok: true });
 });
 
 // --- Overlay Builder ---
@@ -1239,9 +1302,11 @@ router.get('/overlay-builder', async (req, res) => {
     }
   }
 
+  const sponsors = db.getSponsorImages(req.streamer.id);
   res.render('overlay-builder', {
     streamer: req.streamer,
     designs: JSON.stringify(designs),
+    sponsors: JSON.stringify(sponsors),
     overlayUrl,
     streamThumbnail
   });

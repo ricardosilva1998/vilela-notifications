@@ -670,6 +670,15 @@ function showSponsorImage(data) {
   }
 
   container.appendChild(banner);
+
+  // Auto-hide before next image arrives (fade out 2s before displayDuration)
+  if (data.displayDuration) {
+    const hideAfter = Math.max(2000, (data.displayDuration * 1000) - 2000);
+    setTimeout(() => {
+      banner.classList.add('dismissing');
+      setTimeout(() => banner.remove(), 400);
+    }, hideAfter);
+  }
 }
 
 // ─── Timed notification banner ─────────────────────────────────

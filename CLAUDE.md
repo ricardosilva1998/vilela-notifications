@@ -49,11 +49,12 @@ src/
 │   ├── streamelements.js # StreamElements socket.io (per-streamer, donation tips)
 │   ├── twitchChat.js     # Shared tmi.js chatbot — single connection, joins all enabled channels
 │   ├── youtubeLiveChat.js # YouTube Live Chat poller — polls chat during live streams, handles events + commands
+│   ├── timedNotifications.js # Sponsor image rotation — cycles enabled sponsors per-streamer, emits to overlay + chat
 │   └── overlayBus.js     # EventEmitter singleton — routes events to overlay SSE + chat
 ├── routes/
 │   ├── auth.js           # Discord + Twitch + YouTube + Spotify OAuth flows
 │   ├── overlay.js        # OBS overlay SSE endpoint + overlay HTML page + custom designs
-│   ├── dashboard.js      # Dashboard, account, guild config (tabbed), stats, channel CRUD, overlay config, chatbot config, overlay builder, YouTube chatbot, sound management
+│   ├── dashboard.js      # Dashboard, account, guild config (tabbed), stats, channel CRUD, overlay config, chatbot config, overlay builder, YouTube chatbot, sound management, sponsor upload/settings
 │   ├── api.js            # API endpoints
 │   ├── admin.js          # Admin panel
 │   └── payment.js        # PayPal subscriptions
@@ -68,6 +69,7 @@ src/
     ├── overlay-builder.ejs # Visual overlay builder — customize colors, fonts, animations, position per event with live preview
     ├── chatbot-config.ejs # Twitch chatbot — tabbed: Connection | Event Messages (with test buttons) | Custom Commands
     ├── youtube-chatbot-config.ejs # YouTube chatbot — live stream connection, event templates, test buttons
+    ├── timed-notifications.ejs # Sponsor rotation — image upload (drag & drop), per-image settings, interval/chat config
     ├── guild-stats.ejs   # Per-server stats with period selector (24h/7d/30d/year/lifetime)
     ├── donate.ejs        # Donation page (Buy me a coffee)
     ├── pricing.ejs       # Legacy pricing grid
@@ -83,18 +85,20 @@ public/
 │   └── sounds/           # Default sound directory (.gitkeep) — custom sounds stored in data/sounds/
 data/
 ├── bot.db                # SQLite database (persistent volume on Railway)
-└── sounds/               # Uploaded custom alert sounds (persistent, survives deploys)
+├── sounds/               # Uploaded custom alert sounds (persistent, survives deploys)
+└── sponsors/             # Uploaded sponsor images for rotation (persistent, survives deploys)
 ```
 
 ## Key Architecture
 
 - **Dashboard:** Platform-tabbed main page (Discord | Twitch | YouTube | Kick | Admin). Discord tab shows guild management. Twitch tab shows overlay/chatbot/Spotify cards. YouTube tab shows chatbot config. Kick is coming soon. Admin tab is admin-only.
 - **OBS Overlay:** EventSub receives Twitch events → overlayBus EventEmitter → SSE push to OBS browser source. Centered card design with per-event themes: Follow (tire marks + sparks), Subscription (confetti + camera flashes), Bits (gold rain), Donation (money rain), Raid (robots falling). YouTube events (Super Chat, Member, Gift) also emit to the same overlay. Custom designs stored in `overlay_designs` table.
-- **Overlay Builder:** Visual editor at `/dashboard/overlay-builder` with left control panel + right live preview. Customize per-event: colors, fonts, text, animation entrance/car/screen effects, card size, position (9-cell grid), border radius. Preview shows fake stream with webcam/chat/HUD. Designs saved to DB and applied at runtime via `applyCustomDesign()`.
+- **Overlay Builder:** Visual editor at `/dashboard/overlay-builder` with left control panel + right live preview. Events grouped by platform tabs (Twitch/YouTube/Kick/General). Customize per-event: colors, fonts (Google Fonts with live preview dropdown), text, animation entrance/screen effects, card size, position (9-cell grid + free drag with pixel coordinates), border radius, theme presets. Preview shows stream screenshot background with fake webcam/chat/HUD and draggable alert card. Designs saved to DB (including `card_custom_x`/`card_custom_y` for drag positions) and applied at runtime via `applyCustomDesign()`.
 - **Twitch Chatbot (Atleta):** Single shared tmi.js connection (env var credentials) joins all enabled channels. EventSub/StreamElements events trigger customizable thank-you messages. Custom `!commands` stored per-streamer in `chat_commands` table. Built-in `!song` command for Spotify.
 - **YouTube Chatbot:** Polling-based via YouTube Live Chat API. Activates when stream goes live (auto-detected by poller or manual connect). Detects Super Chats, new members, gifted memberships, and `!commands`. Uses global bot YouTube account for sending messages.
 - **Spotify Integration:** Streamer connects Spotify via OAuth. `!song` command in Twitch/YouTube chat returns currently playing track. Token auto-refresh.
 - **Sound System:** Per-event sounds with synthesized racing defaults (engine revs, turbo blow-off, tire screeches via Web Audio API). Custom mp3 upload with client-side trim tool. Custom sounds stored in `data/sounds/` (persistent volume). Overlay tries custom mp3 first, falls back to synthesized.
+- **Sponsor Rotation:** Streamers upload sponsor images (stored in `data/sponsors/`). `timedNotifications.js` cycles through enabled sponsors at a configurable interval, emitting `type: 'sponsor'` events to the overlay and optionally sending chat messages. Managed via `/dashboard/timed-notifications` with drag-and-drop upload, per-image enable/toggle, and settings (interval, chat toggle).
 - **Polling-based Discord notifications:** Pollers run on intervals, detect state changes, and send Discord notifications
 - **Free for all:** All features are free and unlimited for every user — no tier gating
 - **Donations:** PayPal.me donation page at `/donate` (Buy me a coffee or candy)
@@ -135,4 +139,5 @@ Optional:
 - All user-facing text should use `t('key')` for i18n support
 - Twitch notifications sent as embeds, clips and YouTube videos sent as plain text (for Discord auto-preview)
 - Custom sounds stored in `data/sounds/` (persistent volume), not `public/overlay/sounds/`
-- Overlay designs stored in `overlay_designs` table, applied at runtime in `overlay.js` via `applyCustomDesign()`
+- Sponsor images stored in `data/sponsors/` (persistent volume), served via `/sponsors/` static route
+- Overlay designs stored in `overlay_designs` table (including `card_custom_x`/`card_custom_y` for drag positions), applied at runtime in `overlay.js` via `applyCustomDesign()`

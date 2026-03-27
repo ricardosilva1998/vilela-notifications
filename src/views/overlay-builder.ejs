@@ -483,6 +483,98 @@
     }
     .btn-danger:hover { background: rgba(240,68,56,0.2); border-color: var(--danger); }
 
+    /* ── Sponsor section (timed tab) ── */
+    .sponsor-section { display: none; }
+    .sponsor-section.visible { display: block; }
+    .sponsor-toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .sponsor-toggle-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); font-family: var(--font-display); }
+    .sp-toggle { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; }
+    .sp-toggle input { opacity: 0; width: 0; height: 0; }
+    .sp-toggle-slider { position: absolute; cursor: pointer; inset: 0; background: var(--border); border-radius: 20px; transition: 0.2s; }
+    .sp-toggle-slider:before { position: absolute; content: ''; height: 14px; width: 14px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.2s; }
+    .sp-toggle input:checked + .sp-toggle-slider { background: var(--success); }
+    .sp-toggle input:checked + .sp-toggle-slider:before { transform: translateX(16px); }
+
+    .sponsor-list { margin-bottom: 10px; }
+    .sp-item {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 8px; margin-bottom: 4px;
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); cursor: grab;
+      transition: border-color 0.15s;
+    }
+    .sp-item:hover { border-color: rgba(145,70,255,0.3); }
+    .sp-item.dragging { opacity: 0.5; border-color: var(--accent); }
+    .sp-item.drag-over { border-top: 2px solid var(--accent); }
+    .sp-grip { color: var(--text-muted); font-size: 10px; cursor: grab; flex-shrink: 0; user-select: none; }
+    .sp-thumb {
+      width: 40px; height: 28px; flex-shrink: 0;
+      border-radius: 4px; overflow: hidden; background: var(--bg-base);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .sp-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .sp-name {
+      flex: 1; min-width: 0; font-size: 11px; font-weight: 600;
+      color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sp-dur {
+      width: 48px; padding: 3px 4px; font-size: 10px; text-align: center;
+      background: var(--bg-base); border: 1px solid var(--border);
+      border-radius: 4px; color: var(--text-primary);
+      font-family: var(--font-display); outline: none;
+    }
+    .sp-dur:focus { border-color: var(--border-focus); }
+    .sp-dur-label { font-size: 9px; color: var(--text-muted); flex-shrink: 0; }
+    .sp-enable { flex-shrink: 0; }
+    .sp-del {
+      width: 20px; height: 20px; flex-shrink: 0;
+      background: none; border: none; color: var(--text-muted);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      border-radius: 4px; transition: all 0.15s;
+    }
+    .sp-del:hover { color: var(--danger); background: rgba(240,68,56,0.1); }
+
+    .sp-upload-zone {
+      border: 1px dashed var(--border); border-radius: var(--radius-sm);
+      padding: 12px 8px; text-align: center; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: var(--bg-base); position: relative; margin-bottom: 8px;
+    }
+    .sp-upload-zone:hover, .sp-upload-zone.drag-over {
+      border-color: var(--accent); background: rgba(145,70,255,0.04);
+    }
+    .sp-upload-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .sp-upload-text { font-size: 11px; color: var(--text-muted); }
+    .sp-upload-row {
+      display: flex; gap: 6px; align-items: center; margin-top: 6px;
+    }
+    .sp-upload-input {
+      flex: 1; padding: 5px 8px; font-size: 11px;
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      border-radius: 4px; color: var(--text-primary); outline: none;
+    }
+    .sp-upload-input:focus { border-color: var(--border-focus); }
+    .sp-upload-btn {
+      padding: 5px 10px; font-size: 11px; font-weight: 600;
+      font-family: var(--font-display); background: var(--accent);
+      border: none; color: #fff; border-radius: 4px; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .sp-upload-btn:hover { background: var(--accent-hover); }
+    .sp-upload-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Sponsor preview in canvas */
+    .preview-sponsor-img {
+      max-width: 100%; max-height: 100%;
+      object-fit: contain; border-radius: inherit;
+    }
+
     /* Font picker */
     .font-picker { position: relative; min-width: 150px; width: 100%; }
     .font-picker-selected {
@@ -558,6 +650,40 @@
     </div>
 
     <div class="panel-scroll">
+
+      <!-- Sponsor Section (visible only on Timed tab) -->
+      <div class="sponsor-section" id="sponsor-section">
+        <div class="section" id="section-sponsors">
+          <div class="section-header" onclick="toggleSection('sponsors')">
+            <span class="section-title">🖼️ Sponsors</span>
+            <span class="section-chevron">▼</span>
+          </div>
+          <div class="section-body">
+            <div class="sponsor-toggle-row">
+              <span class="sponsor-toggle-label">Enable Rotation</span>
+              <label class="sp-toggle">
+                <input type="checkbox" id="sp-rotation-toggle" onchange="toggleSponsorRotation(this.checked)">
+                <span class="sp-toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="sponsor-list" id="sponsor-list">
+              <!-- Populated by JS -->
+            </div>
+
+            <div class="sp-upload-zone" id="sp-upload-zone">
+              <input type="file" id="sp-file-input" accept="image/png,image/jpeg,image/gif,image/webp">
+              <div class="sp-upload-text">Drop image or click to browse</div>
+            </div>
+            <div class="sp-upload-row">
+              <input type="text" id="sp-upload-name" class="sp-upload-input" placeholder="Sponsor name" value="Sponsor">
+              <input type="number" id="sp-upload-dur" class="sp-dur" value="30" min="5" max="300" step="5" title="Duration (seconds)">
+              <span class="sp-dur-label">s</span>
+              <button type="button" id="sp-upload-btn" class="sp-upload-btn" disabled onclick="uploadSponsor()">Upload</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Theme Section -->
       <div class="section" id="section-theme">
@@ -846,6 +972,11 @@ Object.keys(EVENT_DEFAULTS).forEach(t => {
 
 let currentType = 'follow';
 let unsavedChanges = false;
+
+// ─── Sponsor data ─────────────────────────────────────────────────────────────
+let sponsorImages = <%- sponsors %>;
+const STREAMER_ID = <%= streamer.id %>;
+let sponsorRotationEnabled = <%= streamer.sponsor_rotation_enabled ? 'true' : 'false' %>;
 
 // ─── Section collapse ─────────────────────────────────────────────────────────
 function toggleSection(id) {
@@ -1184,12 +1315,26 @@ function switchTab(type) {
   // Save current working values before switching
   workingDesigns[currentType] = getControlValues();
 
+  // Stop sponsor preview if leaving timed tab
+  if (currentType === 'timed' && type !== 'timed') {
+    stopSponsorPreview();
+  }
+
   currentType = type;
 
   // Update tab UI
   document.querySelectorAll('.event-tab').forEach(t => {
     t.classList.toggle('active', t.dataset.type === type);
   });
+
+  // Show/hide sponsor section
+  const sponsorSection = document.getElementById('sponsor-section');
+  if (type === 'timed') {
+    sponsorSection.classList.add('visible');
+    updateSponsorPreview();
+  } else {
+    sponsorSection.classList.remove('visible');
+  }
 
   // Update badges
   const name = EVENT_NAMES[type] || type;
@@ -1339,9 +1484,213 @@ document.addEventListener('click', e => {
   }
 });
 
+// ─── Sponsor management ──────────────────────────────────────────────────────
+
+function renderSponsorList() {
+  const list = document.getElementById('sponsor-list');
+  if (sponsorImages.length === 0) {
+    list.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px;">No sponsors yet</div>';
+    return;
+  }
+  list.innerHTML = sponsorImages.map((s, i) => `
+    <div class="sp-item" draggable="true" data-id="${s.id}" data-index="${i}">
+      <span class="sp-grip">&#x2807;</span>
+      <div class="sp-thumb">
+        <img src="/sponsors/${STREAMER_ID}/${s.filename}" alt="${s.display_name || ''}" onerror="this.style.display='none'">
+      </div>
+      <span class="sp-name" title="${s.display_name || 'Sponsor'}">${s.display_name || 'Sponsor'}</span>
+      <input type="number" class="sp-dur" value="${s.display_duration || 30}" min="5" max="300" step="5"
+             title="Display duration (seconds)"
+             onchange="updateSponsorDuration(${s.id}, this.value)">
+      <span class="sp-dur-label">s</span>
+      <label class="sp-toggle sp-enable">
+        <input type="checkbox" ${s.enabled ? 'checked' : ''} onchange="updateSponsorEnabled(${s.id}, this.checked)">
+        <span class="sp-toggle-slider"></span>
+      </label>
+      <button class="sp-del" onclick="deleteSponsor(${s.id})" title="Delete">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  `).join('');
+  attachSponsorDragHandlers();
+}
+
+function attachSponsorDragHandlers() {
+  const items = document.querySelectorAll('.sp-item[draggable]');
+  let draggedEl = null;
+  items.forEach(item => {
+    item.addEventListener('dragstart', e => {
+      draggedEl = item;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      document.querySelectorAll('.sp-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+      draggedEl = null;
+    });
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (draggedEl && draggedEl !== item) item.classList.add('drag-over');
+    });
+    item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      item.classList.remove('drag-over');
+      if (!draggedEl || draggedEl === item) return;
+      const fromIdx = parseInt(draggedEl.dataset.index);
+      const toIdx = parseInt(item.dataset.index);
+      const moved = sponsorImages.splice(fromIdx, 1)[0];
+      sponsorImages.splice(toIdx, 0, moved);
+      fetch('/dashboard/sponsors/reorder', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: sponsorImages.map(s => s.id) }),
+      });
+      renderSponsorList();
+      updateSponsorPreview();
+    });
+  });
+}
+
+async function toggleSponsorRotation(enabled) {
+  sponsorRotationEnabled = enabled;
+  await fetch('/dashboard/sponsors/settings', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sponsor_rotation_enabled: enabled ? '1' : '', sponsor_interval_seconds: 30, sponsor_send_chat: '' }),
+  });
+}
+
+async function updateSponsorDuration(id, duration) {
+  duration = Math.max(5, Math.min(300, parseInt(duration) || 30));
+  const img = sponsorImages.find(s => s.id === id);
+  if (img) img.display_duration = duration;
+  await fetch(`/dashboard/sponsors/${id}/update`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ display_name: img?.display_name || 'Sponsor', chat_message: img?.chat_message || '', enabled: img?.enabled ? '1' : '', display_duration: duration }),
+  });
+}
+
+async function updateSponsorEnabled(id, enabled) {
+  const img = sponsorImages.find(s => s.id === id);
+  if (img) img.enabled = enabled ? 1 : 0;
+  await fetch(`/dashboard/sponsors/${id}/update`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ display_name: img?.display_name || 'Sponsor', chat_message: img?.chat_message || '', enabled: enabled ? '1' : '', display_duration: img?.display_duration || 30 }),
+  });
+  updateSponsorPreview();
+}
+
+async function deleteSponsor(id) {
+  if (!confirm('Delete this sponsor image?')) return;
+  await fetch(`/dashboard/sponsors/${id}/delete`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+  sponsorImages = sponsorImages.filter(s => s.id !== id);
+  renderSponsorList();
+  updateSponsorPreview();
+}
+
+// Upload
+let spSelectedFile = null;
+const spFileInput = document.getElementById('sp-file-input');
+const spUploadZone = document.getElementById('sp-upload-zone');
+const spUploadBtn = document.getElementById('sp-upload-btn');
+
+spFileInput.addEventListener('change', function() {
+  if (this.files[0]) { spSelectedFile = this.files[0]; spUploadBtn.disabled = false; }
+});
+spUploadZone.addEventListener('dragover', e => { e.preventDefault(); spUploadZone.classList.add('drag-over'); });
+spUploadZone.addEventListener('dragleave', () => spUploadZone.classList.remove('drag-over'));
+spUploadZone.addEventListener('drop', e => {
+  e.preventDefault(); e.stopPropagation();
+  spUploadZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) { spSelectedFile = f; spUploadBtn.disabled = false; }
+});
+
+async function uploadSponsor() {
+  if (!spSelectedFile) return;
+  spUploadBtn.disabled = true;
+  spUploadBtn.textContent = '...';
+  const name = document.getElementById('sp-upload-name').value || 'Sponsor';
+  const ext = spSelectedFile.name.split('.').pop() || 'png';
+  const dur = parseInt(document.getElementById('sp-upload-dur').value) || 30;
+  try {
+    const res = await fetch(`/dashboard/sponsors/upload?name=${encodeURIComponent(name)}&ext=${encodeURIComponent(ext)}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: spSelectedFile,
+    });
+    const data = await res.json();
+    if (data.ok && data.image) {
+      data.image.display_duration = dur;
+      sponsorImages.push(data.image);
+      if (dur !== 30) {
+        await fetch(`/dashboard/sponsors/${data.image.id}/update`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ display_name: name, chat_message: '', enabled: '1', display_duration: dur }),
+        });
+      }
+      renderSponsorList();
+      updateSponsorPreview();
+    }
+  } catch(e) {}
+  spSelectedFile = null;
+  spFileInput.value = '';
+  spUploadBtn.textContent = 'Upload';
+  spUploadBtn.disabled = true;
+  document.getElementById('sp-upload-name').value = 'Sponsor';
+  document.getElementById('sp-upload-dur').value = '30';
+}
+
+// Sponsor preview cycling
+let sponsorPreviewInterval = null;
+let sponsorPreviewIndex = 0;
+
+function updateSponsorPreview() {
+  if (currentType !== 'timed') return;
+  clearInterval(sponsorPreviewInterval);
+  const container = document.getElementById('preview-card-container');
+  const card = document.getElementById('preview-card');
+  const enabled = sponsorImages.filter(s => s.enabled);
+  if (enabled.length === 0) {
+    card.style.display = '';
+    container.querySelector('.preview-sponsor-img')?.remove();
+    return;
+  }
+  card.style.display = 'none';
+  showSponsorInPreview(enabled[0]);
+  sponsorPreviewIndex = 0;
+  if (enabled.length > 1) {
+    sponsorPreviewInterval = setInterval(() => {
+      sponsorPreviewIndex = (sponsorPreviewIndex + 1) % enabled.length;
+      showSponsorInPreview(enabled[sponsorPreviewIndex]);
+    }, 3000);
+  }
+}
+
+function showSponsorInPreview(sponsor) {
+  const container = document.getElementById('preview-card-container');
+  let img = container.querySelector('.preview-sponsor-img');
+  if (!img) { img = document.createElement('img'); img.className = 'preview-sponsor-img'; container.appendChild(img); }
+  img.src = `/sponsors/${STREAMER_ID}/${sponsor.filename}`;
+  img.alt = sponsor.display_name || 'Sponsor';
+  const d = workingDesigns['timed'];
+  img.style.width = (d.card_width || 500) + 'px';
+  img.style.maxHeight = '200px';
+  img.style.borderRadius = (d.border_radius || 12) + 'px';
+}
+
+function stopSponsorPreview() {
+  clearInterval(sponsorPreviewInterval);
+  const container = document.getElementById('preview-card-container');
+  const card = document.getElementById('preview-card');
+  card.style.display = '';
+  container.querySelector('.preview-sponsor-img')?.remove();
+}
+
 // ─── Initial render ───────────────────────────────────────────────────────────
 setControlValues(workingDesigns['follow']);
 updatePreview();
+renderSponsorList();
+document.getElementById('sp-rotation-toggle').checked = sponsorRotationEnabled;
 
 // Re-position card on window resize
 window.addEventListener('resize', () => {
