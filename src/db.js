@@ -2315,6 +2315,10 @@ function updateSponsorSettings(streamerId, enabled, intervalSeconds, sendChat) {
   db.prepare('UPDATE streamers SET sponsor_rotation_enabled = ?, sponsor_interval_seconds = ?, sponsor_send_chat = ? WHERE id = ?').run(enabled ? 1 : 0, intervalSeconds, sendChat ? 1 : 0, streamerId);
 }
 
+function toggleSponsorRotation(streamerId, enabled) {
+  db.prepare('UPDATE streamers SET sponsor_rotation_enabled = ? WHERE id = ?').run(enabled ? 1 : 0, streamerId);
+}
+
 // Sponsor chat messages
 function getSponsorMessages(streamerId) {
   return db.prepare('SELECT * FROM sponsor_messages WHERE streamer_id = ? ORDER BY sort_order, id').all(streamerId);
@@ -2531,6 +2535,7 @@ module.exports = {
   deleteSponsorImage,
   updateSponsorImageOrder,
   updateSponsorSettings,
+  toggleSponsorRotation,
   getSponsorMessages,
   getEnabledSponsorMessages,
   addSponsorMessage,

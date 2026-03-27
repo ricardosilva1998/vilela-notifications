@@ -1221,6 +1221,15 @@ router.post('/sponsors/settings', (req, res) => {
   res.json({ ok: true });
 });
 
+router.post('/sponsors/toggle-rotation', (req, res) => {
+  db.toggleSponsorRotation(req.streamer.id, req.body.enabled);
+  try {
+    const { timedNotificationManager } = require('../services/timedNotifications');
+    timedNotificationManager.restartForStreamer(req.streamer.id);
+  } catch(e) {}
+  res.json({ ok: true });
+});
+
 // --- Sponsor Chat Messages ---
 
 router.post('/sponsor-messages/add', (req, res) => {

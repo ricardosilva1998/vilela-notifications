@@ -1696,9 +1696,9 @@ async function toggleSponsorRotation(enabled) {
   } else {
     updateSponsorPreview();
   }
-  await fetch('/dashboard/sponsors/settings', {
+  await fetch('/dashboard/sponsors/toggle-rotation', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sponsor_rotation_enabled: enabled ? '1' : '', sponsor_interval_seconds: 30, sponsor_send_chat: '' }),
+    body: JSON.stringify({ enabled: enabled ? '1' : '' }),
   });
 }
 
