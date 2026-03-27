@@ -141,6 +141,16 @@ router.get('/sponsors/:token', (req, res) => {
 </html>`);
 });
 
+// Custom overlay routes — MUST be before /:token wildcard
+const { setupSSE: customSSE, servePage: customPage } = require('./customOverlays');
+
+router.get('/scenes/events/:token', (req, res) => customSSE(req, res, 'scene'));
+router.get('/scenes/:token', (req, res) => customPage(req, res, 'scene'));
+router.get('/bar/events/:token', (req, res) => customSSE(req, res, 'bar'));
+router.get('/bar/:token', (req, res) => customPage(req, res, 'bar'));
+router.get('/custom-alerts/events/:token', (req, res) => customSSE(req, res, 'custom-alert'));
+router.get('/custom-alerts/:token', (req, res) => customPage(req, res, 'custom-alert'));
+
 // Serve overlay page — AFTER /events/:token so the wildcard doesn't catch SSE requests
 router.get('/:token', (req, res) => {
   const streamer = db.getStreamerByOverlayToken(req.params.token);
