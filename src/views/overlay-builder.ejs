@@ -71,19 +71,34 @@
     .top-nav .sep { color: var(--text-muted); }
     .top-nav h1 { font-size: 15px; font-weight: 700; color: var(--text-primary); }
     .top-nav .spacer { flex: 1; }
-    .top-nav .overlay-url-row { display: flex; align-items: center; gap: 8px; }
-    .top-nav .overlay-url-row input {
-      width: 280px; padding: 6px 10px; font-size: 11px; font-family: monospace;
-      background: var(--bg-elevated); border: 1px solid var(--border);
-      border-radius: var(--radius-sm); color: var(--text-secondary);
-    }
-    .top-nav .overlay-url-row .copy-btn {
-      padding: 6px 12px; font-size: 12px; font-family: var(--font-display);
+    .top-nav .overlay-urls-btn {
+      position: relative; padding: 6px 14px; font-size: 12px; font-family: var(--font-display);
       font-weight: 600; background: var(--bg-elevated); border: 1px solid var(--border);
       color: var(--text-secondary); border-radius: var(--radius-sm); cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.2s; display: flex; align-items: center; gap: 6px;
     }
-    .top-nav .overlay-url-row .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .top-nav .overlay-urls-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .urls-dropdown {
+      display: none; position: absolute; top: 100%; right: 0; margin-top: 6px;
+      background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4); padding: 12px; z-index: 999; min-width: 380px;
+    }
+    .urls-dropdown.open { display: block; }
+    .urls-dropdown label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px; }
+    .urls-dropdown .url-row { display: flex; gap: 6px; margin-bottom: 10px; }
+    .urls-dropdown .url-row:last-child { margin-bottom: 0; }
+    .urls-dropdown input {
+      flex: 1; padding: 6px 8px; font-size: 11px; font-family: monospace;
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text-secondary);
+    }
+    .urls-dropdown .copy-btn {
+      padding: 5px 10px; font-size: 11px; font-family: var(--font-display);
+      font-weight: 600; background: var(--bg-surface); border: 1px solid var(--border);
+      color: var(--text-secondary); border-radius: var(--radius-sm); cursor: pointer;
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .urls-dropdown .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
 
     /* ── Layout ── */
     .builder-layout {
@@ -720,10 +735,25 @@
   <a id="sounds-link" href="/dashboard/overlay" style="font-size:13px;color:var(--text-secondary);font-family:var(--font-display);font-weight:500;">Settings &amp; Sounds</a>
   <div class="spacer"></div>
   <% if (overlayUrl) { %>
-  <div class="overlay-url-row">
-    <input type="text" value="<%= overlayUrl %>" readonly id="overlay-url-input">
-    <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('overlay-url-input').value); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy URL',1500);">Copy URL</button>
+  <div style="position:relative;">
+    <button class="overlay-urls-btn" onclick="document.getElementById('urls-dd').classList.toggle('open')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      OBS URLs
+    </button>
+    <div class="urls-dropdown" id="urls-dd">
+      <label>Alerts Overlay</label>
+      <div class="url-row">
+        <input type="text" value="<%= overlayUrl %>" readonly id="alerts-url">
+        <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('alerts-url').value); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy',1500);">Copy</button>
+      </div>
+      <label>Sponsors Overlay</label>
+      <div class="url-row">
+        <input type="text" value="<%= overlayUrl.replace('/overlay/', '/overlay/sponsors/') %>" readonly id="sponsors-url">
+        <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('sponsors-url').value); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy',1500);">Copy</button>
+      </div>
+    </div>
   </div>
+  <script>document.addEventListener('click', e => { if (!e.target.closest('.overlay-urls-btn') && !e.target.closest('.urls-dropdown')) document.getElementById('urls-dd').classList.remove('open'); });</script>
   <% } %>
 </nav>
 
