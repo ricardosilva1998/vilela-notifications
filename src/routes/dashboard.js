@@ -1206,12 +1206,42 @@ router.post('/timed-notifications/:id/test', (req, res) => {
 
 // --- Overlay Builder ---
 
-router.get('/overlay-builder', (req, res) => {
+router.get('/overlay-builder', async (req, res) => {
   const designs = db.getAllOverlayDesigns(req.streamer.id);
   const overlayUrl = req.streamer.overlay_token
     ? `${config.app.url}/overlay/${req.streamer.overlay_token}`
     : null;
-  res.render('overlay-builder', { streamer: req.streamer, designs: JSON.stringify(designs), overlayUrl });
+
+  // Fetch latest stream/VOD thumbnail for canvas background
+  let streamThumbnail = null;
+  if (req.streamer.twitch_username) {
+    try {
+      const { getStream } = require('../services/twitch');
+      const stream = await getStream(req.streamer.twitch_username);
+      if (stream && stream.thumbnail_url) {
+        // Replace {width} and {height} placeholders
+        streamThumbnail = stream.thumbnail_url.replace('{width}', '1280').replace('{height}', '720');
+      }
+    } catch (e) {}
+
+    // If not live, try to get latest VOD thumbnail
+    if (!streamThumbnail) {
+      try {
+        const { getVideos } = require('../services/twitch');
+        const videos = await getVideos(req.streamer.twitch_user_id);
+        if (videos && videos.length > 0 && videos[0].thumbnail_url) {
+          streamThumbnail = videos[0].thumbnail_url.replace('%{width}', '1280').replace('%{height}', '720').replace('{width}', '1280').replace('{height}', '720');
+        }
+      } catch (e) {}
+    }
+  }
+
+  res.render('overlay-builder', {
+    streamer: req.streamer,
+    designs: JSON.stringify(designs),
+    overlayUrl,
+    streamThumbnail
+  });
 });
 
 router.post('/overlay-builder/save', (req, res) => {
