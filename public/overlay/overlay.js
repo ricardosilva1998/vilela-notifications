@@ -291,9 +291,6 @@ function showNotification(event) {
 
   // Dismiss after duration
   setTimeout(() => {
-    card.classList.remove('entering');
-    card.classList.add('dismissing');
-
     // Clean up screen effects
     document.querySelectorAll('.screen-effect').forEach(e => {
       e.style.animation = 'none';
@@ -301,10 +298,19 @@ function showNotification(event) {
       setTimeout(() => e.remove(), 100);
     });
 
-    card.addEventListener('animationend', () => {
-      card.remove();
-      setTimeout(playNext, 500);
-    }, { once: true });
+    if (card._customPosition) {
+      // Custom-positioned cards use fade out (no CSS animation)
+      card.style.transition = 'opacity 0.3s ease-in';
+      card.style.opacity = '0';
+      setTimeout(() => { card.remove(); setTimeout(playNext, 500); }, 350);
+    } else {
+      card.classList.remove('entering');
+      card.classList.add('dismissing');
+      card.addEventListener('animationend', () => {
+        card.remove();
+        setTimeout(playNext, 500);
+      }, { once: true });
+    }
   }, duration);
 }
 
@@ -585,29 +591,37 @@ function applyCustomDesign(card, eventType) {
     card.style.top = (design.card_custom_y * 100) + '%';
     card.style.right = '';
     card.style.bottom = '';
+    // Remove default CSS entering animation since it uses translateX(-50%)
+    card.classList.remove('entering');
+    card.style.opacity = '0';
     card.style.transform = 'none';
-    return;
-  }
-
-  const pos = design.card_position || 'top-center';
-  const [vPos, hPos] = pos.split('-');
-  if (vPos === 'top') { card.style.top = '16px'; card.style.bottom = ''; }
-  else if (vPos === 'bot') { card.style.bottom = '16px'; card.style.top = ''; }
-  else { card.style.top = '50%'; card.style.bottom = ''; }
-
-  if (hPos === 'center' || !hPos) {
-    card.style.left = '50%';
-    card.style.right = '';
-    const offset = vPos === 'mid' ? '-50%' : '-50%';
-    card.style.transform = vPos === 'mid' ? 'translate(-50%,-50%)' : 'translateX(-50%)';
-  } else if (hPos === 'left') {
-    card.style.left = '16px';
-    card.style.right = '';
-    card.style.transform = vPos === 'mid' ? 'translateY(-50%)' : 'none';
+    // Fade in instead
+    requestAnimationFrame(() => {
+      card.style.transition = 'opacity 0.4s ease-out';
+      card.style.opacity = '1';
+    });
+    // Override dismiss to use fade out
+    card._customPosition = true;
   } else {
-    card.style.right = '16px';
-    card.style.left = '';
-    card.style.transform = vPos === 'mid' ? 'translateY(-50%)' : 'none';
+    const pos = design.card_position || 'top-center';
+    const [vPos, hPos] = pos.split('-');
+    if (vPos === 'top') { card.style.top = '16px'; card.style.bottom = ''; }
+    else if (vPos === 'bot') { card.style.bottom = '16px'; card.style.top = ''; }
+    else { card.style.top = '50%'; card.style.bottom = ''; }
+
+    if (hPos === 'center' || !hPos) {
+      card.style.left = '50%';
+      card.style.right = '';
+      card.style.transform = vPos === 'mid' ? 'translate(-50%,-50%)' : 'translateX(-50%)';
+    } else if (hPos === 'left') {
+      card.style.left = '16px';
+      card.style.right = '';
+      card.style.transform = vPos === 'mid' ? 'translateY(-50%)' : 'none';
+    } else {
+      card.style.right = '16px';
+      card.style.left = '';
+      card.style.transform = vPos === 'mid' ? 'translateY(-50%)' : 'none';
+    }
   }
 
   // Top accent
@@ -618,11 +632,18 @@ function applyCustomDesign(card, eventType) {
     accent.style.borderRadius = (design.border_radius || 16) + 'px ' + (design.border_radius || 16) + 'px 0 0';
   }
 
-  // Event label color
+  // Event label color & text
   const labelEl = card.querySelector('.event-label');
   if (labelEl) {
     labelEl.style.color = design.accent_color;
     if (design.event_label) labelEl.textContent = design.event_label;
+  }
+
+  // Detail text
+  const detailEl = card.querySelector('.detail');
+  if (detailEl && design.detail_text) {
+    // Replace placeholder values in the template
+    detailEl.innerHTML = design.detail_text;
   }
 
   // Username font & color

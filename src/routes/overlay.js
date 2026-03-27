@@ -57,12 +57,12 @@ router.get('/events/:token', (req, res) => {
 
   // Heartbeat every 30s to keep connection alive in OBS browser source
   const heartbeat = setInterval(() => {
-    res.write(`:heartbeat\n\n`);
+    try { res.write(`:heartbeat\n\n`); } catch (e) { clearInterval(heartbeat); }
   }, 30000);
 
   // Listen for events on the bus
   const listener = (event) => {
-    res.write(`data: ${JSON.stringify(event)}\n\n`);
+    try { res.write(`data: ${JSON.stringify(event)}\n\n`); } catch (e) { /* connection closed */ }
   };
 
   bus.on(`overlay:${streamer.id}`, listener);
