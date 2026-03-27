@@ -297,10 +297,10 @@
     <% } %>
   </div>
 
-  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; align-items: stretch;">
 
     <!-- Overlay Card -->
-    <div class="card animate-in" style="padding: 24px;">
+    <div class="card animate-in" style="padding: 24px; display: flex; flex-direction: column;">
       <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
         <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(145,71,255,0.15); display: flex; align-items: center; justify-content: center;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9146ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
@@ -327,7 +327,7 @@
           Configure animated notification banners for follows, subs, bits, donations, and raids in your OBS stream.
         </p>
       <% } %>
-      <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: auto;">
         <a href="/dashboard/overlay" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px; text-decoration: none;"><%= overlayUrl ? 'Overlay Settings' : 'Configure Overlay' %></a>
         <% if (overlayUrl) { %>
         <a href="/dashboard/overlay-builder" style="font-size: 13px; padding: 8px 14px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; background: rgba(145,71,255,0.1); border: 1px solid rgba(145,71,255,0.25); border-radius: var(--radius-sm); color: #9146ff; font-family: var(--font-display); font-weight: 600; transition: all 0.15s;" onmouseover="this.style.background='rgba(145,71,255,0.2)'" onmouseout="this.style.background='rgba(145,71,255,0.1)'">
@@ -339,7 +339,7 @@
     </div>
 
     <!-- Chatbot Card -->
-    <div class="card animate-in animate-in-delay-1" style="padding: 24px;">
+    <div class="card animate-in animate-in-delay-1" style="padding: 24px; display: flex; flex-direction: column;">
       <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
         <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(145,71,255,0.15); display: flex; align-items: center; justify-content: center;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9146ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -362,11 +362,11 @@
           Set up a chatbot for your Twitch channel with thank-you messages and custom commands.
         <% } %>
       </p>
-      <a href="/dashboard/chatbot" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px; text-decoration: none;"><%= streamer.chatbot_enabled ? 'Chatbot Settings' : 'Configure Chatbot' %></a>
+      <a href="/dashboard/chatbot" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px; text-decoration: none; margin-top: auto;"><%= streamer.chatbot_enabled ? 'Chatbot Settings' : 'Configure Chatbot' %></a>
     </div>
 
     <!-- Spotify Card -->
-    <div class="card animate-in animate-in-delay-2" style="padding: 24px;">
+    <div class="card animate-in animate-in-delay-2" style="padding: 24px; display: flex; flex-direction: column;">
       <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
         <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(30,215,96,0.15); display: flex; align-items: center; justify-content: center;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="#1DB954"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
@@ -384,17 +384,17 @@
         <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px; line-height: 1.5;">
           Spotify connected — viewers can type <code style="background: var(--bg-elevated); padding: 1px 6px; border-radius: 4px;">!song</code> to see what you're listening to.
         </p>
-        <a href="/auth/spotify" class="btn btn-secondary" style="font-size: 13px; padding: 8px 16px; text-decoration: none;">Reconnect</a>
+        <a href="/auth/spotify" class="btn btn-secondary" style="font-size: 13px; padding: 8px 16px; text-decoration: none; margin-top: auto;">Reconnect</a>
       <% } else { %>
         <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px; line-height: 1.5;">
           Connect Spotify so viewers can use <code style="background: var(--bg-elevated); padding: 1px 6px; border-radius: 4px;">!song</code> to see what you're playing.
         </p>
-        <a href="/auth/spotify" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px; text-decoration: none;">Connect Spotify</a>
+        <a href="/auth/spotify" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px; text-decoration: none; margin-top: auto;">Connect Spotify</a>
       <% } %>
     </div>
 
     <!-- Sponsor Messages Card -->
-    <div class="card animate-in" style="padding: 24px;">
+    <div class="card animate-in" style="padding: 24px; display: flex; flex-direction: column;">
       <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
         <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(247,144,9,0.15); display: flex; align-items: center; justify-content: center;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f79009" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -407,7 +407,7 @@
       <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px; line-height: 1.5;">
         Rotate sponsor messages in chat with customizable intervals. For sponsor image overlays, use the Overlay Builder.
       </p>
-      <a href="/dashboard/timed-notifications" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px; text-decoration: none;">Manage Messages</a>
+      <a href="/dashboard/timed-notifications" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px; text-decoration: none; margin-top: auto;">Manage Messages</a>
     </div>
 
   </div>
