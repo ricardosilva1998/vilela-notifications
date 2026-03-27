@@ -688,6 +688,7 @@ function showSponsorImage(data) {
   document.querySelectorAll('.sponsor-banner').forEach(el => el.remove());
 
   const design = overlayDesigns['timed']; // Use timed design for position/size
+  console.log('[Overlay] Timed design:', JSON.stringify(design ? { pos: design.card_position, cx: design.card_custom_x, cy: design.card_custom_y, w: design.card_width, anim: design.sponsor_animation } : 'NO DESIGN'));
 
   const banner = document.createElement('div');
   const sponsorAnim = (design && design.sponsor_animation) || 'fade';
@@ -741,6 +742,9 @@ function showSponsorImage(data) {
   }
 
   document.getElementById('timed-container').appendChild(banner);
+  console.log('[Overlay] Banner appended. Style:', banner.style.cssText);
+  img.onload = () => console.log('[Overlay] Image loaded:', img.naturalWidth, 'x', img.naturalHeight);
+  img.onerror = () => console.error('[Overlay] Image FAILED to load:', data.imageUrl);
 
   // Auto-hide before next image arrives (fade out 2s before displayDuration)
   if (data.displayDuration) {
