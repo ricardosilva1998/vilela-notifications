@@ -182,6 +182,11 @@ evtSource.onmessage = (e) => {
     return;
   }
 
+  if (data.type === 'timed') {
+    showTimedNotification(data.data);
+    return;
+  }
+
   // Check if event type is enabled
   const eventType = data.type;
   const typeConfig = overlayConfig[eventType];
@@ -596,4 +601,43 @@ function esc(text) {
   const d = document.createElement('div');
   d.textContent = text || '';
   return d.innerHTML;
+}
+
+// ─── Timed notification banner ─────────────────────────────────
+function showTimedNotification(data) {
+  let timedContainer = document.getElementById('timed-container');
+  if (!timedContainer) {
+    timedContainer = document.createElement('div');
+    timedContainer.id = 'timed-container';
+    document.body.appendChild(timedContainer);
+  }
+
+  const banner = document.createElement('div');
+  banner.className = 'timed-banner';
+  banner.style.background = data.bgColor || '#1a1a2e';
+  banner.style.color = data.textColor || '#ffffff';
+
+  // Position
+  const pos = data.position || 'bot-center';
+  const [vPos, hPos] = pos.split('-');
+  if (vPos === 'top') { banner.style.top = '16px'; }
+  else if (vPos === 'bot') { banner.style.bottom = '16px'; }
+  else { banner.style.top = '50%'; banner.style.transform = 'translateY(-50%)'; }
+
+  if (hPos === 'center' || !hPos) { banner.style.left = '50%'; banner.style.transform = (banner.style.transform || '') + ' translateX(-50%)'; }
+  else if (hPos === 'left') { banner.style.left = '16px'; }
+  else { banner.style.right = '16px'; }
+
+  banner.innerHTML = `
+    ${data.name ? `<div class="timed-name">${esc(data.name)}</div>` : ''}
+    <div class="timed-message">${esc(data.message)}</div>
+  `;
+
+  timedContainer.appendChild(banner);
+
+  const duration = (data.duration || 8) * 1000;
+  setTimeout(() => {
+    banner.classList.add('dismissing');
+    banner.addEventListener('animationend', () => banner.remove());
+  }, duration);
 }
