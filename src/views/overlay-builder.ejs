@@ -794,11 +794,61 @@
           <div class="event-tab" data-type="yt_giftmember"><span style="font-size:16px;">🎁</span><span style="font-size:10px;">Gift</span></div>
         </div>
         <div class="event-tabs-label" style="color: #555;">Kick (coming soon)</div>
+        <div class="event-tabs-label">General</div>
+        <div class="event-tabs-row">
+          <div class="event-tab" data-type="timed"><span style="font-size:16px;">⏰</span><span style="font-size:10px;">Timed</span></div>
+        </div>
       </div>
     </div>
 
     <div class="panel-scroll">
 
+      <!-- Sponsor Section (visible only on Timed tab) -->
+      <div class="sponsor-section" id="sponsor-section">
+        <div class="section" id="section-sponsors">
+          <div class="section-header" onclick="toggleSection('sponsors')">
+            <span class="section-title">🖼️ Sponsors</span>
+            <span class="section-chevron">▼</span>
+          </div>
+          <div class="section-body">
+            <div class="sponsor-toggle-row">
+              <span class="sponsor-toggle-label">Enable Rotation</span>
+              <label class="sp-toggle">
+                <input type="checkbox" id="sp-rotation-toggle" onchange="toggleSponsorRotation(this.checked)">
+                <span class="sp-toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="sp-anim-row" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <span style="font-size:12px;color:var(--text-secondary);white-space:nowrap;">Animation</span>
+              <select id="ctrl-sponsor-animation" style="flex:1;padding:4px 8px;font-size:12px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);" onchange="updatePreview(); replaySponsorAnimation();">
+                <option value="fade">Fade</option>
+                <option value="slide-left">Slide Left</option>
+                <option value="slide-right">Slide Right</option>
+                <option value="slide-up">Slide Up</option>
+                <option value="drop-down">Drop Down</option>
+                <option value="zoom">Zoom In</option>
+                <option value="none">None</option>
+              </select>
+            </div>
+
+            <div class="sponsor-list" id="sponsor-list">
+              <!-- Populated by JS -->
+            </div>
+
+            <div class="sp-upload-zone" id="sp-upload-zone">
+              <input type="file" id="sp-file-input" accept="image/png,image/jpeg,image/gif,image/webp">
+              <div class="sp-upload-text">Drop image or click to browse</div>
+            </div>
+            <div class="sp-upload-row">
+              <input type="text" id="sp-upload-name" class="sp-upload-input" placeholder="Sponsor name" value="Sponsor">
+              <input type="number" id="sp-upload-dur" class="sp-dur" value="30" min="5" max="300" step="5" title="Duration (seconds)">
+              <span class="sp-dur-label">s</span>
+              <button type="button" id="sp-upload-btn" class="sp-upload-btn" disabled onclick="uploadSponsor()">Upload</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Theme Section -->
       <div class="section collapsed" id="section-theme">
@@ -944,6 +994,11 @@
 
     <!-- Toolbar -->
     <div class="preview-toolbar">
+      <button class="toolbar-btn" id="btn-play-anim" onclick="playPreviewAnimation()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Play Animation
+      </button>
+      <div class="toolbar-spacer"></div>
       <span class="toolbar-hint" id="toolbar-hint">Editing: <strong id="toolbar-event-name">Follow</strong></span>
     </div>
 
