@@ -751,21 +751,23 @@
         <input type="text" value="<%= overlayUrl.replace('/overlay/', '/overlay/sponsors/') %>" readonly id="sponsors-url">
         <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('sponsors-url').value); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy',1500);">Copy</button>
       </div>
+      <!-- Custom overlay URLs — DISABLED for now
       <label>Scenes:</label>
       <div class="url-row">
-        <input type="text" value="<%= overlayUrl.replace('/overlay/', '/overlay/scenes/') %>" readonly id="scenes-url">
-        <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('scenes-url').value); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy',1500);">Copy</button>
+        <input type="text" value="<%%= overlayUrl.replace('/overlay/', '/overlay/scenes/') %>" readonly id="scenes-url">
+        <button class="copy-btn">Copy</button>
       </div>
       <label>Info Bar:</label>
       <div class="url-row">
-        <input type="text" value="<%= overlayUrl.replace('/overlay/', '/overlay/bar/') %>" readonly id="bar-url">
-        <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('bar-url').value); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy',1500);">Copy</button>
+        <input type="text" value="<%%= overlayUrl.replace('/overlay/', '/overlay/bar/') %>" readonly id="bar-url">
+        <button class="copy-btn">Copy</button>
       </div>
       <label>Custom Alerts:</label>
       <div class="url-row">
-        <input type="text" value="<%= overlayUrl.replace('/overlay/', '/overlay/custom-alerts/') %>" readonly id="custom-alerts-url">
-        <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('custom-alerts-url').value); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy',1500);">Copy</button>
+        <input type="text" value="<%%= overlayUrl.replace('/overlay/', '/overlay/custom-alerts/') %>" readonly id="custom-alerts-url">
+        <button class="copy-btn">Copy</button>
       </div>
+      -->
     </div>
   </div>
   <script>document.addEventListener('click', e => { if (!e.target.closest('.overlay-urls-btn') && !e.target.closest('.urls-dropdown')) document.getElementById('urls-dd').classList.remove('open'); });</script>

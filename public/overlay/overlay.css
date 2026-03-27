@@ -547,12 +547,11 @@ body {
   to   { opacity: 1; transform: scale(1); }
 }
 
-/* ─── Custom alert entrance animations ──────────────────────── */
+/* ─── Custom overlay animations — DISABLED for now ───────────
 @keyframes customAlertFade  { from { opacity: 0; }                        to { opacity: 1; }                      }
 @keyframes customAlertZoom  { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
 @keyframes customAlertSlide { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
-
-/* Custom overlay animations */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 @keyframes scrollLeft { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+──────────────────────────────────────────────────────────────── */

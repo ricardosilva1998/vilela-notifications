@@ -11,7 +11,7 @@ const apiRoutes = require('./routes/api');
 const adminRoutes = require('./routes/admin');
 const paymentRoutes = require('./routes/payment');
 const overlayRoutes = require('./routes/overlay');
-const customOverlayRoutes = require('./routes/customOverlays');
+// const customOverlayRoutes = require('./routes/customOverlays'); // DISABLED for now
 
 const app = express();
 
@@ -32,8 +32,8 @@ app.use(express.static(path.join(__dirname, '..', 'public'), {
 app.use('/overlay/sounds', express.static(path.join(__dirname, '..', 'data', 'sounds')));
 // Serve sponsor images from persistent data volume
 app.use('/sponsors', express.static(path.join(__dirname, '..', 'data', 'sponsors')));
-// Serve custom overlay uploads from persistent data volume
-app.use('/uploads/custom', express.static(path.join(__dirname, '..', 'data', 'uploads', 'custom')));
+// Serve custom overlay uploads from persistent data volume — DISABLED for now
+// app.use('/uploads/custom', express.static(path.join(__dirname, '..', 'data', 'uploads', 'custom')));
 
 // EJS setup
 app.set('view engine', 'ejs');
@@ -86,7 +86,7 @@ app.get('/pricing', (req, res) => {
 
 app.use('/auth', authRoutes);
 app.use('/dashboard', dashboardRoutes);
-app.use('/dashboard/custom-overlays', customOverlayRoutes);
+// app.use('/dashboard/custom-overlays', customOverlayRoutes); // DISABLED for now
 app.use('/payment', paymentRoutes);
 app.use('/api', apiRoutes);
 app.use('/admin', adminRoutes);
