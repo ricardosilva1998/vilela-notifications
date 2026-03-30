@@ -994,14 +994,17 @@
   <!-- RIGHT PANEL -->
   <div class="right-panel">
 
-    <!-- Toolbar -->
-    <div class="preview-toolbar">
-      <button class="toolbar-btn" id="btn-play-anim" onclick="playPreviewAnimation()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        Play Animation
+    <!-- Save bar (above canvas) -->
+    <div class="save-bar">
+      <span class="event-badge" id="save-event-badge-top">Follow</span>
+      <div class="spacer"></div>
+      <span class="save-status" id="save-status">Saved!</span>
+      <button class="btn btn-danger" onclick="resetCurrentDesign()">Reset to Default</button>
+      <button class="btn btn-secondary" onclick="discardChanges()">Discard</button>
+      <button class="btn btn-primary" onclick="saveCurrentDesign()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save
       </button>
-      <div class="toolbar-spacer"></div>
-      <span class="toolbar-hint" id="toolbar-hint">Editing: <strong id="toolbar-event-name">Follow</strong></span>
     </div>
 
     <!-- Preview canvas -->
@@ -1043,18 +1046,7 @@
       </div>
     </div>
 
-    <!-- Save bar -->
-    <div class="save-bar">
-      <span class="event-badge" id="save-event-badge">Follow</span>
-      <div class="spacer"></div>
-      <span class="save-status" id="save-status">Saved!</span>
-      <button class="btn btn-danger" onclick="resetCurrentDesign()">Reset to Default</button>
-      <button class="btn btn-secondary" onclick="discardChanges()">Discard</button>
-      <button class="btn btn-primary" onclick="saveCurrentDesign()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-        Save
-      </button>
-    </div>
+    <!-- Save bar moved to above canvas -->
 
   </div><!-- end right-panel -->
 </div><!-- end builder-layout -->
@@ -1493,8 +1485,8 @@ function switchTab(type) {
 
   // Update badges
   const name = EVENT_NAMES[type] || type;
-  document.getElementById('toolbar-event-name').textContent = name;
-  document.getElementById('save-event-badge').textContent = name;
+  const topBadge = document.getElementById('save-event-badge-top');
+  if (topBadge) topBadge.textContent = name;
 
   // Update preview username text
   document.getElementById('preview-username').textContent = PREVIEW_USERNAMES[type] || 'StreamerFan99';
