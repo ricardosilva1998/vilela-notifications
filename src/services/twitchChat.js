@@ -2,6 +2,7 @@ const tmi = require('tmi.js');
 const config = require('../config');
 const db = require('../db');
 const bus = require('./overlayBus');
+const { isExempt, runFilters, getAction, executeAction, grantPermit, activateRaidProtection } = require('./chatModeration');
 
 let client = null;
 const channelMap = new Map(); // channelName -> streamerId
@@ -14,13 +15,60 @@ function getStreamerIdForChannel(channel) {
   return channelMap.get(clean);
 }
 
-function handleMessage(channel, tags, message, self) {
+async function handleMessage(channel, tags, message, self) {
   if (self) return;
+
+  const streamerId = getStreamerIdForChannel(channel);
+  if (!streamerId) return;
+
+  const streamer = db.getStreamerById(streamerId);
+  if (!streamer) return;
+
+  // Run moderation filters for non-exempt users
+  if (!isExempt(tags, streamer)) {
+    const violation = await runFilters(channel, tags, message, streamer);
+    if (violation) {
+      if (violation.flagOnly) {
+        // Just announce — don't block command processing
+        client.say(channel, `[Mod] ${violation.reason}`).catch(() => {});
+      } else {
+        const action = getAction(channel, tags.username, streamer);
+        await executeAction(client, channel, tags, action, violation.reason, streamer);
+        return; // Don't process commands after a moderation action
+      }
+    }
+  }
+
+  // Mod-only commands
+  if (message.startsWith('!') && (tags.mod || tags.badges?.broadcaster)) {
+    const parts = message.split(' ');
+    const modCmd = parts[0].substring(1).toLowerCase();
+
+    if (modCmd === 'permit' && parts[1]) {
+      const targetUser = parts[1].replace(/^@/, '').toLowerCase();
+      const duration = streamer.mod_permit_duration || 60;
+      grantPermit(channel, targetUser, duration);
+      client.say(channel, `@${targetUser} has been permitted to post a link for ${duration} seconds.`).catch(() => {});
+      return;
+    }
+
+    if (modCmd === 'slow') {
+      const seconds = parseInt(parts[1], 10) || 30;
+      client.slow(channel, seconds).catch(() => {});
+      client.say(channel, `Slow mode enabled (${seconds}s).`).catch(() => {});
+      return;
+    }
+
+    if (modCmd === 'slowoff') {
+      client.slowoff(channel).catch(() => {});
+      client.say(channel, `Slow mode disabled.`).catch(() => {});
+      return;
+    }
+  }
+
   if (!message.startsWith('!')) return;
 
   const commandName = message.split(' ')[0].substring(1).toLowerCase();
-  const streamerId = getStreamerIdForChannel(channel);
-  if (!streamerId) return;
 
   console.log(`[Chat] Command received: !${commandName} from ${tags.username} in ${channel}`);
 
@@ -32,21 +80,18 @@ function handleMessage(channel, tags, message, self) {
     if (now - lastUsed < 5000) return;
     cooldowns.set(songCooldownKey, now);
 
-    const streamer = db.getStreamerById(streamerId);
-    if (streamer) {
-      const { getCurrentlyPlaying } = require('./spotify');
-      getCurrentlyPlaying(streamer).then(result => {
-        let msg;
-        switch (result.status) {
-          case 'playing': msg = `🎵 Now playing: ${result.track} by ${result.artist}`; break;
-          case 'paused': msg = `⏸️ Paused: ${result.track} by ${result.artist}`; break;
-          case 'nothing_playing': msg = `🔇 Nothing playing on Spotify right now`; break;
-          case 'not_connected': msg = `Spotify not connected`; break;
-          default: msg = `Could not fetch current song`;
-        }
-        if (client) client.say(channel, msg).catch(() => {});
-      }).catch(() => {});
-    }
+    const { getCurrentlyPlaying } = require('./spotify');
+    getCurrentlyPlaying(streamer).then(result => {
+      let msg;
+      switch (result.status) {
+        case 'playing': msg = `🎵 Now playing: ${result.track} by ${result.artist}`; break;
+        case 'paused': msg = `⏸️ Paused: ${result.track} by ${result.artist}`; break;
+        case 'nothing_playing': msg = `🔇 Nothing playing on Spotify right now`; break;
+        case 'not_connected': msg = `Spotify not connected`; break;
+        default: msg = `Could not fetch current song`;
+      }
+      if (client) client.say(channel, msg).catch(() => {});
+    }).catch(() => {});
     return;
   }
 
@@ -189,6 +234,10 @@ const chatManager = {
     client.say(streamer.twitch_username, message).catch((err) => {
       console.error(`[Chat] Failed to send event message for streamer ${streamerId}:`, err.message);
     });
+
+    if (eventType === 'raid' && client) {
+      activateRaidProtection(client, streamer.twitch_username, streamer);
+    }
   },
 
   sendRawMessage(channel, message) {
