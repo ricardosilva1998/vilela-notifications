@@ -205,18 +205,23 @@ function getAction(channel, username, streamer) {
 
 // ─── Helix API helpers for moderation ─────────────────────────────────────────
 let botUserId = null;
+let botClientId = null;
 
 async function getBotUserId() {
   if (botUserId) return botUserId;
   const token = config.bot.twitchToken.replace(/^oauth:/, '');
   try {
-    const res = await fetch('https://api.twitch.tv/helix/users', {
-      headers: { 'Client-ID': config.twitch.clientId, 'Authorization': `Bearer ${token}` }
+    // Use validate endpoint — works regardless of Client-ID
+    const res = await fetch('https://id.twitch.tv/oauth2/validate', {
+      headers: { 'Authorization': `OAuth ${token}` }
     });
     const data = await res.json();
-    if (data.data && data.data[0]) {
-      botUserId = data.data[0].id;
-      console.log(`[Mod] Bot user ID resolved: ${botUserId}`);
+    if (data.user_id) {
+      botUserId = data.user_id;
+      botClientId = data.client_id;
+      console.log(`[Mod] Bot user ID resolved: ${botUserId} (${data.login}), client_id: ${botClientId}, scopes: ${data.scopes?.join(', ')}`);
+    } else {
+      console.error('[Mod] Failed to validate bot token:', JSON.stringify(data));
     }
   } catch (e) {
     console.error('[Mod] Failed to get bot user ID:', e.message);
@@ -228,11 +233,12 @@ async function helixDeleteMessage(broadcasterId, messageId) {
   const modId = await getBotUserId();
   if (!modId) { console.error('[Mod] No bot user ID, cannot delete'); return; }
   const token = config.bot.twitchToken.replace(/^oauth:/, '');
+  const clientId = botClientId || config.twitch.clientId;
   const url = `https://api.twitch.tv/helix/moderation/chat/messages?broadcaster_id=${broadcasterId}&moderator_id=${modId}&message_id=${messageId}`;
-  console.log(`[Mod] Helix DELETE ${url}`);
+  console.log(`[Mod] Helix DELETE message ${messageId} in channel ${broadcasterId}`);
   const res = await fetch(url, {
     method: 'DELETE',
-    headers: { 'Client-ID': config.twitch.clientId, 'Authorization': `Bearer ${token}` }
+    headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${token}` }
   });
   if (!res.ok) {
     const body = await res.text();
@@ -248,9 +254,10 @@ async function helixBanUser(broadcasterId, userId, duration, reason) {
   const token = config.bot.twitchToken.replace(/^oauth:/, '');
   const body = { data: { user_id: userId, reason: reason || '' } };
   if (duration) body.data.duration = duration;
+  const clientId = botClientId || config.twitch.clientId;
   const res = await fetch(`https://api.twitch.tv/helix/moderation/bans?broadcaster_id=${broadcasterId}&moderator_id=${modId}`, {
     method: 'POST',
-    headers: { 'Client-ID': config.twitch.clientId, 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
   if (!res.ok) {
