@@ -169,7 +169,13 @@
         </h3>
         <p style="color: var(--text-secondary); font-size: 13px; margin: 0;">Configure each event alert individually.</p>
       </div>
-      <button onclick="clearOverlayAlerts()" class="btn btn-danger" style="padding: 7px 16px; font-size: 12px; white-space: nowrap;">Clear All Alerts</button>
+      <div style="display: flex; gap: 8px;">
+        <button onclick="clearOverlayAlerts()" class="btn btn-danger" style="padding: 7px 16px; font-size: 12px; white-space: nowrap;">Clear All Alerts</button>
+        <button type="submit" class="btn btn-primary" style="padding: 7px 16px; font-size: 12px; white-space: nowrap; display: flex; align-items: center; gap: 6px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save Settings
+        </button>
+      </div>
     </div>
     <input type="hidden" name="overlay_volume" value="<%= streamer.overlay_volume != null ? streamer.overlay_volume : 0.8 %>">
 
@@ -559,13 +565,6 @@
     <% } %>
   </div>
 
-  <!-- Save Button -->
-  <div style="display: flex; justify-content: flex-end; margin-bottom: 24px;">
-    <button type="submit" class="btn btn-primary" style="padding: 12px 32px; font-size: 14px;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-      Save Settings
-    </button>
-  </div>
 
 </form>
 
