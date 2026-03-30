@@ -1458,6 +1458,22 @@ function updateOverlayGuide() {
   });
 }
 
+function ensureFxKeyframes() {
+  if (document.getElementById('fx-keyframes')) return;
+  const style = document.createElement('style');
+  style.id = 'fx-keyframes';
+  style.textContent = `
+    @keyframes fxFallDown { 0% { opacity:0; transform:translateY(0) rotate(0); } 5% { opacity:1; } 90% { opacity:0.8; } 100% { opacity:0; transform:translateY(400px) rotate(720deg); } }
+    @keyframes fxFallUp { 0% { opacity:0; transform:translateY(0) rotate(0); } 5% { opacity:1; } 90% { opacity:0.8; } 100% { opacity:0; transform:translateY(-400px) rotate(720deg); } }
+    @keyframes fxFallLeft { 0% { opacity:0; transform:translateX(0) rotate(0); } 5% { opacity:1; } 90% { opacity:0.8; } 100% { opacity:0; transform:translateX(-400px) rotate(720deg); } }
+    @keyframes fxFallRight { 0% { opacity:0; transform:translateX(0) rotate(0); } 5% { opacity:1; } 90% { opacity:0.8; } 100% { opacity:0; transform:translateX(400px) rotate(720deg); } }
+    @keyframes fxFall { 0% { opacity:0; transform:translateY(0) rotate(0); } 5% { opacity:1; } 90% { opacity:0.8; } 100% { opacity:0; transform:translateY(400px) rotate(720deg); } }
+    @keyframes fxTire { 0%,25% { width:0; opacity:0; } 30% { opacity:0.6; } 70% { width:100%; opacity:0.2; } 100% { width:100%; opacity:0; } }
+  `;
+  document.head.appendChild(style);
+}
+ensureFxKeyframes();
+
 function renderScreenEffect(effect) {
   const screen = document.getElementById('preview-screen');
   screen.querySelectorAll('.preview-fx').forEach(e => e.remove());
@@ -1549,18 +1565,7 @@ function renderScreenEffect(effect) {
 
   screen.appendChild(fxContainer);
 
-  if (!document.getElementById('fx-keyframes')) {
-    const style = document.createElement('style');
-    style.id = 'fx-keyframes';
-    style.textContent = `
-      @keyframes fxFallDown { 0% { opacity:0; transform:translateY(0) rotate(0); } 5% { opacity:1; } 90% { opacity:0.8; } 100% { opacity:0; transform:translateY(400px) rotate(720deg); } }
-      @keyframes fxFallUp { 0% { opacity:0; transform:translateY(0) rotate(0); } 5% { opacity:1; } 90% { opacity:0.8; } 100% { opacity:0; transform:translateY(-400px) rotate(720deg); } }
-      @keyframes fxFallLeft { 0% { opacity:0; transform:translateX(0) rotate(0); } 5% { opacity:1; } 90% { opacity:0.8; } 100% { opacity:0; transform:translateX(-400px) rotate(720deg); } }
-      @keyframes fxFallRight { 0% { opacity:0; transform:translateX(0) rotate(0); } 5% { opacity:1; } 90% { opacity:0.8; } 100% { opacity:0; transform:translateX(400px) rotate(720deg); } }
-      @keyframes fxFall { 0% { opacity:0; transform:translateY(0) rotate(0); } 5% { opacity:1; } 90% { opacity:0.8; } 100% { opacity:0; transform:translateY(400px) rotate(720deg); } }
-      @keyframes fxTire { 0%,25% { width:0; opacity:0; } 30% { opacity:0.6; } 70% { width:100%; opacity:0.2; } 100% { width:100%; opacity:0; } }
-    `;
-    document.head.appendChild(style);
+  ensureFxKeyframes();
   }
 }
 
@@ -2528,9 +2533,9 @@ document.addEventListener('mouseup', e => {
         <div id="anim-preview-card" style="border-radius:12px;border:1px solid rgba(136,136,204,0.5);background:linear-gradient(160deg,rgb(9,9,22),#1a1a3e 40%,rgb(9,9,22));text-align:center;width:180px;overflow:hidden;">
           <div style="height:2px;background:linear-gradient(90deg,rgba(50,50,80,0.6),#8888cc,rgba(50,50,80,0.6));border-radius:12px 12px 0 0;"></div>
           <div style="padding:10px 16px 8px;">
-            <div style="font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#8888cc;font-weight:700;margin-bottom:2px;">New Follower</div>
-            <div style="font-size:16px;font-weight:800;color:#fff;">RacerName</div>
-            <div style="font-size:10px;color:#ccc;margin-top:2px;">just joined the race</div>
+            <div id="anim-card-label" style="font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#8888cc;font-weight:700;margin-bottom:2px;">New Follower</div>
+            <div id="anim-card-username" style="font-size:16px;font-weight:800;color:#fff;">RacerName</div>
+            <div id="anim-card-detail" style="font-size:10px;color:#ccc;margin-top:2px;">just joined the race</div>
           </div>
           <div id="anim-preview-track" style="height:28px;position:relative;overflow:hidden;border-top:1px solid rgba(255,255,255,0.07);background:rgba(136,136,204,0.06);border-radius:0 0 12px 12px;">
             <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(255,255,255,0.08);transform:translateY(-50%);"></div>
@@ -2854,6 +2859,21 @@ function openAnimPopup() {
   document.getElementById('modal-effect-size').value = d.effect_size || 1.0;
   document.getElementById('modal-val-size').textContent = parseFloat(d.effect_size || 1.0).toFixed(1) + '×';
   document.getElementById('modal-effect-direction').value = d.effect_direction || 'down';
+
+  // Update popup card to match current event type
+  const label = d.event_label || EVENT_DEFAULTS[currentType]?.event_label || 'Alert';
+  const username = PREVIEW_USERNAMES[currentType] || 'RacerName';
+  const detail = getDetailPreviewText(currentType) || '';
+  document.getElementById('anim-card-label').textContent = label;
+  document.getElementById('anim-card-label').style.color = d.accent_color || '#8888cc';
+  document.getElementById('anim-card-username').textContent = username;
+  document.getElementById('anim-card-detail').textContent = detail;
+  // Update card colors
+  const cardEl = document.getElementById('anim-preview-card');
+  const dark = darken(d.bg_color || '#1a1a3e');
+  cardEl.style.background = `linear-gradient(160deg, ${dark}, ${d.bg_color || '#1a1a3e'} 40%, ${dark})`;
+  cardEl.style.borderColor = hexToRgba(d.border_color || '#8888cc', 0.5);
+
   updateAnimPreview();
   document.getElementById('anim-modal').classList.add('visible');
   // Auto-play entrance on open
@@ -2896,10 +2916,13 @@ function updateAnimPreview() {
 
   let resolved = effect;
   if (resolved === 'default') {
-    const defaults = { follow:'confetti', subscription:'confetti', bits:'gold', donation:'money', raid:'robots', yt_superchat:'gold', yt_member:'confetti', yt_giftmember:'money' };
+    const defaults = { follow:'tiremarks', subscription:'confetti', bits:'gold', donation:'money', raid:'robots', yt_superchat:'gold', yt_member:'confetti', yt_giftmember:'money' };
     resolved = defaults[currentType] || 'none';
   }
   if (resolved === 'none') return;
+
+  // Ensure keyframes exist
+  ensureFxKeyframes();
 
   function mfxPos() {
     if (dir === 'down') return `left:${Math.random()*100}%;top:-5%;`;
