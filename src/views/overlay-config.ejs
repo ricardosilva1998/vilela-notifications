@@ -933,82 +933,32 @@
   }
 </script>
 
-<!-- Test Alerts Section -->
-<div class="card" style="margin-top: 24px; padding: 24px;">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-    <h3 style="font-size: 16px; margin: 0;">Test Alerts</h3>
-    <button onclick="clearOverlay()" class="btn btn-danger" style="padding: 6px 16px; font-size: 12px;">Clear All Alerts</button>
+<!-- Clear Alerts -->
+<div class="card" style="margin-top: 24px; padding: 20px; display: flex; justify-content: space-between; align-items: center;">
+  <div>
+    <h3 style="font-size: 15px; margin-bottom: 4px;">Clear Overlay</h3>
+    <p style="color: var(--text-secondary); font-size: 13px; margin: 0;">Remove all queued alerts and stop any playing sounds on your OBS overlay.</p>
   </div>
-  <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">Send test alerts to your OBS overlay. Make sure the overlay is open in OBS to see them.</p>
-
-  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
-    <!-- Follow -->
-    <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 14px; border: 1px solid var(--border);">
-      <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Follow</div>
-      <button onclick="sendTestAlert('follow')" class="btn btn-primary" style="width: 100%; padding: 8px; font-size: 12px;">Test</button>
-    </div>
-
-    <!-- Subscription -->
-    <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 14px; border: 1px solid var(--border);">
-      <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Subscription</div>
-      <button onclick="sendTestAlert('subscription')" class="btn btn-primary" style="width: 100%; padding: 8px; font-size: 12px;">Test</button>
-    </div>
-
-    <!-- Gift Subs -->
-    <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 14px; border: 1px solid var(--border);">
-      <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Gift Subs</div>
-      <div style="display: flex; gap: 6px;">
-        <input type="number" id="giftsub-amount" value="5" min="1" max="100" style="flex: 1; padding: 8px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px; text-align: center;">
-        <button onclick="sendTestAlert('giftsub', document.getElementById('giftsub-amount').value)" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px;">Test</button>
-      </div>
-    </div>
-
-    <!-- Bits -->
-    <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 14px; border: 1px solid var(--border);">
-      <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Bits / Cheer</div>
-      <div style="display: flex; gap: 6px;">
-        <input type="number" id="bits-amount" value="500" min="1" style="flex: 1; padding: 8px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px; text-align: center;">
-        <button onclick="sendTestAlert('bits', document.getElementById('bits-amount').value)" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px;">Test</button>
-      </div>
-    </div>
-
-    <!-- Raid -->
-    <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 14px; border: 1px solid var(--border);">
-      <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Raid</div>
-      <div style="display: flex; gap: 6px;">
-        <input type="number" id="raid-amount" value="50" min="1" style="flex: 1; padding: 8px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px; text-align: center;">
-        <button onclick="sendTestAlert('raid', document.getElementById('raid-amount').value)" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px;">Test</button>
-      </div>
-    </div>
-
-    <!-- Donation -->
-    <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 14px; border: 1px solid var(--border);">
-      <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Donation</div>
-      <div style="display: flex; gap: 6px;">
-        <input type="number" id="donation-amount" value="5" min="1" style="flex: 1; padding: 8px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px; text-align: center;">
-        <button onclick="sendTestAlert('donation', document.getElementById('donation-amount').value)" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px;">Test</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="test-alert-status" style="margin-top: 12px; font-size: 12px; color: var(--text-muted); display: none;"></div>
+  <button onclick="clearOverlayAlerts()" class="btn btn-danger" style="padding: 8px 20px; font-size: 13px; white-space: nowrap;">Clear All Alerts</button>
 </div>
+<div id="clear-status" style="margin-top: 8px; font-size: 12px; color: var(--text-muted); display: none; text-align: center;"></div>
 
 <script>
-async function clearOverlay() {
+async function clearOverlayAlerts() {
   try {
     const res = await fetch('/overlay/clear', { method: 'POST' });
     const data = await res.json();
     if (data.ok) {
-      const statusEl = document.getElementById('test-alert-status');
-      statusEl.style.display = 'block';
-      statusEl.style.color = 'var(--success)';
-      statusEl.textContent = 'Overlay cleared! All queued alerts removed.';
-      setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+      const el = document.getElementById('clear-status');
+      el.style.display = 'block';
+      el.style.color = 'var(--success)';
+      el.textContent = 'Overlay cleared!';
+      setTimeout(() => { el.style.display = 'none'; }, 3000);
     }
   } catch (e) {}
 }
 
+// Keep sendTestAlert for Preview Alert buttons (they still use the test endpoint internally)
 async function sendTestAlert(type, amount) {
   const statusEl = document.getElementById('test-alert-status');
   statusEl.style.display = 'block';
