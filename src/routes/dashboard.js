@@ -718,7 +718,7 @@ router.post('/overlay', (req, res) => {
     overlay_sub_duration: parseInt(b.overlay_sub_duration) || 7,
     overlay_bits_duration: parseInt(b.overlay_bits_duration) || 6,
     overlay_donation_duration: parseInt(b.overlay_donation_duration) || 6,
-    overlay_volume: parseFloat(b.overlay_volume) || 0.8,
+    overlay_volume: b.overlay_volume != null && b.overlay_volume !== '' ? parseFloat(b.overlay_volume) : 0.8,
     streamelements_jwt: b.streamelements_jwt || '',
   });
 
