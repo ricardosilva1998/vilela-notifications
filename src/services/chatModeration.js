@@ -1,6 +1,7 @@
 'use strict';
 
 const db = require('../db');
+const config = require('../config');
 
 // ─── In-memory state ──────────────────────────────────────────────────────────
 const permits = new Map();
@@ -202,31 +203,88 @@ function getAction(channel, username, streamer) {
   }
 }
 
+// ─── Helix API helpers for moderation ─────────────────────────────────────────
+let botUserId = null;
+
+async function getBotUserId() {
+  if (botUserId) return botUserId;
+  const token = config.bot.twitchToken.replace(/^oauth:/, '');
+  try {
+    const res = await fetch('https://api.twitch.tv/helix/users', {
+      headers: { 'Client-ID': config.twitch.clientId, 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.data && data.data[0]) {
+      botUserId = data.data[0].id;
+      console.log(`[Mod] Bot user ID resolved: ${botUserId}`);
+    }
+  } catch (e) {
+    console.error('[Mod] Failed to get bot user ID:', e.message);
+  }
+  return botUserId;
+}
+
+async function helixDeleteMessage(broadcasterId, messageId) {
+  const modId = await getBotUserId();
+  if (!modId) return;
+  const token = config.bot.twitchToken.replace(/^oauth:/, '');
+  const url = `https://api.twitch.tv/helix/moderation/chat?broadcaster_id=${broadcasterId}&moderator_id=${modId}&message_id=${messageId}`;
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: { 'Client-ID': config.twitch.clientId, 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(`[Mod] Helix delete failed (${res.status}):`, body);
+  }
+}
+
+async function helixBanUser(broadcasterId, userId, duration, reason) {
+  const modId = await getBotUserId();
+  if (!modId) return;
+  const token = config.bot.twitchToken.replace(/^oauth:/, '');
+  const body = { data: { user_id: userId, reason: reason || '' } };
+  if (duration) body.data.duration = duration;
+  const res = await fetch(`https://api.twitch.tv/helix/moderation/bans?broadcaster_id=${broadcasterId}&moderator_id=${modId}`, {
+    method: 'POST',
+    headers: { 'Client-ID': config.twitch.clientId, 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    console.error(`[Mod] Helix ban/timeout failed (${res.status}):`, text);
+  }
+}
+
 // ─── Execute moderation action ────────────────────────────────────────────────
 async function executeAction(client, channel, tags, action, reason, streamer) {
   const username = tags.username;
+  const broadcasterId = streamer.twitch_user_id;
+  const userId = tags['user-id'];
+
   try {
     switch (action) {
       case 'warn':
-        await client.deletemessage(channel, tags.id).catch(() => {});
+        if (broadcasterId && tags.id) await helixDeleteMessage(broadcasterId, tags.id).catch(e => console.error('[Mod]', e.message));
         await client.say(channel, `@${username}, warning: ${reason}`).catch(() => {});
         break;
       case 'delete':
-        await client.deletemessage(channel, tags.id).catch(() => {});
+        if (broadcasterId && tags.id) await helixDeleteMessage(broadcasterId, tags.id).catch(e => console.error('[Mod]', e.message));
         break;
       case 'timeout_10':
-        await client.timeout(channel, username, 10, reason).catch(() => {});
+        if (broadcasterId && userId) await helixBanUser(broadcasterId, userId, 10, reason).catch(e => console.error('[Mod]', e.message));
         break;
       case 'timeout_60':
-        await client.timeout(channel, username, 60, reason).catch(() => {});
+        if (broadcasterId && userId) await helixBanUser(broadcasterId, userId, 60, reason).catch(e => console.error('[Mod]', e.message));
         break;
       case 'timeout_600':
-        await client.timeout(channel, username, 600, reason).catch(() => {});
+        if (broadcasterId && userId) await helixBanUser(broadcasterId, userId, 600, reason).catch(e => console.error('[Mod]', e.message));
         break;
       case 'timeout_1800':
-        await client.timeout(channel, username, 1800, reason).catch(() => {});
+        if (broadcasterId && userId) await helixBanUser(broadcasterId, userId, 1800, reason).catch(e => console.error('[Mod]', e.message));
         break;
     }
+    console.log(`[Mod] Executed ${action} on ${username} in ${channel} for: ${reason}`);
   } catch (e) {
     console.error(`[Mod] Failed to execute ${action} on ${username}:`, e.message);
   }
