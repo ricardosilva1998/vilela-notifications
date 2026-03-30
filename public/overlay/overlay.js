@@ -479,19 +479,14 @@ function buildBannerContent(event) {
 
     case 'raid': {
       const viewers = event.data.viewers || '??';
-      const row1 = '<span class="person">👤</span><span class="person">🧑</span><span class="person">👨</span><span class="person">👩</span><span class="person">🧔</span><span class="person">👱</span><span class="person">🧑</span><span class="person">👤</span><span class="person">👨</span><span class="person">👩</span><span class="person">🧔</span><span class="person">👱</span><span class="person">🧑</span><span class="person">👤</span>';
-      const row2 = '<span class="person">🧑</span><span class="person">👤</span><span class="person">👩</span><span class="person">🧔</span><span class="person">👨</span><span class="person">👱</span><span class="person">👤</span><span class="person">🧑</span><span class="person">👩</span><span class="person">👨</span><span class="person">🧔</span><span class="person">👱</span>';
-      const row3 = '<span class="person">👤</span><span class="person">👨</span><span class="person">🧑</span><span class="person">👩</span><span class="person">👱</span><span class="person">🧔</span><span class="person">👤</span><span class="person">👨</span><span class="person">🧑</span><span class="person">👩</span>';
       const body = `<div class="event-label">Incoming Raid</div>
           <div class="username">${esc(event.data.username)}</div>
           <div class="detail">raiding with <b>${viewers} viewers</b>! 🏁</div>`;
       return `<div class="top-accent"></div>
         <div class="card-body">${wrapWithSideIcons(icon, body)}</div>
-        <div class="crowd-section">
-          <div class="crowd-row">${row1}</div>
-          <div class="crowd-row">${row2}</div>
-          <div class="crowd-row">${row3}</div>
-          <div class="viewer-count">${viewers} VIEWERS INCOMING</div>
+        <div class="car-track">
+          <div class="race-line"></div>
+          <div class="track-car">🏎️</div>
         </div>`;
     }
 
