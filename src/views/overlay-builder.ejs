@@ -2493,10 +2493,17 @@ document.addEventListener('mouseup', e => {
     <div class="ctrl-label" style="margin-bottom:6px;">Preview</div>
     <div id="anim-preview-box" style="position:relative;aspect-ratio:16/9;border-radius:10px;border:1px solid rgba(255,255,255,0.08);background:#080a10;overflow:hidden;margin-bottom:12px;">
       <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
-        <div id="anim-preview-card" style="padding:12px 20px;border-radius:12px;border:1px solid rgba(136,136,204,0.5);background:linear-gradient(160deg,rgb(9,9,22),#1a1a3e 40%,rgb(9,9,22));text-align:center;width:180px;">
-          <div style="font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#8888cc;font-weight:700;margin-bottom:2px;">New Follower</div>
-          <div style="font-size:16px;font-weight:800;color:#fff;">RacerName</div>
-          <div style="font-size:10px;color:#ccc;margin-top:2px;">just joined the race</div>
+        <div id="anim-preview-card" style="border-radius:12px;border:1px solid rgba(136,136,204,0.5);background:linear-gradient(160deg,rgb(9,9,22),#1a1a3e 40%,rgb(9,9,22));text-align:center;width:180px;overflow:hidden;">
+          <div style="height:2px;background:linear-gradient(90deg,rgba(50,50,80,0.6),#8888cc,rgba(50,50,80,0.6));border-radius:12px 12px 0 0;"></div>
+          <div style="padding:10px 16px 8px;">
+            <div style="font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#8888cc;font-weight:700;margin-bottom:2px;">New Follower</div>
+            <div style="font-size:16px;font-weight:800;color:#fff;">RacerName</div>
+            <div style="font-size:10px;color:#ccc;margin-top:2px;">just joined the race</div>
+          </div>
+          <div id="anim-preview-track" style="height:28px;position:relative;overflow:hidden;border-top:1px solid rgba(255,255,255,0.07);background:rgba(136,136,204,0.06);border-radius:0 0 12px 12px;">
+            <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(255,255,255,0.08);transform:translateY(-50%);"></div>
+            <div id="anim-preview-car" style="position:absolute;top:50%;transform:translateY(-50%) scaleX(-1);font-size:16px;animation:previewCarZoom 2.8s linear infinite;">🏎️</div>
+          </div>
         </div>
       </div>
     </div>
@@ -2827,6 +2834,24 @@ function closeAnimPopup() {
 }
 
 function updateAnimPreview() {
+  // Update car animation in preview
+  const carEl = document.getElementById('anim-preview-car');
+  const carAnim = document.getElementById('modal-car-animation').value;
+  const carSpeed = parseFloat(document.getElementById('modal-animation-speed').value) || 1.0;
+  if (carEl) {
+    if (carAnim === 'none') {
+      carEl.style.animation = 'none';
+      carEl.style.left = '50%';
+      carEl.style.transform = 'translateY(-50%) scaleX(-1)';
+    } else if (carAnim === 'zoomRL') {
+      carEl.style.animation = `previewCarZoomRL ${2.8 / carSpeed}s linear infinite`;
+    } else if (carAnim === 'bounce') {
+      carEl.style.animation = `previewCarBounce ${1.2 / carSpeed}s ease-in-out infinite`;
+    } else {
+      carEl.style.animation = `previewCarZoom ${2.8 / carSpeed}s linear infinite`;
+    }
+  }
+
   // Update the mini effect preview
   const box = document.getElementById('anim-preview-box');
   box.querySelectorAll('.anim-fx').forEach(e => e.remove());
