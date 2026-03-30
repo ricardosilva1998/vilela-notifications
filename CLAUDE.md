@@ -105,7 +105,7 @@ data/
 ## Key Architecture
 
 - **Dashboard:** Platform-tabbed main page (Discord | Twitch | YouTube | Kick | Admin). Discord tab shows guild management. Twitch tab shows overlay/chatbot/Spotify cards. YouTube tab shows chatbot config. Kick is coming soon. Admin tab is admin-only.
-- **OBS Overlay:** EventSub receives Twitch events → overlayBus EventEmitter → SSE push to OBS browser source. Centered card design with per-event themes: Follow (tire marks + sparks), Subscription (confetti + camera flashes), Bits (gold rain), Donation (money rain), Raid (robots falling). YouTube events (Super Chat, Member, Gift) also emit to the same overlay. Custom designs stored in `overlay_designs` table.
+- **OBS Overlay:** EventSub receives Twitch events → overlayBus EventEmitter → SSE push to OBS browser source. Centered card design with per-event themes and full-screen effects (confetti, gold rain, money rain, robots, tire marks). All event types use the same card structure: top-accent + card-body (with optional side icons) + car-track. YouTube events (Super Chat, Member, Gift) also emit to the same overlay. Custom designs stored in `overlay_designs` table.
 - **Overlay Builder:** Visual editor at `/dashboard/overlay-builder` with left control panel + right live preview. Events grouped by platform tabs (Twitch/YouTube/Kick/General). Customize per-event: colors, fonts (Google Fonts with live preview dropdown), text, animation entrance/screen effects, card size, position (9-cell grid + free drag with pixel coordinates), border radius, theme presets. Preview shows stream screenshot background with fake webcam/chat/HUD and draggable alert card. Designs saved to DB (including `card_custom_x`/`card_custom_y` for drag positions) and applied at runtime via `applyCustomDesign()`.
 - **Twitch Chatbot (Atleta):** Single shared tmi.js connection (env var credentials) joins all enabled channels. EventSub/StreamElements events trigger customizable thank-you messages. Custom `!commands` stored per-streamer in `chat_commands` table. Built-in `!song` command for Spotify.
 - **YouTube Chatbot:** Polling-based via YouTube Live Chat API. Activates when stream goes live (auto-detected by poller or manual connect). Detects Super Chats, new members, gifted memberships, and `!commands`. Uses global bot YouTube account for sending messages.
@@ -156,3 +156,12 @@ Optional:
 - Custom sounds stored in `data/sounds/` (persistent volume), not `public/overlay/sounds/`
 - Sponsor images stored in `data/sponsors/` (persistent volume), served via `/sponsors/` static route
 - Overlay designs stored in `overlay_designs` table (including `card_custom_x`/`card_custom_y` for drag positions), applied at runtime in `overlay.js` via `applyCustomDesign()`
+
+## Overlay Consistency Rule
+
+**The overlay builder (`overlay-builder.ejs`) is the source of truth for how alerts look.** The actual OBS overlay (`overlay.js` + `overlay.css`), the overlay config preview (`overlay-config.ejs` iframe), and the builder preview must all render cards identically:
+
+- **Card structure:** All event types must use the same HTML structure: `top-accent` + `card-body` (with `wrapWithSideIcons`) + `car-track`. No event-specific custom sections (e.g., no crowd sections for raid, no missing car tracks for subscription).
+- **Screen effects:** Direction-based effects (up/down/left/right) must work in both the builder preview (`renderScreenEffect()` in overlay-builder.ejs) and the OBS overlay (`spawnEffects()` in overlay.js). CSS classes for effects must NOT hardcode positional properties (`top`, `left`, etc.) — positions are set dynamically by JS based on direction.
+- **Design application:** `applyCustomDesign()` in overlay.js and `updatePreview()` in overlay-builder.ejs must apply the same visual properties (colors, fonts, sizes, border-radius, animations, side icons).
+- **When adding/changing any visual property:** Update all three rendering paths — builder preview, OBS overlay `generateCardHTML()`/`applyCustomDesign()`, and the EVENT_DEFAULTS in the builder.

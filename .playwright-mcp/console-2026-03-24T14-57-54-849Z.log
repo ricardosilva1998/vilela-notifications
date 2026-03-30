@@ -1,0 +1,2 @@
+[    8661ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://discord.com/api/v9/apex/experiments?surface=2:0
+[    8822ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://discord.com/api/v9/promotions?locale=en-US&platform=0:0

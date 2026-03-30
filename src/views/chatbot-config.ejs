@@ -733,7 +733,8 @@
     document.getElementById('cmd-view-' + id).style.display = 'flex';
   }
 
-  switchTab('connection');
+  const urlTab = new URLSearchParams(window.location.search).get('tab');
+  switchTab(urlTab || 'connection');
 
   async function testChat(type, btn) {
     const originalText = btn.textContent;
