@@ -749,6 +749,16 @@
     iframe.src = overlayUrlBase;
     modal.classList.add('open');
 
+    // Duration map for auto-close timing
+    const durationMap = {
+      follow: parseInt(document.querySelector('[name="overlay_follow_duration"]')?.value) || 5,
+      subscription: parseInt(document.querySelector('[name="overlay_sub_duration"]')?.value) || 7,
+      bits: parseInt(document.querySelector('[name="overlay_bits_duration"]')?.value) || 6,
+      donation: parseInt(document.querySelector('[name="overlay_donation_duration"]')?.value) || 6,
+      raid: 6,
+    };
+    const alertDuration = durationMap[type] || 6;
+
     // Fire the test event after iframe has a moment to load and connect SSE
     setTimeout(() => {
       fetch('/dashboard/overlay/test/' + type, { method: 'POST' })
@@ -756,6 +766,8 @@
         .then(data => {
           if (data.ok) {
             statusEl.textContent = 'Alert fired — watch the preview screen.';
+            // Auto-close after alert duration + small buffer
+            previewAutoClose = setTimeout(() => closePreview(), alertDuration * 1000 + 2000);
           } else {
             statusEl.textContent = 'Error: ' + (data.error || 'Unknown error');
           }
