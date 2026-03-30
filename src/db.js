@@ -2092,6 +2092,46 @@ function updateYoutubeChatbotConfig(streamerId, config) {
   db.prepare(`UPDATE streamers SET ${fields.join(', ')} WHERE id = ?`).run(...values);
 }
 
+const MODERATION_COLUMNS = new Set([
+  'mod_banned_words_enabled', 'mod_link_protection_enabled', 'mod_link_permit_seconds',
+  'mod_caps_enabled', 'mod_caps_min_length', 'mod_caps_max_percent',
+  'mod_emote_spam_enabled', 'mod_emote_max_count',
+  'mod_repetition_enabled', 'mod_repetition_window',
+  'mod_symbol_spam_enabled', 'mod_symbol_max_percent',
+  'mod_slow_mode_cmd_enabled',
+  'mod_raid_protection_enabled', 'mod_raid_protection_duration',
+  'mod_first_chatter_enabled',
+  'mod_follow_age_enabled', 'mod_follow_age_minutes',
+  'mod_action_response', 'mod_escalation_enabled',
+  'mod_log_discord_enabled', 'mod_log_discord_channel_id',
+  'mod_exempt_subs', 'mod_exempt_vips',
+]);
+
+function updateModerationConfig(streamerId, config) {
+  const fields = [];
+  const values = [];
+  for (const [key, value] of Object.entries(config)) {
+    if (!MODERATION_COLUMNS.has(key)) continue;
+    fields.push(`${key} = ?`);
+    values.push(value);
+  }
+  if (fields.length === 0) return;
+  values.push(streamerId);
+  db.prepare(`UPDATE streamers SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+}
+
+function getBannedWords(streamerId) {
+  return db.prepare('SELECT * FROM banned_words WHERE streamer_id = ? ORDER BY created_at DESC').all(streamerId);
+}
+
+function addBannedWord(streamerId, word, isRegex) {
+  return db.prepare('INSERT INTO banned_words (streamer_id, word, is_regex) VALUES (?, ?, ?)').run(streamerId, word, isRegex ? 1 : 0);
+}
+
+function deleteBannedWord(streamerId, id) {
+  return db.prepare('DELETE FROM banned_words WHERE id = ? AND streamer_id = ?').run(id, streamerId);
+}
+
 function updateStreamerYoutubeTokens(streamerId, accessToken, refreshToken, expiresAt, channelName) {
   db.prepare(`
     UPDATE streamers SET yt_access_token = ?, yt_refresh_token = ?, yt_token_expires_at = ?, yt_channel_name = ?
@@ -2356,7 +2396,49 @@ function deleteOverlayDesign(streamerId, eventType) {
     db.exec(`ALTER TABLE streamers ADD COLUMN sponsor_chat_interval_minutes INTEGER DEFAULT 10`);
     console.log('[DB] Added sponsor_chat_interval_minutes to streamers');
   }
+
+  if (!cols.includes('mod_banned_words_enabled')) {
+    db.exec(`
+      ALTER TABLE streamers ADD COLUMN mod_banned_words_enabled INTEGER DEFAULT 0;
+      ALTER TABLE streamers ADD COLUMN mod_link_protection_enabled INTEGER DEFAULT 0;
+      ALTER TABLE streamers ADD COLUMN mod_link_permit_seconds INTEGER DEFAULT 60;
+      ALTER TABLE streamers ADD COLUMN mod_caps_enabled INTEGER DEFAULT 0;
+      ALTER TABLE streamers ADD COLUMN mod_caps_min_length INTEGER DEFAULT 10;
+      ALTER TABLE streamers ADD COLUMN mod_caps_max_percent INTEGER DEFAULT 70;
+      ALTER TABLE streamers ADD COLUMN mod_emote_spam_enabled INTEGER DEFAULT 0;
+      ALTER TABLE streamers ADD COLUMN mod_emote_max_count INTEGER DEFAULT 15;
+      ALTER TABLE streamers ADD COLUMN mod_repetition_enabled INTEGER DEFAULT 0;
+      ALTER TABLE streamers ADD COLUMN mod_repetition_window INTEGER DEFAULT 30;
+      ALTER TABLE streamers ADD COLUMN mod_symbol_spam_enabled INTEGER DEFAULT 0;
+      ALTER TABLE streamers ADD COLUMN mod_symbol_max_percent INTEGER DEFAULT 50;
+      ALTER TABLE streamers ADD COLUMN mod_slow_mode_cmd_enabled INTEGER DEFAULT 0;
+      ALTER TABLE streamers ADD COLUMN mod_raid_protection_enabled INTEGER DEFAULT 0;
+      ALTER TABLE streamers ADD COLUMN mod_raid_protection_duration INTEGER DEFAULT 120;
+      ALTER TABLE streamers ADD COLUMN mod_first_chatter_enabled INTEGER DEFAULT 0;
+      ALTER TABLE streamers ADD COLUMN mod_follow_age_enabled INTEGER DEFAULT 0;
+      ALTER TABLE streamers ADD COLUMN mod_follow_age_minutes INTEGER DEFAULT 10;
+      ALTER TABLE streamers ADD COLUMN mod_action_response TEXT DEFAULT 'delete';
+      ALTER TABLE streamers ADD COLUMN mod_escalation_enabled INTEGER DEFAULT 0;
+      ALTER TABLE streamers ADD COLUMN mod_log_discord_enabled INTEGER DEFAULT 0;
+      ALTER TABLE streamers ADD COLUMN mod_log_discord_channel_id TEXT;
+      ALTER TABLE streamers ADD COLUMN mod_exempt_subs INTEGER DEFAULT 1;
+      ALTER TABLE streamers ADD COLUMN mod_exempt_vips INTEGER DEFAULT 1;
+    `);
+    console.log('[DB] Added moderation columns to streamers');
+  }
 }
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS banned_words (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    streamer_id INTEGER NOT NULL,
+    word TEXT NOT NULL,
+    is_regex INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (streamer_id) REFERENCES streamers(id) ON DELETE CASCADE
+  )
+`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_banned_words_streamer ON banned_words(streamer_id)`);
 
 // Migration: Create timed_notifications table
 {
@@ -2704,6 +2786,10 @@ module.exports = {
   updateChatCommand,
   deleteChatCommand,
   updateChatbotConfig,
+  updateModerationConfig,
+  getBannedWords,
+  addBannedWord,
+  deleteBannedWord,
   updateYoutubeChatbotConfig,
   getYoutubeChatbotEnabledStreamers,
   updateStreamerYoutubeTokens,
