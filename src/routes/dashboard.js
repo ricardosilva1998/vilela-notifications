@@ -821,7 +821,24 @@ router.get('/chatbot', (req, res) => {
     botConnected = chatManager.isConnected();
     botUsername = require('../config').bot.twitchUsername;
   } catch (e) {}
-  res.render('chatbot-config', { streamer, commands, botConnected, botUsername });
+
+  const bannedWords = db.getBannedWords(req.streamer.id);
+
+  let discordChannels = [];
+  try {
+    const { client: discordClient } = require('../discord');
+    if (req.streamer.discord_guild_id) {
+      const guild = discordClient.guilds.cache.get(req.streamer.discord_guild_id);
+      if (guild) {
+        discordChannels = guild.channels.cache
+          .filter(c => c.type === 0)
+          .map(c => ({ id: c.id, name: c.name }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+      }
+    }
+  } catch (e) {}
+
+  res.render('chatbot-config', { streamer, commands, botConnected, botUsername, bannedWords, discordChannels });
 });
 
 // Save chatbot settings
@@ -856,6 +873,49 @@ router.post('/chatbot', (req, res) => {
   }
 
   res.redirect('/dashboard/chatbot');
+});
+
+router.post('/chatbot/moderation', (req, res) => {
+  const b = req.body;
+  db.updateModerationConfig(req.streamer.id, {
+    mod_banned_words_enabled: b.mod_banned_words_enabled ? 1 : 0,
+    mod_link_protection_enabled: b.mod_link_protection_enabled ? 1 : 0,
+    mod_link_permit_seconds: parseInt(b.mod_link_permit_seconds) || 60,
+    mod_caps_enabled: b.mod_caps_enabled ? 1 : 0,
+    mod_caps_min_length: parseInt(b.mod_caps_min_length) || 10,
+    mod_caps_max_percent: parseInt(b.mod_caps_max_percent) || 70,
+    mod_emote_spam_enabled: b.mod_emote_spam_enabled ? 1 : 0,
+    mod_emote_max_count: parseInt(b.mod_emote_max_count) || 15,
+    mod_repetition_enabled: b.mod_repetition_enabled ? 1 : 0,
+    mod_repetition_window: parseInt(b.mod_repetition_window) || 30,
+    mod_symbol_spam_enabled: b.mod_symbol_spam_enabled ? 1 : 0,
+    mod_symbol_max_percent: parseInt(b.mod_symbol_max_percent) || 50,
+    mod_slow_mode_cmd_enabled: b.mod_slow_mode_cmd_enabled ? 1 : 0,
+    mod_raid_protection_enabled: b.mod_raid_protection_enabled ? 1 : 0,
+    mod_raid_protection_duration: parseInt(b.mod_raid_protection_duration) || 120,
+    mod_first_chatter_enabled: b.mod_first_chatter_enabled ? 1 : 0,
+    mod_follow_age_enabled: b.mod_follow_age_enabled ? 1 : 0,
+    mod_follow_age_minutes: parseInt(b.mod_follow_age_minutes) || 10,
+    mod_action_response: b.mod_action_response || 'delete',
+    mod_escalation_enabled: b.mod_escalation_enabled ? 1 : 0,
+    mod_log_discord_enabled: b.mod_log_discord_enabled ? 1 : 0,
+    mod_log_discord_channel_id: b.mod_log_discord_channel_id || null,
+    mod_exempt_subs: b.mod_exempt_subs ? 1 : 0,
+    mod_exempt_vips: b.mod_exempt_vips ? 1 : 0,
+  });
+  res.redirect('/dashboard/chatbot?tab=moderation');
+});
+
+router.post('/chatbot/banned-words', (req, res) => {
+  const { word, is_regex } = req.body;
+  if (!word || !word.trim()) return res.json({ ok: false, error: 'Word is required' });
+  db.addBannedWord(req.streamer.id, word.trim(), is_regex ? 1 : 0);
+  res.json({ ok: true, words: db.getBannedWords(req.streamer.id) });
+});
+
+router.delete('/chatbot/banned-words/:id', (req, res) => {
+  db.deleteBannedWord(req.streamer.id, parseInt(req.params.id));
+  res.json({ ok: true, words: db.getBannedWords(req.streamer.id) });
 });
 
 // Test chat message
