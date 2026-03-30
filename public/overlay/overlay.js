@@ -536,6 +536,7 @@ function spawnEffects(type) {
   const speed = design.animation_speed || 1.0;
   const amount = design.effect_amount || 1.0;
   const size = design.effect_size || 1.0;
+  const dir = design.effect_direction || 'down';
 
   // Use custom screen_effect if set, otherwise default per event type
   let effect = design.screen_effect || 'default';
@@ -551,15 +552,30 @@ function spawnEffects(type) {
   if (effect === 'none') return;
 
   switch (effect) {
-    case 'tiremarks':  spawnTireMarks(speed, amount, size);           break;
-    case 'confetti':   spawnConfettiAndFlashes(speed, amount, size);  break;
-    case 'gold':       spawnGoldRain(speed, amount, size);            break;
-    case 'money':      spawnMoneyRain(speed, amount, size);           break;
-    case 'robots':     spawnRobots(speed, amount, size);              break;
+    case 'tiremarks':  spawnTireMarks(speed, amount, size, dir);           break;
+    case 'confetti':   spawnConfettiAndFlashes(speed, amount, size, dir);  break;
+    case 'gold':       spawnGoldRain(speed, amount, size, dir);            break;
+    case 'money':      spawnMoneyRain(speed, amount, size, dir);           break;
+    case 'robots':     spawnRobots(speed, amount, size, dir);              break;
   }
 }
 
-function spawnTireMarks(speed, amount, size) {
+function getSpawnPos(dir) {
+  if (dir === 'down') return `left:${Math.random()*100}vw;top:-40px;`;
+  if (dir === 'up') return `left:${Math.random()*100}vw;bottom:-40px;`;
+  if (dir === 'left') return `top:${Math.random()*100}vh;right:-40px;`;
+  if (dir === 'right') return `top:${Math.random()*100}vh;left:-40px;`;
+  return `left:${Math.random()*100}vw;top:-40px;`;
+}
+
+function getFallAnim(dir) {
+  if (dir === 'up') return 'confFallUp';
+  if (dir === 'left') return 'confFallLeft';
+  if (dir === 'right') return 'confFallRight';
+  return 'confFall';
+}
+
+function spawnTireMarks(speed, amount, size, dir) {
   const count = Math.round(2 * amount);
   for (let i = 0; i < count; i++) {
     const el = document.createElement('div');
@@ -586,17 +602,19 @@ function spawnTireMarks(speed, amount, size) {
   }
 }
 
-function spawnConfettiAndFlashes(speed, amount, size) {
+function spawnConfettiAndFlashes(speed, amount, size, dir) {
   const colors = ['#ff4444','#00ff88','#f7c948','#4285f4','#ff88cc','#ffffff','#bf00ff','#00ccff'];
   const count = Math.round(60 * amount);
+  const fallAnim = getFallAnim(dir);
 
   for (let i = 0; i < count; i++) {
     const el = document.createElement('div');
     el.className = 'screen-effect confetti';
-    el.style.left            = `${Math.random() * 100}vw`;
+    el.style.cssText = getSpawnPos(dir);
     el.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
     el.style.width           = `${(6 + Math.random() * 8) * size}px`;
     el.style.height          = `${(8 + Math.random() * 10) * size}px`;
+    el.style.animationName     = fallAnim;
     el.style.animationDelay    = `${Math.random() * 1.5}s`;
     el.style.animationDuration = `${(2 + Math.random() * 2) / speed}s`;
     container.appendChild(el);
@@ -613,44 +631,50 @@ function spawnConfettiAndFlashes(speed, amount, size) {
   }
 }
 
-function spawnGoldRain(speed, amount, size) {
+function spawnGoldRain(speed, amount, size, dir) {
   const items = ['🪙','💎','⭐','🏆','✨','💰','🥇'];
   const count = Math.round(35 * amount);
+  const fallAnim = getFallAnim(dir);
   for (let i = 0; i < count; i++) {
     const el = document.createElement('div');
     el.className   = 'screen-effect gold-item';
     el.textContent = items[Math.floor(Math.random() * items.length)];
-    el.style.fontSize        = `${24 * size}px`;
-    el.style.left            = `${Math.random() * 100}vw`;
+    el.style.cssText = getSpawnPos(dir);
+    el.style.fontSize          = `${24 * size}px`;
+    el.style.animationName     = fallAnim;
     el.style.animationDelay    = `${Math.random() * 2}s`;
     el.style.animationDuration = `${(1.5 + Math.random() * 2) / speed}s`;
     container.appendChild(el);
   }
 }
 
-function spawnMoneyRain(speed, amount, size) {
+function spawnMoneyRain(speed, amount, size, dir) {
   const items = ['💵','💰','💲','🪙','💸','💎'];
   const count = Math.round(30 * amount);
+  const fallAnim = getFallAnim(dir);
   for (let i = 0; i < count; i++) {
     const el = document.createElement('div');
     el.className   = 'screen-effect money-item';
     el.textContent = items[Math.floor(Math.random() * items.length)];
-    el.style.fontSize        = `${22 * size}px`;
-    el.style.left            = `${Math.random() * 100}vw`;
+    el.style.cssText = getSpawnPos(dir);
+    el.style.fontSize          = `${22 * size}px`;
+    el.style.animationName     = fallAnim;
     el.style.animationDelay    = `${Math.random() * 2}s`;
     el.style.animationDuration = `${(1.5 + Math.random() * 2) / speed}s`;
     container.appendChild(el);
   }
 }
 
-function spawnRobots(speed, amount, size) {
+function spawnRobots(speed, amount, size, dir) {
   const count = Math.round(30 * amount);
+  const fallAnim = getFallAnim(dir);
   for (let i = 0; i < count; i++) {
     const el = document.createElement('div');
     el.className   = 'screen-effect robot';
     el.textContent = '🤖';
-    el.style.fontSize        = `${26 * size}px`;
-    el.style.left            = `${Math.random() * 100}vw`;
+    el.style.cssText = getSpawnPos(dir);
+    el.style.fontSize          = `${26 * size}px`;
+    el.style.animationName     = fallAnim;
     el.style.animationDelay    = `${Math.random() * 2.5}s`;
     el.style.animationDuration = `${(1.5 + Math.random() * 2) / speed}s`;
     container.appendChild(el);

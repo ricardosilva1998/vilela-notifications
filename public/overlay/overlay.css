@@ -65,10 +65,10 @@ body {
   100% { opacity: 0; left: -40px; }
 }
 @keyframes carZoomRL {
-  0%   { left: calc(100% + 40px); opacity: 1; transform: translateY(-50%) scaleX(1); }
-  80%  { left: -40px; opacity: 1; }
-  81%  { opacity: 0; left: calc(100% + 40px); }
-  100% { opacity: 0; left: calc(100% + 40px); }
+  0%   { left: calc(100% + 40px); opacity: 1; transform: translateY(-50%); }
+  80%  { left: -40px; opacity: 1; transform: translateY(-50%); }
+  81%  { opacity: 0; left: calc(100% + 40px); transform: translateY(-50%); }
+  100% { opacity: 0; left: calc(100% + 40px); transform: translateY(-50%); }
 }
 @keyframes carBounce {
   0%   { left: 50%; transform: translateY(-50%) scaleX(-1) translateX(0); }
@@ -444,6 +444,18 @@ body {
 @keyframes confFall {
   0%   { transform: translateY(0)       rotate(0deg);    opacity: 1; }
   100% { transform: translateY(110vh)   rotate(720deg);  opacity: 0; }
+}
+@keyframes confFallUp {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(-110vh) rotate(720deg); opacity: 0; }
+}
+@keyframes confFallLeft {
+  0%   { transform: translateX(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateX(-110vw) rotate(720deg); opacity: 0; }
+}
+@keyframes confFallRight {
+  0%   { transform: translateX(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateX(110vw) rotate(720deg); opacity: 0; }
 }
 
 /* Camera flash — localized bursts, not full-screen */

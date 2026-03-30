@@ -508,10 +508,10 @@
       100% { opacity: 0; left: -40px; }
     }
     @keyframes previewCarZoomRL {
-      0%   { left: calc(100% + 40px); opacity: 1; transform: translateY(-50%) scaleX(1); }
-      80%  { left: -40px; opacity: 1; }
-      81%  { opacity: 0; left: calc(100% + 40px); }
-      100% { opacity: 0; left: calc(100% + 40px); }
+      0%   { left: calc(100% + 40px); opacity: 1; transform: translateY(-50%); }
+      80%  { left: -40px; opacity: 1; transform: translateY(-50%); }
+      81%  { opacity: 0; left: calc(100% + 40px); transform: translateY(-50%); }
+      100% { opacity: 0; left: calc(100% + 40px); transform: translateY(-50%); }
     }
     @keyframes previewCarBounce {
       0%   { left: 50%; transform: translateY(-50%) scaleX(-1) translateX(0); }
@@ -995,6 +995,7 @@
             <div><span style="color:var(--text-muted);">Speed:</span> <span id="asp-speed">1.0×</span></div>
             <div><span style="color:var(--text-muted);">Amount:</span> <span id="asp-amount">1.0×</span></div>
             <div><span style="color:var(--text-muted);">Size:</span> <span id="asp-size">1.0×</span></div>
+            <div><span style="color:var(--text-muted);">Direction:</span> <span id="asp-direction">Down</span></div>
           </div>
           <button type="button" class="popup-trigger-btn" onclick="openAnimPopup()">
             Customize Animation
@@ -1007,6 +1008,7 @@
             <input type="range" id="ctrl-animation-speed" min="0.5" max="2.0" step="0.1" value="1.0">
             <input type="range" id="ctrl-effect-amount" min="0.2" max="3.0" step="0.1" value="1.0">
             <input type="range" id="ctrl-effect-size" min="0.5" max="3.0" step="0.1" value="1.0">
+            <select id="ctrl-effect-direction"><option value="down">down</option><option value="up">up</option><option value="left">left</option><option value="right">right</option></select>
           </div>
         </div>
       </div>
@@ -1132,7 +1134,7 @@ const TEXT_STYLE_DEFAULTS = {
   label_font_family: null, label_font_size: 10, label_font_weight: 700, label_color: null,
   username_font_family: null, username_font_weight: 800, username_color: null,
   detail_font_family: null, detail_font_size: 13, detail_font_weight: 400, detail_color: null,
-  text_align: 'center', card_side_icon: null, effect_amount: 1.0, effect_size: 1.0,
+  text_align: 'center', card_side_icon: null, effect_amount: 1.0, effect_size: 1.0, effect_direction: 'down',
 };
 
 // Default side icons per event type (null = no icon)
@@ -1239,6 +1241,7 @@ function getControlValues() {
     card_side_icon: wd.card_side_icon !== undefined ? wd.card_side_icon : null,
     effect_amount: parseFloat(document.getElementById('ctrl-effect-amount').value),
     effect_size: parseFloat(document.getElementById('ctrl-effect-size').value),
+    effect_direction: document.getElementById('ctrl-effect-direction').value,
   };
 }
 
@@ -1270,6 +1273,7 @@ function setControlValues(d) {
   document.getElementById('ctrl-sponsor-animation').value = d.sponsor_animation || 'fade';
   document.getElementById('ctrl-effect-amount').value = d.effect_amount != null ? d.effect_amount : 1.0;
   document.getElementById('ctrl-effect-size').value = d.effect_size != null ? d.effect_size : 1.0;
+  document.getElementById('ctrl-effect-direction').value = d.effect_direction || 'down';
   // Update theme button swatches
   document.getElementById('swatch-bg').style.background = d.bg_color;
   document.getElementById('swatch-accent').style.background = d.accent_color;
@@ -1472,6 +1476,10 @@ function renderScreenEffect(effect) {
   const speed = d.animation_speed || 1.0;
   const amount = d.effect_amount || 1.0;
   const size = d.effect_size || 1.0;
+  const dir = d.effect_direction || 'down';
+  const animName = 'fxFall' + dir.charAt(0).toUpperCase() + dir.slice(1);
+  const startProp = (dir === 'left' || dir === 'right') ? 'top' : 'left';
+  const edgeProp = dir === 'up' ? 'bottom' : dir === 'left' ? 'right' : dir === 'right' ? 'left' : 'top';
 
   const fxContainer = document.createElement('div');
   fxContainer.className = 'preview-fx';
@@ -1486,13 +1494,22 @@ function renderScreenEffect(effect) {
   const baseSizePx = 5 * size;
   const baseFontPx = 14 * size;
 
+  function fxPos() {
+    // Spawn from the correct edge based on direction
+    if (dir === 'down') return `left:${Math.random()*100}%;top:-5%;`;
+    if (dir === 'up') return `left:${Math.random()*100}%;bottom:-5%;`;
+    if (dir === 'left') return `top:${Math.random()*100}%;right:-5%;`;
+    if (dir === 'right') return `top:${Math.random()*100}%;left:-5%;`;
+    return `left:${Math.random()*100}%;top:-5%;`;
+  }
+
   if (effect === 'confetti') {
     const count = Math.round(30 * amount);
     for (let i = 0; i < count; i++) {
       const c = document.createElement('div');
       const w = baseSizePx + Math.random() * baseSizePx * 0.6;
       const h = w * 1.3;
-      c.style.cssText = `position:absolute;width:${w}px;height:${h}px;border-radius:${Math.random()>0.5?'50%':'1px'};background:${colors.confetti[Math.floor(Math.random()*colors.confetti.length)]};left:${Math.random()*100}%;top:-5%;opacity:0;animation:fxFall ${(1.5+Math.random()*2)/speed}s linear ${Math.random()*2}s infinite;`;
+      c.style.cssText = `position:absolute;width:${w}px;height:${h}px;border-radius:${Math.random()>0.5?'50%':'1px'};background:${colors.confetti[Math.floor(Math.random()*colors.confetti.length)]};${fxPos()}opacity:0;animation:${animName} ${(1.5+Math.random()*2)/speed}s linear ${Math.random()*2}s infinite;`;
       fxContainer.appendChild(c);
     }
   } else if (effect === 'gold') {
@@ -1500,7 +1517,7 @@ function renderScreenEffect(effect) {
     for (let i = 0; i < count; i++) {
       const g = document.createElement('div');
       g.textContent = colors.gold[Math.floor(Math.random()*colors.gold.length)];
-      g.style.cssText = `position:absolute;font-size:${baseFontPx}px;left:${Math.random()*100}%;top:-5%;opacity:0;animation:fxFall ${(2+Math.random()*2)/speed}s linear ${Math.random()*2}s infinite;`;
+      g.style.cssText = `position:absolute;font-size:${baseFontPx}px;${fxPos()}opacity:0;animation:${animName} ${(2+Math.random()*2)/speed}s linear ${Math.random()*2}s infinite;`;
       fxContainer.appendChild(g);
     }
   } else if (effect === 'money') {
@@ -1508,7 +1525,7 @@ function renderScreenEffect(effect) {
     for (let i = 0; i < count; i++) {
       const m = document.createElement('div');
       m.textContent = colors.money[Math.floor(Math.random()*colors.money.length)];
-      m.style.cssText = `position:absolute;font-size:${baseFontPx}px;left:${Math.random()*100}%;top:-5%;opacity:0;animation:fxFall ${(2+Math.random()*2)/speed}s linear ${Math.random()*2}s infinite;`;
+      m.style.cssText = `position:absolute;font-size:${baseFontPx}px;${fxPos()}opacity:0;animation:${animName} ${(2+Math.random()*2)/speed}s linear ${Math.random()*2}s infinite;`;
       fxContainer.appendChild(m);
     }
   } else if (effect === 'robots') {
@@ -1517,7 +1534,7 @@ function renderScreenEffect(effect) {
       const r = document.createElement('div');
       r.textContent = '🤖';
       const fs = (12 + Math.random()*8) * size;
-      r.style.cssText = `position:absolute;font-size:${fs}px;left:${Math.random()*95}%;top:-5%;opacity:0;animation:fxFall ${(2+Math.random()*2)/speed}s linear ${Math.random()*3}s infinite;`;
+      r.style.cssText = `position:absolute;font-size:${fs}px;${fxPos()}opacity:0;animation:${animName} ${(2+Math.random()*2)/speed}s linear ${Math.random()*3}s infinite;`;
       fxContainer.appendChild(r);
     }
   } else if (effect === 'tiremarks') {
@@ -1536,6 +1553,10 @@ function renderScreenEffect(effect) {
     const style = document.createElement('style');
     style.id = 'fx-keyframes';
     style.textContent = `
+      @keyframes fxFallDown { 0% { opacity:0; transform:translateY(0) rotate(0); } 5% { opacity:1; } 90% { opacity:0.8; } 100% { opacity:0; transform:translateY(400px) rotate(720deg); } }
+      @keyframes fxFallUp { 0% { opacity:0; transform:translateY(0) rotate(0); } 5% { opacity:1; } 90% { opacity:0.8; } 100% { opacity:0; transform:translateY(-400px) rotate(720deg); } }
+      @keyframes fxFallLeft { 0% { opacity:0; transform:translateX(0) rotate(0); } 5% { opacity:1; } 90% { opacity:0.8; } 100% { opacity:0; transform:translateX(-400px) rotate(720deg); } }
+      @keyframes fxFallRight { 0% { opacity:0; transform:translateX(0) rotate(0); } 5% { opacity:1; } 90% { opacity:0.8; } 100% { opacity:0; transform:translateX(400px) rotate(720deg); } }
       @keyframes fxFall { 0% { opacity:0; transform:translateY(0) rotate(0); } 5% { opacity:1; } 90% { opacity:0.8; } 100% { opacity:0; transform:translateY(400px) rotate(720deg); } }
       @keyframes fxTire { 0%,25% { width:0; opacity:0; } 30% { opacity:0.6; } 70% { width:100%; opacity:0.2; } 100% { width:100%; opacity:0; } }
     `;
@@ -2432,7 +2453,7 @@ document.addEventListener('mouseup', e => {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
       <div>
         <div class="ctrl-label" style="margin-bottom:4px;">Entrance</div>
-        <select id="modal-entrance-animation" style="width:100%;" onchange="updateAnimPreview()">
+        <select id="modal-entrance-animation" style="width:100%;" onchange="playAnimPreviewEntrance();updateAnimPreview()">
           <option value="slideDown">Slide Down</option>
           <option value="slideUp">Slide Up</option>
           <option value="slideLeft">Slide Left</option>
@@ -2452,17 +2473,28 @@ document.addEventListener('mouseup', e => {
       </div>
     </div>
 
-    <div class="ctrl-row" style="display:block;margin-bottom:14px;">
-      <div class="ctrl-label" style="margin-bottom:4px;">Screen Effect</div>
-      <select id="modal-screen-effect" style="width:100%;" onchange="updateAnimPreview()">
-        <option value="default">Default (per event)</option>
-        <option value="none">None</option>
-        <option value="confetti">Confetti</option>
-        <option value="gold">Gold Rain</option>
-        <option value="money">Money Rain</option>
-        <option value="robots">Robots</option>
-        <option value="tiremarks">Tire Marks</option>
-      </select>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div>
+        <div class="ctrl-label" style="margin-bottom:4px;">Screen Effect</div>
+        <select id="modal-screen-effect" style="width:100%;" onchange="updateAnimPreview()">
+          <option value="default">Default (per event)</option>
+          <option value="none">None</option>
+          <option value="confetti">Confetti</option>
+          <option value="gold">Gold Rain</option>
+          <option value="money">Money Rain</option>
+          <option value="robots">Robots</option>
+          <option value="tiremarks">Tire Marks</option>
+        </select>
+      </div>
+      <div>
+        <div class="ctrl-label" style="margin-bottom:4px;">Effect Direction</div>
+        <select id="modal-effect-direction" style="width:100%;" onchange="updateAnimPreview()">
+          <option value="down">Top → Down</option>
+          <option value="up">Bottom → Up</option>
+          <option value="left">Right → Left</option>
+          <option value="right">Left → Right</option>
+        </select>
+      </div>
     </div>
 
     <div class="range-row" style="margin-bottom:12px;">
@@ -2507,10 +2539,6 @@ document.addEventListener('mouseup', e => {
         </div>
       </div>
     </div>
-    <button type="button" class="btn-cancel" style="width:100%;margin-bottom:8px;" onclick="playAnimPreviewDemo()">
-      ▶ Play Animation
-    </button>
-
     <div class="modal-actions">
       <button type="button" class="btn-cancel" onclick="closeAnimPopup()">Cancel</button>
       <button type="button" class="btn-apply" onclick="applyAnim()">Apply</button>
@@ -2825,8 +2853,11 @@ function openAnimPopup() {
   document.getElementById('modal-val-amount').textContent = parseFloat(d.effect_amount || 1.0).toFixed(1) + '×';
   document.getElementById('modal-effect-size').value = d.effect_size || 1.0;
   document.getElementById('modal-val-size').textContent = parseFloat(d.effect_size || 1.0).toFixed(1) + '×';
+  document.getElementById('modal-effect-direction').value = d.effect_direction || 'down';
   updateAnimPreview();
   document.getElementById('anim-modal').classList.add('visible');
+  // Auto-play entrance on open
+  setTimeout(() => playAnimPreviewEntrance(), 200);
 }
 
 function closeAnimPopup() {
@@ -2860,6 +2891,8 @@ function updateAnimPreview() {
   const speed = parseFloat(document.getElementById('modal-animation-speed').value) || 1.0;
   const amount = parseFloat(document.getElementById('modal-effect-amount').value) || 1.0;
   const size = parseFloat(document.getElementById('modal-effect-size').value) || 1.0;
+  const dir = document.getElementById('modal-effect-direction').value || 'down';
+  const aName = 'fxFall' + dir.charAt(0).toUpperCase() + dir.slice(1);
 
   let resolved = effect;
   if (resolved === 'default') {
@@ -2867,6 +2900,14 @@ function updateAnimPreview() {
     resolved = defaults[currentType] || 'none';
   }
   if (resolved === 'none') return;
+
+  function mfxPos() {
+    if (dir === 'down') return `left:${Math.random()*100}%;top:-5%;`;
+    if (dir === 'up') return `left:${Math.random()*100}%;bottom:-5%;`;
+    if (dir === 'left') return `top:${Math.random()*100}%;right:-5%;`;
+    if (dir === 'right') return `top:${Math.random()*100}%;left:-5%;`;
+    return `left:${Math.random()*100}%;top:-5%;`;
+  }
 
   const fxContainer = document.createElement('div');
   fxContainer.className = 'anim-fx';
@@ -2881,7 +2922,7 @@ function updateAnimPreview() {
     for (let i = 0; i < count; i++) {
       const c = document.createElement('div');
       const w = (4 + Math.random()*4) * size;
-      c.style.cssText = `position:absolute;width:${w}px;height:${w*1.3}px;border-radius:${Math.random()>0.5?'50%':'1px'};background:${colors[Math.floor(Math.random()*colors.length)]};left:${Math.random()*100}%;top:-5%;opacity:0;animation:fxFall ${(1.5+Math.random()*2)/speed}s linear ${Math.random()*2}s infinite;`;
+      c.style.cssText = `position:absolute;width:${w}px;height:${w*1.3}px;border-radius:${Math.random()>0.5?'50%':'1px'};background:${colors[Math.floor(Math.random()*colors.length)]};${mfxPos()}opacity:0;animation:${aName} ${(1.5+Math.random()*2)/speed}s linear ${Math.random()*2}s infinite;`;
       fxContainer.appendChild(c);
     }
   } else if (resolved === 'gold') {
@@ -2889,7 +2930,7 @@ function updateAnimPreview() {
     for (let i = 0; i < count; i++) {
       const g = document.createElement('div');
       g.textContent = goldIcons[Math.floor(Math.random()*goldIcons.length)];
-      g.style.cssText = `position:absolute;font-size:${10*size}px;left:${Math.random()*100}%;top:-5%;opacity:0;animation:fxFall ${(2+Math.random()*2)/speed}s linear ${Math.random()*2}s infinite;`;
+      g.style.cssText = `position:absolute;font-size:${10*size}px;${mfxPos()}opacity:0;animation:${aName} ${(2+Math.random()*2)/speed}s linear ${Math.random()*2}s infinite;`;
       fxContainer.appendChild(g);
     }
   } else if (resolved === 'money') {
@@ -2897,7 +2938,7 @@ function updateAnimPreview() {
     for (let i = 0; i < count; i++) {
       const m = document.createElement('div');
       m.textContent = moneyIcons[Math.floor(Math.random()*moneyIcons.length)];
-      m.style.cssText = `position:absolute;font-size:${10*size}px;left:${Math.random()*100}%;top:-5%;opacity:0;animation:fxFall ${(2+Math.random()*2)/speed}s linear ${Math.random()*2}s infinite;`;
+      m.style.cssText = `position:absolute;font-size:${10*size}px;${mfxPos()}opacity:0;animation:${aName} ${(2+Math.random()*2)/speed}s linear ${Math.random()*2}s infinite;`;
       fxContainer.appendChild(m);
     }
   } else if (resolved === 'robots') {
@@ -2905,7 +2946,7 @@ function updateAnimPreview() {
     for (let i = 0; i < count; i++) {
       const r = document.createElement('div');
       r.textContent = '🤖';
-      r.style.cssText = `position:absolute;font-size:${(8+Math.random()*6)*size}px;left:${Math.random()*95}%;top:-5%;opacity:0;animation:fxFall ${(2+Math.random()*2)/speed}s linear ${Math.random()*3}s infinite;`;
+      r.style.cssText = `position:absolute;font-size:${(8+Math.random()*6)*size}px;${mfxPos()}opacity:0;animation:${aName} ${(2+Math.random()*2)/speed}s linear ${Math.random()*3}s infinite;`;
       fxContainer.appendChild(r);
     }
   } else if (resolved === 'tiremarks') {
@@ -2919,7 +2960,7 @@ function updateAnimPreview() {
   box.appendChild(fxContainer);
 }
 
-function playAnimPreviewDemo() {
+function playAnimPreviewEntrance() {
   const card = document.getElementById('anim-preview-card');
   const entrance = document.getElementById('modal-entrance-animation').value;
   const speed = parseFloat(document.getElementById('modal-animation-speed').value) || 1.0;
@@ -2931,9 +2972,6 @@ function playAnimPreviewDemo() {
     card.style.animation = `anim-${entrance} ${dur} ease-out forwards`;
     card.style.opacity = '';
   }, 50);
-
-  // Also refresh the effect preview
-  updateAnimPreview();
 }
 
 function applyAnim() {
@@ -2944,6 +2982,7 @@ function applyAnim() {
   d.animation_speed = parseFloat(document.getElementById('modal-animation-speed').value);
   d.effect_amount = parseFloat(document.getElementById('modal-effect-amount').value);
   d.effect_size = parseFloat(document.getElementById('modal-effect-size').value);
+  d.effect_direction = document.getElementById('modal-effect-direction').value;
 
   // Sync to hidden controls
   document.getElementById('ctrl-entrance-animation').value = d.entrance_animation;
@@ -2952,12 +2991,15 @@ function applyAnim() {
   document.getElementById('ctrl-animation-speed').value = d.animation_speed;
   document.getElementById('ctrl-effect-amount').value = d.effect_amount;
   document.getElementById('ctrl-effect-size').value = d.effect_size;
+  document.getElementById('ctrl-effect-direction').value = d.effect_direction;
 
   unsavedChanges = true;
   updateAnimSectionPreview(d);
   updatePreview();
   closeAnimPopup();
 }
+
+const DIR_LABELS = { down:'Down', up:'Up', left:'Left', right:'Right' };
 
 function updateAnimSectionPreview(d) {
   document.getElementById('asp-entrance').textContent = ENTRANCE_LABELS[d.entrance_animation] || 'Slide Down';
@@ -2966,6 +3008,7 @@ function updateAnimSectionPreview(d) {
   document.getElementById('asp-speed').textContent = parseFloat(d.animation_speed || 1.0).toFixed(1) + '×';
   document.getElementById('asp-amount').textContent = parseFloat(d.effect_amount || 1.0).toFixed(1) + '×';
   document.getElementById('asp-size').textContent = parseFloat(d.effect_size || 1.0).toFixed(1) + '×';
+  document.getElementById('asp-direction').textContent = DIR_LABELS[d.effect_direction] || 'Down';
 }
 
 // Initial animation section preview
