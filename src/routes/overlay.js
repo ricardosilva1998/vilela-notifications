@@ -77,6 +77,42 @@ router.get('/debug/:token', (req, res) => {
   });
 });
 
+// Test alert endpoint — sends a fake event to the overlay
+router.post('/test-alert', (req, res) => {
+  if (!req.streamer) return res.status(401).json({ error: 'Not authenticated' });
+  if (!req.streamer.overlay_enabled) return res.status(400).json({ error: 'Overlay not enabled' });
+
+  const { type, amount } = req.body;
+  const testEvents = {
+    follow: { type: 'follow', data: { username: 'TestViewer' } },
+    subscription: { type: 'subscription', data: { username: 'TestSubscriber', tier: '1', months: 3, message: 'Test subscription!' } },
+    giftsub: { type: 'subscription', data: { username: 'TestGifter', tier: '1', months: 1, message: `Gifted ${amount || 5} subs!`, isGift: true, giftAmount: amount || 5 } },
+    bits: { type: 'bits', data: { username: 'TestCheerer', amount: amount || 500, message: 'Test bits cheer!' } },
+    raid: { type: 'raid', data: { username: 'TestRaider', viewers: amount || 50 } },
+    donation: { type: 'donation', data: { username: 'TestDonor', amount: amount || 5, currency: 'EUR', message: 'Test donation!' } },
+  };
+
+  const event = testEvents[type];
+  if (!event) return res.status(400).json({ error: 'Invalid event type' });
+
+  // If testing giftsub with amount > 1, send the giftsub event followed by individual subs
+  if (type === 'giftsub' && (amount || 5) > 1) {
+    // Send the main giftsub event
+    bus.emit(`overlay:${req.streamer.id}`, { type: 'giftsub', data: { username: event.data.username, tier: '1', amount: amount || 5, message: `Gifted ${amount || 5} subs!` } });
+    // Simulate individual sub events (these should be suppressed by the dedup logic)
+    for (let i = 0; i < (amount || 5); i++) {
+      setTimeout(() => {
+        bus.emit(`overlay:${req.streamer.id}`, { type: 'subscription', data: { username: `GiftRecipient${i + 1}`, tier: '1', months: 1, message: null } });
+      }, 200 * (i + 1));
+    }
+  } else {
+    bus.emit(`overlay:${req.streamer.id}`, event);
+  }
+
+  console.log(`[Overlay] Test alert: ${type} for streamer ${req.streamer.id}`);
+  res.json({ ok: true, type });
+});
+
 // Sponsor-only SSE endpoint
 router.get('/sponsors/events/:token', (req, res) => {
   const streamer = db.getStreamerByOverlayToken(req.params.token);

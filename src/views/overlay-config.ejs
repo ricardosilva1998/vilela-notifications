@@ -923,4 +923,92 @@
   }
 </script>
 
+<!-- Test Alerts Section -->
+<div class="card" style="margin-top: 24px; padding: 24px;">
+  <h3 style="font-size: 16px; margin-bottom: 8px;">Test Alerts</h3>
+  <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">Send test alerts to your OBS overlay. Make sure the overlay is open in OBS to see them.</p>
+
+  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+    <!-- Follow -->
+    <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 14px; border: 1px solid var(--border);">
+      <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Follow</div>
+      <button onclick="sendTestAlert('follow')" class="btn btn-primary" style="width: 100%; padding: 8px; font-size: 12px;">Test</button>
+    </div>
+
+    <!-- Subscription -->
+    <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 14px; border: 1px solid var(--border);">
+      <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Subscription</div>
+      <button onclick="sendTestAlert('subscription')" class="btn btn-primary" style="width: 100%; padding: 8px; font-size: 12px;">Test</button>
+    </div>
+
+    <!-- Gift Subs -->
+    <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 14px; border: 1px solid var(--border);">
+      <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Gift Subs</div>
+      <div style="display: flex; gap: 6px;">
+        <input type="number" id="giftsub-amount" value="5" min="1" max="100" style="flex: 1; padding: 8px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px; text-align: center;">
+        <button onclick="sendTestAlert('giftsub', document.getElementById('giftsub-amount').value)" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px;">Test</button>
+      </div>
+    </div>
+
+    <!-- Bits -->
+    <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 14px; border: 1px solid var(--border);">
+      <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Bits / Cheer</div>
+      <div style="display: flex; gap: 6px;">
+        <input type="number" id="bits-amount" value="500" min="1" style="flex: 1; padding: 8px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px; text-align: center;">
+        <button onclick="sendTestAlert('bits', document.getElementById('bits-amount').value)" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px;">Test</button>
+      </div>
+    </div>
+
+    <!-- Raid -->
+    <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 14px; border: 1px solid var(--border);">
+      <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Raid</div>
+      <div style="display: flex; gap: 6px;">
+        <input type="number" id="raid-amount" value="50" min="1" style="flex: 1; padding: 8px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px; text-align: center;">
+        <button onclick="sendTestAlert('raid', document.getElementById('raid-amount').value)" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px;">Test</button>
+      </div>
+    </div>
+
+    <!-- Donation -->
+    <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 14px; border: 1px solid var(--border);">
+      <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Donation</div>
+      <div style="display: flex; gap: 6px;">
+        <input type="number" id="donation-amount" value="5" min="1" style="flex: 1; padding: 8px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px; text-align: center;">
+        <button onclick="sendTestAlert('donation', document.getElementById('donation-amount').value)" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px;">Test</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="test-alert-status" style="margin-top: 12px; font-size: 12px; color: var(--text-muted); display: none;"></div>
+</div>
+
+<script>
+async function sendTestAlert(type, amount) {
+  const statusEl = document.getElementById('test-alert-status');
+  statusEl.style.display = 'block';
+  statusEl.style.color = 'var(--text-muted)';
+  statusEl.textContent = 'Sending test alert...';
+
+  try {
+    const res = await fetch('/overlay/test-alert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, amount: parseInt(amount) || undefined }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      statusEl.style.color = 'var(--success)';
+      statusEl.textContent = `Test ${type} alert sent! Check your OBS overlay.`;
+    } else {
+      statusEl.style.color = 'var(--danger)';
+      statusEl.textContent = data.error || 'Failed to send test alert.';
+    }
+  } catch (e) {
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = 'Error sending test alert.';
+  }
+
+  setTimeout(() => { statusEl.style.display = 'none'; }, 5000);
+}
+</script>
+
 <%- include('footer') %>
