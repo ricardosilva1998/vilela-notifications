@@ -26,7 +26,6 @@ async function handleMessage(channel, tags, message, self) {
 
   // Banned words always enforced (except mods/broadcaster)
   if (!(tags.mod || tags.badges?.broadcaster) && streamer.mod_banned_words_enabled) {
-    console.log(`[Mod] tags.id=${tags.id} tags['id']=${tags['id']} tags.username=${tags.username} tags['user-id']=${tags['user-id']}`);
     const bwViolation = checkBannedWords(message, streamer.id);
     if (bwViolation) {
       const action = getAction(channel, tags.username, streamer);

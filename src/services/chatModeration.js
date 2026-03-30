@@ -234,8 +234,8 @@ async function helixDeleteMessage(broadcasterId, messageId) {
   if (!modId) { console.error('[Mod] No bot user ID, cannot delete'); return; }
   const token = config.bot.twitchToken.replace(/^oauth:/, '');
   const clientId = botClientId || config.twitch.clientId;
-  const url = `https://api.twitch.tv/helix/moderation/chat/messages?broadcaster_id=${broadcasterId}&moderator_id=${modId}&message_id=${messageId}`;
-  console.log(`[Mod] Helix DELETE message_id=${messageId} broadcaster_id=${broadcasterId} moderator_id=${modId} client_id=${clientId?.substring(0,8)}...`);
+  const url = `https://api.twitch.tv/helix/moderation/chat?broadcaster_id=${broadcasterId}&moderator_id=${modId}&message_id=${messageId}`;
+  console.log(`[Mod] Helix DELETE message_id=${messageId} broadcaster_id=${broadcasterId} moderator_id=${modId} client_id=${clientId}`);
   const res = await fetch(url, {
     method: 'DELETE',
     headers: { 'Client-ID': clientId, 'Authorization': `Bearer ${token}` }
