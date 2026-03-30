@@ -1,6 +1,13 @@
 <%- include('header', { title: 'Chatbot Config', streamer: streamer }) %>
 
 <style>
+.pill-toggle { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+.pill-toggle input { opacity: 0; width: 0; height: 0; }
+.pill-toggle .slider { position: absolute; cursor: pointer; inset: 0; background: var(--bg-elevated); border-radius: 24px; border: 1px solid var(--border); transition: 0.3s; }
+.pill-toggle .slider:before { content: ''; position: absolute; height: 18px; width: 18px; left: 2px; bottom: 2px; background: #fff; border-radius: 50%; transition: 0.3s; }
+.pill-toggle input:checked + .slider { background: var(--accent); border-color: var(--accent); }
+.pill-toggle input:checked + .slider:before { transform: translateX(20px); }
+
 .tab-connection.active { background: #9146ff; }
 .tab-events.active { background: #9146ff; }
 .tab-commands.active { background: #9146ff; }
@@ -433,10 +440,10 @@
           <div class="mod-card-title">Banned Words</div>
           <div class="mod-card-desc">Block messages containing specific words or patterns</div>
         </div>
-        <div class="toggle">
+        <label class="pill-toggle">
           <input type="checkbox" id="mod_banned_words_enabled" name="mod_banned_words_enabled" value="1" <%= streamer.mod_banned_words_enabled ? 'checked' : '' %>>
-          <label for="mod_banned_words_enabled"></label>
-        </div>
+          <span class="slider"></span>
+        </label>
       </div>
       <div class="banned-word-list" id="banned-word-list">
         <% bannedWords.forEach(w => { %>
@@ -462,10 +469,10 @@
           <div class="mod-card-title">Link Protection</div>
           <div class="mod-card-desc">Block URLs from non-mods/VIPs. Mods can use <code>!permit username</code></div>
         </div>
-        <div class="toggle">
+        <label class="pill-toggle">
           <input type="checkbox" id="mod_link_protection_enabled" name="mod_link_protection_enabled" value="1" <%= streamer.mod_link_protection_enabled ? 'checked' : '' %>>
-          <label for="mod_link_protection_enabled"></label>
-        </div>
+          <span class="slider"></span>
+        </label>
       </div>
       <div class="mod-card-settings">
         <div class="mod-setting">
@@ -482,10 +489,10 @@
           <div class="mod-card-title">Caps Filter</div>
           <div class="mod-card-desc">Block messages with excessive uppercase letters</div>
         </div>
-        <div class="toggle">
+        <label class="pill-toggle">
           <input type="checkbox" id="mod_caps_enabled" name="mod_caps_enabled" value="1" <%= streamer.mod_caps_enabled ? 'checked' : '' %>>
-          <label for="mod_caps_enabled"></label>
-        </div>
+          <span class="slider"></span>
+        </label>
       </div>
       <div class="mod-card-settings">
         <div class="mod-setting">
@@ -506,10 +513,10 @@
           <div class="mod-card-title">Emote Spam</div>
           <div class="mod-card-desc">Limit the number of emotes per message</div>
         </div>
-        <div class="toggle">
+        <label class="pill-toggle">
           <input type="checkbox" id="mod_emote_spam_enabled" name="mod_emote_spam_enabled" value="1" <%= streamer.mod_emote_spam_enabled ? 'checked' : '' %>>
-          <label for="mod_emote_spam_enabled"></label>
-        </div>
+          <span class="slider"></span>
+        </label>
       </div>
       <div class="mod-card-settings">
         <div class="mod-setting">
@@ -525,10 +532,10 @@
           <div class="mod-card-title">Repetition Filter</div>
           <div class="mod-card-desc">Block users from spamming the same message</div>
         </div>
-        <div class="toggle">
+        <label class="pill-toggle">
           <input type="checkbox" id="mod_repetition_enabled" name="mod_repetition_enabled" value="1" <%= streamer.mod_repetition_enabled ? 'checked' : '' %>>
-          <label for="mod_repetition_enabled"></label>
-        </div>
+          <span class="slider"></span>
+        </label>
       </div>
       <div class="mod-card-settings">
         <div class="mod-setting">
@@ -545,10 +552,10 @@
           <div class="mod-card-title">Symbol Spam</div>
           <div class="mod-card-desc">Block messages with excessive special characters</div>
         </div>
-        <div class="toggle">
+        <label class="pill-toggle">
           <input type="checkbox" id="mod_symbol_spam_enabled" name="mod_symbol_spam_enabled" value="1" <%= streamer.mod_symbol_spam_enabled ? 'checked' : '' %>>
-          <label for="mod_symbol_spam_enabled"></label>
-        </div>
+          <span class="slider"></span>
+        </label>
       </div>
       <div class="mod-card-settings">
         <div class="mod-setting">
@@ -567,10 +574,10 @@
           <div class="mod-card-title">Slow Mode Command</div>
           <div class="mod-card-desc">Enable <code>!slow &lt;seconds&gt;</code> and <code>!slowoff</code> for mods</div>
         </div>
-        <div class="toggle">
+        <label class="pill-toggle">
           <input type="checkbox" id="mod_slow_mode_cmd_enabled" name="mod_slow_mode_cmd_enabled" value="1" <%= streamer.mod_slow_mode_cmd_enabled ? 'checked' : '' %>>
-          <label for="mod_slow_mode_cmd_enabled"></label>
-        </div>
+          <span class="slider"></span>
+        </label>
       </div>
     </div>
 
@@ -580,10 +587,10 @@
           <div class="mod-card-title">Follow Age Gate</div>
           <div class="mod-card-desc">Require users to follow for a minimum time before chatting</div>
         </div>
-        <div class="toggle">
+        <label class="pill-toggle">
           <input type="checkbox" id="mod_follow_age_enabled" name="mod_follow_age_enabled" value="1" <%= streamer.mod_follow_age_enabled ? 'checked' : '' %>>
-          <label for="mod_follow_age_enabled"></label>
-        </div>
+          <span class="slider"></span>
+        </label>
       </div>
       <div class="mod-card-settings">
         <div class="mod-setting">
@@ -600,10 +607,10 @@
           <div class="mod-card-title">First-Time Chatter Flag</div>
           <div class="mod-card-desc">Post a notice in chat when someone chats for the first time</div>
         </div>
-        <div class="toggle">
+        <label class="pill-toggle">
           <input type="checkbox" id="mod_first_chatter_enabled" name="mod_first_chatter_enabled" value="1" <%= streamer.mod_first_chatter_enabled ? 'checked' : '' %>>
-          <label for="mod_first_chatter_enabled"></label>
-        </div>
+          <span class="slider"></span>
+        </label>
       </div>
     </div>
 
@@ -615,10 +622,10 @@
           <div class="mod-card-title">Raid Protection</div>
           <div class="mod-card-desc">Auto-enable followers-only mode when a raid is detected</div>
         </div>
-        <div class="toggle">
+        <label class="pill-toggle">
           <input type="checkbox" id="mod_raid_protection_enabled" name="mod_raid_protection_enabled" value="1" <%= streamer.mod_raid_protection_enabled ? 'checked' : '' %>>
-          <label for="mod_raid_protection_enabled"></label>
-        </div>
+          <span class="slider"></span>
+        </label>
       </div>
       <div class="mod-card-settings">
         <div class="mod-setting">
@@ -656,10 +663,10 @@
           <div class="mod-card-title">Escalation</div>
           <div class="mod-card-desc">Progressive punishment: 1st = warning, 2nd = 10s timeout, 3rd = 10min, 4th+ = 30min. Resets after 24h.</div>
         </div>
-        <div class="toggle">
+        <label class="pill-toggle">
           <input type="checkbox" id="mod_escalation_enabled" name="mod_escalation_enabled" value="1" <%= streamer.mod_escalation_enabled ? 'checked' : '' %>>
-          <label for="mod_escalation_enabled"></label>
-        </div>
+          <span class="slider"></span>
+        </label>
       </div>
     </div>
 
@@ -672,17 +679,17 @@
       </div>
       <div class="mod-card-settings">
         <div style="display:flex;align-items:center;gap:8px;">
-          <div class="toggle">
+          <label class="pill-toggle">
             <input type="checkbox" id="mod_exempt_subs" name="mod_exempt_subs" value="1" <%= streamer.mod_exempt_subs !== 0 ? 'checked' : '' %>>
-            <label for="mod_exempt_subs"></label>
-          </div>
+            <span class="slider"></span>
+          </label>
           <span style="font-size:13px;color:var(--text-primary);">Subscribers</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <div class="toggle">
+          <label class="pill-toggle">
             <input type="checkbox" id="mod_exempt_vips" name="mod_exempt_vips" value="1" <%= streamer.mod_exempt_vips !== 0 ? 'checked' : '' %>>
-            <label for="mod_exempt_vips"></label>
-          </div>
+            <span class="slider"></span>
+          </label>
           <span style="font-size:13px;color:var(--text-primary);">VIPs</span>
         </div>
       </div>
@@ -694,10 +701,10 @@
           <div class="mod-card-title">Discord Mod Log</div>
           <div class="mod-card-desc">Send moderation actions to a Discord channel</div>
         </div>
-        <div class="toggle">
+        <label class="pill-toggle">
           <input type="checkbox" id="mod_log_discord_enabled" name="mod_log_discord_enabled" value="1" <%= streamer.mod_log_discord_enabled ? 'checked' : '' %>>
-          <label for="mod_log_discord_enabled"></label>
-        </div>
+          <span class="slider"></span>
+        </label>
       </div>
       <div class="mod-card-settings">
         <div class="mod-setting">
