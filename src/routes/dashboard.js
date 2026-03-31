@@ -942,6 +942,19 @@ router.post('/chatbot/test/:eventType', (req, res) => {
   }
 });
 
+// Test custom command — send raw message to chat
+router.post('/chatbot/test/custom', (req, res) => {
+  const message = req.query.response || req.body.response;
+  if (!message) return res.status(400).json({ error: 'No response text' });
+  try {
+    const { chatManager } = require('../services/twitchChat');
+    chatManager.sendRawMessage(req.streamer.twitch_username, message);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Add command
 router.post('/chatbot/commands', (req, res) => {
   const { command, response, cooldown } = req.body;
