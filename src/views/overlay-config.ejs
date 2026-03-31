@@ -623,7 +623,10 @@
   function switchAlertTab(tab) {
     document.querySelectorAll('.alert-platform-tabs .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.alertTab === tab));
     document.querySelectorAll('.alert-tab-content').forEach(c => c.classList.toggle('active', c.id === 'alert-tab-' + tab));
+    localStorage.setItem('overlayconfig_alert_tab', tab);
   }
+  const savedAlertTab = localStorage.getItem('overlayconfig_alert_tab');
+  if (savedAlertTab) switchAlertTab(savedAlertTab);
 
   // ─── Audio synth (default sound previews) ───────────────────────────────────
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();

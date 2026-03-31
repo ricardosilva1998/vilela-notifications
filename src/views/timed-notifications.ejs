@@ -80,25 +80,27 @@
 
 <!-- Settings Card -->
 <div class="card animate-in" style="margin-bottom: 24px;">
-  <h3 style="margin-bottom: 20px; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-    <span style="width: 30px; height: 30px; background: rgba(145,70,255,0.12); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9146ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 1 1 4.93 19.07"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M2 12h2"/><path d="M20 12h2"/></svg>
-    </span>
-    Chat Settings
-  </h3>
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+    <h3 style="font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-bottom: 0;">
+      <span style="width: 30px; height: 30px; background: rgba(145,70,255,0.12); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9146ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 1 1 4.93 19.07"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M2 12h2"/><path d="M20 12h2"/></svg>
+      </span>
+      Chat Settings
+    </h3>
+    <label class="toggle-pill" title="Enable Chat Messages">
+      <input type="checkbox" id="chat-enabled" <%= streamer.sponsor_send_chat ? 'checked' : '' %>>
+      <span class="toggle-pill-slider"></span>
+    </label>
+  </div>
 
   <div class="settings-row">
     <div class="settings-row-label">
       Enable Chat Messages
       <div class="settings-row-sub">Automatically send sponsor messages to Twitch chat</div>
     </div>
-    <label class="toggle-pill">
-      <input type="checkbox" id="chat-enabled" <%= streamer.sponsor_send_chat ? 'checked' : '' %>>
-      <span class="toggle-pill-slider"></span>
-    </label>
   </div>
 
-  <div class="settings-row" style="margin-top: 16px;">
+  <div class="settings-row">
     <div class="settings-row-label">
       Interval Between Messages
       <div class="settings-row-sub">How long to wait between each chat message</div>
@@ -163,8 +165,16 @@
     </div>
 
     <% messages.forEach(function(m) { %>
-    <div class="msg-card" id="msg-card-<%= m.id %>">
-      <div class="msg-card-body">
+    <div class="msg-card" id="msg-card-<%= m.id %>" style="position: relative;">
+      <!-- Toggle in top right -->
+      <div style="position: absolute; top: 12px; right: 12px;">
+        <label class="toggle-pill" title="<%= m.enabled ? 'Enabled' : 'Disabled' %>">
+          <input type="checkbox" <%= m.enabled ? 'checked' : '' %> onchange="toggleMessage(<%= m.id %>, this.checked)">
+          <span class="toggle-pill-slider"></span>
+        </label>
+      </div>
+
+      <div class="msg-card-body" style="padding-right: 64px;">
         <div class="msg-text"><%= m.message_text %></div>
         <% if (m.url) { %>
           <div class="msg-url">
@@ -185,15 +195,10 @@
           Test
         </button>
 
-        <label class="toggle-pill" title="<%= m.enabled ? 'Enabled' : 'Disabled' %>">
-          <input type="checkbox" <%= m.enabled ? 'checked' : '' %> onchange="toggleMessage(<%= m.id %>, this.checked)">
-          <span class="toggle-pill-slider"></span>
-        </label>
-
         <div class="spacer"></div>
 
-        <button type="button" class="btn btn-danger" onclick="deleteMessage(<%= m.id %>)">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        <button type="button" class="btn btn-danger" style="padding: 8px 16px; font-size: 13px;" onclick="deleteMessage(<%= m.id %>)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 5px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           Delete
         </button>
       </div>
