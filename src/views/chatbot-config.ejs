@@ -850,31 +850,31 @@
   }
 
   async function testChat(type, btn) {
-    const originalText = btn.textContent;
+    const originalHTML = btn.innerHTML;
     btn.disabled = true;
-    btn.textContent = 'Sending...';
+    btn.innerHTML = 'Sending...';
     try {
       const res = await fetch('/dashboard/chatbot/test/' + type, { method: 'POST' });
       const data = await res.json();
-      btn.textContent = data.ok ? 'Sent!' : 'Failed';
+      btn.innerHTML = data.ok ? 'Sent!' : 'Failed';
     } catch (e) {
-      btn.textContent = 'Error';
+      btn.innerHTML = 'Error';
     }
-    setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
+    setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 2000);
   }
 
   async function testCustomCommand(response, btn) {
-    const originalText = btn.textContent;
+    const originalHTML = btn.innerHTML;
     btn.disabled = true;
-    btn.textContent = 'Sending...';
+    btn.innerHTML = 'Sending...';
     try {
       const res = await fetch('/dashboard/chatbot/test/custom?response=' + encodeURIComponent(response), { method: 'POST' });
       const data = await res.json();
-      btn.textContent = data.ok ? 'Sent!' : 'Failed';
+      btn.innerHTML = data.ok ? 'Sent!' : 'Failed';
     } catch (e) {
-      btn.textContent = 'Error';
+      btn.innerHTML = 'Error';
     }
-    setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
+    setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 2000);
   }
 
   function switchModTab(tab) {
