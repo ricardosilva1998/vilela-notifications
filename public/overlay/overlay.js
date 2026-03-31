@@ -463,9 +463,13 @@ function buildBannerContent(event) {
     }
 
     case 'donation': {
+      const currency = event.data.currency || '$';
+      const donationDetail = event.data.message
+        ? `donated <b>${currency} ${event.data.amount}</b> — ${esc(event.data.message)}`
+        : `donated <b>${currency} ${event.data.amount}</b> 💸`;
       const body = `<div class="event-label">Sponsor Alert</div>
           <div class="username">${esc(event.data.username)}</div>
-          <div class="detail">sponsored the team with <b>$${event.data.amount}</b> 💸</div>`;
+          <div class="detail">${donationDetail}</div>`;
       return `<div class="top-accent"></div>
         <div class="card-body">${wrapWithSideIcons(icon, body)}</div>
         <div class="car-track">
@@ -969,7 +973,9 @@ function applyCustomDesign(card, eventType) {
   // Detail text — per-text styling with fallbacks
   const detailEl = card.querySelector('.detail');
   if (detailEl) {
-    if (design.detail_text) detailEl.innerHTML = design.detail_text;
+    // Only override detail text for events without dynamic data (follow only)
+    // Donations, subs, bits, raids have dynamic content that shouldn't be overwritten
+    if (design.detail_text && eventType === 'follow') detailEl.innerHTML = design.detail_text;
     detailEl.style.color = design.detail_color || design.text_color || '#ffffff';
     if (design.detail_font_size) detailEl.style.fontSize = design.detail_font_size + 'px';
     if (design.detail_font_weight) detailEl.style.fontWeight = design.detail_font_weight;

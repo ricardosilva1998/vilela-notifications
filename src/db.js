@@ -164,7 +164,7 @@ try {
       ALTER TABLE streamers ADD COLUMN chat_sub_template TEXT DEFAULT '{username} just joined the podium! Tier {tier} for {months} months! 🏆';
       ALTER TABLE streamers ADD COLUMN chat_giftsub_template TEXT DEFAULT '{username} gifted {amount} subs! What a sponsor! 🎁';
       ALTER TABLE streamers ADD COLUMN chat_bits_template TEXT DEFAULT '{username} fueled up {amount} bits! 🔥';
-      ALTER TABLE streamers ADD COLUMN chat_donation_template TEXT DEFAULT '{username} sponsored the team with {amount}! 💰';
+      ALTER TABLE streamers ADD COLUMN chat_donation_template TEXT DEFAULT '{username} donated {amount}! {message} 💰';
       ALTER TABLE streamers ADD COLUMN chat_raid_template TEXT DEFAULT '{username} is raiding with {viewers} viewers! Welcome racers! 🏁';
     `);
     console.log('[DB] Added chatbot columns to streamers');
