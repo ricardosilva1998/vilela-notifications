@@ -464,12 +464,12 @@ function buildBannerContent(event) {
 
     case 'donation': {
       const currency = event.data.currency || '$';
-      const donationDetail = event.data.message
-        ? `donated <b>${currency} ${event.data.amount}</b> — ${esc(event.data.message)}`
-        : `donated <b>${currency} ${event.data.amount}</b> 💸`;
+      const msgHtml = event.data.message
+        ? `<div class="detail" style="margin-top:6px;font-style:italic;opacity:0.85;">"${esc(event.data.message)}"</div>`
+        : '';
       const body = `<div class="event-label">Sponsor Alert</div>
           <div class="username">${esc(event.data.username)}</div>
-          <div class="detail">${donationDetail}</div>`;
+          <div class="detail">donated <b>${currency} ${event.data.amount}</b> 💸</div>${msgHtml}`;
       return `<div class="top-accent"></div>
         <div class="card-body">${wrapWithSideIcons(icon, body)}</div>
         <div class="car-track">
