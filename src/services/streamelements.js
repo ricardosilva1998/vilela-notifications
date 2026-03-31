@@ -50,6 +50,7 @@ class StreamElementsClient {
               currency: event.data.currency || 'USD',
             },
           });
+          try { db.logOverlayEvent(this.streamerId, 'donation', event.data.username, { amount: event.data.amount, currency: event.data.currency }); } catch (e) {}
           chatManager.sendEventMessage(this.streamerId, 'donation', {
             username: event.data.username,
             amount: event.data.amount,

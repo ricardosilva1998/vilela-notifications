@@ -49,6 +49,10 @@ client.once('ready', async () => {
     }, 6 * 60 * 60 * 1000);
     try { const db = require('./db'); db.cleanupOldModLogs(); } catch (e) {}
 
+    // Clean up old overlay events (every 6 hours)
+    setInterval(() => { try { db.cleanupOldOverlayEvents(); } catch (e) {} }, 6 * 60 * 60 * 1000);
+    db.cleanupOldOverlayEvents();
+
     console.log('All systems running');
   } catch (error) {
     console.error(`Startup error: ${error.message}`);

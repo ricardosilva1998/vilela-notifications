@@ -124,6 +124,7 @@ router.get('/:username/success', async (req, res) => {
             currency: currency,
           },
         });
+        try { db.logOverlayEvent(streamer.id, 'donation', donorName, { amount: parseFloat(amount), currency }); } catch (e) {}
 
         // Fire chatbot message
         try {

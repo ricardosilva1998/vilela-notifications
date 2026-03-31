@@ -97,6 +97,7 @@ class EventSubClient {
           if (streamer && streamer[enabledKey]) {
             bus.emit(`overlay:${this.streamerId}`, { ...normalized, type: overlayType, isGift });
           }
+          try { db.logOverlayEvent(this.streamerId, normalized.type, normalized.data?.username, normalized.data); } catch (e) {}
 
           // Emit to chat service
           chatManager.sendEventMessage(this.streamerId, normalized.type, normalized.data);

@@ -643,6 +643,19 @@ db.exec(`
 `);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_modlog_streamer_date ON moderation_log(streamer_id, created_at)`);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS overlay_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    streamer_id INTEGER NOT NULL,
+    event_type TEXT NOT NULL,
+    username TEXT,
+    data TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (streamer_id) REFERENCES streamers(id) ON DELETE CASCADE
+  )
+`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_overlay_events_streamer_date ON overlay_events(streamer_id, created_at)`);
+
 // --- Seed: ensure enterprise subscriptions for specific users ---
 const _enterpriseUsers = ['Ricardo Apple', 'andre_vilela'];
 for (const name of _enterpriseUsers) {
@@ -2783,6 +2796,36 @@ function getStreamerByUsername(username) {
   return db.prepare('SELECT * FROM streamers WHERE twitch_username = ? COLLATE NOCASE').get(username);
 }
 
+// --- Overlay Events ---
+
+function logOverlayEvent(streamerId, eventType, username, data) {
+  db.prepare('INSERT INTO overlay_events (streamer_id, event_type, username, data) VALUES (?, ?, ?, ?)').run(streamerId, eventType, username, data ? JSON.stringify(data) : null);
+}
+
+function getOverlayStats7d(streamerId) {
+  return db.prepare(`
+    SELECT
+      COALESCE(SUM(CASE WHEN event_type = 'follow' THEN 1 ELSE 0 END), 0) AS follows,
+      COALESCE(SUM(CASE WHEN event_type = 'subscription' THEN 1 ELSE 0 END), 0) AS subs,
+      COALESCE(SUM(CASE WHEN event_type = 'bits' THEN 1 ELSE 0 END), 0) AS bits_events,
+      COALESCE(SUM(CASE WHEN event_type = 'donation' THEN 1 ELSE 0 END), 0) AS donations,
+      COALESCE(SUM(CASE WHEN event_type = 'raid' THEN 1 ELSE 0 END), 0) AS raids,
+      COALESCE(SUM(CASE WHEN event_type = 'giftsub' THEN 1 ELSE 0 END), 0) AS giftsubs,
+      COUNT(*) AS total
+    FROM overlay_events
+    WHERE streamer_id = ? AND created_at >= datetime('now', '-7 days')
+  `).get(streamerId);
+}
+
+function getOverlayEventsRecent(streamerId, limit) {
+  return db.prepare('SELECT * FROM overlay_events WHERE streamer_id = ? ORDER BY created_at DESC LIMIT ?').all(streamerId, limit || 20);
+}
+
+function cleanupOldOverlayEvents() {
+  const result = db.prepare("DELETE FROM overlay_events WHERE created_at < datetime('now', '-30 days')").run();
+  if (result.changes > 0) console.log(`[DB] Cleaned up ${result.changes} old overlay events`);
+}
+
 module.exports = {
   db,
   getStreamerByDiscordId,
@@ -2975,4 +3018,8 @@ module.exports = {
   cleanupOldModLogs,
   updateDonationSettings,
   getStreamerByUsername,
+  logOverlayEvent,
+  getOverlayStats7d,
+  getOverlayEventsRecent,
+  cleanupOldOverlayEvents,
 };
