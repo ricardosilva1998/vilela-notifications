@@ -11,7 +11,6 @@
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px;" class="animate-in">
   <div style="display: flex; align-items: center; gap: 12px;">
     <h2 style="font-size: 24px; font-weight: 700;"><%= t('dashboard.title') %></h2>
-    <span class="badge badge-tier"><%= (tier || 'free').toUpperCase() %></span>
   </div>
 </div>
 
@@ -34,12 +33,10 @@
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2H3v16h5v4l4-4h5l4-4V2zM11 11V7M16 11V7"/></svg>
     Twitch
   </button>
-  <% if (features.youtube) { %>
   <button class="tab-btn tab-youtube" data-tab="youtube">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.5 7.7a2.8 2.8 0 0 0-2-2C18.9 5 12 5 12 5s-6.9 0-8.5.7a2.8 2.8 0 0 0-2 2A29 29 0 0 0 1 12a29 29 0 0 0 .5 4.3 2.8 2.8 0 0 0 2 2c1.6.7 8.5.7 8.5.7s6.9 0 8.5-.7a2.8 2.8 0 0 0 2-2A29 29 0 0 0 23 12a29 29 0 0 0-.5-4.3z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/></svg>
     YouTube
   </button>
-  <% } %>
   <button class="tab-btn tab-kick" data-tab="kick">
     <svg width="30" height="10" viewBox="0 0 78 26" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M0 0.0307312H8.34073V5.79423H11.1163V2.91248H13.8919V0.0307312H22.2326V8.69274H19.457V11.5745H16.6815V14.4562H19.457V17.338H22.2326V26H13.8919V23.1182H11.1163V20.2365H8.34073V26H0V0.0307312ZM55.6444 0.0307312H63.9852V5.79423H66.7608V2.91248H69.5363V0.0307312H77.8771V8.69274H75.1015V11.5745H72.3259V14.4562H75.1015V17.338H77.8771V26H69.5363V23.1182H66.7608V20.2365H63.9852V26H55.6444V0.0307312ZM25.039 0.0307312H33.3797V26H25.039V0.0307312ZM38.9462 0.0307312V2.91248H36.1706V23.1029H38.9462V25.9846H52.8535V17.3226H44.5128V8.66061H52.8535V0H38.9462V0.0307312Z"/></svg>
   </button>
@@ -54,10 +51,10 @@
 <div class="tab-content active" id="tab-discord">
 
 <div class="animate-in animate-in-delay-2" style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
-  <h3 class="section-title" style="margin: 0;">
+  <h3 class="section-title" style="margin: 0; line-height: 1;">
     <%= t('dashboard.yourServers') %>
   </h3>
-  <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 6px; background: var(--accent); color: white; font-size: 12px; font-weight: 700; font-family: var(--font-display);"><%= guilds.length %></span>
+  <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 6px; background: var(--accent); color: white; font-size: 12px; font-weight: 700; font-family: var(--font-display); vertical-align: middle;"><%= guilds.length %></span>
   <a href="<%= botInviteUrl %>" target="_blank" rel="noopener" class="btn btn-discord" style="padding: 8px 16px; font-size: 13px; margin-left: auto;">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     <%= t('dashboard.addBot') %>
@@ -430,8 +427,8 @@
   </div>
 </div>
 
-<% if (features.youtube) { %>
 <div class="tab-content" id="tab-youtube">
+<% if (features.youtube) { %>
 
   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
 
@@ -482,8 +479,16 @@
     </div>
 
   </div>
-</div>
+<% } else { %>
+  <div class="card" style="text-align: center; padding: 48px 24px;">
+    <div style="margin-bottom: 16px;">
+      <svg width="64" height="45" viewBox="0 0 24 24" fill="none" stroke="#ff0000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22.5 7.7a2.8 2.8 0 0 0-2-2C18.9 5 12 5 12 5s-6.9 0-8.5.7a2.8 2.8 0 0 0-2 2A29 29 0 0 0 1 12a29 29 0 0 0 .5 4.3 2.8 2.8 0 0 0 2 2c1.6.7 8.5.7 8.5.7s6.9 0 8.5-.7a2.8 2.8 0 0 0 2-2A29 29 0 0 0 23 12a29 29 0 0 0-.5-4.3z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/></svg>
+    </div>
+    <p style="color: var(--text-secondary); font-size: 16px; font-weight: 600; margin-bottom: 4px;">Coming Soon</p>
+    <p style="color: var(--text-muted); font-size: 13px;">YouTube integration with chatbot and overlay support is coming.</p>
+  </div>
 <% } %>
+</div>
 
 <div class="tab-content" id="tab-kick">
   <div class="card" style="text-align: center; padding: 48px 24px;">
@@ -538,8 +543,12 @@ function toggleStats(guildId) {
     tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
     panes.forEach(p => p.classList.toggle('active', p.id === 'tab-' + tabName));
   }
-  tabs.forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
-  switchTab('discord');
+  tabs.forEach(t => t.addEventListener('click', () => {
+    switchTab(t.dataset.tab);
+    localStorage.setItem('dashboard_tab', t.dataset.tab);
+  }));
+  const savedTab = localStorage.getItem('dashboard_tab');
+  switchTab(savedTab || 'discord');
 </script>
 
 <%- include('footer') %>
