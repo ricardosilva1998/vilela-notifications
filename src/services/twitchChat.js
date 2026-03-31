@@ -78,8 +78,11 @@ async function handleMessage(channel, tags, message, self) {
   if (!message.startsWith('!')) return;
 
   const commandName = message.split(' ')[0].substring(1).toLowerCase();
+  const args = message.split(' ').slice(1);
 
-  console.log(`[Chat] Command received: !${commandName} from ${tags.username} in ${channel}`);
+  // Built-in commands (followage, 8ball, rps, etc.)
+  const { handleBuiltinCommand } = require('./builtinCommands');
+  if (await handleBuiltinCommand(client, channel, tags, commandName, args, streamer)) return;
 
   // Built-in !song command
   if (commandName === 'song') {
