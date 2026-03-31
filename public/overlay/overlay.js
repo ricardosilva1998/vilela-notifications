@@ -705,6 +705,120 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+// ─── Bottom bar animation builder ──────────────────────────────
+function buildBottomAnimation(track, type, speed, accent) {
+  const [ar,ag,ab] = hexToRgb(accent);
+  const dur = (2.8 / speed);
+
+  switch (type) {
+    case 'zoomLR': {
+      track.innerHTML = '<div class="race-line"></div><div class="track-car" style="animation:carZoomLR ' + dur + 's linear infinite">🏎️</div>';
+      break;
+    }
+    case 'zoomRL': {
+      track.innerHTML = '<div class="race-line"></div><div class="track-car" style="transform:translateY(-50%);animation:carZoomRL ' + dur + 's linear infinite">🏎️</div>';
+      break;
+    }
+    case 'bounce': {
+      track.innerHTML = '<div class="race-line"></div><div class="track-car" style="left:50%;animation:carBounce ' + (1.2/speed) + 's ease-in-out infinite">🏎️</div>';
+      break;
+    }
+    case 'flames': {
+      let html = '<div class="bottom-flame">';
+      for (let i = 0; i < 30; i++) {
+        const h = 40 + Math.random() * 60;
+        const d = (0.3 + Math.random() * 0.4) / speed;
+        const delay = Math.random() * 0.5;
+        const r = 200 + Math.floor(Math.random() * 55);
+        const g = Math.floor(50 + Math.random() * 150);
+        html += `<div class="flame" style="height:${h}%;background:rgba(${r},${g},0,0.8);animation-duration:${d}s;animation-delay:${delay}s;flex:1;"></div>`;
+      }
+      html += '</div>';
+      track.innerHTML = html;
+      break;
+    }
+    case 'equalizer': {
+      let html = '<div class="bottom-equalizer">';
+      for (let i = 0; i < 24; i++) {
+        const d = (0.4 + Math.random() * 0.6) / speed;
+        const delay = Math.random() * 0.5;
+        const h = 20 + Math.random() * 60;
+        html += `<div class="eq-bar" style="height:${h}%;background:rgba(${ar},${ag},${ab},0.7);animation-duration:${d}s;animation-delay:${delay}s;flex:1;"></div>`;
+      }
+      html += '</div>';
+      track.innerHTML = html;
+      break;
+    }
+    case 'sparkles': {
+      let html = '<div class="bottom-sparkle">';
+      const colors = ['#fff', accent, '#f7c948', '#ff88cc'];
+      for (let i = 0; i < 12; i++) {
+        const size = 3 + Math.random() * 5;
+        const d = (1.5 + Math.random() * 2) / speed;
+        const delay = Math.random() * 2;
+        const y = 20 + Math.random() * 60;
+        const c = colors[Math.floor(Math.random() * colors.length)];
+        html += `<div class="spark" style="width:${size}px;height:${size}px;background:${c};top:${y}%;animation-duration:${d}s;animation-delay:${delay}s;box-shadow:0 0 ${size*2}px ${c};"></div>`;
+      }
+      html += '</div>';
+      track.innerHTML = html;
+      break;
+    }
+    case 'neonSweep': {
+      let html = '<div class="bottom-neon-sweep">';
+      html += `<div class="sweep" style="background:linear-gradient(90deg,transparent,rgba(${ar},${ag},${ab},0.4),transparent);animation-duration:${(2/speed)}s;"></div>`;
+      html += `<div class="sweep" style="background:linear-gradient(90deg,transparent,rgba(${ar},${ag},${ab},0.2),transparent);animation-duration:${(2.5/speed)}s;animation-delay:0.8s;width:40px;"></div>`;
+      const line = `<div style="position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(${ar},${ag},${ab},0.15);transform:translateY(-50%);"></div>`;
+      html += line + '</div>';
+      track.innerHTML = html;
+      break;
+    }
+    case 'checkered': {
+      let html = '<div class="bottom-checkered">';
+      let cells = '';
+      for (let row = 0; row < 2; row++) {
+        for (let col = 0; col < 40; col++) {
+          const isBlack = (row + col) % 2 === 0;
+          cells += `<div class="checker-cell" style="background:${isBlack ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)'};"></div>`;
+        }
+      }
+      html += `<div class="checker-strip" style="width:400px;flex-wrap:wrap;animation-duration:${(3/speed)}s;">${cells}</div>`;
+      html += '</div>';
+      track.innerHTML = html;
+      break;
+    }
+    case 'lightning': {
+      let html = '<div class="bottom-lightning">';
+      for (let i = 0; i < 6; i++) {
+        const x = 10 + Math.random() * 80;
+        const d = (1 + Math.random() * 2) / speed;
+        const delay = Math.random() * 3;
+        const w = 1 + Math.random() * 2;
+        html += `<div class="bolt" style="left:${x}%;width:${w}px;background:rgba(${ar},${ag},${ab},0.9);box-shadow:0 0 8px rgba(${ar},${ag},${ab},0.6);animation-duration:${d}s;animation-delay:${delay}s;"></div>`;
+      }
+      html += '</div>';
+      track.innerHTML = html;
+      break;
+    }
+    case 'pulse': {
+      let html = '<div class="bottom-pulse">';
+      html += `<div class="pulse-line" style="background:rgba(${ar},${ag},${ab},0.15);"></div>`;
+      for (let i = 0; i < 3; i++) {
+        const size = 6 + Math.random() * 4;
+        const d = (2 + Math.random()) / speed;
+        const delay = i * 0.7;
+        html += `<div class="pulse-dot" style="width:${size}px;height:${size}px;background:${accent};box-shadow:0 0 ${size*2}px ${accent};animation-duration:${d}s;animation-delay:${delay}s;"></div>`;
+      }
+      html += '</div>';
+      track.innerHTML = html;
+      break;
+    }
+    default: {
+      track.innerHTML = '<div class="race-line"></div><div class="track-car" style="animation:carZoomLR ' + dur + 's linear infinite">🏎️</div>';
+    }
+  }
+}
+
 function applyCustomDesign(card, eventType) {
   const design = overlayDesigns[eventType];
   if (!design) return;
@@ -830,24 +944,21 @@ function applyCustomDesign(card, eventType) {
     card.style.fontFamily = design.font_family;
   }
 
-  // Car track accent
+  // Bottom bar animation
   const track = card.querySelector('.car-track');
-  if (track) track.style.background = hexToRgba(design.accent_color, 0.06);
-
-  // Car animation
-  const carEl = card.querySelector('.track-car');
-  if (carEl && design.car_animation) {
+  if (track) {
+    track.style.background = hexToRgba(design.accent_color, 0.06);
+    const bottomAnim = design.car_animation || 'zoomLR';
     const speed = design.animation_speed || 1.0;
-    if (design.car_animation === 'none') {
-      carEl.style.animation = 'none';
-      carEl.style.left = '50%';
-      carEl.style.transform = 'translateY(-50%) scaleX(-1)';
-    } else if (design.car_animation === 'zoomRL') {
-      carEl.style.animation = `carZoomRL ${2.8 / speed}s linear infinite`;
-    } else if (design.car_animation === 'bounce') {
-      carEl.style.animation = `carBounce ${1.2 / speed}s ease-in-out infinite`;
+    const accent = design.accent_color || '#8888cc';
+
+    if (bottomAnim === 'none') {
+      track.style.display = 'none';
     } else {
-      carEl.style.animation = `carZoomLR ${2.8 / speed}s linear infinite`;
+      track.style.display = '';
+      // Clear existing content and rebuild based on animation type
+      track.innerHTML = '';
+      buildBottomAnimation(track, bottomAnim, speed, accent);
     }
   }
 

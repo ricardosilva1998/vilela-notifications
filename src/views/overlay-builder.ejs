@@ -520,6 +520,15 @@
       75%  { transform: translateY(-50%) scaleX(-1) translateX(15px); }
       100% { transform: translateY(-50%) scaleX(-1) translateX(0); }
     }
+    /* Bottom bar animation keyframes */
+    @keyframes flameFlicker { 0%,100%{height:60%;opacity:.8} 25%{height:90%;opacity:1} 50%{height:40%;opacity:.6} 75%{height:80%;opacity:.9} }
+    @keyframes eqBounce { 0%,100%{height:20%} 50%{height:90%} }
+    @keyframes sparkTravel { 0%{left:-10px;opacity:0;transform:translateY(-50%) scale(.5)} 10%{opacity:1;transform:translateY(-50%) scale(1)} 80%{opacity:.8} 100%{left:110%;opacity:0;transform:translateY(-50%) scale(.3)} }
+    @keyframes neonSweep { 0%{left:-60px} 100%{left:110%} }
+    @keyframes checkerScroll { 0%{left:-200px} 100%{left:100%} }
+    @keyframes boltFlash { 0%,100%{opacity:0} 5%{opacity:1} 10%{opacity:0} 12%{opacity:.8} 15%{opacity:0} }
+    @keyframes pulseDotMove { 0%{left:-8px} 100%{left:110%} }
+
     .preview-alert-card .cup-row {
       display: flex; align-items: center; gap: 12px;
     }
@@ -990,7 +999,7 @@
           <!-- Inline preview -->
           <div id="anim-section-preview" style="padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.08);background:var(--bg-elevated);margin-bottom:10px;font-size:12px;color:var(--text-secondary);display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;">
             <div><span style="color:var(--text-muted);">Entrance:</span> <span id="asp-entrance">Slide Down</span></div>
-            <div><span style="color:var(--text-muted);">Car:</span> <span id="asp-car">L→R</span></div>
+            <div><span style="color:var(--text-muted);">Bottom:</span> <span id="asp-car">L→R</span></div>
             <div><span style="color:var(--text-muted);">Effect:</span> <span id="asp-effect">Default</span></div>
             <div><span style="color:var(--text-muted);">Speed:</span> <span id="asp-speed">1.0×</span></div>
             <div><span style="color:var(--text-muted);">Amount:</span> <span id="asp-amount">1.0×</span></div>
@@ -1003,7 +1012,7 @@
           <!-- Hidden inputs still used by getControlValues -->
           <div style="display:none;">
             <select id="ctrl-entrance-animation"><option value="slideDown">Slide Down</option><option value="slideUp">Slide Up</option><option value="slideLeft">Slide Left</option><option value="slideRight">Slide Right</option><option value="zoomIn">Zoom In</option><option value="fadeIn">Fade In</option></select>
-            <select id="ctrl-car-animation"><option value="zoomLR">Zoom L→R</option><option value="zoomRL">Zoom R→L</option><option value="bounce">Bounce</option><option value="none">None</option></select>
+            <select id="ctrl-car-animation"><option value="zoomLR">Car L→R</option><option value="zoomRL">Car R→L</option><option value="bounce">Car Bounce</option><option value="checkered">Checkered Flag</option><option value="flames">Flames</option><option value="sparkles">Sparkles</option><option value="lightning">Lightning</option><option value="neonSweep">Neon Sweep</option><option value="equalizer">Equalizer</option><option value="pulse">Pulse Wave</option><option value="none">None</option></select>
             <select id="ctrl-screen-effect"><option value="default">Default (per event)</option><option value="none">None</option><option value="confetti">Confetti</option><option value="gold">Gold Rain</option><option value="money">Money Rain</option><option value="robots">Robots</option><option value="tiremarks">Tire Marks</option></select>
             <input type="range" id="ctrl-animation-speed" min="0.5" max="2.0" step="0.1" value="1.0">
             <input type="range" id="ctrl-effect-amount" min="0.2" max="3.0" step="0.1" value="1.0">
@@ -1438,18 +1447,15 @@ function updatePreview() {
   const detailDefault = getDetailPreviewText(currentType);
   detailEl.textContent = d.detail_text || detailDefault;
 
-  // Car animation
-  const carEl = document.getElementById('preview-car');
-  if (d.car_animation === 'none') {
-    carEl.style.animation = 'none';
-    carEl.style.left = '50%';
-    carEl.style.transform = 'translateY(-50%) scaleX(-1)';
-  } else if (d.car_animation === 'zoomRL') {
-    carEl.style.animation = `previewCarZoomRL ${2.8 / d.animation_speed}s linear infinite`;
-  } else if (d.car_animation === 'bounce') {
-    carEl.style.animation = `previewCarBounce ${1.2 / d.animation_speed}s ease-in-out infinite`;
+  // Bottom bar animation (dynamic)
+  const bottomAnim = d.car_animation || 'zoomLR';
+  const animSpeed = d.animation_speed || 1.0;
+  if (bottomAnim === 'none') {
+    track.style.display = 'none';
   } else {
-    carEl.style.animation = `previewCarZoom ${2.8 / d.animation_speed}s linear infinite`;
+    track.style.display = '';
+    track.innerHTML = '';
+    buildPreviewBottomAnimation(track, bottomAnim, animSpeed, d.accent_color || '#8888cc');
   }
 
   // Position card in the preview screen
@@ -1501,6 +1507,71 @@ function ensureFxKeyframes() {
   document.head.appendChild(style);
 }
 ensureFxKeyframes();
+
+// ─── Build bottom bar animation for builder preview ──────────────────────────
+function buildPreviewBottomAnimation(track, type, speed, accent) {
+  const [ar,ag,ab] = hexToRgb(accent);
+  const dur = 2.8 / speed;
+
+  if (type === 'zoomLR') {
+    track.innerHTML = '<div class="race-line"></div><div class="track-car" id="preview-car" style="animation:previewCarZoom '+dur+'s linear infinite">🏎️</div>';
+  } else if (type === 'zoomRL') {
+    track.innerHTML = '<div class="race-line"></div><div class="track-car" id="preview-car" style="transform:translateY(-50%);animation:previewCarZoomRL '+dur+'s linear infinite">🏎️</div>';
+  } else if (type === 'bounce') {
+    track.innerHTML = '<div class="race-line"></div><div class="track-car" id="preview-car" style="left:50%;animation:previewCarBounce '+(1.2/speed)+'s ease-in-out infinite">🏎️</div>';
+  } else if (type === 'flames') {
+    let h = '';
+    for (let i = 0; i < 20; i++) {
+      const ht = 40 + Math.random() * 60;
+      const d = (0.3 + Math.random() * 0.4) / speed;
+      const r = 200 + Math.floor(Math.random() * 55);
+      const g = Math.floor(50 + Math.random() * 150);
+      h += `<div style="flex:1;height:${ht}%;background:rgba(${r},${g},0,0.8);border-radius:3px 3px 0 0;animation:flameFlicker ${d}s linear ${Math.random()*0.5}s infinite;"></div>`;
+    }
+    track.innerHTML = `<div style="position:absolute;bottom:0;left:0;right:0;height:100%;display:flex;gap:2px;align-items:flex-end;padding:0 6px;">${h}</div>`;
+  } else if (type === 'equalizer') {
+    let h = '';
+    for (let i = 0; i < 16; i++) {
+      const d = (0.4 + Math.random() * 0.6) / speed;
+      h += `<div style="flex:1;height:${20+Math.random()*60}%;background:rgba(${ar},${ag},${ab},0.7);border-radius:2px 2px 0 0;animation:eqBounce ${d}s ease-in-out ${Math.random()*0.5}s infinite;"></div>`;
+    }
+    track.innerHTML = `<div style="position:absolute;bottom:0;left:0;right:0;height:100%;display:flex;align-items:flex-end;justify-content:center;gap:2px;padding:4px 8px;">${h}</div>`;
+  } else if (type === 'sparkles') {
+    const colors = ['#fff', accent, '#f7c948', '#ff88cc'];
+    let h = '<div style="position:absolute;inset:0;overflow:hidden;">';
+    for (let i = 0; i < 8; i++) {
+      const sz = 2 + Math.random() * 4;
+      const c = colors[Math.floor(Math.random()*colors.length)];
+      h += `<div style="position:absolute;width:${sz}px;height:${sz}px;border-radius:50%;background:${c};top:${20+Math.random()*60}%;box-shadow:0 0 ${sz*2}px ${c};animation:sparkTravel ${(1.5+Math.random()*2)/speed}s linear ${Math.random()*2}s infinite;"></div>`;
+    }
+    h += '</div>';
+    track.innerHTML = h;
+  } else if (type === 'neonSweep') {
+    track.innerHTML = `<div style="position:absolute;inset:0;overflow:hidden;"><div style="position:absolute;top:0;bottom:0;width:40px;background:linear-gradient(90deg,transparent,rgba(${ar},${ag},${ab},0.4),transparent);animation:neonSweep ${2/speed}s linear infinite;"></div><div style="position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(${ar},${ag},${ab},0.15);transform:translateY(-50%);"></div></div>`;
+  } else if (type === 'checkered') {
+    let cells = '';
+    for (let row = 0; row < 2; row++)
+      for (let col = 0; col < 30; col++)
+        cells += `<div style="width:8px;height:8px;background:${(row+col)%2===0?'rgba(255,255,255,0.9)':'rgba(0,0,0,0.9)'}"></div>`;
+    track.innerHTML = `<div style="position:absolute;inset:0;overflow:hidden;"><div style="position:absolute;top:50%;transform:translateY(-50%);height:16px;width:240px;display:flex;flex-wrap:wrap;animation:checkerScroll ${3/speed}s linear infinite;">${cells}</div></div>`;
+  } else if (type === 'lightning') {
+    let h = '<div style="position:absolute;inset:0;overflow:hidden;">';
+    for (let i = 0; i < 4; i++)
+      h += `<div style="position:absolute;top:10%;height:80%;width:${1+Math.random()*2}px;left:${10+Math.random()*80}%;background:rgba(${ar},${ag},${ab},0.9);box-shadow:0 0 6px rgba(${ar},${ag},${ab},0.6);animation:boltFlash ${(1+Math.random()*2)/speed}s ease-out ${Math.random()*3}s infinite;"></div>`;
+    h += '</div>';
+    track.innerHTML = h;
+  } else if (type === 'pulse') {
+    let h = `<div style="position:absolute;inset:0;overflow:hidden;display:flex;align-items:center;"><div style="position:absolute;left:0;right:0;height:2px;background:rgba(${ar},${ag},${ab},0.15);"></div>`;
+    for (let i = 0; i < 3; i++) {
+      const sz = 4 + Math.random() * 3;
+      h += `<div style="position:absolute;top:50%;transform:translateY(-50%);width:${sz}px;height:${sz}px;border-radius:50%;background:${accent};box-shadow:0 0 ${sz*2}px ${accent};animation:pulseDotMove ${(2+Math.random())/speed}s linear ${i*0.7}s infinite;"></div>`;
+    }
+    h += '</div>';
+    track.innerHTML = h;
+  } else {
+    track.innerHTML = '<div class="race-line"></div><div class="track-car" id="preview-car" style="animation:previewCarZoom '+dur+'s linear infinite">🏎️</div>';
+  }
+}
 
 function renderScreenEffect(effect) {
   const screen = document.getElementById('preview-screen');
@@ -2535,29 +2606,46 @@ document.addEventListener('mouseup', e => {
   <div class="modal-box" style="max-width:540px;">
     <h3>⚡ Customize Animation</h3>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-      <div>
-        <div class="ctrl-label" style="margin-bottom:4px;">Entrance</div>
-        <select id="modal-entrance-animation" style="width:100%;" onchange="playAnimPreviewEntrance();updateAnimPreview()">
-          <option value="slideDown">Slide Down</option>
-          <option value="slideUp">Slide Up</option>
-          <option value="slideLeft">Slide Left</option>
-          <option value="slideRight">Slide Right</option>
-          <option value="zoomIn">Zoom In</option>
-          <option value="fadeIn">Fade In</option>
-        </select>
-      </div>
-      <div>
-        <div class="ctrl-label" style="margin-bottom:4px;">Car Animation</div>
-        <select id="modal-car-animation" style="width:100%;" onchange="updateAnimPreview()">
-          <option value="zoomLR">Zoom L→R</option>
-          <option value="zoomRL">Zoom R→L</option>
-          <option value="bounce">Bounce</option>
-          <option value="none">None</option>
-        </select>
-      </div>
+    <!-- Entrance -->
+    <div class="ctrl-label" style="margin-bottom:6px;">Entrance Animation</div>
+    <div style="margin-bottom:14px;">
+      <select id="modal-entrance-animation" style="width:100%;" onchange="playAnimPreviewEntrance();updateAnimPreview()">
+        <option value="slideDown">Slide Down</option>
+        <option value="slideUp">Slide Up</option>
+        <option value="slideLeft">Slide Left</option>
+        <option value="slideRight">Slide Right</option>
+        <option value="zoomIn">Zoom In</option>
+        <option value="fadeIn">Fade In</option>
+      </select>
     </div>
 
+    <!-- Bottom Bar Animation -->
+    <div class="ctrl-label" style="margin-bottom:6px;">Bottom Bar Animation</div>
+    <div style="margin-bottom:14px;">
+      <select id="modal-car-animation" style="width:100%;" onchange="updateAnimPreview()">
+        <optgroup label="Racing">
+          <option value="zoomLR">🏎️ Car L→R</option>
+          <option value="zoomRL">🏎️ Car R→L</option>
+          <option value="bounce">🏎️ Car Bounce</option>
+          <option value="checkered">🏁 Checkered Flag</option>
+        </optgroup>
+        <optgroup label="Effects">
+          <option value="flames">🔥 Flames</option>
+          <option value="sparkles">✨ Sparkles</option>
+          <option value="lightning">⚡ Lightning</option>
+          <option value="neonSweep">💡 Neon Sweep</option>
+        </optgroup>
+        <optgroup label="Music">
+          <option value="equalizer">🎵 Equalizer Bars</option>
+          <option value="pulse">💓 Pulse Wave</option>
+        </optgroup>
+        <optgroup label="Other">
+          <option value="none">None (hide bottom bar)</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <!-- Screen Effect -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
       <div>
         <div class="ctrl-label" style="margin-bottom:4px;">Screen Effect</div>
@@ -2978,7 +3066,7 @@ updateTextSectionPreview(workingDesigns[currentType]);
 
 // ─── Animation Popup ─────────────────────────────────────────
 const ENTRANCE_LABELS = { slideDown:'Slide Down', slideUp:'Slide Up', slideLeft:'Slide Left', slideRight:'Slide Right', zoomIn:'Zoom In', fadeIn:'Fade In' };
-const CAR_LABELS = { zoomLR:'L→R', zoomRL:'R→L', bounce:'Bounce', none:'None' };
+const CAR_LABELS = { zoomLR:'🏎️ Car L→R', zoomRL:'🏎️ Car R→L', bounce:'🏎️ Bounce', checkered:'🏁 Checkered', flames:'🔥 Flames', sparkles:'✨ Sparkles', lightning:'⚡ Lightning', neonSweep:'💡 Neon Sweep', equalizer:'🎵 Equalizer', pulse:'💓 Pulse', none:'None' };
 const EFFECT_LABELS = { default:'Default', none:'None', confetti:'Confetti', gold:'Gold Rain', money:'Money Rain', robots:'Robots', tiremarks:'Tire Marks' };
 
 let animBackup = {};

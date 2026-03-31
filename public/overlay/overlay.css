@@ -162,6 +162,74 @@ body {
   100% { right: 110%;  opacity: 1; }
 }
 
+/* ─── Bottom bar animation variants ─── */
+
+/* Flame bar */
+.bottom-flame { position: absolute; bottom: 0; left: 0; right: 0; height: 100%; display: flex; gap: 2px; align-items: flex-end; padding: 0 8px; }
+.bottom-flame .flame { width: 8px; border-radius: 4px 4px 0 0; animation: flameFlicker linear infinite; }
+@keyframes flameFlicker {
+  0%, 100% { height: 60%; opacity: 0.8; }
+  25% { height: 90%; opacity: 1; }
+  50% { height: 40%; opacity: 0.6; }
+  75% { height: 80%; opacity: 0.9; }
+}
+
+/* Equalizer bars */
+.bottom-equalizer { position: absolute; bottom: 0; left: 0; right: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 3px; padding: 4px 12px; }
+.bottom-equalizer .eq-bar { width: 4px; border-radius: 2px 2px 0 0; animation: eqBounce ease-in-out infinite; }
+@keyframes eqBounce {
+  0%, 100% { height: 20%; }
+  50% { height: 90%; }
+}
+
+/* Sparkle trail */
+.bottom-sparkle { position: absolute; inset: 0; overflow: hidden; }
+.bottom-sparkle .spark { position: absolute; top: 50%; border-radius: 50%; animation: sparkTravel linear infinite; }
+@keyframes sparkTravel {
+  0% { left: -10px; opacity: 0; transform: translateY(-50%) scale(0.5); }
+  10% { opacity: 1; transform: translateY(-50%) scale(1); }
+  80% { opacity: 0.8; transform: translateY(-50%) scale(1); }
+  100% { left: 110%; opacity: 0; transform: translateY(-50%) scale(0.3); }
+}
+
+/* Neon sweep */
+.bottom-neon-sweep { position: absolute; inset: 0; overflow: hidden; }
+.bottom-neon-sweep .sweep { position: absolute; top: 0; bottom: 0; width: 60px; animation: neonSweep linear infinite; }
+@keyframes neonSweep {
+  0% { left: -60px; }
+  100% { left: 110%; }
+}
+
+/* Checkered flag scroll */
+.bottom-checkered { position: absolute; inset: 0; overflow: hidden; }
+.bottom-checkered .checker-strip { position: absolute; top: 50%; transform: translateY(-50%); height: 20px; display: flex; animation: checkerScroll linear infinite; }
+.bottom-checkered .checker-cell { width: 10px; height: 10px; }
+
+@keyframes checkerScroll {
+  0% { left: -200px; }
+  100% { left: 100%; }
+}
+
+/* Lightning bolt */
+.bottom-lightning { position: absolute; inset: 0; overflow: hidden; }
+.bottom-lightning .bolt { position: absolute; top: 10%; height: 80%; width: 2px; animation: boltFlash ease-out infinite; }
+@keyframes boltFlash {
+  0%, 100% { opacity: 0; }
+  5% { opacity: 1; }
+  10% { opacity: 0; }
+  12% { opacity: 0.8; }
+  15% { opacity: 0; }
+}
+
+/* Pulse wave */
+.bottom-pulse { position: absolute; inset: 0; overflow: hidden; display: flex; align-items: center; }
+.bottom-pulse .pulse-line { position: absolute; left: 0; right: 0; height: 2px; }
+.bottom-pulse .pulse-dot { position: absolute; top: 50%; transform: translateY(-50%); border-radius: 50%; animation: pulseDotMove linear infinite; }
+@keyframes pulseDotMove {
+  0% { left: -8px; }
+  100% { left: 110%; }
+}
+
 /* Speed dots (follow / donation) */
 .speed-dot {
   position: absolute;
