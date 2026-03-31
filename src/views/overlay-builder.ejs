@@ -1456,7 +1456,8 @@ function updatePreview() {
   // Remove previous full-card overlays
   card.querySelectorAll('.card-anim-overlay').forEach(e => e.remove());
   if (bottomAnim === 'none') {
-    track.style.display = 'none';
+    track.innerHTML = '';
+    track.style.display = '';
   } else {
     buildPreviewBottomAnimation(track, bottomAnim, animSpeed, d.accent_color || '#8888cc', card);
   }
@@ -1523,7 +1524,8 @@ function buildPreviewBottomAnimation(track, type, speed, accent, card) {
 
   // Full-card animations
   if (FULL_CARD_ANIMS_PREVIEW.has(type) && card) {
-    track.style.display = 'none';
+    track.innerHTML = '';
+    track.style.display = '';
     const overlay = document.createElement('div');
     overlay.className = 'card-anim-overlay';
     overlay.style.cssText = 'position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:inherit;z-index:6;';
@@ -3218,7 +3220,8 @@ function updateAnimPopupBottomPreview() {
   const d = workingDesigns[currentType] || {};
   const accent = d.accent_color || '#8888cc';
   if (anim === 'none') {
-    track.style.display = 'none';
+    track.innerHTML = '';
+    track.style.display = '';
     if (popupCard) popupCard.querySelectorAll('.card-anim-overlay').forEach(e => e.remove());
   } else {
     buildPreviewBottomAnimation(track, anim, speed, accent, popupCard);

@@ -716,9 +716,10 @@ function buildBottomAnimation(track, type, speed, accent, card) {
   // Remove any previous full-card overlay
   if (card) card.querySelectorAll('.card-anim-overlay').forEach(e => e.remove());
 
-  // Full-card animations — hide the bottom track, overlay on the card
+  // Full-card animations — keep track visible for consistent height, overlay on the card
   if (FULL_CARD_ANIMS.has(type) && card) {
-    track.style.display = 'none';
+    track.innerHTML = '';
+    track.style.display = '';
     const overlay = document.createElement('div');
     overlay.className = 'card-anim-overlay';
 
@@ -1001,7 +1002,8 @@ function applyCustomDesign(card, eventType) {
     const accent = design.accent_color || '#8888cc';
 
     if (bottomAnim === 'none') {
-      track.style.display = 'none';
+      track.innerHTML = '';
+      track.style.display = '';
     } else {
       buildBottomAnimation(track, bottomAnim, speed, accent, card);
     }
