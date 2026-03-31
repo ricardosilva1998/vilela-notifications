@@ -388,7 +388,7 @@
                 </p>
               </div>
               <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-                <button type="button" onclick="testCustomCommand('<%= cmd.response.replace(/'/g, \"\\\\'\") %>', this)" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; color: var(--success);">
+                <button type="button" data-response="<%= cmd.response.replace(/"/g, '&quot;') %>" onclick="testCustomCommand(this.dataset.response, this)" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; color: var(--success);">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                   Test
                 </button>
