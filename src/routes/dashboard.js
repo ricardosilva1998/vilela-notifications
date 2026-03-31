@@ -875,6 +875,26 @@ router.post('/chatbot', (req, res) => {
   res.redirect('/dashboard/chatbot');
 });
 
+router.post('/chatbot/builtins', (req, res) => {
+  const b = req.body;
+  db.updateBuiltinCommands(req.streamer.id, {
+    cmd_followage_enabled: b.cmd_followage_enabled ? 1 : 0,
+    cmd_subage_enabled: b.cmd_subage_enabled ? 1 : 0,
+    cmd_uptime_enabled: b.cmd_uptime_enabled ? 1 : 0,
+    cmd_accountage_enabled: b.cmd_accountage_enabled ? 1 : 0,
+    cmd_8ball_enabled: b.cmd_8ball_enabled ? 1 : 0,
+    cmd_roll_enabled: b.cmd_roll_enabled ? 1 : 0,
+    cmd_hug_enabled: b.cmd_hug_enabled ? 1 : 0,
+    cmd_slap_enabled: b.cmd_slap_enabled ? 1 : 0,
+    cmd_love_enabled: b.cmd_love_enabled ? 1 : 0,
+    cmd_rps_enabled: b.cmd_rps_enabled ? 1 : 0,
+    cmd_coinflip_enabled: b.cmd_coinflip_enabled ? 1 : 0,
+    cmd_quote_enabled: b.cmd_quote_enabled ? 1 : 0,
+    cmd_roast_enabled: b.cmd_roast_enabled ? 1 : 0,
+  });
+  res.redirect('/dashboard/chatbot?tab=commands');
+});
+
 router.post('/chatbot/moderation', (req, res) => {
   const b = req.body;
   db.updateModerationConfig(req.streamer.id, {

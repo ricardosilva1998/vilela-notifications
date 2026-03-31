@@ -53,6 +53,13 @@
 .mod-subtab.active { background:var(--accent); color:#fff; }
 .mod-tab-content { display:none; }
 .mod-tab-content.active { display:block; }
+.builtin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.builtin-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; transition: border-color 0.2s; }
+.builtin-card:hover { border-color: rgba(145,70,255,0.2); }
+.builtin-info { display: flex; align-items: center; gap: 10px; }
+.builtin-icon { font-size: 18px; width: 32px; text-align: center; }
+.builtin-name { font-size: 13px; font-weight: 700; color: var(--text-primary); font-family: var(--font-display); }
+.builtin-desc { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
 </style>
 
 <a href="/dashboard" style="color: var(--text-secondary); font-size: 13px; font-family: var(--font-display); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
@@ -311,6 +318,112 @@
 
 <!-- ==================== CUSTOM COMMANDS TAB ==================== -->
 <div class="tab-content" id="tab-commands">
+
+  <!-- Built-In Commands -->
+  <div class="card" style="margin-bottom: 20px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+      <div>
+        <h3 style="margin: 0 0 4px; font-size: 15px;">Built-In Commands</h3>
+        <p style="color: var(--text-muted); font-size: 12px; margin: 0;">Toggle predefined commands for your chat</p>
+      </div>
+      <button type="submit" form="builtin-form" class="btn btn-primary" style="padding: 7px 16px; font-size: 12px;">Save</button>
+    </div>
+    <form id="builtin-form" method="POST" action="/dashboard/chatbot/builtins">
+      <div class="builtin-grid">
+        <div class="builtin-card">
+          <div class="builtin-info">
+            <span class="builtin-icon">🏁</span>
+            <div><div class="builtin-name">!followage</div><div class="builtin-desc">Show how long a user has followed</div></div>
+          </div>
+          <label class="pill-toggle"><input type="checkbox" name="cmd_followage_enabled" value="1" <%= streamer.cmd_followage_enabled ? 'checked' : '' %>><span class="slider"></span></label>
+        </div>
+        <div class="builtin-card">
+          <div class="builtin-info">
+            <span class="builtin-icon">🏆</span>
+            <div><div class="builtin-name">!subage</div><div class="builtin-desc">Show subscription duration</div></div>
+          </div>
+          <label class="pill-toggle"><input type="checkbox" name="cmd_subage_enabled" value="1" <%= streamer.cmd_subage_enabled ? 'checked' : '' %>><span class="slider"></span></label>
+        </div>
+        <div class="builtin-card">
+          <div class="builtin-info">
+            <span class="builtin-icon">🔴</span>
+            <div><div class="builtin-name">!uptime</div><div class="builtin-desc">Show how long stream has been live</div></div>
+          </div>
+          <label class="pill-toggle"><input type="checkbox" name="cmd_uptime_enabled" value="1" <%= streamer.cmd_uptime_enabled ? 'checked' : '' %>><span class="slider"></span></label>
+        </div>
+        <div class="builtin-card">
+          <div class="builtin-info">
+            <span class="builtin-icon">📅</span>
+            <div><div class="builtin-name">!accountage</div><div class="builtin-desc">Show Twitch account age</div></div>
+          </div>
+          <label class="pill-toggle"><input type="checkbox" name="cmd_accountage_enabled" value="1" <%= streamer.cmd_accountage_enabled ? 'checked' : '' %>><span class="slider"></span></label>
+        </div>
+        <div class="builtin-card">
+          <div class="builtin-info">
+            <span class="builtin-icon">🎱</span>
+            <div><div class="builtin-name">!8ball</div><div class="builtin-desc">Magic 8-Ball answers questions</div></div>
+          </div>
+          <label class="pill-toggle"><input type="checkbox" name="cmd_8ball_enabled" value="1" <%= streamer.cmd_8ball_enabled ? 'checked' : '' %>><span class="slider"></span></label>
+        </div>
+        <div class="builtin-card">
+          <div class="builtin-info">
+            <span class="builtin-icon">🎲</span>
+            <div><div class="builtin-name">!roll</div><div class="builtin-desc">Roll a dice (1-20 or !roll 100)</div></div>
+          </div>
+          <label class="pill-toggle"><input type="checkbox" name="cmd_roll_enabled" value="1" <%= streamer.cmd_roll_enabled ? 'checked' : '' %>><span class="slider"></span></label>
+        </div>
+        <div class="builtin-card">
+          <div class="builtin-info">
+            <span class="builtin-icon">🤗</span>
+            <div><div class="builtin-name">!hug</div><div class="builtin-desc">Give someone a virtual hug</div></div>
+          </div>
+          <label class="pill-toggle"><input type="checkbox" name="cmd_hug_enabled" value="1" <%= streamer.cmd_hug_enabled ? 'checked' : '' %>><span class="slider"></span></label>
+        </div>
+        <div class="builtin-card">
+          <div class="builtin-info">
+            <span class="builtin-icon">🐟</span>
+            <div><div class="builtin-name">!slap</div><div class="builtin-desc">Slap someone with a random object</div></div>
+          </div>
+          <label class="pill-toggle"><input type="checkbox" name="cmd_slap_enabled" value="1" <%= streamer.cmd_slap_enabled ? 'checked' : '' %>><span class="slider"></span></label>
+        </div>
+        <div class="builtin-card">
+          <div class="builtin-info">
+            <span class="builtin-icon">💕</span>
+            <div><div class="builtin-name">!love</div><div class="builtin-desc">Love compatibility percentage</div></div>
+          </div>
+          <label class="pill-toggle"><input type="checkbox" name="cmd_love_enabled" value="1" <%= streamer.cmd_love_enabled ? 'checked' : '' %>><span class="slider"></span></label>
+        </div>
+        <div class="builtin-card">
+          <div class="builtin-info">
+            <span class="builtin-icon">✊</span>
+            <div><div class="builtin-name">!rps</div><div class="builtin-desc">Rock Paper Scissors vs the bot</div></div>
+          </div>
+          <label class="pill-toggle"><input type="checkbox" name="cmd_rps_enabled" value="1" <%= streamer.cmd_rps_enabled ? 'checked' : '' %>><span class="slider"></span></label>
+        </div>
+        <div class="builtin-card">
+          <div class="builtin-info">
+            <span class="builtin-icon">🪙</span>
+            <div><div class="builtin-name">!coinflip</div><div class="builtin-desc">Flip a coin — Heads or Tails</div></div>
+          </div>
+          <label class="pill-toggle"><input type="checkbox" name="cmd_coinflip_enabled" value="1" <%= streamer.cmd_coinflip_enabled ? 'checked' : '' %>><span class="slider"></span></label>
+        </div>
+        <div class="builtin-card">
+          <div class="builtin-info">
+            <span class="builtin-icon">💬</span>
+            <div><div class="builtin-name">!quote</div><div class="builtin-desc">Random racing/motivational quote</div></div>
+          </div>
+          <label class="pill-toggle"><input type="checkbox" name="cmd_quote_enabled" value="1" <%= streamer.cmd_quote_enabled ? 'checked' : '' %>><span class="slider"></span></label>
+        </div>
+        <div class="builtin-card">
+          <div class="builtin-info">
+            <span class="builtin-icon">🔥</span>
+            <div><div class="builtin-name">!roast</div><div class="builtin-desc">Light-hearted racing roast</div></div>
+          </div>
+          <label class="pill-toggle"><input type="checkbox" name="cmd_roast_enabled" value="1" <%= streamer.cmd_roast_enabled ? 'checked' : '' %>><span class="slider"></span></label>
+        </div>
+      </div>
+    </form>
+  </div>
 
   <!-- Add Command -->
   <div class="card animate-in">
