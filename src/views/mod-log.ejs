@@ -1,0 +1,57 @@
+<%- include('header', { title: 'Moderation Log', streamer: streamer }) %>
+
+<style>
+  .mod-log-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .mod-log-table th { text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); border-bottom: 2px solid var(--border); font-family: var(--font-display); }
+  .mod-log-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-secondary); vertical-align: middle; }
+  .mod-log-table tr:hover td { background: var(--bg-hover); }
+  .mod-log-table .action-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; font-family: var(--font-display); }
+  .action-warn { background: rgba(247,144,9,0.15); color: #f79009; }
+  .action-delete { background: rgba(145,70,255,0.15); color: #9146ff; }
+  .action-timeout { background: rgba(240,68,56,0.15); color: #f04438; }
+  .mod-log-empty { text-align: center; padding: 40px; color: var(--text-muted); font-size: 14px; }
+  .mod-log-username { font-weight: 600; color: var(--text-primary); }
+  .mod-log-reason { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mod-log-time { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+</style>
+
+<a href="/dashboard/chatbot?tab=moderation" style="color: var(--text-secondary); font-size: 13px; font-family: var(--font-display); font-weight: 500; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 16px;">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  Back to Moderation
+</a>
+
+<h2 style="font-size: 22px; font-weight: 700; margin-bottom: 4px;">Moderation Log</h2>
+<p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">Actions taken in the last 7 days. Logs are automatically cleaned up weekly.</p>
+
+<div class="card">
+  <% if (modLog.length === 0) { %>
+    <div class="mod-log-empty">No moderation actions recorded yet.</div>
+  <% } else { %>
+    <table class="mod-log-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>User</th>
+          <th>Action</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% modLog.forEach(entry => { %>
+          <tr>
+            <td class="mod-log-time"><%= new Date(entry.created_at + 'Z').toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) %></td>
+            <td class="mod-log-username"><%= entry.username %></td>
+            <td>
+              <% const actionLabels = { warn: 'Warning', delete: 'Deleted', timeout_10: 'Timeout 10s', timeout_60: 'Timeout 1m', timeout_600: 'Timeout 10m', timeout_1800: 'Timeout 30m' }; %>
+              <% const actionClass = entry.action === 'warn' ? 'action-warn' : entry.action === 'delete' ? 'action-delete' : 'action-timeout'; %>
+              <span class="action-badge <%= actionClass %>"><%= actionLabels[entry.action] || entry.action %></span>
+            </td>
+            <td class="mod-log-reason" title="<%= entry.reason || '' %>"><%= entry.reason || '—' %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<%- include('footer') %>

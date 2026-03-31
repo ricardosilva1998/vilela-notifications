@@ -614,6 +614,21 @@ db.exec(`
   );
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS moderation_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    streamer_id INTEGER NOT NULL,
+    username TEXT NOT NULL,
+    user_id TEXT,
+    action TEXT NOT NULL,
+    reason TEXT,
+    message_text TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (streamer_id) REFERENCES streamers(id) ON DELETE CASCADE
+  )
+`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_modlog_streamer_date ON moderation_log(streamer_id, created_at)`);
+
 // --- Seed: ensure enterprise subscriptions for specific users ---
 const _enterpriseUsers = ['Ricardo Apple', 'andre_vilela'];
 for (const name of _enterpriseUsers) {
@@ -2642,6 +2657,20 @@ function deleteCustomOverlay(id, streamerId) {
   _deleteCustomOverlay.run(id, streamerId);
 }
 
+// Moderation Log
+function addModLogEntry(streamerId, username, userId, action, reason, messageText) {
+  db.prepare('INSERT INTO moderation_log (streamer_id, username, user_id, action, reason, message_text) VALUES (?, ?, ?, ?, ?, ?)').run(streamerId, username, userId, action, reason, messageText);
+}
+
+function getModLog(streamerId, limit = 100) {
+  return db.prepare('SELECT * FROM moderation_log WHERE streamer_id = ? ORDER BY created_at DESC LIMIT ?').all(streamerId, limit);
+}
+
+function cleanupOldModLogs() {
+  const result = db.prepare("DELETE FROM moderation_log WHERE created_at < datetime('now', '-7 days')").run();
+  if (result.changes > 0) console.log(`[DB] Cleaned up ${result.changes} old moderation log entries`);
+}
+
 module.exports = {
   db,
   getStreamerByDiscordId,
@@ -2828,4 +2857,7 @@ module.exports = {
   toggleCustomOverlay,
   setCustomOverlayActive,
   deleteCustomOverlay,
+  addModLogEntry,
+  getModLog,
+  cleanupOldModLogs,
 };

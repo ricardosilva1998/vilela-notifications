@@ -321,6 +321,12 @@ async function executeAction(client, channel, tags, action, reason, streamer) {
         break;
     }
     console.log(`[Mod] Executed ${action} on ${username} in ${channel} for: ${reason}`);
+    // Save to DB log
+    try {
+      db.addModLogEntry(streamer.id, username, userId, action, reason, null);
+    } catch (e) {
+      console.error('[Mod] Failed to save mod log:', e.message);
+    }
   } catch (e) {
     console.error(`[Mod] Failed to execute ${action} on ${username}:`, e.message);
   }

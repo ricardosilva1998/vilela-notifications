@@ -978,6 +978,11 @@ router.post('/chatbot/commands/:id/delete', (req, res) => {
   res.redirect('/dashboard/chatbot');
 });
 
+router.get('/chatbot/mod-log', (req, res) => {
+  const modLog = db.getModLog(req.streamer.id, 200);
+  res.render('mod-log', { streamer: req.streamer, modLog });
+});
+
 // --- YouTube Chatbot ---
 
 // YouTube chatbot config page

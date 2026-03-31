@@ -40,6 +40,15 @@ client.once('ready', async () => {
     // Start web dashboard
     server.start();
 
+    // Clean up old moderation logs (every 6 hours)
+    setInterval(() => {
+      try {
+        const db = require('./db');
+        db.cleanupOldModLogs();
+      } catch (e) {}
+    }, 6 * 60 * 60 * 1000);
+    try { const db = require('./db'); db.cleanupOldModLogs(); } catch (e) {}
+
     console.log('All systems running');
   } catch (error) {
     console.error(`Startup error: ${error.message}`);
