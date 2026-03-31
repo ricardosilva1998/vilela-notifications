@@ -2065,8 +2065,6 @@ function getChatbotEnabledStreamers() {
   return db.prepare(`
     SELECT * FROM streamers
     WHERE chatbot_enabled = 1
-    AND bot_access_token IS NOT NULL
-    AND bot_access_token != ''
     AND twitch_username IS NOT NULL
   `).all();
 }
