@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Donate to <%= streamer.twitch_display_name || streamer.twitch_username %> — Atleta</title>
+  <link rel="icon" type="image/png" href="/app-icon/honest_graphic-running-athlete-9715727.png">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #0c0d14; --bg-surface: #141520; --bg-elevated: #1a1b2e;
+      --border: rgba(255,255,255,0.06); --text-primary: #e8e6f0;
+      --text-secondary: #8b8a9e; --text-muted: #5c5b6e;
+      --accent: #9146ff; --accent-hover: #a56bff;
+      --success: #3ecf8e; --danger: #f04438;
+      --radius: 12px; --font-display: 'Outfit', sans-serif; --font-body: 'DM Sans', sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: var(--font-body); background: var(--bg-base); color: var(--text-primary); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .tip-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; width: 100%; max-width: 420px; text-align: center; }
+    .tip-avatar { width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 16px; border: 3px solid var(--accent); }
+    .tip-name { font-family: var(--font-display); font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .tip-sub { color: var(--text-muted); font-size: 13px; margin-bottom: 24px; }
+    .tip-amounts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+    .tip-amount { padding: 10px; border-radius: 8px; border: 2px solid var(--border); background: var(--bg-elevated); color: var(--text-primary); font-family: var(--font-display); font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.15s; }
+    .tip-amount:hover { border-color: rgba(145,70,255,0.4); }
+    .tip-amount.active { border-color: var(--accent); background: rgba(145,70,255,0.15); color: var(--accent); }
+    .tip-input { width: 100%; padding: 12px 14px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 14px; font-family: var(--font-body); margin-bottom: 12px; transition: border-color 0.2s; }
+    .tip-input:focus { border-color: var(--accent); outline: none; }
+    .tip-input::placeholder { color: var(--text-muted); }
+    .tip-row { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+    .tip-currency { padding: 12px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-family: var(--font-display); font-weight: 600; font-size: 14px; min-width: 50px; text-align: center; }
+    .tip-btn { width: 100%; padding: 14px; border-radius: 10px; border: none; background: #0070ba; color: #fff; font-family: var(--font-display); font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .tip-btn:hover { background: #005ea6; transform: translateY(-1px); }
+    .tip-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .tip-error { color: var(--danger); font-size: 12px; margin-bottom: 8px; display: none; }
+    .tip-success { background: rgba(62,207,142,0.1); border: 1px solid rgba(62,207,142,0.3); border-radius: 8px; padding: 16px; margin-top: 16px; color: var(--success); font-weight: 600; }
+    .tip-footer { margin-top: 20px; font-size: 11px; color: var(--text-muted); }
+    .tip-footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="tip-card">
+    <img class="tip-avatar" src="<%= avatarUrl || '/app-icon/honest_graphic-running-athlete-9715727.png' %>" alt="" onerror="this.src='/app-icon/honest_graphic-running-athlete-9715727.png'">
+    <div class="tip-name"><%= streamer.twitch_display_name || streamer.twitch_username %></div>
+    <div class="tip-sub">Support this streamer with a donation</div>
+
+    <% if (success) { %>
+      <div class="tip-success">Thank you for your donation! The streamer has been notified.</div>
+    <% } else { %>
+      <form method="POST" action="/tip/<%= streamer.twitch_username %>/create" id="tip-form">
+        <div class="tip-amounts">
+          <button type="button" class="tip-amount" data-amount="2">2</button>
+          <button type="button" class="tip-amount active" data-amount="5">5</button>
+          <button type="button" class="tip-amount" data-amount="10">10</button>
+          <button type="button" class="tip-amount" data-amount="25">25</button>
+        </div>
+        <div class="tip-row">
+          <span class="tip-currency"><%= streamer.donation_currency || 'EUR' %></span>
+          <input type="number" name="amount" id="tip-amount-input" class="tip-input" value="5" min="<%= streamer.donation_min_amount || 1 %>" step="0.01" placeholder="Amount">
+        </div>
+        <input type="text" name="message" class="tip-input" placeholder="Add a message (optional)" maxlength="200">
+        <input type="text" name="donor_name" class="tip-input" placeholder="Your name (optional)" maxlength="50">
+        <div class="tip-error" id="tip-error"></div>
+        <button type="submit" class="tip-btn" id="tip-submit">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.067 8.478c.492.88.556 2.014.3 3.327-.74 3.806-3.276 5.12-6.514 5.12h-.5a.805.805 0 0 0-.794.68l-.04.22-.63 3.993-.032.17a.804.804 0 0 1-.794.679H8.044a.483.483 0 0 1-.477-.558l.78-4.938v-.001l.025-.16.54-3.418.03-.187a.805.805 0 0 1 .794-.68h1.674c3.94 0 7.023-1.6 7.927-6.225.066-.34.118-.662.155-.964a3.57 3.57 0 0 1 .575 1.942z"/><path d="M17.067 6.878c-.246-.067-.499-.12-.757-.158a10.09 10.09 0 0 0-1.598-.127H9.534a.787.787 0 0 0-.777.657L7.832 13.5l-.025.16.78-4.939a.805.805 0 0 1 .794-.68h3.27c3.94 0 7.024-1.6 7.928-6.225.027-.137.05-.272.07-.404a4.693 4.693 0 0 0-1.582-.534z"/><path d="M8.757 7.25a.787.787 0 0 1 .777-.657h5.178c.614 0 1.187.04 1.713.127.15.025.297.055.441.09.219.054.427.12.625.198a4.693 4.693 0 0 1 1.582.534c.32-2.044-.003-3.435-1.108-4.694C16.752 1.466 14.706.875 12.103.875H5.766a.805.805 0 0 0-.795.68L2.608 17.92a.483.483 0 0 0 .477.558h3.474l.872-5.53L8.757 7.25z"/></svg>
+          Donate via PayPal
+        </button>
+      </form>
+    <% } %>
+
+    <div class="tip-footer">Powered by <a href="/">Atleta Streamers Helper</a></div>
+  </div>
+
+  <script>
+    document.querySelectorAll('.tip-amount').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tip-amount').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tip-amount-input').value = btn.dataset.amount;
+      });
+    });
+    document.getElementById('tip-amount-input')?.addEventListener('input', function() {
+      document.querySelectorAll('.tip-amount').forEach(b => {
+        b.classList.toggle('active', b.dataset.amount === this.value);
+      });
+    });
+  </script>
+</body>
+</html>

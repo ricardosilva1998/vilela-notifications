@@ -10,6 +10,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const apiRoutes = require('./routes/api');
 const adminRoutes = require('./routes/admin');
 const paymentRoutes = require('./routes/payment');
+const tipRoutes = require('./routes/tip');
 const overlayRoutes = require('./routes/overlay');
 // const customOverlayRoutes = require('./routes/customOverlays'); // DISABLED for now
 
@@ -89,6 +90,7 @@ app.use('/auth', authRoutes);
 app.use('/dashboard', dashboardRoutes);
 // app.use('/dashboard/custom-overlays', customOverlayRoutes); // DISABLED for now
 app.use('/payment', paymentRoutes);
+app.use('/tip', tipRoutes);
 app.use('/api', apiRoutes);
 app.use('/admin', adminRoutes);
 app.use('/overlay', overlayRoutes);
