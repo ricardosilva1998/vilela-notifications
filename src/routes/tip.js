@@ -74,7 +74,7 @@ router.post('/:username/create', async (req, res) => {
           payee: { email_address: streamer.paypal_email },
         }],
         application_context: {
-          return_url: `${config.app.url}/tip/${streamer.twitch_username}/success?donor=${encodeURIComponent(donorName)}&message=${encodeURIComponent(message)}&amount=${amount}&currency=${currency}`,
+          return_url: `${config.app.url}/tip/${streamer.twitch_username}/success`,
           cancel_url: `${config.app.url}/tip/${streamer.twitch_username}`,
           brand_name: 'Atleta',
           user_action: 'PAY_NOW',
@@ -84,6 +84,11 @@ router.post('/:username/create', async (req, res) => {
     const order = await orderRes.json();
 
     if (order.id) {
+      // Store donation details in cookies so they survive the PayPal redirect
+      res.cookie('tip_donor', donorName, { maxAge: 600000, httpOnly: true });
+      res.cookie('tip_message', message, { maxAge: 600000, httpOnly: true });
+      res.cookie('tip_amount', String(amount), { maxAge: 600000, httpOnly: true });
+      res.cookie('tip_currency', currency, { maxAge: 600000, httpOnly: true });
       const approveUrl = order.links?.find(l => l.rel === 'approve')?.href;
       if (approveUrl) return res.redirect(approveUrl);
     }
@@ -102,16 +107,22 @@ router.get('/:username/success', async (req, res) => {
   if (!streamer) return res.status(404).send('Streamer not found.');
 
   const orderId = req.query.token; // PayPal passes order ID as 'token'
-  const donorName = req.query.donor || 'Anonymous';
-  const message = req.query.message || '';
-  const amount = req.query.amount || '0';
-  const currency = req.query.currency || 'EUR';
+  const donorName = req.cookies?.tip_donor || req.query.donor || 'Anonymous';
+  const message = req.cookies?.tip_message || req.query.message || '';
+  const amount = req.cookies?.tip_amount || req.query.amount || '0';
+  const currency = req.cookies?.tip_currency || req.query.currency || 'EUR';
+
+  // Clear tip cookies
+  res.clearCookie('tip_donor');
+  res.clearCookie('tip_message');
+  res.clearCookie('tip_amount');
+  res.clearCookie('tip_currency');
 
   if (orderId) {
     try {
       const capture = await capturePayPalOrder(orderId);
       if (capture.status === 'COMPLETED') {
-        console.log(`[Tip] Donation captured: ${donorName} → ${streamer.twitch_username} (${currency} ${amount})`);
+        console.log(`[Tip] Donation captured: ${donorName} → ${streamer.twitch_username} (${currency} ${amount}) message="${message}"`);
 
         // Fire overlay alert
         const bus = require('../services/overlayBus');
