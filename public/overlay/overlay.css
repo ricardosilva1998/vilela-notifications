@@ -164,71 +164,43 @@ body {
 
 /* ─── Bottom bar animation variants ─── */
 
-/* Flame bar */
-.bottom-flame { position: absolute; bottom: 0; left: 0; right: 0; height: 100%; display: flex; gap: 2px; align-items: flex-end; padding: 0 8px; }
-.bottom-flame .flame { width: 8px; border-radius: 4px 4px 0 0; animation: flameFlicker linear infinite; }
-@keyframes flameFlicker {
-  0%, 100% { height: 60%; opacity: 0.8; }
-  25% { height: 90%; opacity: 1; }
-  50% { height: 40%; opacity: 0.6; }
-  75% { height: 80%; opacity: 0.9; }
-}
-
 /* Equalizer bars */
-.bottom-equalizer { position: absolute; bottom: 0; left: 0; right: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 3px; padding: 4px 12px; }
-.bottom-equalizer .eq-bar { width: 4px; border-radius: 2px 2px 0 0; animation: eqBounce ease-in-out infinite; }
-@keyframes eqBounce {
-  0%, 100% { height: 20%; }
-  50% { height: 90%; }
+@keyframes eqBounce { 0%,100%{height:20%} 50%{height:90%} }
+
+/* Checkered flag scroll — full height */
+@keyframes checkerScroll { 0%{left:-300px} 100%{left:100%} }
+
+/* ─── Full-card overlay animations ─── */
+.card-anim-overlay { position:absolute; inset:0; pointer-events:none; overflow:hidden; border-radius:inherit; z-index:6; }
+
+/* Flames — CSS gradient fire rising from bottom */
+@keyframes flameRise { 0%{transform:translateY(10%) scaleY(0.8)} 50%{transform:translateY(-5%) scaleY(1.1)} 100%{transform:translateY(10%) scaleY(0.8)} }
+@keyframes flameGlow { 0%,100%{opacity:0.5} 50%{opacity:0.8} }
+
+/* Sparkles floating everywhere */
+@keyframes sparkFloat {
+  0%{transform:translate(0,0) scale(0);opacity:0}
+  15%{transform:translate(0,0) scale(1);opacity:1}
+  85%{opacity:0.6}
+  100%{transform:translate(var(--sx),var(--sy)) scale(0);opacity:0}
 }
 
-/* Sparkle trail */
-.bottom-sparkle { position: absolute; inset: 0; overflow: hidden; }
-.bottom-sparkle .spark { position: absolute; top: 50%; border-radius: 50%; animation: sparkTravel linear infinite; }
-@keyframes sparkTravel {
-  0% { left: -10px; opacity: 0; transform: translateY(-50%) scale(0.5); }
-  10% { opacity: 1; transform: translateY(-50%) scale(1); }
-  80% { opacity: 0.8; transform: translateY(-50%) scale(1); }
-  100% { left: 110%; opacity: 0; transform: translateY(-50%) scale(0.3); }
+/* Neon sweep across entire card */
+@keyframes neonSweepFull { 0%{left:-30%} 100%{left:130%} }
+
+/* Lightning flash */
+@keyframes boltStrike {
+  0%,100%{opacity:0}
+  4%{opacity:0}
+  5%{opacity:1}
+  7%{opacity:0.1}
+  8%{opacity:0.9}
+  12%{opacity:0}
 }
 
-/* Neon sweep */
-.bottom-neon-sweep { position: absolute; inset: 0; overflow: hidden; }
-.bottom-neon-sweep .sweep { position: absolute; top: 0; bottom: 0; width: 60px; animation: neonSweep linear infinite; }
-@keyframes neonSweep {
-  0% { left: -60px; }
-  100% { left: 110%; }
-}
-
-/* Checkered flag scroll */
-.bottom-checkered { position: absolute; inset: 0; overflow: hidden; }
-.bottom-checkered .checker-strip { position: absolute; top: 50%; transform: translateY(-50%); height: 20px; display: flex; animation: checkerScroll linear infinite; }
-.bottom-checkered .checker-cell { width: 10px; height: 10px; }
-
-@keyframes checkerScroll {
-  0% { left: -200px; }
-  100% { left: 100%; }
-}
-
-/* Lightning bolt */
-.bottom-lightning { position: absolute; inset: 0; overflow: hidden; }
-.bottom-lightning .bolt { position: absolute; top: 10%; height: 80%; width: 2px; animation: boltFlash ease-out infinite; }
-@keyframes boltFlash {
-  0%, 100% { opacity: 0; }
-  5% { opacity: 1; }
-  10% { opacity: 0; }
-  12% { opacity: 0.8; }
-  15% { opacity: 0; }
-}
-
-/* Pulse wave */
-.bottom-pulse { position: absolute; inset: 0; overflow: hidden; display: flex; align-items: center; }
-.bottom-pulse .pulse-line { position: absolute; left: 0; right: 0; height: 2px; }
-.bottom-pulse .pulse-dot { position: absolute; top: 50%; transform: translateY(-50%); border-radius: 50%; animation: pulseDotMove linear infinite; }
-@keyframes pulseDotMove {
-  0% { left: -8px; }
-  100% { left: 110%; }
-}
+/* ECG heartbeat pulse */
+@keyframes ecgSweep { 0%{left:-20%} 100%{left:120%} }
+@keyframes ecgPulse { 0%,100%{opacity:0.3} 50%{opacity:0.7} }
 
 /* Speed dots (follow / donation) */
 .speed-dot {

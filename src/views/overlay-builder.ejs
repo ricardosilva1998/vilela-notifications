@@ -520,14 +520,16 @@
       75%  { transform: translateY(-50%) scaleX(-1) translateX(15px); }
       100% { transform: translateY(-50%) scaleX(-1) translateX(0); }
     }
-    /* Bottom bar animation keyframes */
-    @keyframes flameFlicker { 0%,100%{height:60%;opacity:.8} 25%{height:90%;opacity:1} 50%{height:40%;opacity:.6} 75%{height:80%;opacity:.9} }
+    /* Card animation keyframes */
     @keyframes eqBounce { 0%,100%{height:20%} 50%{height:90%} }
-    @keyframes sparkTravel { 0%{left:-10px;opacity:0;transform:translateY(-50%) scale(.5)} 10%{opacity:1;transform:translateY(-50%) scale(1)} 80%{opacity:.8} 100%{left:110%;opacity:0;transform:translateY(-50%) scale(.3)} }
-    @keyframes neonSweep { 0%{left:-60px} 100%{left:110%} }
-    @keyframes checkerScroll { 0%{left:-200px} 100%{left:100%} }
-    @keyframes boltFlash { 0%,100%{opacity:0} 5%{opacity:1} 10%{opacity:0} 12%{opacity:.8} 15%{opacity:0} }
-    @keyframes pulseDotMove { 0%{left:-8px} 100%{left:110%} }
+    @keyframes checkerScroll { 0%{left:-300px} 100%{left:100%} }
+    @keyframes flameRise { 0%{transform:translateY(10%) scaleY(0.8)} 50%{transform:translateY(-5%) scaleY(1.1)} 100%{transform:translateY(10%) scaleY(0.8)} }
+    @keyframes flameGlow { 0%,100%{opacity:0.5} 50%{opacity:0.8} }
+    @keyframes sparkFloat { 0%{transform:translate(0,0) scale(0);opacity:0} 15%{transform:translate(0,0) scale(1);opacity:1} 85%{opacity:0.6} 100%{transform:translate(var(--sx),var(--sy)) scale(0);opacity:0} }
+    @keyframes neonSweepFull { 0%{left:-30%} 100%{left:130%} }
+    @keyframes boltStrike { 0%,100%{opacity:0} 4%{opacity:0} 5%{opacity:1} 7%{opacity:0.1} 8%{opacity:0.9} 12%{opacity:0} }
+    @keyframes ecgSweep { 0%{left:-20%} 100%{left:120%} }
+    @keyframes ecgPulse { 0%,100%{opacity:0.3} 50%{opacity:0.7} }
 
     .preview-alert-card .cup-row {
       display: flex; align-items: center; gap: 12px;
@@ -1012,7 +1014,7 @@
           <!-- Hidden inputs still used by getControlValues -->
           <div style="display:none;">
             <select id="ctrl-entrance-animation"><option value="slideDown">Slide Down</option><option value="slideUp">Slide Up</option><option value="slideLeft">Slide Left</option><option value="slideRight">Slide Right</option><option value="zoomIn">Zoom In</option><option value="fadeIn">Fade In</option></select>
-            <select id="ctrl-car-animation"><option value="zoomLR">Car L→R</option><option value="zoomRL">Car R→L</option><option value="bounce">Car Bounce</option><option value="checkered">Checkered Flag</option><option value="flames">Flames</option><option value="sparkles">Sparkles</option><option value="lightning">Lightning</option><option value="neonSweep">Neon Sweep</option><option value="equalizer">Equalizer</option><option value="pulse">Pulse Wave</option><option value="none">None</option></select>
+            <select id="ctrl-car-animation"><option value="zoomLR">Car L→R</option><option value="zoomRL">Car R→L</option><option value="checkered">Checkered Flag</option><option value="flames">Flames</option><option value="sparkles">Sparkles</option><option value="lightning">Lightning</option><option value="neonSweep">Neon Sweep</option><option value="equalizer">Equalizer</option><option value="pulse">Pulse Wave</option><option value="none">None</option></select>
             <select id="ctrl-screen-effect"><option value="default">Default (per event)</option><option value="none">None</option><option value="confetti">Confetti</option><option value="gold">Gold Rain</option><option value="money">Money Rain</option><option value="robots">Robots</option><option value="tiremarks">Tire Marks</option></select>
             <input type="range" id="ctrl-animation-speed" min="0.5" max="2.0" step="0.1" value="1.0">
             <input type="range" id="ctrl-effect-amount" min="0.2" max="3.0" step="0.1" value="1.0">
@@ -1450,12 +1452,12 @@ function updatePreview() {
   // Bottom bar animation (dynamic)
   const bottomAnim = d.car_animation || 'zoomLR';
   const animSpeed = d.animation_speed || 1.0;
+  // Remove previous full-card overlays
+  card.querySelectorAll('.card-anim-overlay').forEach(e => e.remove());
   if (bottomAnim === 'none') {
     track.style.display = 'none';
   } else {
-    track.style.display = '';
-    track.innerHTML = '';
-    buildPreviewBottomAnimation(track, bottomAnim, animSpeed, d.accent_color || '#8888cc');
+    buildPreviewBottomAnimation(track, bottomAnim, animSpeed, d.accent_color || '#8888cc', card);
   }
 
   // Position card in the preview screen
@@ -1509,62 +1511,109 @@ function ensureFxKeyframes() {
 ensureFxKeyframes();
 
 // ─── Build bottom bar animation for builder preview ──────────────────────────
-function buildPreviewBottomAnimation(track, type, speed, accent) {
+const FULL_CARD_ANIMS_PREVIEW = new Set(['flames','sparkles','lightning','neonSweep','pulse']);
+
+function buildPreviewBottomAnimation(track, type, speed, accent, card) {
   const [ar,ag,ab] = hexToRgb(accent);
   const dur = 2.8 / speed;
+
+  // Remove previous full-card overlays
+  if (card) card.querySelectorAll('.card-anim-overlay').forEach(e => e.remove());
+
+  // Full-card animations
+  if (FULL_CARD_ANIMS_PREVIEW.has(type) && card) {
+    track.style.display = 'none';
+    const overlay = document.createElement('div');
+    overlay.className = 'card-anim-overlay';
+    overlay.style.cssText = 'position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:inherit;z-index:6;';
+
+    if (type === 'flames') {
+      let h = '';
+      for (let i = 0; i < 10; i++) {
+        const x = Math.random() * 100;
+        const w = 15 + Math.random() * 25;
+        const d = (0.6 + Math.random() * 0.8) / speed;
+        const hue = Math.floor(Math.random() * 40);
+        h += `<div style="position:absolute;bottom:-10%;left:${x}%;width:${w}%;height:60%;border-radius:50% 50% 20% 20%;background:radial-gradient(ellipse at bottom, hsla(${hue},100%,55%,0.7), hsla(${hue+15},100%,45%,0.3) 50%, transparent 70%);filter:blur(2px);animation:flameRise ${d}s ease-in-out ${Math.random()}s infinite;"></div>`;
+      }
+      h += `<div style="position:absolute;bottom:0;left:0;right:0;height:40%;background:linear-gradient(to top,rgba(255,80,0,0.4),rgba(255,150,0,0.15),transparent);animation:flameGlow ${1.5/speed}s ease-in-out infinite;"></div>`;
+      overlay.innerHTML = h;
+    }
+    else if (type === 'sparkles') {
+      let h = '';
+      const colors = ['#fff', accent, '#f7c948', '#ff88cc', '#00ffcc'];
+      for (let i = 0; i < 15; i++) {
+        const x = Math.random() * 100, y = Math.random() * 100;
+        const sz = 1 + Math.random() * 3;
+        const d = (1.5 + Math.random() * 2) / speed;
+        const sx = (Math.random()-0.5)*30, sy = (Math.random()-0.5)*30;
+        const c = colors[Math.floor(Math.random()*colors.length)];
+        h += `<div style="position:absolute;left:${x}%;top:${y}%;width:${sz}px;height:${sz}px;border-radius:50%;background:${c};box-shadow:0 0 ${sz*3}px ${c};--sx:${sx}px;--sy:${sy}px;animation:sparkFloat ${d}s ease-in-out ${Math.random()*3}s infinite;"></div>`;
+      }
+      for (let i = 0; i < 4; i++) {
+        const x = 10+Math.random()*80, y = 10+Math.random()*80;
+        const c = colors[Math.floor(Math.random()*colors.length)];
+        h += `<div style="position:absolute;left:${x}%;top:${y}%;font-size:${6+Math.random()*6}px;--sx:${(Math.random()-0.5)*20}px;--sy:${(Math.random()-0.5)*20}px;animation:sparkFloat ${(2+Math.random()*2)/speed}s ease-in-out ${Math.random()*3}s infinite;filter:drop-shadow(0 0 2px ${c});">✦</div>`;
+      }
+      overlay.innerHTML = h;
+    }
+    else if (type === 'lightning') {
+      let h = '';
+      for (let i = 0; i < 4; i++) {
+        const x = 5+Math.random()*90;
+        const d = (1.5+Math.random()*2.5)/speed;
+        let pts = `M ${Math.random()*20+40} 0`;
+        let py = 0;
+        for (let s = 0; s < 5; s++) { py += 12+Math.random()*8; pts += ` L ${20+Math.random()*60} ${py}`; }
+        h += `<svg style="position:absolute;left:${x}%;top:0;width:30px;height:100%;animation:boltStrike ${d}s ease-out ${Math.random()*3}s infinite;" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${pts}" stroke="rgba(${ar},${ag},${ab},0.9)" stroke-width="2" fill="none" style="filter:drop-shadow(0 0 3px rgba(${ar},${ag},${ab},0.6))"/></svg>`;
+      }
+      h += `<div style="position:absolute;inset:0;background:rgba(${ar},${ag},${ab},0.05);animation:ecgPulse ${1.5/speed}s ease-in-out infinite;"></div>`;
+      overlay.innerHTML = h;
+    }
+    else if (type === 'neonSweep') {
+      let h = '';
+      h += `<div style="position:absolute;top:0;bottom:0;width:30%;background:linear-gradient(90deg,transparent,rgba(${ar},${ag},${ab},0.15),rgba(${ar},${ag},${ab},0.3),rgba(${ar},${ag},${ab},0.15),transparent);animation:neonSweepFull ${2.5/speed}s linear infinite;"></div>`;
+      h += `<div style="position:absolute;top:0;bottom:0;width:10%;background:linear-gradient(90deg,transparent,rgba(${ar},${ag},${ab},0.1),transparent);animation:neonSweepFull ${3/speed}s linear ${0.8/speed}s infinite;"></div>`;
+      h += `<div style="position:absolute;inset:0;border:1px solid rgba(${ar},${ag},${ab},0.2);border-radius:inherit;animation:ecgPulse ${2/speed}s ease-in-out infinite;"></div>`;
+      overlay.innerHTML = h;
+    }
+    else if (type === 'pulse') {
+      let h = '';
+      h += `<div style="position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(${ar},${ag},${ab},0.15);transform:translateY(-50%);"></div>`;
+      const ecg = 'M 0 50 L 15 50 L 18 50 L 20 30 L 22 70 L 24 20 L 26 80 L 28 45 L 32 50 L 50 50 L 53 50 L 55 35 L 57 65 L 59 50 L 75 50 L 100 50';
+      for (let i = 0; i < 2; i++) {
+        const d = (3+i*0.5)/speed;
+        h += `<svg style="position:absolute;top:20%;height:60%;width:50%;animation:ecgSweep ${d}s linear ${i*(1.5/speed)}s infinite;" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${ecg}" stroke="rgba(${ar},${ag},${ab},0.8)" stroke-width="2" fill="none"/></svg>`;
+      }
+      h += `<div style="position:absolute;top:50%;left:50%;width:3px;height:3px;border-radius:50%;background:rgba(${ar},${ag},${ab},0.8);box-shadow:0 0 6px rgba(${ar},${ag},${ab},0.6);transform:translate(-50%,-50%);animation:ecgPulse ${1/speed}s ease-in-out infinite;"></div>`;
+      overlay.innerHTML = h;
+    }
+
+    card.style.position = card.style.position || 'relative';
+    card.appendChild(overlay);
+    return;
+  }
+
+  // Bottom-track animations
+  track.style.display = '';
+  track.innerHTML = '';
 
   if (type === 'zoomLR') {
     track.innerHTML = '<div class="race-line"></div><div class="track-car" id="preview-car" style="animation:previewCarZoom '+dur+'s linear infinite">🏎️</div>';
   } else if (type === 'zoomRL') {
     track.innerHTML = '<div class="race-line"></div><div class="track-car" id="preview-car" style="transform:translateY(-50%);animation:previewCarZoomRL '+dur+'s linear infinite">🏎️</div>';
-  } else if (type === 'bounce') {
-    track.innerHTML = '<div class="race-line"></div><div class="track-car" id="preview-car" style="left:50%;animation:previewCarBounce '+(1.2/speed)+'s ease-in-out infinite">🏎️</div>';
-  } else if (type === 'flames') {
-    let h = '';
-    for (let i = 0; i < 20; i++) {
-      const ht = 40 + Math.random() * 60;
-      const d = (0.3 + Math.random() * 0.4) / speed;
-      const r = 200 + Math.floor(Math.random() * 55);
-      const g = Math.floor(50 + Math.random() * 150);
-      h += `<div style="flex:1;height:${ht}%;background:rgba(${r},${g},0,0.8);border-radius:3px 3px 0 0;animation:flameFlicker ${d}s linear ${Math.random()*0.5}s infinite;"></div>`;
-    }
-    track.innerHTML = `<div style="position:absolute;bottom:0;left:0;right:0;height:100%;display:flex;gap:2px;align-items:flex-end;padding:0 6px;">${h}</div>`;
-  } else if (type === 'equalizer') {
-    let h = '';
-    for (let i = 0; i < 16; i++) {
-      const d = (0.4 + Math.random() * 0.6) / speed;
-      h += `<div style="flex:1;height:${20+Math.random()*60}%;background:rgba(${ar},${ag},${ab},0.7);border-radius:2px 2px 0 0;animation:eqBounce ${d}s ease-in-out ${Math.random()*0.5}s infinite;"></div>`;
-    }
-    track.innerHTML = `<div style="position:absolute;bottom:0;left:0;right:0;height:100%;display:flex;align-items:flex-end;justify-content:center;gap:2px;padding:4px 8px;">${h}</div>`;
-  } else if (type === 'sparkles') {
-    const colors = ['#fff', accent, '#f7c948', '#ff88cc'];
-    let h = '<div style="position:absolute;inset:0;overflow:hidden;">';
-    for (let i = 0; i < 8; i++) {
-      const sz = 2 + Math.random() * 4;
-      const c = colors[Math.floor(Math.random()*colors.length)];
-      h += `<div style="position:absolute;width:${sz}px;height:${sz}px;border-radius:50%;background:${c};top:${20+Math.random()*60}%;box-shadow:0 0 ${sz*2}px ${c};animation:sparkTravel ${(1.5+Math.random()*2)/speed}s linear ${Math.random()*2}s infinite;"></div>`;
-    }
-    h += '</div>';
-    track.innerHTML = h;
-  } else if (type === 'neonSweep') {
-    track.innerHTML = `<div style="position:absolute;inset:0;overflow:hidden;"><div style="position:absolute;top:0;bottom:0;width:40px;background:linear-gradient(90deg,transparent,rgba(${ar},${ag},${ab},0.4),transparent);animation:neonSweep ${2/speed}s linear infinite;"></div><div style="position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(${ar},${ag},${ab},0.15);transform:translateY(-50%);"></div></div>`;
   } else if (type === 'checkered') {
     let cells = '';
-    for (let row = 0; row < 2; row++)
-      for (let col = 0; col < 30; col++)
-        cells += `<div style="width:8px;height:8px;background:${(row+col)%2===0?'rgba(255,255,255,0.9)':'rgba(0,0,0,0.9)'}"></div>`;
-    track.innerHTML = `<div style="position:absolute;inset:0;overflow:hidden;"><div style="position:absolute;top:50%;transform:translateY(-50%);height:16px;width:240px;display:flex;flex-wrap:wrap;animation:checkerScroll ${3/speed}s linear infinite;">${cells}</div></div>`;
-  } else if (type === 'lightning') {
-    let h = '<div style="position:absolute;inset:0;overflow:hidden;">';
-    for (let i = 0; i < 4; i++)
-      h += `<div style="position:absolute;top:10%;height:80%;width:${1+Math.random()*2}px;left:${10+Math.random()*80}%;background:rgba(${ar},${ag},${ab},0.9);box-shadow:0 0 6px rgba(${ar},${ag},${ab},0.6);animation:boltFlash ${(1+Math.random()*2)/speed}s ease-out ${Math.random()*3}s infinite;"></div>`;
-    h += '</div>';
-    track.innerHTML = h;
-  } else if (type === 'pulse') {
-    let h = `<div style="position:absolute;inset:0;overflow:hidden;display:flex;align-items:center;"><div style="position:absolute;left:0;right:0;height:2px;background:rgba(${ar},${ag},${ab},0.15);"></div>`;
-    for (let i = 0; i < 3; i++) {
-      const sz = 4 + Math.random() * 3;
-      h += `<div style="position:absolute;top:50%;transform:translateY(-50%);width:${sz}px;height:${sz}px;border-radius:50%;background:${accent};box-shadow:0 0 ${sz*2}px ${accent};animation:pulseDotMove ${(2+Math.random())/speed}s linear ${i*0.7}s infinite;"></div>`;
+    const rows = 4, cellH = 10;
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < 30; c++)
+        cells += `<div style="width:${cellH}px;height:${cellH}px;background:${(r+c)%2===0?'rgba(255,255,255,0.85)':'rgba(0,0,0,0.85)'}"></div>`;
+    track.innerHTML = `<div style="position:absolute;inset:0;overflow:hidden;"><div style="position:absolute;top:0;bottom:0;width:${30*cellH}px;display:flex;flex-wrap:wrap;animation:checkerScroll ${3/speed}s linear infinite;">${cells}</div></div>`;
+  } else if (type === 'equalizer') {
+    let h = '<div style="position:absolute;bottom:0;left:0;right:0;height:100%;display:flex;align-items:flex-end;justify-content:center;gap:2px;padding:3px 6px;">';
+    for (let i = 0; i < 16; i++) {
+      const d = (0.4+Math.random()*0.6)/speed;
+      h += `<div style="flex:1;height:${20+Math.random()*60}%;background:rgba(${ar},${ag},${ab},0.7);border-radius:2px 2px 0 0;animation:eqBounce ${d}s ease-in-out ${Math.random()*0.5}s infinite;"></div>`;
     }
     h += '</div>';
     track.innerHTML = h;
@@ -2635,7 +2684,7 @@ document.addEventListener('mouseup', e => {
           <optgroup label="Racing">
             <option value="zoomLR">🏎️ Car L→R</option>
             <option value="zoomRL">🏎️ Car R→L</option>
-            <option value="bounce">🏎️ Car Bounce</option>
+            <!-- removed bounce -->
             <option value="checkered">🏁 Checkered Flag</option>
           </optgroup>
           <optgroup label="Effects">
@@ -2666,7 +2715,7 @@ document.addEventListener('mouseup', e => {
       <!-- Card preview -->
       <div class="ctrl-label" style="margin-bottom:6px;">Preview</div>
       <div style="background:#080a10;border-radius:10px;padding:16px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
-        <div id="anim-preview-card" style="border-radius:12px;border:1px solid rgba(136,136,204,0.5);background:linear-gradient(160deg,rgb(9,9,22),#1a1a3e 40%,rgb(9,9,22));text-align:center;width:200px;overflow:hidden;">
+        <div id="anim-preview-card" style="position:relative;border-radius:12px;border:1px solid rgba(136,136,204,0.5);background:linear-gradient(160deg,rgb(9,9,22),#1a1a3e 40%,rgb(9,9,22));text-align:center;width:200px;overflow:hidden;">
           <div style="height:2px;background:linear-gradient(90deg,rgba(50,50,80,0.6),#8888cc,rgba(50,50,80,0.6));border-radius:12px 12px 0 0;"></div>
           <div style="padding:10px 16px 8px;">
             <div id="anim-card-label" style="font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#8888cc;font-weight:700;margin-bottom:2px;">New Follower</div>
@@ -3089,7 +3138,7 @@ updateTextSectionPreview(workingDesigns[currentType]);
 
 // ─── Animation Popup ─────────────────────────────────────────
 const ENTRANCE_LABELS = { slideDown:'Slide Down', slideUp:'Slide Up', slideLeft:'Slide Left', slideRight:'Slide Right', zoomIn:'Zoom In', fadeIn:'Fade In' };
-const CAR_LABELS = { zoomLR:'🏎️ Car L→R', zoomRL:'🏎️ Car R→L', bounce:'🏎️ Bounce', checkered:'🏁 Checkered', flames:'🔥 Flames', sparkles:'✨ Sparkles', lightning:'⚡ Lightning', neonSweep:'💡 Neon Sweep', equalizer:'🎵 Equalizer', pulse:'💓 Pulse', none:'None' };
+const CAR_LABELS = { zoomLR:'🏎️ Car L→R', zoomRL:'🏎️ Car R→L', checkered:'🏁 Checkered', flames:'🔥 Flames', sparkles:'✨ Sparkles', lightning:'⚡ Lightning', neonSweep:'💡 Neon Sweep', equalizer:'🎵 Equalizer', pulse:'💓 Pulse', none:'None' };
 const EFFECT_LABELS = { default:'Default', none:'None', confetti:'Confetti', gold:'Gold Rain', money:'Money Rain', robots:'Robots', tiremarks:'Tire Marks' };
 
 let animBackup = {};
@@ -3154,6 +3203,7 @@ function switchAnimTab(tab) {
 
 function updateAnimPopupBottomPreview() {
   const track = document.getElementById('anim-preview-track');
+  const popupCard = document.getElementById('anim-preview-card');
   if (!track) return;
   const anim = document.getElementById('modal-car-animation').value;
   const speed = parseFloat(document.getElementById('modal-animation-speed').value) || 1.0;
@@ -3161,10 +3211,9 @@ function updateAnimPopupBottomPreview() {
   const accent = d.accent_color || '#8888cc';
   if (anim === 'none') {
     track.style.display = 'none';
+    if (popupCard) popupCard.querySelectorAll('.card-anim-overlay').forEach(e => e.remove());
   } else {
-    track.style.display = '';
-    track.innerHTML = '';
-    buildPreviewBottomAnimation(track, anim, speed, accent);
+    buildPreviewBottomAnimation(track, anim, speed, accent, popupCard);
   }
 }
 

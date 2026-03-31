@@ -706,116 +706,160 @@ function hexToRgba(hex, alpha) {
 }
 
 // ─── Bottom bar animation builder ──────────────────────────────
-function buildBottomAnimation(track, type, speed, accent) {
+// Full-card animations are overlaid on the card; bottom-track animations stay in .car-track
+const FULL_CARD_ANIMS = new Set(['flames','sparkles','lightning','neonSweep','pulse']);
+
+function buildBottomAnimation(track, type, speed, accent, card) {
   const [ar,ag,ab] = hexToRgb(accent);
   const dur = (2.8 / speed);
 
-  switch (type) {
-    case 'zoomLR': {
-      track.innerHTML = '<div class="race-line"></div><div class="track-car" style="animation:carZoomLR ' + dur + 's linear infinite">🏎️</div>';
-      break;
-    }
-    case 'zoomRL': {
-      track.innerHTML = '<div class="race-line"></div><div class="track-car" style="transform:translateY(-50%);animation:carZoomRL ' + dur + 's linear infinite">🏎️</div>';
-      break;
-    }
-    case 'bounce': {
-      track.innerHTML = '<div class="race-line"></div><div class="track-car" style="left:50%;animation:carBounce ' + (1.2/speed) + 's ease-in-out infinite">🏎️</div>';
-      break;
-    }
-    case 'flames': {
-      let html = '<div class="bottom-flame">';
-      for (let i = 0; i < 30; i++) {
-        const h = 40 + Math.random() * 60;
-        const d = (0.3 + Math.random() * 0.4) / speed;
-        const delay = Math.random() * 0.5;
-        const r = 200 + Math.floor(Math.random() * 55);
-        const g = Math.floor(50 + Math.random() * 150);
-        html += `<div class="flame" style="height:${h}%;background:rgba(${r},${g},0,0.8);animation-duration:${d}s;animation-delay:${delay}s;flex:1;"></div>`;
+  // Remove any previous full-card overlay
+  if (card) card.querySelectorAll('.card-anim-overlay').forEach(e => e.remove());
+
+  // Full-card animations — hide the bottom track, overlay on the card
+  if (FULL_CARD_ANIMS.has(type) && card) {
+    track.style.display = 'none';
+    const overlay = document.createElement('div');
+    overlay.className = 'card-anim-overlay';
+
+    if (type === 'flames') {
+      // Realistic fire: layered gradients rising from bottom
+      let h = '';
+      for (let i = 0; i < 15; i++) {
+        const x = Math.random() * 100;
+        const w = 15 + Math.random() * 25;
+        const d = (0.6 + Math.random() * 0.8) / speed;
+        const delay = Math.random() * 1;
+        const hue = Math.floor(Math.random() * 40); // 0-40 = red to yellow
+        h += `<div style="position:absolute;bottom:-10%;left:${x}%;width:${w}%;height:60%;border-radius:50% 50% 20% 20%;background:radial-gradient(ellipse at bottom, hsla(${hue},100%,55%,0.7), hsla(${hue+15},100%,45%,0.3) 50%, transparent 70%);filter:blur(3px);animation:flameRise ${d}s ease-in-out ${delay}s infinite;"></div>`;
       }
-      html += '</div>';
-      track.innerHTML = html;
+      // Base glow
+      h += `<div style="position:absolute;bottom:0;left:0;right:0;height:40%;background:linear-gradient(to top,rgba(255,80,0,0.4),rgba(255,150,0,0.15),transparent);animation:flameGlow ${1.5/speed}s ease-in-out infinite;"></div>`;
+      // Ember particles
+      for (let i = 0; i < 8; i++) {
+        const x = 10 + Math.random() * 80;
+        const d = (1 + Math.random() * 1.5) / speed;
+        const delay = Math.random() * 2;
+        h += `<div style="position:absolute;bottom:5%;left:${x}%;width:3px;height:3px;border-radius:50%;background:#ff8800;box-shadow:0 0 4px #ff4400;animation:flameRise ${d}s ease-out ${delay}s infinite;opacity:0.8;"></div>`;
+      }
+      overlay.innerHTML = h;
+    }
+    else if (type === 'sparkles') {
+      let h = '';
+      const colors = ['#fff', accent, '#f7c948', '#ff88cc', '#00ffcc'];
+      for (let i = 0; i < 20; i++) {
+        const x = Math.random() * 100;
+        const y = Math.random() * 100;
+        const size = 2 + Math.random() * 4;
+        const d = (1.5 + Math.random() * 2) / speed;
+        const delay = Math.random() * 3;
+        const sx = (Math.random() - 0.5) * 40;
+        const sy = (Math.random() - 0.5) * 40;
+        const c = colors[Math.floor(Math.random() * colors.length)];
+        h += `<div style="position:absolute;left:${x}%;top:${y}%;width:${size}px;height:${size}px;border-radius:50%;background:${c};box-shadow:0 0 ${size*3}px ${c};--sx:${sx}px;--sy:${sy}px;animation:sparkFloat ${d}s ease-in-out ${delay}s infinite;"></div>`;
+      }
+      // Add star shapes
+      for (let i = 0; i < 6; i++) {
+        const x = 10 + Math.random() * 80;
+        const y = 10 + Math.random() * 80;
+        const d = (2 + Math.random() * 2) / speed;
+        const delay = Math.random() * 3;
+        const c = colors[Math.floor(Math.random() * colors.length)];
+        h += `<div style="position:absolute;left:${x}%;top:${y}%;font-size:${8+Math.random()*10}px;--sx:${(Math.random()-0.5)*30}px;--sy:${(Math.random()-0.5)*30}px;animation:sparkFloat ${d}s ease-in-out ${delay}s infinite;filter:drop-shadow(0 0 3px ${c});">✦</div>`;
+      }
+      overlay.innerHTML = h;
+    }
+    else if (type === 'lightning') {
+      let h = '';
+      // SVG zigzag lightning bolts
+      for (let i = 0; i < 5; i++) {
+        const x = 5 + Math.random() * 90;
+        const d = (1.5 + Math.random() * 2.5) / speed;
+        const delay = Math.random() * 3;
+        // Generate zigzag path
+        let points = `M ${Math.random()*20+40} 0`;
+        let py = 0;
+        for (let s = 0; s < 6; s++) {
+          py += 12 + Math.random() * 8;
+          const px = 20 + Math.random() * 60;
+          points += ` L ${px} ${py}`;
+        }
+        h += `<svg style="position:absolute;left:${x}%;top:0;width:40px;height:100%;animation:boltStrike ${d}s ease-out ${delay}s infinite;" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <path d="${points}" stroke="rgba(${ar},${ag},${ab},0.9)" stroke-width="2" fill="none" filter="url(#bolt-glow-${i})"/>
+          <defs><filter id="bolt-glow-${i}"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+        </svg>`;
+      }
+      // Flash overlay
+      h += `<div style="position:absolute;inset:0;background:rgba(${ar},${ag},${ab},0.05);animation:ecgPulse ${1.5/speed}s ease-in-out infinite;"></div>`;
+      overlay.innerHTML = h;
+    }
+    else if (type === 'neonSweep') {
+      let h = '';
+      // Main sweep beam
+      h += `<div style="position:absolute;top:0;bottom:0;width:30%;background:linear-gradient(90deg,transparent,rgba(${ar},${ag},${ab},0.15),rgba(${ar},${ag},${ab},0.3),rgba(${ar},${ag},${ab},0.15),transparent);animation:neonSweepFull ${2.5/speed}s linear infinite;"></div>`;
+      // Secondary thin sweep
+      h += `<div style="position:absolute;top:0;bottom:0;width:10%;background:linear-gradient(90deg,transparent,rgba(${ar},${ag},${ab},0.1),transparent);animation:neonSweepFull ${3/speed}s linear ${0.8/speed}s infinite;"></div>`;
+      // Border glow pulse
+      h += `<div style="position:absolute;inset:0;border:1px solid rgba(${ar},${ag},${ab},0.2);border-radius:inherit;animation:ecgPulse ${2/speed}s ease-in-out infinite;"></div>`;
+      overlay.innerHTML = h;
+    }
+    else if (type === 'pulse') {
+      // ECG heartbeat line sweeping across
+      let h = '';
+      // Background line
+      h += `<div style="position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(${ar},${ag},${ab},0.15);transform:translateY(-50%);"></div>`;
+      // SVG ECG waveform
+      const ecgPath = 'M 0 50 L 15 50 L 18 50 L 20 30 L 22 70 L 24 20 L 26 80 L 28 45 L 32 50 L 50 50 L 53 50 L 55 35 L 57 65 L 59 50 L 75 50 L 100 50';
+      for (let i = 0; i < 2; i++) {
+        const d = (3 + i * 0.5) / speed;
+        const delay = i * (1.5 / speed);
+        h += `<svg style="position:absolute;top:20%;height:60%;width:50%;animation:ecgSweep ${d}s linear ${delay}s infinite;" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <path d="${ecgPath}" stroke="rgba(${ar},${ag},${ab},0.8)" stroke-width="2" fill="none"/>
+        </svg>`;
+      }
+      // Glowing dot at peak
+      h += `<div style="position:absolute;top:50%;left:50%;width:4px;height:4px;border-radius:50%;background:rgba(${ar},${ag},${ab},0.8);box-shadow:0 0 8px rgba(${ar},${ag},${ab},0.6);transform:translate(-50%,-50%);animation:ecgPulse ${1/speed}s ease-in-out infinite;"></div>`;
+      overlay.innerHTML = h;
+    }
+
+    card.style.position = card.style.position || 'relative';
+    card.appendChild(overlay);
+    return;
+  }
+
+  // Bottom-track animations
+  track.style.display = '';
+  track.innerHTML = '';
+
+  switch (type) {
+    case 'zoomLR':
+      track.innerHTML = '<div class="race-line"></div><div class="track-car" style="animation:carZoomLR '+dur+'s linear infinite">🏎️</div>';
+      break;
+    case 'zoomRL':
+      track.innerHTML = '<div class="race-line"></div><div class="track-car" style="transform:translateY(-50%);animation:carZoomRL '+dur+'s linear infinite">🏎️</div>';
+      break;
+    case 'checkered': {
+      let cells = '';
+      const rows = 4, cols = 40;
+      const cellH = Math.floor(44 / rows);
+      for (let r = 0; r < rows; r++)
+        for (let c = 0; c < cols; c++)
+          cells += `<div style="width:${cellH}px;height:${cellH}px;background:${(r+c)%2===0?'rgba(255,255,255,0.85)':'rgba(0,0,0,0.85)'}"></div>`;
+      track.innerHTML = `<div style="position:absolute;inset:0;overflow:hidden;"><div style="position:absolute;top:0;bottom:0;width:${cols*cellH}px;display:flex;flex-wrap:wrap;animation:checkerScroll ${3/speed}s linear infinite;">${cells}</div></div>`;
       break;
     }
     case 'equalizer': {
-      let html = '<div class="bottom-equalizer">';
+      let html = '<div style="position:absolute;bottom:0;left:0;right:0;height:100%;display:flex;align-items:flex-end;justify-content:center;gap:2px;padding:3px 8px;">';
       for (let i = 0; i < 24; i++) {
         const d = (0.4 + Math.random() * 0.6) / speed;
-        const delay = Math.random() * 0.5;
-        const h = 20 + Math.random() * 60;
-        html += `<div class="eq-bar" style="height:${h}%;background:rgba(${ar},${ag},${ab},0.7);animation-duration:${d}s;animation-delay:${delay}s;flex:1;"></div>`;
+        html += `<div style="flex:1;height:${20+Math.random()*60}%;background:rgba(${ar},${ag},${ab},0.7);border-radius:2px 2px 0 0;animation:eqBounce ${d}s ease-in-out ${Math.random()*0.5}s infinite;"></div>`;
       }
       html += '</div>';
       track.innerHTML = html;
       break;
     }
-    case 'sparkles': {
-      let html = '<div class="bottom-sparkle">';
-      const colors = ['#fff', accent, '#f7c948', '#ff88cc'];
-      for (let i = 0; i < 12; i++) {
-        const size = 3 + Math.random() * 5;
-        const d = (1.5 + Math.random() * 2) / speed;
-        const delay = Math.random() * 2;
-        const y = 20 + Math.random() * 60;
-        const c = colors[Math.floor(Math.random() * colors.length)];
-        html += `<div class="spark" style="width:${size}px;height:${size}px;background:${c};top:${y}%;animation-duration:${d}s;animation-delay:${delay}s;box-shadow:0 0 ${size*2}px ${c};"></div>`;
-      }
-      html += '</div>';
-      track.innerHTML = html;
-      break;
-    }
-    case 'neonSweep': {
-      let html = '<div class="bottom-neon-sweep">';
-      html += `<div class="sweep" style="background:linear-gradient(90deg,transparent,rgba(${ar},${ag},${ab},0.4),transparent);animation-duration:${(2/speed)}s;"></div>`;
-      html += `<div class="sweep" style="background:linear-gradient(90deg,transparent,rgba(${ar},${ag},${ab},0.2),transparent);animation-duration:${(2.5/speed)}s;animation-delay:0.8s;width:40px;"></div>`;
-      const line = `<div style="position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(${ar},${ag},${ab},0.15);transform:translateY(-50%);"></div>`;
-      html += line + '</div>';
-      track.innerHTML = html;
-      break;
-    }
-    case 'checkered': {
-      let html = '<div class="bottom-checkered">';
-      let cells = '';
-      for (let row = 0; row < 2; row++) {
-        for (let col = 0; col < 40; col++) {
-          const isBlack = (row + col) % 2 === 0;
-          cells += `<div class="checker-cell" style="background:${isBlack ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)'};"></div>`;
-        }
-      }
-      html += `<div class="checker-strip" style="width:400px;flex-wrap:wrap;animation-duration:${(3/speed)}s;">${cells}</div>`;
-      html += '</div>';
-      track.innerHTML = html;
-      break;
-    }
-    case 'lightning': {
-      let html = '<div class="bottom-lightning">';
-      for (let i = 0; i < 6; i++) {
-        const x = 10 + Math.random() * 80;
-        const d = (1 + Math.random() * 2) / speed;
-        const delay = Math.random() * 3;
-        const w = 1 + Math.random() * 2;
-        html += `<div class="bolt" style="left:${x}%;width:${w}px;background:rgba(${ar},${ag},${ab},0.9);box-shadow:0 0 8px rgba(${ar},${ag},${ab},0.6);animation-duration:${d}s;animation-delay:${delay}s;"></div>`;
-      }
-      html += '</div>';
-      track.innerHTML = html;
-      break;
-    }
-    case 'pulse': {
-      let html = '<div class="bottom-pulse">';
-      html += `<div class="pulse-line" style="background:rgba(${ar},${ag},${ab},0.15);"></div>`;
-      for (let i = 0; i < 3; i++) {
-        const size = 6 + Math.random() * 4;
-        const d = (2 + Math.random()) / speed;
-        const delay = i * 0.7;
-        html += `<div class="pulse-dot" style="width:${size}px;height:${size}px;background:${accent};box-shadow:0 0 ${size*2}px ${accent};animation-duration:${d}s;animation-delay:${delay}s;"></div>`;
-      }
-      html += '</div>';
-      track.innerHTML = html;
-      break;
-    }
-    default: {
-      track.innerHTML = '<div class="race-line"></div><div class="track-car" style="animation:carZoomLR ' + dur + 's linear infinite">🏎️</div>';
-    }
+    default:
+      track.innerHTML = '<div class="race-line"></div><div class="track-car" style="animation:carZoomLR '+dur+'s linear infinite">🏎️</div>';
   }
 }
 
@@ -955,10 +999,7 @@ function applyCustomDesign(card, eventType) {
     if (bottomAnim === 'none') {
       track.style.display = 'none';
     } else {
-      track.style.display = '';
-      // Clear existing content and rebuild based on animation type
-      track.innerHTML = '';
-      buildBottomAnimation(track, bottomAnim, speed, accent);
+      buildBottomAnimation(track, bottomAnim, speed, accent, card);
     }
   }
 
