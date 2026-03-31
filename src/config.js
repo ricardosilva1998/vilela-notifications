@@ -46,6 +46,9 @@ module.exports = {
         : 'https://api-m.sandbox.paypal.com';
     },
   },
+  features: {
+    youtube: false,  // Set to true to re-enable YouTube integration
+  },
   app: {
     url: (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, ''),
     port: parseInt(process.env.PORT) || 3000,
