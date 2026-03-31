@@ -725,29 +725,6 @@
       </div>
     </div>
 
-    <div class="mod-card">
-      <div class="mod-card-header">
-        <div>
-          <div class="mod-card-title">Discord Mod Log</div>
-          <div class="mod-card-desc">Send moderation actions to a Discord channel</div>
-        </div>
-        <label class="pill-toggle">
-          <input type="checkbox" id="mod_log_discord_enabled" name="mod_log_discord_enabled" value="1" <%= streamer.mod_log_discord_enabled ? 'checked' : '' %>>
-          <span class="slider"></span>
-        </label>
-      </div>
-      <div class="mod-card-settings">
-        <div class="mod-setting">
-          <label>Channel</label>
-          <select name="mod_log_discord_channel_id">
-            <option value="">Select a channel...</option>
-            <% discordChannels.forEach(ch => { %>
-              <option value="<%= ch.id %>" <%= streamer.mod_log_discord_channel_id === ch.id ? 'selected' : '' %>>#<%= ch.name %></option>
-            <% }) %>
-          </select>
-        </div>
-      </div>
-    </div>
     </div><!-- end Actions & Logging card -->
 
     <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
