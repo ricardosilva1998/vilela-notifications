@@ -918,6 +918,19 @@ router.delete('/chatbot/banned-words/:id', (req, res) => {
   res.json({ ok: true, words: db.getBannedWords(req.streamer.id) });
 });
 
+// Test custom command — send raw message to chat (must be before :eventType wildcard)
+router.post('/chatbot/test/custom', (req, res) => {
+  const message = req.query.response || req.body.response;
+  if (!message) return res.status(400).json({ error: 'No response text' });
+  try {
+    const { chatManager } = require('../services/twitchChat');
+    chatManager.sendRawMessage(req.streamer.twitch_username, message);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Test chat message
 router.post('/chatbot/test/:eventType', (req, res) => {
   const type = req.params.eventType;
@@ -936,19 +949,6 @@ router.post('/chatbot/test/:eventType', (req, res) => {
   try {
     const { chatManager } = require('../services/twitchChat');
     chatManager.sendEventMessage(req.streamer.id, test.eventType, test.data);
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// Test custom command — send raw message to chat
-router.post('/chatbot/test/custom', (req, res) => {
-  const message = req.query.response || req.body.response;
-  if (!message) return res.status(400).json({ error: 'No response text' });
-  try {
-    const { chatManager } = require('../services/twitchChat');
-    chatManager.sendRawMessage(req.streamer.twitch_username, message);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
