@@ -132,6 +132,10 @@ router.get('/', (req, res) => {
     ? `${config.app.url}/overlay/${req.streamer.overlay_token}`
     : null;
 
+  // 7-day overlay stats for Twitch tab
+  let overlayStats = null;
+  try { overlayStats = db.getOverlayStats7d(req.streamer.id); } catch (e) {}
+
   res.render('dashboard', {
     streamer: req.streamer,
     guilds: enrichedGuilds,
@@ -143,6 +147,7 @@ router.get('/', (req, res) => {
     botConnected,
     botUsername,
     overlayUrl,
+    overlayStats,
   });
 });
 
