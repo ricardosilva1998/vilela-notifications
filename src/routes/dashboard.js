@@ -810,6 +810,22 @@ router.get('/overlay/sounds/status', (req, res) => {
 
 // --- Chatbot Config ---
 
+// Donation settings page
+router.get('/donations', (req, res) => {
+  res.render('donation-settings', { streamer: req.streamer, appUrl: config.app.url });
+});
+
+router.post('/donations', (req, res) => {
+  const b = req.body;
+  db.updateDonationSettings(req.streamer.id, {
+    paypal_email: b.paypal_email ? b.paypal_email.trim() : null,
+    donation_page_enabled: b.donation_page_enabled ? 1 : 0,
+    donation_min_amount: parseFloat(b.donation_min_amount) || 1,
+    donation_currency: b.donation_currency || 'EUR',
+  });
+  res.redirect('/dashboard/donations');
+});
+
 // Chatbot config page
 router.get('/chatbot', (req, res) => {
   const streamer = req.streamer;

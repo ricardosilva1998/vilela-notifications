@@ -1,0 +1,98 @@
+<%- include('header', { title: 'Donation Settings', streamer: streamer }) %>
+
+<a href="/dashboard" style="color: var(--text-secondary); font-size: 13px; font-family: var(--font-display); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  Back to Dashboard
+</a>
+<h2 style="margin: 16px 0 8px; font-size: 24px; font-weight: 700;" class="animate-in">Donation Settings</h2>
+<p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 24px;">Set up PayPal donations so viewers can support you with overlay alerts on stream.</p>
+
+<form method="POST" action="/dashboard/donations">
+  <!-- Enable Donations -->
+  <div class="card animate-in animate-in-delay-1" style="margin-bottom: 16px;">
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <h3>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Enable Donation Page
+      </h3>
+      <label class="pill-toggle">
+        <input type="checkbox" name="donation_page_enabled" value="1" <%= streamer.donation_page_enabled ? 'checked' : '' %>>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <p style="color: var(--text-muted); font-size: 13px; margin-top: 8px;">When enabled, viewers can donate at <strong>/tip/<%= streamer.twitch_username || 'your-username' %></strong></p>
+  </div>
+
+  <!-- PayPal Email -->
+  <div class="card animate-in animate-in-delay-2" style="margin-bottom: 16px;">
+    <h3>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+      PayPal Email
+    </h3>
+    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 12px;">Donations will be sent directly to this PayPal account.</p>
+    <div class="form-group" style="margin-bottom: 0;">
+      <input type="email" name="paypal_email" placeholder="your-email@paypal.com" value="<%= streamer.paypal_email || '' %>" style="width: 100%;">
+    </div>
+  </div>
+
+  <!-- Donation Settings -->
+  <div class="card animate-in animate-in-delay-3" style="margin-bottom: 16px;">
+    <h3>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px;">
+      <div class="form-group" style="margin-bottom: 0;">
+        <label>Minimum Amount</label>
+        <input type="number" name="donation_min_amount" value="<%= streamer.donation_min_amount || 1 %>" min="0.50" step="0.50" style="width: 100%;">
+      </div>
+      <div class="form-group" style="margin-bottom: 0;">
+        <label>Currency</label>
+        <select name="donation_currency" style="width: 100%;">
+          <option value="EUR" <%= (streamer.donation_currency || 'EUR') === 'EUR' ? 'selected' : '' %>>EUR (Euro)</option>
+          <option value="USD" <%= streamer.donation_currency === 'USD' ? 'selected' : '' %>>USD (US Dollar)</option>
+          <option value="GBP" <%= streamer.donation_currency === 'GBP' ? 'selected' : '' %>>GBP (British Pound)</option>
+          <option value="BRL" <%= streamer.donation_currency === 'BRL' ? 'selected' : '' %>>BRL (Brazilian Real)</option>
+          <option value="CAD" <%= streamer.donation_currency === 'CAD' ? 'selected' : '' %>>CAD (Canadian Dollar)</option>
+          <option value="AUD" <%= streamer.donation_currency === 'AUD' ? 'selected' : '' %>>AUD (Australian Dollar)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Donation Page Link -->
+  <% if (streamer.paypal_email && streamer.donation_page_enabled && streamer.twitch_username) { %>
+    <div class="card animate-in animate-in-delay-3" style="margin-bottom: 16px;">
+      <h3>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        Your Donation Link
+      </h3>
+      <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 10px;">Share this link with your viewers:</p>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <input type="text" value="<%= appUrl %>/tip/<%= streamer.twitch_username %>" readonly id="tip-url"
+          style="flex: 1; padding: 10px 14px; background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 13px;">
+        <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('tip-url').value); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy',1500);" class="btn btn-secondary" style="flex-shrink: 0;">Copy</button>
+        <a href="/tip/<%= streamer.twitch_username %>" target="_blank" class="btn btn-secondary" style="flex-shrink: 0; text-decoration: none;">Preview</a>
+      </div>
+    </div>
+  <% } %>
+
+  <!-- Save Button -->
+  <div style="display: flex; justify-content: flex-end; margin-bottom: 24px;">
+    <button type="submit" class="btn btn-primary" style="padding: 12px 32px; font-size: 14px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Save Settings
+    </button>
+  </div>
+</form>
+
+<style>
+  .pill-toggle { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+  .pill-toggle input { opacity: 0; width: 0; height: 0; }
+  .pill-toggle .slider { position: absolute; cursor: pointer; inset: 0; background: var(--bg-elevated); border-radius: 24px; border: 1px solid var(--border); transition: 0.3s; }
+  .pill-toggle .slider:before { content: ''; position: absolute; height: 18px; width: 18px; left: 2px; bottom: 2px; background: #fff; border-radius: 50%; transition: 0.3s; }
+  .pill-toggle input:checked + .slider { background: var(--accent); border-color: var(--accent); }
+  .pill-toggle input:checked + .slider:before { transform: translateX(20px); }
+</style>
+
+<%- include('footer') %>

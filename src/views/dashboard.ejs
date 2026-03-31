@@ -416,6 +416,30 @@
       <a href="/dashboard/timed-notifications" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px; text-decoration: none; margin-top: auto;">Manage Messages</a>
     </div>
 
+    <!-- Donations Card -->
+    <div class="card animate-in" style="padding: 24px; display: flex; flex-direction: column;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+        <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(0,112,186,0.15); display: flex; align-items: center; justify-content: center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0070ba" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <div style="line-height: 1.2;">
+          <h3 style="font-size: 16px; font-weight: 700; margin: 0;">Donations</h3>
+          <span style="color: var(--text-muted); font-size: 12px;">PayPal donation page for viewers</span>
+        </div>
+      </div>
+      <% if (streamer.paypal_email && streamer.donation_page_enabled) { %>
+        <p style="color: var(--success); font-size: 12px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Active — <a href="/tip/<%= streamer.twitch_username %>" target="_blank" style="color: var(--accent); text-decoration: none;">/tip/<%= streamer.twitch_username %></a>
+        </p>
+      <% } else { %>
+        <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px; line-height: 1.5;">
+          Set up your PayPal email to receive donations with overlay alerts.
+        </p>
+      <% } %>
+      <a href="/dashboard/donations" class="btn btn-primary" style="font-size: 13px; padding: 8px 16px; text-decoration: none; margin-top: auto;">Donation Settings</a>
+    </div>
+
     <!-- Custom Overlays Card — DISABLED for now
     <a href="/dashboard/custom-overlays" class="card" style="text-decoration:none;">
       <div class="card-icon">🎨</div>
