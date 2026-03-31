@@ -723,24 +723,28 @@ function buildBottomAnimation(track, type, speed, accent, card) {
     overlay.className = 'card-anim-overlay';
 
     if (type === 'flames') {
-      // Realistic fire: layered gradients rising from bottom
       let h = '';
-      for (let i = 0; i < 15; i++) {
-        const x = Math.random() * 100;
-        const w = 15 + Math.random() * 25;
-        const d = (0.6 + Math.random() * 0.8) / speed;
+      // Full-width flame layers covering left to right
+      for (let i = 0; i < 25; i++) {
+        const x = (i / 25) * 100 - 5 + Math.random() * 10;
+        const w = 20 + Math.random() * 20;
+        const ht = 50 + Math.random() * 40;
+        const d = (0.5 + Math.random() * 0.7) / speed;
         const delay = Math.random() * 1;
-        const hue = Math.floor(Math.random() * 40); // 0-40 = red to yellow
-        h += `<div style="position:absolute;bottom:-10%;left:${x}%;width:${w}%;height:60%;border-radius:50% 50% 20% 20%;background:radial-gradient(ellipse at bottom, hsla(${hue},100%,55%,0.7), hsla(${hue+15},100%,45%,0.3) 50%, transparent 70%);filter:blur(3px);animation:flameRise ${d}s ease-in-out ${delay}s infinite;"></div>`;
+        const hue = Math.floor(Math.random() * 45);
+        h += `<div style="position:absolute;bottom:-15%;left:${x}%;width:${w}%;height:${ht}%;border-radius:50% 50% 20% 20%;background:radial-gradient(ellipse at bottom, hsla(${hue},100%,55%,0.6), hsla(${hue+15},100%,45%,0.25) 50%, transparent 75%);filter:blur(4px);animation:flameRise ${d}s ease-in-out ${delay}s infinite;"></div>`;
       }
-      // Base glow
-      h += `<div style="position:absolute;bottom:0;left:0;right:0;height:40%;background:linear-gradient(to top,rgba(255,80,0,0.4),rgba(255,150,0,0.15),transparent);animation:flameGlow ${1.5/speed}s ease-in-out infinite;"></div>`;
+      // Full-width base glow
+      h += `<div style="position:absolute;bottom:0;left:0;right:0;height:50%;background:linear-gradient(to top,rgba(255,60,0,0.5),rgba(255,120,0,0.2) 40%,transparent);animation:flameGlow ${1.5/speed}s ease-in-out infinite;"></div>`;
+      // Inner glow layer
+      h += `<div style="position:absolute;bottom:0;left:0;right:0;height:30%;background:linear-gradient(to top,rgba(255,200,0,0.3),transparent);animation:flameGlow ${1/speed}s ease-in-out 0.3s infinite;"></div>`;
       // Ember particles
-      for (let i = 0; i < 8; i++) {
-        const x = 10 + Math.random() * 80;
+      for (let i = 0; i < 12; i++) {
+        const x = Math.random() * 100;
         const d = (1 + Math.random() * 1.5) / speed;
         const delay = Math.random() * 2;
-        h += `<div style="position:absolute;bottom:5%;left:${x}%;width:3px;height:3px;border-radius:50%;background:#ff8800;box-shadow:0 0 4px #ff4400;animation:flameRise ${d}s ease-out ${delay}s infinite;opacity:0.8;"></div>`;
+        const sz = 2 + Math.random() * 2;
+        h += `<div style="position:absolute;bottom:10%;left:${x}%;width:${sz}px;height:${sz}px;border-radius:50%;background:#ffaa00;box-shadow:0 0 ${sz*2}px #ff4400;animation:flameRise ${d}s ease-out ${delay}s infinite;opacity:0.8;"></div>`;
       }
       overlay.innerHTML = h;
     }

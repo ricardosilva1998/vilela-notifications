@@ -461,10 +461,11 @@
 
     /* Preview alert card (mirrors overlay.css structure) */
     .preview-alert-card {
+      position: relative;
       width: 420px;
       border-radius: 16px;
       border: 1px solid;
-      overflow: visible;
+      overflow: hidden;
       box-shadow: 0 8px 32px rgba(136,136,204,0.25);
       transform-origin: top center;
       background: linear-gradient(160deg, rgb(9,9,22), #1a1a3e 40%, rgb(9,9,22));
@@ -1529,14 +1530,21 @@ function buildPreviewBottomAnimation(track, type, speed, accent, card) {
 
     if (type === 'flames') {
       let h = '';
-      for (let i = 0; i < 10; i++) {
-        const x = Math.random() * 100;
-        const w = 15 + Math.random() * 25;
-        const d = (0.6 + Math.random() * 0.8) / speed;
-        const hue = Math.floor(Math.random() * 40);
-        h += `<div style="position:absolute;bottom:-10%;left:${x}%;width:${w}%;height:60%;border-radius:50% 50% 20% 20%;background:radial-gradient(ellipse at bottom, hsla(${hue},100%,55%,0.7), hsla(${hue+15},100%,45%,0.3) 50%, transparent 70%);filter:blur(2px);animation:flameRise ${d}s ease-in-out ${Math.random()}s infinite;"></div>`;
+      for (let i = 0; i < 20; i++) {
+        const x = (i / 20) * 100 - 5 + Math.random() * 10;
+        const w = 20 + Math.random() * 20;
+        const ht = 50 + Math.random() * 40;
+        const d = (0.5 + Math.random() * 0.7) / speed;
+        const hue = Math.floor(Math.random() * 45);
+        h += `<div style="position:absolute;bottom:-15%;left:${x}%;width:${w}%;height:${ht}%;border-radius:50% 50% 20% 20%;background:radial-gradient(ellipse at bottom, hsla(${hue},100%,55%,0.6), hsla(${hue+15},100%,45%,0.25) 50%, transparent 75%);filter:blur(3px);animation:flameRise ${d}s ease-in-out ${Math.random()}s infinite;"></div>`;
       }
-      h += `<div style="position:absolute;bottom:0;left:0;right:0;height:40%;background:linear-gradient(to top,rgba(255,80,0,0.4),rgba(255,150,0,0.15),transparent);animation:flameGlow ${1.5/speed}s ease-in-out infinite;"></div>`;
+      h += `<div style="position:absolute;bottom:0;left:0;right:0;height:50%;background:linear-gradient(to top,rgba(255,60,0,0.5),rgba(255,120,0,0.2) 40%,transparent);animation:flameGlow ${1.5/speed}s ease-in-out infinite;"></div>`;
+      h += `<div style="position:absolute;bottom:0;left:0;right:0;height:30%;background:linear-gradient(to top,rgba(255,200,0,0.3),transparent);animation:flameGlow ${1/speed}s ease-in-out 0.3s infinite;"></div>`;
+      for (let i = 0; i < 8; i++) {
+        const x = Math.random() * 100;
+        const sz = 1 + Math.random() * 2;
+        h += `<div style="position:absolute;bottom:10%;left:${x}%;width:${sz}px;height:${sz}px;border-radius:50%;background:#ffaa00;box-shadow:0 0 ${sz*2}px #ff4400;animation:flameRise ${(1+Math.random()*1.5)/speed}s ease-out ${Math.random()*2}s infinite;opacity:0.8;"></div>`;
+      }
       overlay.innerHTML = h;
     }
     else if (type === 'sparkles') {
