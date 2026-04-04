@@ -178,7 +178,7 @@ function showControlWindow() {
   }
 
   controlWindow = new BrowserWindow({
-    width: 420,
+    width: 540,
     height: 640,
     resizable: false,
     maximizable: false,

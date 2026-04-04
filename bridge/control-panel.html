@@ -20,25 +20,68 @@
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
     .status-text { font-size: 13px; font-weight: 600; }
     .status-detail { font-size: 11px; color: #5c5b6e; }
-    h2 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #5c5b6e; margin-bottom: 10px; }
-    .overlay-list { display: flex; flex-direction: column; gap: 6px; }
-    .overlay-item {
+
+    /* Tabs */
+    .tabs { display: flex; gap: 0; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .tab { padding: 8px 16px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #5c5b6e; cursor: pointer; border-bottom: 2px solid transparent; transition: color 0.2s, border-color 0.2s; }
+    .tab.active { color: #9146ff; font-weight: 700; border-bottom-color: #9146ff; }
+    .tab:hover:not(.active) { color: #8b8a9e; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Overlay card grid */
+    .overlay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+    .overlay-card {
       background: #141520; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px;
-      padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px; display: flex; align-items: center; justify-content: space-between;
       transition: border-color 0.2s;
     }
-    .overlay-item:hover { border-color: rgba(145,70,255,0.3); }
-    .overlay-info { display: flex; align-items: center; gap: 10px; }
-    .overlay-icon { font-size: 18px; width: 28px; text-align: center; }
-    .overlay-name { font-size: 13px; font-weight: 600; }
-    .toggle { position: relative; width: 40px; height: 22px; cursor: pointer; }
+    .overlay-card:hover { border-color: rgba(145,70,255,0.3); }
+    .overlay-info { display: flex; align-items: center; gap: 8px; }
+    .overlay-icon { font-size: 16px; }
+    .overlay-name { font-size: 11px; font-weight: 600; }
+    .overlay-actions { display: flex; align-items: center; gap: 4px; }
+    .gear-btn { background: none; border: none; color: #5c5b6e; cursor: pointer; font-size: 12px; padding: 2px 4px; }
+    .gear-btn:hover { color: #9146ff; }
+
+    h2 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #5c5b6e; margin-bottom: 10px; }
+    .toggle { position: relative; width: 36px; height: 20px; cursor: pointer; flex-shrink: 0; }
     .toggle input { opacity: 0; width: 0; height: 0; }
-    .toggle .slider { position: absolute; inset: 0; background: #1a1b2e; border-radius: 22px; border: 1px solid rgba(255,255,255,0.1); transition: 0.3s; }
-    .toggle .slider:before { content: ''; position: absolute; width: 16px; height: 16px; left: 2px; bottom: 2px; background: #fff; border-radius: 50%; transition: 0.3s; }
+    .toggle .slider { position: absolute; inset: 0; background: #1a1b2e; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); transition: 0.3s; }
+    .toggle .slider:before { content: ''; position: absolute; width: 14px; height: 14px; left: 2px; bottom: 2px; background: #fff; border-radius: 50%; transition: 0.3s; }
     .toggle input:checked + .slider { background: #9146ff; border-color: #9146ff; }
-    .toggle input:checked + .slider:before { transform: translateX(18px); }
+    .toggle input:checked + .slider:before { transform: translateX(16px); }
     .footer { margin-top: 16px; text-align: center; font-size: 10px; color: #3a3a4e; }
     .footer a { color: #9146ff; text-decoration: none; }
+
+    /* Updates tab */
+    .update-banner {
+      background: rgba(62,207,142,0.08); border: 1px solid rgba(62,207,142,0.3); border-radius: 8px;
+      padding: 12px 14px; margin-bottom: 12px; display: none;
+    }
+    .update-banner.visible { display: block; }
+    .update-banner-header { display: flex; justify-content: space-between; align-items: center; }
+    .update-banner-title { font-size: 12px; font-weight: 700; color: #3ecf8e; }
+    .update-banner-sub { font-size: 10px; color: #8b8a9e; margin-top: 2px; }
+    .update-btn { padding: 7px 14px; border-radius: 6px; border: none; background: #3ecf8e; color: #0c0d14; font-size: 11px; font-weight: 600; cursor: pointer; }
+    .update-btn:hover { opacity: 0.9; }
+    .update-progress { height: 3px; border-radius: 2px; background: rgba(255,255,255,0.1); margin-top: 8px; overflow: hidden; display: none; }
+    .update-progress-bar { height: 100%; background: #3ecf8e; width: 0%; border-radius: 2px; transition: width 0.3s; }
+    .version-line { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .version-label { font-size: 11px; color: #5c5b6e; }
+    .version-label strong { color: #e8e6f0; font-weight: 700; }
+    .check-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #8b8a9e; font-size: 10px; cursor: pointer; }
+    .check-btn:hover { border-color: rgba(255,255,255,0.2); color: #e8e6f0; }
+    .release-card {
+      background: #141520; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px;
+      padding: 12px 14px; margin-bottom: 8px;
+    }
+    .release-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .release-version { font-size: 12px; font-weight: 700; }
+    .release-date { font-size: 9px; color: #5c5b6e; }
+    .release-notes { font-size: 11px; color: #8b8a9e; line-height: 1.5; }
+    .release-notes div { margin-bottom: 3px; }
+    .release-notes div:last-child { margin-bottom: 0; }
   </style>
 </head>
 <body>
@@ -50,20 +93,6 @@
     </div>
   </div>
 
-  <div id="update-bar" style="display:none; margin-top:10px; margin-bottom:10px; padding:10px 14px; border-radius:8px; border:1px solid rgba(62,207,142,0.3); background:rgba(62,207,142,0.08); font-size:12px; color:#3ecf8e;">
-    <div id="update-text" style="margin-bottom:6px; font-weight:600;"></div>
-    <button id="update-btn" onclick="handleUpdateAction()" style="padding:6px 14px; border-radius:6px; border:none; background:#3ecf8e; color:#0c0d14; font-size:12px; font-weight:600; cursor:pointer; display:none;">Download Update</button>
-    <div id="update-progress" style="display:none; height:4px; border-radius:2px; background:rgba(255,255,255,0.1); margin-top:6px; overflow:hidden;">
-      <div id="update-progress-bar" style="height:100%; background:#3ecf8e; width:0%; transition:width 0.3s;"></div>
-    </div>
-  </div>
-
-  <div style="margin-bottom:10px; text-align:center;">
-    <button onclick="checkForUpdate()" style="padding:6px 14px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:transparent; color:#8b8a9e; font-size:11px; cursor:pointer;">
-      Check for Updates
-    </button>
-  </div>
-
   <div class="status-card">
     <div class="status-dot waiting" id="status-dot"></div>
     <div>
@@ -72,28 +101,63 @@
     </div>
   </div>
 
-  <h2>Overlays</h2>
-  <div class="overlay-list" id="overlay-list"></div>
-
-  <!-- Overlay Customization -->
-  <div id="customize-panel" style="display:none; margin-top:12px; padding:12px; background:#141520; border:1px solid rgba(255,255,255,0.06); border-radius:8px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-      <h2 style="margin:0; font-size:12px;">Customize: <span id="customize-title"></span></h2>
-      <button onclick="closeCustomize()" style="background:none; border:none; color:#5c5b6e; cursor:pointer; font-size:14px;">✕</button>
-    </div>
-    <div id="customize-content"></div>
-    <button onclick="saveCustomize()" style="width:100%; margin-top:8px; padding:7px; border-radius:6px; border:none; background:#9146ff; color:#fff; font-size:12px; font-weight:600; cursor:pointer;">Save</button>
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" data-tab="overlays" onclick="switchTab('overlays')">Overlays</div>
+    <div class="tab" data-tab="updates" onclick="switchTab('updates')">Updates</div>
   </div>
 
-  <div style="margin-top: 14px;">
-    <button id="lock-btn" onclick="toggleLock()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: #141520; color: #e8e6f0; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
-      🔓 Unlocked — Drag & Resize Overlays
-    </button>
-    <p style="font-size: 10px; color: #3a3a4e; text-align: center; margin-top: 6px;">Lock to make overlays click-through while driving</p>
-    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#8b8a9e;margin-top:10px;cursor:pointer;">
-      <input type="checkbox" id="autohide-check" checked onchange="toggleAutoHide(this.checked)" style="accent-color:#9146ff;">
-      Auto-hide overlays when iRacing closes
-    </label>
+  <!-- Overlays Tab -->
+  <div class="tab-content active" id="tab-overlays">
+    <div class="overlay-grid" id="overlay-grid"></div>
+
+    <!-- Overlay Customization -->
+    <div id="customize-panel" style="display:none; padding:12px; background:#141520; border:1px solid rgba(255,255,255,0.06); border-radius:8px; margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h2 style="margin:0; font-size:12px;">Customize: <span id="customize-title"></span></h2>
+        <button onclick="closeCustomize()" style="background:none; border:none; color:#5c5b6e; cursor:pointer; font-size:14px;">&#10005;</button>
+      </div>
+      <div id="customize-content"></div>
+      <button onclick="saveCustomize()" style="width:100%; margin-top:8px; padding:7px; border-radius:6px; border:none; background:#9146ff; color:#fff; font-size:12px; font-weight:600; cursor:pointer;">Save</button>
+    </div>
+
+    <div>
+      <button id="lock-btn" onclick="toggleLock()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: #141520; color: #e8e6f0; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
+        &#128275; Unlocked — Drag & Resize Overlays
+      </button>
+      <p style="font-size: 10px; color: #3a3a4e; text-align: center; margin-top: 6px;">Lock to make overlays click-through while driving</p>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#8b8a9e;margin-top:10px;cursor:pointer;">
+        <input type="checkbox" id="autohide-check" checked onchange="toggleAutoHide(this.checked)" style="accent-color:#9146ff;">
+        Auto-hide overlays when iRacing closes
+      </label>
+    </div>
+  </div>
+
+  <!-- Updates Tab -->
+  <div class="tab-content" id="tab-updates">
+    <!-- Update available banner -->
+    <div class="update-banner" id="update-banner">
+      <div class="update-banner-header">
+        <div>
+          <div class="update-banner-title" id="update-banner-title"></div>
+          <div class="update-banner-sub" id="update-banner-sub"></div>
+        </div>
+        <button class="update-btn" id="update-btn" onclick="handleUpdateAction()">Download</button>
+      </div>
+      <div class="update-progress" id="update-progress">
+        <div class="update-progress-bar" id="update-progress-bar"></div>
+      </div>
+    </div>
+
+    <!-- Version line -->
+    <div class="version-line">
+      <div class="version-label">Installed: <strong id="installed-version">--</strong></div>
+      <button class="check-btn" onclick="checkForUpdate()">Check for Updates</button>
+    </div>
+
+    <!-- Release notes -->
+    <h2>Release Notes</h2>
+    <div id="release-notes-list"></div>
   </div>
 
   <div class="footer">
@@ -103,36 +167,49 @@
   <script>
     const { ipcRenderer } = require('electron');
     let locked = false;
+    let appVersion = '--';
 
+    // ─── Tabs ──────────────────────────────────────────────────
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + tabId));
+      localStorage.setItem('bridge_tab', tabId);
+    }
+
+    // Restore last active tab
+    const savedTab = localStorage.getItem('bridge_tab');
+    if (savedTab) switchTab(savedTab);
+
+    // ─── Overlay Grid ──────────────────────────────────────────
     const overlays = [
-      { id: 'standings', icon: '🏁', name: 'Standings' },
-      { id: 'relative', icon: '📊', name: 'Relative' },
-      { id: 'fuel', icon: '⛽', name: 'Fuel Calculator' },
-      { id: 'wind', icon: '🌬️', name: 'Wind Direction' },
-      { id: 'proximity', icon: '🚗', name: 'Car Proximity' },
-      { id: 'chat', icon: '💬', name: 'Streaming Chat' },
-      { id: 'trackmap', icon: '🗺️', name: 'Track Map' },
-      { id: 'voicechat', icon: '🎙️', name: 'Voice Chat' },
+      { id: 'standings', icon: '&#127937;', name: 'Standings' },
+      { id: 'relative', icon: '&#128202;', name: 'Relative' },
+      { id: 'fuel', icon: '&#9981;', name: 'Fuel Calculator' },
+      { id: 'wind', icon: '&#127788;&#65039;', name: 'Wind' },
+      { id: 'proximity', icon: '&#128663;', name: 'Proximity' },
+      { id: 'chat', icon: '&#128172;', name: 'Chat' },
+      { id: 'trackmap', icon: '&#127758;', name: 'Track Map' },
+      { id: 'voicechat', icon: '&#127908;', name: 'Voice Chat' },
     ];
 
-    const list = document.getElementById('overlay-list');
+    const grid = document.getElementById('overlay-grid');
     overlays.forEach(ov => {
-      const item = document.createElement('div');
-      item.className = 'overlay-item';
-      item.innerHTML = `
+      const card = document.createElement('div');
+      card.className = 'overlay-card';
+      card.innerHTML = `
         <div class="overlay-info">
           <span class="overlay-icon">${ov.icon}</span>
           <span class="overlay-name">${ov.name}</span>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <button onclick="openCustomize('${ov.id}','${ov.name}')" style="background:none;border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#5c5b6e;cursor:pointer;padding:2px 6px;font-size:12px;" title="Settings">⚙</button>
+        <div class="overlay-actions">
+          <button class="gear-btn" onclick="openCustomize('${ov.id}','${ov.name}')" title="Settings">&#9881;</button>
           <label class="toggle">
             <input type="checkbox" id="toggle-${ov.id}" onchange="toggleOverlay('${ov.id}', this.checked)">
             <span class="slider"></span>
           </label>
         </div>
       `;
-      list.appendChild(item);
+      grid.appendChild(card);
     });
 
     function toggleOverlay(id, enabled) {
@@ -197,7 +274,6 @@
       if (fields.length === 0) {
         content.innerHTML = '<p style="font-size:11px;color:#5c5b6e;">No settings available for this overlay.</p>';
       } else {
-        // Load current settings
         const saved = JSON.parse(localStorage.getItem('overlay_' + id) || '{}');
         content.innerHTML = fields.map(f => {
           const val = saved[f.key] !== undefined ? saved[f.key] : f.default;
@@ -263,9 +339,7 @@
         else if (f.type === 'select') settings[f.key] = el.value;
       });
       localStorage.setItem('overlay_' + currentCustomizeId, JSON.stringify(settings));
-      // Send to main process to save in persistent settings and notify overlays
       ipcRenderer.send('save-overlay-settings', currentCustomizeId, settings);
-      // Forward voice settings to voice input module
       if (currentCustomizeId === 'voicechat') {
         const voiceUpdate = {};
         if (settings.pushToTalk !== undefined) voiceUpdate.pushToTalkKey = settings.pushToTalk;
@@ -276,6 +350,7 @@
       closeCustomize();
     }
 
+    // ─── Lock & Auto-hide ──────────────────────────────────────
     function toggleLock() {
       locked = !locked;
       ipcRenderer.send('toggle-lock', locked);
@@ -289,16 +364,131 @@
     function updateLockBtn() {
       const btn = document.getElementById('lock-btn');
       if (locked) {
-        btn.innerHTML = '🔒 Locked — Click-Through Mode';
+        btn.innerHTML = '&#128274; Locked — Click-Through Mode';
         btn.style.background = 'rgba(145,70,255,0.15)';
         btn.style.borderColor = 'rgba(145,70,255,0.4)';
       } else {
-        btn.innerHTML = '🔓 Unlocked — Drag & Resize Overlays';
+        btn.innerHTML = '&#128275; Unlocked — Drag & Resize Overlays';
         btn.style.background = '#141520';
         btn.style.borderColor = 'rgba(255,255,255,0.1)';
       }
     }
 
+    // ─── Updates Tab ───────────────────────────────────────────
+    const RELEASE_NOTES = [
+      {
+        version: '1.0.42',
+        date: 'Apr 4, 2026',
+        notes: [
+          'Fix standings sort to use iRacing class position',
+          'Fix lap data preserved when driver disconnects',
+          'Fix track map GPS collection and completion',
+        ],
+      },
+      {
+        version: '1.0.41',
+        date: 'Apr 4, 2026',
+        notes: [
+          'Voice chat overlay with speech recognition',
+          'Push-to-talk global hotkey support',
+          'Keyboard simulator for iRacing chat',
+        ],
+      },
+      {
+        version: '1.0.40',
+        date: 'Apr 3, 2026',
+        notes: [
+          'Track map overlay with GPS path recording',
+          'Hide control panel scrollbar',
+        ],
+      },
+      {
+        version: '1.0.39',
+        date: 'Apr 3, 2026',
+        notes: [
+          'Standings with class grouping and country flags',
+          'Relative position display',
+          'Fuel calculator overlay',
+        ],
+      },
+    ];
+
+    function renderReleaseNotes() {
+      const list = document.getElementById('release-notes-list');
+      list.innerHTML = RELEASE_NOTES.map((r, i) => `
+        <div class="release-card" ${i >= 3 ? 'style="opacity:0.5;"' : ''}>
+          <div class="release-header">
+            <span class="release-version">v${r.version}</span>
+            <span class="release-date">${r.date}</span>
+          </div>
+          <div class="release-notes">
+            ${r.notes.map(n => `<div>&bull; ${n}</div>`).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+    renderReleaseNotes();
+
+    let updateState = 'idle';
+
+    function handleUpdateAction() {
+      if (updateState === 'available') {
+        updateState = 'downloading';
+        document.getElementById('update-btn').style.display = 'none';
+        document.getElementById('update-progress').style.display = 'block';
+        document.getElementById('update-banner-title').textContent = 'Downloading update...';
+        document.getElementById('update-banner-sub').textContent = '';
+        ipcRenderer.send('download-update');
+      } else if (updateState === 'ready') {
+        ipcRenderer.send('install-update');
+      }
+    }
+
+    function checkForUpdate() {
+      ipcRenderer.send('check-for-update');
+      const banner = document.getElementById('update-banner');
+      banner.classList.add('visible');
+      document.getElementById('update-banner-title').textContent = 'Checking for updates...';
+      document.getElementById('update-banner-sub').textContent = '';
+      document.getElementById('update-btn').style.display = 'none';
+    }
+
+    ipcRenderer.on('update-available', (event, version) => {
+      updateState = 'available';
+      const banner = document.getElementById('update-banner');
+      banner.classList.add('visible');
+      document.getElementById('update-banner-title').textContent = 'Update Available: v' + version;
+      document.getElementById('update-banner-sub').textContent = 'New features and bug fixes';
+      document.getElementById('update-btn').textContent = 'Download';
+      document.getElementById('update-btn').style.display = 'inline-block';
+      document.getElementById('update-progress').style.display = 'none';
+    });
+
+    ipcRenderer.on('update-not-available', () => {
+      updateState = 'idle';
+      const banner = document.getElementById('update-banner');
+      banner.classList.add('visible');
+      document.getElementById('update-banner-title').textContent = 'You are on the latest version';
+      document.getElementById('update-banner-sub').textContent = '';
+      document.getElementById('update-btn').style.display = 'none';
+      setTimeout(() => { banner.classList.remove('visible'); }, 3000);
+    });
+
+    ipcRenderer.on('update-progress', (event, percent) => {
+      document.getElementById('update-progress-bar').style.width = percent + '%';
+      document.getElementById('update-banner-title').textContent = 'Downloading update... ' + percent + '%';
+    });
+
+    ipcRenderer.on('update-downloaded', () => {
+      updateState = 'ready';
+      document.getElementById('update-progress').style.display = 'none';
+      document.getElementById('update-banner-title').textContent = 'Update ready!';
+      document.getElementById('update-banner-sub').textContent = 'Click to install and restart';
+      document.getElementById('update-btn').textContent = 'Install & Restart';
+      document.getElementById('update-btn').style.display = 'inline-block';
+    });
+
+    // ─── IPC Listeners ─────────────────────────────────────────
     ipcRenderer.on('iracing-status', (event, status) => {
       const dot = document.getElementById('status-dot');
       const text = document.getElementById('status-text');
@@ -341,66 +531,16 @@
     // Show version
     try {
       const { app } = require('@electron/remote') || {};
-      document.getElementById('version-text').textContent = 'v' + (app?.getVersion?.() || require('../package.json').version);
+      appVersion = app?.getVersion?.() || require('../package.json').version;
     } catch(e) {
       try {
-        const pkg = require('./package.json');
-        document.getElementById('version-text').textContent = 'v' + pkg.version;
+        appVersion = require('./package.json').version;
       } catch(e2) {
-        document.getElementById('version-text').textContent = 'iRacing Overlay Manager';
+        appVersion = '--';
       }
     }
-
-    // Auto-updater
-    let updateState = 'idle'; // idle, available, downloading, ready
-
-    function handleUpdateAction() {
-      if (updateState === 'available') {
-        updateState = 'downloading';
-        document.getElementById('update-btn').style.display = 'none';
-        document.getElementById('update-progress').style.display = 'block';
-        document.getElementById('update-text').textContent = 'Downloading update...';
-        ipcRenderer.send('download-update');
-      } else if (updateState === 'ready') {
-        ipcRenderer.send('install-update');
-      }
-    }
-
-    ipcRenderer.on('update-available', (event, version) => {
-      updateState = 'available';
-      document.getElementById('update-bar').style.display = 'block';
-      document.getElementById('update-text').textContent = 'Update available: v' + version;
-      document.getElementById('update-btn').textContent = 'Download Update';
-      document.getElementById('update-btn').style.display = 'inline-block';
-    });
-
-    function checkForUpdate() {
-      ipcRenderer.send('check-for-update');
-      document.getElementById('update-bar').style.display = 'block';
-      document.getElementById('update-text').textContent = 'Checking for updates...';
-      document.getElementById('update-btn').style.display = 'none';
-    }
-
-    ipcRenderer.on('update-not-available', () => {
-      updateState = 'idle';
-      document.getElementById('update-bar').style.display = 'block';
-      document.getElementById('update-text').textContent = 'You are on the latest version';
-      document.getElementById('update-btn').style.display = 'none';
-      setTimeout(() => { document.getElementById('update-bar').style.display = 'none'; }, 3000);
-    });
-
-    ipcRenderer.on('update-progress', (event, percent) => {
-      document.getElementById('update-progress-bar').style.width = percent + '%';
-      document.getElementById('update-text').textContent = 'Downloading update... ' + percent + '%';
-    });
-
-    ipcRenderer.on('update-downloaded', () => {
-      updateState = 'ready';
-      document.getElementById('update-progress').style.display = 'none';
-      document.getElementById('update-text').textContent = 'Update ready! Click to install and restart.';
-      document.getElementById('update-btn').textContent = 'Install & Restart';
-      document.getElementById('update-btn').style.display = 'inline-block';
-    });
+    document.getElementById('version-text').textContent = 'v' + appVersion;
+    document.getElementById('installed-version').textContent = 'v' + appVersion;
   </script>
 </body>
 </html>
