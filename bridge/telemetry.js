@@ -24,12 +24,16 @@ let fuelHistory = [];
 let lastLap = -1;
 let fuelAtLapStart = null;
 
-// Track map
-const trackPath = []; // Array of {x, y, pct} points (heading+speed integration)
+// Track map — slot-based recording (robust against crashes/off-track)
+const TRACK_SLOTS = 500; // Resolution: 500 points around the track
+const trackSlots = new Array(TRACK_SLOTS).fill(null); // {x, y} per slot
 let trackPathComplete = false;
-let lastTrackPct = -1;
+let trackPathOutput = []; // Final smoothed path sent to overlay
+let lastIntX = 0, lastIntY = 0; // Integrated position
+let lastRecordedPct = -1;
+let filledSlots = 0;
 
-// Track map cache — persisted to settings so tracks load instantly on revisit
+// Track map cache — persisted so tracks load instantly on revisit
 const TRACK_MAPS_DIR = path.join(require('os').homedir(), 'Documents', 'Atleta Bridge', 'trackmaps');
 
 function loadCachedTrack(trackName) {
@@ -50,6 +54,32 @@ function saveCachedTrack(trackName, pathData) {
     fs.writeFileSync(file, JSON.stringify(pathData));
     log('[TrackMap] Cached track: ' + trackName + ' (' + pathData.length + ' points)');
   } catch(e) { log('[TrackMap] Cache save error: ' + e.message); }
+}
+
+function buildTrackPath() {
+  // Convert filled slots to a continuous path
+  const points = [];
+  for (let i = 0; i < TRACK_SLOTS; i++) {
+    if (trackSlots[i]) {
+      points.push({ x: trackSlots[i].x, y: trackSlots[i].y, pct: i / TRACK_SLOTS });
+    }
+  }
+  if (points.length < 50) return points;
+
+  // Smooth the path with a moving average (window=5) to remove noise
+  const smoothed = [];
+  const win = 5;
+  for (let i = 0; i < points.length; i++) {
+    let sx = 0, sy = 0, count = 0;
+    for (let j = -win; j <= win; j++) {
+      const idx = (i + j + points.length) % points.length;
+      sx += points[idx].x;
+      sy += points[idx].y;
+      count++;
+    }
+    smoothed.push({ x: sx / count, y: sy / count, pct: points[i].pct });
+  }
+  return smoothed;
 }
 
 // Persistent driver data — keeps drivers visible after they disconnect
@@ -96,9 +126,12 @@ async function startTelemetry(onStatusChange) {
         playerCarIdx = 0;
         pollCount = 0;
         resetFuel();
-        trackPath.length = 0;
+        trackSlots.fill(null);
         trackPathComplete = false;
-        lastTrackPct = -1;
+        trackPathOutput = [];
+        lastIntX = 0; lastIntY = 0;
+        lastRecordedPct = -1;
+        filledSlots = 0;
         persistedDrivers.clear();
         cachedBestLaps.clear();
         cachedLastLaps.clear();
@@ -155,11 +188,12 @@ async function startTelemetry(onStatusChange) {
                 log('[SessionInfo] Track: ' + trackName);
 
                 // Load cached track map if available — instant track shape on revisit
-                if (trackName && !trackPathComplete && trackPath.length === 0) {
+                if (trackName && !trackPathComplete && trackPathOutput.length === 0) {
                   const cached = loadCachedTrack(trackName);
                   if (cached) {
-                    trackPath.push(...cached);
+                    trackPathOutput = cached;
                     trackPathComplete = true;
+                    filledSlots = TRACK_SLOTS; // Mark as fully mapped
                     log('[TrackMap] Loaded cached track: ' + trackName + ' (' + cached.length + ' points)');
                   }
                 }
@@ -411,28 +445,39 @@ async function startTelemetry(onStatusChange) {
         }});
 
         // === Track Map ===
-        // Build track shape from player heading + speed (GPS vars not in SDK)
+        // Slot-based recording: only records when on-track and moving
+        // Survives crashes/off-tracks — bad slots get overwritten on clean passes
         const playerPct = lapDistPct[playerCarIdx] || 0;
         const playerSpeed = ir.get(VARS.SPEED)?.[0] || 0;
         const playerYaw = ir.get(VARS.YAW_NORTH)?.[0] || 0;
+        const trackSurface = ir.get(VARS.PLAYER_TRACK_SURFACE)?.[0] || 0;
+        // iRacing TrackSurface: 1=OffTrack, 2=InPitStall, 3=ApproachPits, 4=OnTrack
+        const isOnTrack = trackSurface >= 3 && trackSurface <= 4;
 
-        if (!trackPathComplete && playerSpeed > 5) { // Only record when moving
-          if (lastTrackPct < 0 || Math.abs(playerPct - lastTrackPct) > 0.001) {
-            const prevPct = lastTrackPct;
-            // Integrate position from heading + speed (0.1s poll interval)
-            const lastPoint = trackPath.length > 0 ? trackPath[trackPath.length - 1] : { x: 0, y: 0 };
-            const dt = 0.1; // 100ms poll interval
-            const dx = Math.sin(playerYaw) * playerSpeed * dt;
-            const dy = Math.cos(playerYaw) * playerSpeed * dt;
-            trackPath.push({ x: lastPoint.x + dx, y: lastPoint.y + dy, pct: playerPct });
-            lastTrackPct = playerPct;
-            // Complete when we wrap around (pct goes from >0.95 back to <0.05)
-            if (trackPath.length > 100 && playerPct < 0.05 && prevPct > 0.95) {
-              trackPathComplete = true;
-              log('[TrackMap] Path complete: ' + trackPath.length + ' points (heading+speed)');
-              // Cache for instant loading next time
-              if (trackName) saveCachedTrack(trackName, trackPath);
-            }
+        if (!trackPathComplete && playerSpeed > 5 && isOnTrack) {
+          // Integrate position from heading + speed
+          const dt = 0.1;
+          const dx = Math.sin(playerYaw) * playerSpeed * dt;
+          const dy = Math.cos(playerYaw) * playerSpeed * dt;
+          lastIntX += dx;
+          lastIntY += dy;
+
+          // Write to the slot for this pct value
+          const slotIdx = Math.floor(playerPct * TRACK_SLOTS) % TRACK_SLOTS;
+          if (!trackSlots[slotIdx]) filledSlots++;
+          trackSlots[slotIdx] = { x: lastIntX, y: lastIntY };
+
+          // Check completion: >90% of slots filled
+          if (filledSlots > TRACK_SLOTS * 0.9) {
+            trackPathComplete = true;
+            trackPathOutput = buildTrackPath();
+            log('[TrackMap] Path complete: ' + trackPathOutput.length + ' points (' + filledSlots + '/' + TRACK_SLOTS + ' slots)');
+            if (trackName) saveCachedTrack(trackName, trackPathOutput);
+          }
+
+          // Build partial path for progressive display every 50 polls
+          if (!trackPathComplete && pollCount % 50 === 0 && filledSlots > 30) {
+            trackPathOutput = buildTrackPath();
           }
         }
 
@@ -452,9 +497,8 @@ async function startTelemetry(onStatusChange) {
             });
           }
         }
-        const hasUsablePath = trackPathComplete || trackPath.length > 20;
         broadcastToChannel('trackmap', { type: 'data', channel: 'trackmap', data: {
-          trackPath: hasUsablePath ? trackPath : [],
+          trackPath: trackPathOutput.length > 0 ? trackPathOutput : [],
           trackPathReady: trackPathComplete,
           cars,
           playerCarIdx,
