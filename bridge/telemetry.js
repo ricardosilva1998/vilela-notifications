@@ -34,6 +34,8 @@ const persistedDrivers = new Map();
 const cachedBestLaps = new Map(); // carIdx -> best lap time
 const cachedLastLaps = new Map(); // carIdx -> last lap time
 const cachedLapsCompleted = new Map(); // carIdx -> laps completed
+// Session results — lap data from YAML (more complete than real-time telemetry)
+const sessionResults = new Map(); // carIdx -> { bestLap, lastLap, lapsComplete }
 
 function resetFuel() { fuelHistory = []; lastLap = -1; fuelAtLapStart = null; }
 
@@ -77,6 +79,7 @@ async function startTelemetry(onStatusChange) {
         cachedBestLaps.clear();
         cachedLastLaps.clear();
         cachedLapsCompleted.clear();
+        sessionResults.clear();
         log('[Telemetry] Connected to iRacing!');
         broadcastToChannel('_all', { type: 'status', iracing: true });
         if (statusCallback) statusCallback({ iracing: true });
@@ -140,6 +143,27 @@ async function startTelemetry(onStatusChange) {
               trackName = weekendInfo?.TrackDisplayName || '';
             } else if (pollCount % 100 === 0) {
               log('[SessionInfo] DriverInfo not available yet (poll ' + pollCount + ')');
+            }
+
+            // Read session results for lap times (more complete than real-time telemetry)
+            const sessionInfo = ir.getSessionInfo('SessionInfo');
+            if (sessionInfo && sessionInfo.Sessions) {
+              // Use the last (most recent/active) session's results
+              for (let si = sessionInfo.Sessions.length - 1; si >= 0; si--) {
+                const results = sessionInfo.Sessions[si].ResultsPositions;
+                if (results && results.length > 0) {
+                  results.forEach(r => {
+                    if (r.CarIdx !== undefined) {
+                      const prev = sessionResults.get(r.CarIdx);
+                      const bestTime = r.FastestTime > 0 ? r.FastestTime : (prev?.bestLap || 0);
+                      const lastTime = r.LastTime > 0 ? r.LastTime : (prev?.lastLap || 0);
+                      const laps = r.LapsComplete >= 0 ? r.LapsComplete : (prev?.lapsComplete || 0);
+                      sessionResults.set(r.CarIdx, { bestLap: bestTime, lastLap: lastTime, lapsComplete: laps });
+                    }
+                  });
+                  break; // Use only the most recent session with results
+                }
+              }
             }
           } catch(e) {
             if (pollCount % 100 === 0) log('[SessionInfo] Error: ' + e.message);
@@ -233,17 +257,23 @@ async function startTelemetry(onStatusChange) {
           const number = driver?.CarNumber || String(i);
           if (name === 'Pace Car') continue;
 
-          // Cache lap times — telemetry returns -1 when car is in pits
+          // Lap times: real-time telemetry > cache > session results (YAML)
+          // Real-time telemetry only has data for nearby cars; session results has all
           const rawBest = bestLaps[i];
           const rawLast = lastLaps[i];
           const rawLapsComp = lapsCompletedArr[i];
+          const sr = sessionResults.get(i);
 
           if (rawBest > 0) {
             const prev = cachedBestLaps.get(i) || Infinity;
-            cachedBestLaps.set(i, Math.min(prev, rawBest)); // Keep actual best
+            cachedBestLaps.set(i, Math.min(prev, rawBest));
           }
           if (rawLast > 0) cachedLastLaps.set(i, rawLast);
           if (rawLapsComp >= 0) cachedLapsCompleted.set(i, Math.max(cachedLapsCompleted.get(i) || 0, rawLapsComp));
+
+          const bestLap = rawBest > 0 ? rawBest : (cachedBestLaps.get(i) || sr?.bestLap || 0);
+          const lastLapVal = rawLast > 0 ? rawLast : (cachedLastLaps.get(i) || sr?.lastLap || 0);
+          const lapsComp = rawLapsComp >= 0 ? rawLapsComp : (cachedLapsCompleted.get(i) || sr?.lapsComplete || 0);
 
           standings.push({
             carIdx: i,
@@ -258,10 +288,10 @@ async function startTelemetry(onStatusChange) {
             country: driver?.ClubName || '',
             license: driver?.LicString || '',
             iRating: driver?.IRating || 0,
-            bestLap: rawBest > 0 ? rawBest : (cachedBestLaps.get(i) || 0),
-            lastLap: rawLast > 0 ? rawLast : (cachedLastLaps.get(i) || 0),
+            bestLap,
+            lastLap: lastLapVal,
             inPit: !!onPitRoad[i],
-            lapsCompleted: rawLapsComp >= 0 ? rawLapsComp : (cachedLapsCompleted.get(i) || 0),
+            lapsCompleted: lapsComp,
             estTime: estTime[i] || 0,
             lapDistPct: lapDistPct[i] || 0,
             isPlayer: i === playerCarIdx,
@@ -294,24 +324,19 @@ async function startTelemetry(onStatusChange) {
           return b.lapDistPct - a.lapDistPct;
         });
 
-        // Diagnostic: log raw SDK data for lap times (first few polls only)
+        // Diagnostic: log lap time sources (first few polls only)
         if (pollCount === 30 || pollCount === 100) {
           log('[Diag] === LAP TIME DIAGNOSTICS ===');
-          // Raw arrays from SDK
+          log('[Diag] SessionResults entries: ' + sessionResults.size);
           const sample = standings.slice(0, 5);
           sample.forEach(s => {
             const idx = s.carIdx;
-            log('[Diag] ' + s.driverName + ' (idx=' + idx + '): rawBest=' + bestLaps[idx] +
-              ' rawLast=' + lastLaps[idx] + ' rawLapsComp=' + lapsCompletedArr[idx] +
-              ' pos=' + positions[idx] + ' classPos=' + classPositions[idx] +
-              ' cachedBest=' + cachedBestLaps.get(idx) + ' cachedLast=' + cachedLastLaps.get(idx) +
-              ' -> bestLap=' + s.bestLap + ' lastLap=' + s.lastLap);
+            const sr = sessionResults.get(idx);
+            log('[Diag] ' + s.driverName + ' (idx=' + idx + '): telemetry=' + bestLaps[idx] +
+              ' cached=' + cachedBestLaps.get(idx) +
+              ' sessionResult=' + (sr ? sr.bestLap : 'none') +
+              ' -> final=' + s.bestLap + ' laps=' + s.lapsCompleted);
           });
-          log('[Diag] bestLaps type=' + typeof bestLaps + ' isArray=' + Array.isArray(bestLaps) + ' len=' + bestLaps.length);
-          // Show raw first 10 values of bestLaps array to see if they're all -1 or valid
-          log('[Diag] bestLaps[0..9]=' + JSON.stringify(bestLaps.slice(0, 10)));
-          log('[Diag] lastLaps[0..9]=' + JSON.stringify(lastLaps.slice(0, 10)));
-          log('[Diag] positions[0..9]=' + JSON.stringify(positions.slice(0, 10)));
           log('[Diag] WithBestLap: ' + standings.filter(s => s.bestLap > 0).length + '/' + standings.length);
         }
 
