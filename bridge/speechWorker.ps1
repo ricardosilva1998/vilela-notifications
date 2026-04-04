@@ -1,21 +1,17 @@
 # Speech recognition session for Atleta Bridge
-# Spawned per PTT session. Starts listening immediately.
-# Writes recognized text to stdout when stdin receives a line (STOP signal).
+# Spawned per PTT session. Uses synchronous Recognize() for reliability.
 $ErrorActionPreference = "Continue"
 
 try {
     Add-Type -AssemblyName System.Speech
-
     $recognizer = New-Object System.Speech.Recognition.SpeechRecognitionEngine
 
-    # Log engine info
     [Console]::Error.WriteLine("ENGINE: " + $recognizer.RecognizerInfo.Description)
     [Console]::Error.WriteLine("CULTURE: " + $recognizer.RecognizerInfo.Culture.Name)
 
-    # Log audio input info
     try {
         $recognizer.SetInputToDefaultAudioDevice()
-        [Console]::Error.WriteLine("AUDIO: Default device set OK")
+        [Console]::Error.WriteLine("AUDIO: Default device OK")
     } catch {
         [Console]::Error.WriteLine("AUDIO_ERROR: " + $_.Exception.Message)
         [Console]::Out.WriteLine("")
@@ -23,63 +19,29 @@ try {
         exit 1
     }
 
-    $recognizer.LoadGrammar((New-Object System.Speech.Recognition.DictationGrammar))
+    $grammar = New-Object System.Speech.Recognition.DictationGrammar
+    $recognizer.LoadGrammar($grammar)
 
-    # Collect recognized text
-    $global:results = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-
-    $recognizer.Add_SpeechRecognized({
-        param($sender, $e)
-        try {
-            if ($e.Result -and $e.Result.Text) {
-                [void]$global:results.Add($e.Result.Text)
-                [Console]::Error.WriteLine("HEARD: " + $e.Result.Text + " (confidence=" + $e.Result.Confidence + ")")
-            }
-        } catch {}
-    })
-
-    $recognizer.Add_SpeechDetected({
-        param($sender, $e)
-        try {
-            [Console]::Error.WriteLine("SPEECH_DETECTED")
-        } catch {}
-    })
-
-    $recognizer.Add_SpeechHypothesized({
-        param($sender, $e)
-        try {
-            [Console]::Error.WriteLine("HYPOTHESIS: " + $e.Result.Text)
-        } catch {}
-    })
-
-    $recognizer.Add_AudioStateChanged({
-        param($sender, $e)
-        try {
-            [Console]::Error.WriteLine("AUDIO_STATE: " + $e.AudioState.ToString())
-        } catch {}
-    })
-
-    # Start listening
-    $recognizer.RecognizeAsync([System.Speech.Recognition.RecognizeMode]::Multiple)
     [Console]::Out.WriteLine("LISTENING")
     [Console]::Out.Flush()
-    [Console]::Error.WriteLine("RECOGNITION_STARTED")
+    [Console]::Error.WriteLine("STARTING_RECOGNIZE")
 
-    # Wait for STOP signal on stdin (blocks until line received)
+    # Synchronous recognize — blocks until speech+pause detected or timeout
+    # Using 30 second timeout; process will be killed on PTT release
+    $result = $null
     try {
-        $null = [Console]::In.ReadLine()
+        $result = $recognizer.Recognize([TimeSpan]::FromSeconds(30))
     } catch {
-        [Console]::Error.WriteLine("STDIN_ERROR: " + $_.Exception.Message)
+        [Console]::Error.WriteLine("RECOGNIZE_ERROR: " + $_.Exception.Message)
     }
 
-    # Stop and collect results
-    [Console]::Error.WriteLine("STOPPING")
-    try { $recognizer.RecognizeAsyncCancel() } catch {}
-    Start-Sleep -Milliseconds 300
-
-    $text = ($global:results -join " ").Trim()
-    [Console]::Error.WriteLine("FINAL_TEXT: '" + $text + "' (parts=" + $global:results.Count + ")")
-    [Console]::Out.WriteLine($text)
+    if ($result) {
+        [Console]::Error.WriteLine("RESULT: '" + $result.Text + "' confidence=" + $result.Confidence)
+        [Console]::Out.WriteLine($result.Text)
+    } else {
+        [Console]::Error.WriteLine("RESULT: empty (no speech detected or timeout)")
+        [Console]::Out.WriteLine("")
+    }
     [Console]::Out.Flush()
 
     try { $recognizer.Dispose() } catch {}
@@ -87,5 +49,4 @@ try {
     [Console]::Error.WriteLine("FATAL: " + $_.Exception.ToString())
     [Console]::Out.WriteLine("")
     [Console]::Out.Flush()
-    exit 1
 }

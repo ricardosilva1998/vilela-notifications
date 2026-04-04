@@ -100,16 +100,10 @@ function startListening() {
 
 function stopListening() {
   if (speechProcess) {
-    log('[Speech] Sending STOP signal');
-    try { speechProcess.stdin.write('STOP\n'); } catch(e) {}
-    // Give it 2 seconds to finish, then kill
-    const proc = speechProcess;
-    setTimeout(() => {
-      if (proc && !proc.killed) {
-        log('[Speech] Force killing after timeout');
-        try { proc.kill(); } catch(e) {}
-      }
-    }, 2000);
+    log('[Speech] Killing speech process');
+    // With synchronous Recognize(), we just kill the process on PTT release
+    // The exit handler will read whatever stdout was produced
+    try { speechProcess.kill(); } catch(e) {}
   }
 }
 
