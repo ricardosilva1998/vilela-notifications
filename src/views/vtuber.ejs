@@ -165,8 +165,22 @@
 
     setLoadingStep('Setting up 3D renderer...');
 
+    // --- Check WebGL support ---
+    const testCanvas = document.createElement('canvas');
+    const gl = testCanvas.getContext('webgl2') || testCanvas.getContext('webgl');
+    if (!gl) {
+      showError('WebGL is not available. Please enable hardware acceleration in your browser settings (Chrome: chrome://settings/system → "Use hardware acceleration when available") and restart your browser.');
+      throw new Error('No WebGL');
+    }
+
     // --- Three.js Setup ---
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: MODE === 'stream', antialias: true });
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ canvas, alpha: MODE === 'stream', antialias: true });
+    } catch (e) {
+      showError('Failed to create 3D renderer. Please enable hardware acceleration in your browser settings and restart.');
+      throw e;
+    }
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     if (MODE === 'stream') {
