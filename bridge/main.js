@@ -1,13 +1,8 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, screen, session, protocol, net } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, screen, session } = require('electron');
 const path = require('path');
+const http = require('http');
 const fs = require('fs');
 const { startServer, stopServer } = require('./websocket');
-
-// Register custom protocol as privileged BEFORE app.ready
-// This gives overlays loaded via atleta:// a proper web origin (needed for Web Speech API)
-protocol.registerSchemesAsPrivileged([
-  { scheme: 'atleta', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, allowServiceWorkers: true } }
-]);
 const { startTelemetry, stopTelemetry } = require('./telemetry');
 const { load: loadSettings, save: saveSettings } = require('./settings');
 const { startVoiceInput, stopVoiceInput, setVoiceChatWindow } = require('./voiceInput');
@@ -28,6 +23,8 @@ let autoHideOverlays = true;
 
 // Persisted settings
 let settings = {};
+let overlayHttpServer = null;
+const OVERLAY_HTTP_PORT = 9101;
 
 
 const OVERLAYS = [
@@ -102,11 +99,18 @@ app.on('ready', () => {
   ]);
   tray.setContextMenu(contextMenu);
 
-  // Register atleta:// protocol handler to serve overlay files with a proper web origin
-  protocol.handle('atleta', (request) => {
-    const url = new URL(request.url);
-    const filePath = path.join(__dirname, 'overlays', path.basename(url.pathname));
-    return net.fetch('file://' + filePath);
+  // HTTP server for voicechat overlay — Web Speech API requires http:// origin (file:// gives "network" error)
+  overlayHttpServer = http.createServer((req, res) => {
+    const safeName = path.basename((req.url || '').split('?')[0]);
+    const filePath = path.join(__dirname, 'overlays', safeName);
+    fs.readFile(filePath, (err, data) => {
+      if (err) { res.writeHead(404); res.end('Not found'); return; }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(data);
+    });
+  });
+  overlayHttpServer.listen(OVERLAY_HTTP_PORT, '127.0.0.1', () => {
+    console.log('[HTTP] Overlay server on http://127.0.0.1:' + OVERLAY_HTTP_PORT);
   });
 
   startServer(9100);
@@ -263,9 +267,9 @@ function createOverlayWindow(overlayId) {
     try { win.setAlwaysOnTop(true, 'screen-saver'); } catch(e) {}
   }, 2000);
 
-  // Voice chat needs a proper web origin for Web Speech API (file:// gives "network" error)
+  // Voice chat needs http:// origin for Web Speech API (file:// and custom protocols give "network" error)
   if (overlayId === 'voicechat') {
-    win.loadURL(`atleta://overlay/${overlayId}.html`);
+    win.loadURL(`http://127.0.0.1:${OVERLAY_HTTP_PORT}/${overlayId}.html`);
   } else {
     win.loadFile(path.join(__dirname, 'overlays', `${overlayId}.html`));
   }
@@ -372,4 +376,5 @@ app.on('before-quit', () => {
   stopTelemetry();
   stopVoiceInput();
   stopServer();
+  if (overlayHttpServer) overlayHttpServer.close();
 });
