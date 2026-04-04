@@ -131,6 +131,9 @@ router.get('/', (req, res) => {
   const overlayUrl = req.streamer.overlay_token
     ? `${config.app.url}/overlay/${req.streamer.overlay_token}`
     : null;
+  const vtuberUrl = req.streamer.overlay_token
+    ? `${config.app.url}/vtuber/${req.streamer.overlay_token}`
+    : null;
 
   // 7-day overlay stats for Twitch tab
   let overlayStats = null;
@@ -152,6 +155,7 @@ router.get('/', (req, res) => {
     overlayUrl,
     overlayStats,
     iracingSettings,
+    vtuberUrl,
   });
 });
 
@@ -1515,6 +1519,67 @@ router.post('/overlay-builder/reset', (req, res) => {
   designs.forEach(d => { designMap[d.event_type] = d; });
   bus.emit(`overlay:${req.streamer.id}`, { type: 'config-update', designs: designMap });
 
+  res.json({ ok: true });
+});
+
+// --- VTuber Model Endpoints ---
+
+router.get('/api/vtuber/models', (req, res) => {
+  const models = db.getVtuberModels(req.streamer.id);
+  res.json({ ok: true, models });
+});
+
+router.post('/api/vtuber/models', (req, res) => {
+  const contentLength = parseInt(req.headers['content-length'] || '0');
+  if (contentLength > 50 * 1024 * 1024) {
+    return res.status(413).json({ error: 'File too large (max 50MB)' });
+  }
+
+  const originalName = (req.query.name || 'custom').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const filename = `${req.streamer.id}_${Date.now()}_${originalName}.vrm`;
+  const modelDir = path.join(__dirname, '..', '..', 'data', 'vtuber-models', String(req.streamer.id));
+
+  if (!fs.existsSync(modelDir)) fs.mkdirSync(modelDir, { recursive: true });
+
+  const chunks = [];
+  req.on('data', chunk => chunks.push(chunk));
+  req.on('end', () => {
+    fs.writeFileSync(path.join(modelDir, filename), Buffer.concat(chunks));
+    const result = db.addVtuberModel(req.streamer.id, originalName, 'custom', filename);
+    const model = db.getVtuberModel(result.lastInsertRowid);
+    res.json({ ok: true, model });
+  });
+});
+
+router.delete('/api/vtuber/models/:id', (req, res) => {
+  const model = db.getVtuberModel(parseInt(req.params.id));
+  if (!model) return res.status(404).json({ error: 'Model not found' });
+  if (model.is_bundled) return res.status(403).json({ error: 'Cannot delete bundled models' });
+  if (model.streamer_id !== req.streamer.id) return res.status(403).json({ error: 'Not your model' });
+
+  // Delete file
+  const filePath = path.join(__dirname, '..', '..', 'data', 'vtuber-models', String(req.streamer.id), model.filename);
+  try { fs.unlinkSync(filePath); } catch {}
+
+  // Clear selection if this model was selected
+  if (req.streamer.vtuber_model_id === model.id) {
+    db.selectVtuberModel(req.streamer.id, null);
+  }
+
+  db.deleteVtuberModel(model.id, req.streamer.id);
+  res.json({ ok: true });
+});
+
+router.put('/api/vtuber/select', (req, res) => {
+  const { modelId } = req.body;
+  if (modelId !== null) {
+    const model = db.getVtuberModel(modelId);
+    if (!model) return res.status(404).json({ error: 'Model not found' });
+    if (!model.is_bundled && model.streamer_id !== req.streamer.id) {
+      return res.status(403).json({ error: 'Not your model' });
+    }
+  }
+  db.selectVtuberModel(req.streamer.id, modelId);
   res.json({ ok: true });
 });
 
