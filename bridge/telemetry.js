@@ -274,7 +274,15 @@ async function startTelemetry(onStatusChange) {
         // Include persisted drivers who are no longer active (left session) but had data
         persistedDrivers.forEach((data, idx) => {
           if (!standings.find(s => s.carIdx === idx)) {
-            standings.push({ ...data, inPit: true, disconnected: true });
+            // Use cached lap data — persisted snapshot may have stale values from disconnect transition
+            standings.push({
+              ...data,
+              bestLap: cachedBestLaps.get(idx) || data.bestLap || 0,
+              lastLap: cachedLastLaps.get(idx) || data.lastLap || 0,
+              lapsCompleted: cachedLapsCompleted.get(idx) || data.lapsCompleted || 0,
+              inPit: true,
+              disconnected: true,
+            });
           }
         });
 
@@ -286,62 +294,13 @@ async function startTelemetry(onStatusChange) {
           return b.lapDistPct - a.lapDistPct;
         });
 
-        // Log standings count periodically
+        // Log standings summary periodically
         if (pollCount === 50 || pollCount === 200) {
           log('[Standings] Built: ' + standings.length + ' (sessionInfo: ' + (sessionInfoFound ? 'yes' : 'no') + ', drivers: ' + drivers.length + ')');
           const classCounts = {};
           standings.forEach(s => { classCounts[s.carClass || '?'] = (classCounts[s.carClass || '?'] || 0) + 1; });
           log('[Standings] Classes: ' + JSON.stringify(classCounts));
-          const withBest = standings.filter(s => s.bestLap > 0).length;
-          log('[Standings] WithBestLap: ' + withBest + '/' + standings.length);
-
-          // Log specific drivers to compare with iRacing
-          // Find drivers by name substring to debug
-          const debugNames = ['Argenis', 'Cheik', 'Frederico', 'Matus'];
-          debugNames.forEach(nameSearch => {
-            const found = standings.find(s => s.driverName.includes(nameSearch));
-            if (found) {
-              log('[Debug] ' + found.driverName + ': carIdx=' + found.carIdx +
-                ' best=' + found.bestLap + ' last=' + found.lastLap + ' laps=' + found.lapsCompleted +
-                ' pos=' + found.position + ' classPos=' + found.classPosition +
-                ' estTime=' + found.estTime + ' lapDist=' + found.lapDistPct);
-              // Also log the raw telemetry for this car index
-              log('[Debug] Raw idx ' + found.carIdx + ': BestLap=' + (bestLaps[found.carIdx]) +
-                ' LastLap=' + (lastLaps[found.carIdx]) + ' LapsCompleted=' + (lapsCompletedArr[found.carIdx]) +
-                ' Position=' + (positions[found.carIdx]) + ' EstTime=' + (estTime[found.carIdx]));
-            }
-          });
-
-          // Dump FULL telemetry arrays to see the actual data
-          log('[Debug] Full CarIdxBestLapTime (first 20): ' + JSON.stringify((bestLaps || []).slice(0, 20)));
-          log('[Debug] Full CarIdxLastLapTime (first 20): ' + JSON.stringify((lastLaps || []).slice(0, 20)));
-          log('[Debug] Full CarIdxLapCompleted (first 20): ' + JSON.stringify((lapsCompletedArr || []).slice(0, 20)));
-          log('[Debug] Full CarIdxPosition (first 20): ' + JSON.stringify((positions || []).slice(0, 20)));
-          log('[Debug] Full CarIdxEstTime (first 20): ' + JSON.stringify((estTime || []).slice(0, 20)));
-
-          // Check if arrays are proper arrays
-          log('[Debug] bestLaps type=' + typeof bestLaps + ' isArray=' + Array.isArray(bestLaps) + ' length=' + (bestLaps?.length || 'N/A'));
-
-          // Try reading a SINGLE CarIdx value directly
-          try {
-            const singleBest = ir.get('CarIdxBestLapTime');
-            log('[Debug] Direct ir.get("CarIdxBestLapTime") type=' + typeof singleBest + ' length=' + (singleBest?.length || 'N/A') + ' first5=' + JSON.stringify(singleBest?.slice?.(0, 5)));
-          } catch(e) { log('[Debug] Direct get error: ' + e.message); }
-
-          log('[Debug] VARS.CAR_IDX_BEST_LAP_TIME = ' + JSON.stringify(VARS.CAR_IDX_BEST_LAP_TIME));
-
-          // Log ALL drivers with their data
-          log('[Debug] === ALL DRIVERS ===');
-          standings.forEach((s, i) => {
-            if (s.bestLap > 0 || s.lastLap > 0 || s.position > 0 || s.lapsCompleted > 0) {
-              log('[Driver] #' + s.carNumber + ' ' + s.driverName + ' [' + s.carClass + '] pos=' + s.position +
-                ' classPos=' + s.classPosition + ' best=' + (s.bestLap > 0 ? s.bestLap.toFixed(3) : '--') +
-                ' last=' + (s.lastLap > 0 ? s.lastLap.toFixed(3) : '--') + ' laps=' + s.lapsCompleted +
-                ' cached=' + (cachedBestLaps.has(s.carIdx) ? cachedBestLaps.get(s.carIdx).toFixed(3) : 'no') +
-                ' pit=' + s.inPit);
-            }
-          });
-          log('[Debug] Cached best laps: ' + cachedBestLaps.size + ', cached last laps: ' + cachedLastLaps.size);
+          log('[Standings] WithBestLap: ' + standings.filter(s => s.bestLap > 0).length + '/' + standings.length);
         }
 
         // Only broadcast standings every 1 second (every 10th poll) to prevent flickering
@@ -380,17 +339,23 @@ async function startTelemetry(onStatusChange) {
         }});
 
         // === Track Map ===
-        const playerLat = ir.get(VARS.LAT)?.[0] || 0;
-        const playerLon = ir.get(VARS.LON)?.[0] || 0;
+        // Try VARS constants first, fall back to direct string names
+        let playerLat = ir.get(VARS.LAT)?.[0] || 0;
+        let playerLon = ir.get(VARS.LON)?.[0] || 0;
+        if (playerLat === 0 && playerLon === 0) {
+          playerLat = ir.get('Lat')?.[0] || 0;
+          playerLon = ir.get('Lon')?.[0] || 0;
+        }
         const playerPct = lapDistPct[playerCarIdx] || 0;
 
         // Build track path from player GPS as they drive
         if (playerLat !== 0 && playerLon !== 0 && !trackPathComplete) {
           if (lastTrackPct < 0 || Math.abs(playerPct - lastTrackPct) > 0.002) {
+            const prevPct = lastTrackPct;
             trackPath.push({ lat: playerLat, lon: playerLon, pct: playerPct });
             lastTrackPct = playerPct;
             // Track is complete when we have points across the full range and wrap back
-            if (trackPath.length > 100 && playerPct < 0.05 && lastTrackPct > 0.95) {
+            if (trackPath.length > 100 && playerPct < 0.05 && prevPct > 0.95) {
               trackPathComplete = true;
               log('[TrackMap] Path complete: ' + trackPath.length + ' points');
             }
@@ -414,20 +379,14 @@ async function startTelemetry(onStatusChange) {
               });
             }
           }
+          // Send partial track path while mapping (>20 points), full path once complete
+          const hasUsablePath = trackPathComplete || trackPath.length > 20;
           broadcastToChannel('trackmap', { type: 'data', channel: 'trackmap', data: {
-            trackPath: trackPathComplete ? trackPath : [],
+            trackPath: hasUsablePath ? trackPath : [],
             trackPathReady: trackPathComplete,
             cars,
             playerCarIdx,
           }});
-        }
-
-        if (pollCount === 50) {
-          try {
-            const lat = ir.get(VARS.LAT);
-            const lon = ir.get(VARS.LON);
-            log('[Debug] LAT=' + JSON.stringify(lat) + ' LON=' + JSON.stringify(lon));
-          } catch(e) { log('[Debug] LAT/LON error: ' + e.message); }
         }
 
       } catch (e) {

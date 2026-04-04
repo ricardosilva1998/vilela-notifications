@@ -196,17 +196,19 @@
         classes[cls].drivers.push(d);
       });
 
-      // Sort each class by best lap (or last lap as fallback), no-lap at end, disconnected at end
+      // Sort each class by iRacing class position (fallback to best lap, then iRating)
       Object.values(classes).forEach(cls => {
         cls.drivers.sort((a, b) => {
           if (a.disconnected && !b.disconnected) return 1;
           if (!a.disconnected && b.disconnected) return -1;
+          // Use iRacing's class position when available
+          if (a.classPosition > 0 && b.classPosition > 0) return a.classPosition - b.classPosition;
+          if (a.classPosition > 0) return -1;
+          if (b.classPosition > 0) return 1;
+          // Fallback: sort by best lap time
           const aTime = (a.bestLap > 0 ? a.bestLap : (a.lastLap > 0 ? a.lastLap : Infinity));
           const bTime = (b.bestLap > 0 ? b.bestLap : (b.lastLap > 0 ? b.lastLap : Infinity));
-          if (aTime === Infinity && bTime === Infinity) {
-            // Both have no lap — sort by iRating descending
-            return (b.iRating || 0) - (a.iRating || 0);
-          }
+          if (aTime === Infinity && bTime === Infinity) return (b.iRating || 0) - (a.iRating || 0);
           return aTime - bTime;
         });
         // Apply max per class limit

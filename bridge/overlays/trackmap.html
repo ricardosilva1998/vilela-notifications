@@ -178,9 +178,10 @@
     }
 
     onData('trackmap', (data) => {
-      if (data.trackPathReady && data.trackPath.length > 0) {
+      if (data.trackPath && data.trackPath.length > 0) {
         trackPoints = normalizeTrackPath(data.trackPath);
-        document.getElementById('map-legend').textContent = trackPoints.length + ' points';
+        const status = data.trackPathReady ? (trackPoints.length + ' points') : ('Mapping... ' + trackPoints.length + ' pts');
+        document.getElementById('map-legend').textContent = status;
       } else if (trackPoints.length === 0) {
         // Use circle placeholder until track is mapped
         trackPoints = generateCirclePath();
