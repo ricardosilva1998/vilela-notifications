@@ -1,0 +1,41 @@
+.fuel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.fuel-item {
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+  padding: 6px 8px;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+.fuel-item:hover { background: rgba(255,255,255,0.05); }
+.fuel-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255,255,255,0.4);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.fuel-val {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: #e8e6f0;
+}
+.fuel-val.text-success { color: #3ecf8e; }
+.fuel-val.text-warning { color: #f79009; }
+.fuel-val.text-danger { color: #f04438; }
+.fuel-bar-wrap {
+  height: 3px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+.fuel-bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease, background 0.5s ease;
+}

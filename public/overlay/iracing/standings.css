@@ -1,0 +1,24 @@
+.overlay-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+.overlay-table tbody tr:hover { background: rgba(255,255,255,0.04); }
+.overlay-table tr.player-row { background: rgba(145,70,255,0.15) !important; }
+.overlay-table tr.player-row td { color: #fff; font-weight: 600; }
+.overlay-table tr.lapped { opacity: 0.5; }
+.overlay-table td.mono { font-family: 'JetBrains Mono', monospace; }
+.overlay-table .pit-indicator {
+  background: rgba(247,144,9,0.2);
+  color: #f79009;
+  font-weight: 700;
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  border: 1px solid rgba(247,144,9,0.4);
+  letter-spacing: 0.5px;
+}
+.overlay-table th:nth-child(4),
+.overlay-table th:nth-child(5),
+.overlay-table th:nth-child(6),
+.overlay-table td:nth-child(4),
+.overlay-table td:nth-child(5),
+.overlay-table td:nth-child(6) { text-align: right; }
+.overlay-table th:nth-child(7),
+.overlay-table td:nth-child(7) { text-align: center; width: 36px; }

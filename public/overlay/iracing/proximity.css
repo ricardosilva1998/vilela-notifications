@@ -1,0 +1,23 @@
+.proximity-panel {
+  background: rgba(12,13,20,0.85);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  backdrop-filter: blur(12px);
+  position: relative;
+}
+#prox-left,
+#prox-right {
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+.proximity-label {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,0.3);
+  white-space: nowrap;
+}

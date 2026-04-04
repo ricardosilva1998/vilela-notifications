@@ -1,0 +1,51 @@
+.relative-row {
+  display: flex;
+  align-items: center;
+  padding: 3px 10px;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  font-size: 12px;
+  transition: background 0.2s;
+}
+.relative-row.player {
+  background: rgba(145,70,255,0.15);
+  font-weight: 600;
+  border-top: 1px solid rgba(145,70,255,0.25);
+  border-bottom: 1px solid rgba(145,70,255,0.25);
+}
+.relative-row.lapped { color: rgba(100,149,237,0.7); }
+.relative-row.lapping { color: rgba(255,68,68,0.8); }
+.relative-car {
+  width: 28px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 11px;
+}
+.relative-pos {
+  width: 20px;
+  text-align: right;
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  font-family: 'JetBrains Mono', monospace;
+}
+.relative-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.relative-gap {
+  width: 60px;
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  transition: color 0.3s;
+}
+.relative-gap.closing { color: #3ecf8e; }
+.relative-gap.separating { color: #f04438; }
+.relative-gap.player-gap { color: rgba(255,255,255,0.3); }
+.relative-divider {
+  height: 1px;
+  background: rgba(145,70,255,0.3);
+  margin: 0;
+}
