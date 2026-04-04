@@ -3,38 +3,55 @@
 <head>
   <meta charset="UTF-8">
   <title>Relative</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; }
-    .overlay-panel { background: rgba(12,13,20,0.85); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; backdrop-filter: blur(12px); overflow: hidden; }
-    .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); cursor: move; -webkit-app-region: drag; }
+    body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; font-size: 11px; }
+    .overlay-panel { background: rgba(12,13,20,0.88); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; backdrop-filter: blur(12px); overflow: hidden; }
+    .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); cursor: move; -webkit-app-region: drag; }
     .overlay-body { padding: 4px 0; }
-    .overlay-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .overlay-table th { padding: 4px 8px; text-align: left; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.35); border-bottom: 1px solid rgba(255,255,255,0.06); }
-    .overlay-table td { padding: 5px 8px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .overlay-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .overlay-table th { padding: 3px 6px; text-align: left; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.3); border-bottom: 1px solid rgba(255,255,255,0.06); white-space: nowrap; }
+    .overlay-table td { padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.03); vertical-align: middle; white-space: nowrap; }
     .overlay-table tr.player-row { background: rgba(145,70,255,0.2); }
     .overlay-table tr.player-row td { color: #fff; font-weight: 700; }
+    .overlay-table tr.disconnected { opacity: 0.35; }
     .ahead { color: #3ecf8e; }
     .behind { color: #f04438; }
-    .mono { font-family: 'Consolas', 'Courier New', monospace; }
+    .mono { font-family: 'JetBrains Mono', 'Consolas', monospace; }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
     .status-dot.connected { background: #3ecf8e; }
     .status-dot.disconnected { background: #f04438; }
     .status-dot.waiting { background: #f79009; }
     .status-dot.demo { background: #f79009; }
     .overlay-disconnected { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(12,13,20,0.9); color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 600; border-radius: 8px; }
+    .class-badge { display: inline-block; padding: 1px 4px; border-radius: 3px; font-size: 8px; font-weight: 700; letter-spacing: 0.5px; }
+    .license { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; }
+    .irating { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.6); }
+    .flag { font-size: 12px; line-height: 1; }
   </style>
 </head>
 <body>
-  <div id="overlay-root" style="position:relative;width:260px;">
-    <div class="overlay-panel" style="width:260px;">
+  <div id="overlay-root" style="position:relative;width:320px;">
+    <div class="overlay-panel" style="width:320px;">
       <div class="overlay-header">
         <span>RELATIVE</span>
         <span id="connection-status"><span class="status-dot demo"></span> Demo Mode</span>
       </div>
       <div class="overlay-body">
         <table class="overlay-table">
-          <thead><tr><th>P</th><th>#</th><th>Driver</th><th>Gap</th></tr></thead>
+          <thead>
+            <tr>
+              <th style="width:22px">P</th>
+              <th style="width:20px"></th>
+              <th style="width:30px">#</th>
+              <th>Driver</th>
+              <th style="width:46px">Lic</th>
+              <th style="width:38px">iR</th>
+              <th style="width:56px">Gap</th>
+            </tr>
+          </thead>
           <tbody id="relative-body"></tbody>
         </table>
       </div>
@@ -50,68 +67,94 @@
     let iracingConnected = false;
     const dataHandlers = {};
 
-    // Demo data (shown until iRacing connects) — sorted by distGap
+    function countryFlag(code) {
+      if (!code || code.length !== 2) return '';
+      return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+    }
+
+    function licenseColor(lic) {
+      if (!lic) return '#888';
+      const letter = lic.charAt(0).toUpperCase();
+      return { A: '#00aa00', B: '#0077cc', C: '#ccaa00', D: '#cc6600', R: '#cc0000' }[letter] || '#888';
+    }
+
+    function formatIR(ir) {
+      if (!ir || ir <= 0) return '--';
+      return ir >= 1000 ? (ir / 1000).toFixed(1) + 'k' : String(ir);
+    }
+
+    function formatRelativeGap(gap) {
+      const abs = Math.abs(gap).toFixed(2);
+      return gap < 0 ? '-' + abs + 's' : '+' + abs + 's';
+    }
+
+    // Demo data
     const demoRelative = {
       playerCarIdx: 4,
       cars: [
-        { carIdx: 2, carNumber: '16', driverName: 'C. Leclerc', gap: -3.567, distGap: -3.567, position: 3, classPosition: 3, inPit: false, isPlayer: false },
-        { carIdx: 3, carNumber: '44', driverName: 'L. Hamilton', gap: -1.234, distGap: -1.234, position: 2, classPosition: 2, inPit: false, isPlayer: false },
-        { carIdx: 4, carNumber: '99', driverName: 'You',         gap: 0,      distGap: 0,      position: 4, classPosition: 4, inPit: false, isPlayer: true  },
-        { carIdx: 5, carNumber: '55', driverName: 'C. Sainz',    gap: 2.233,  distGap: 2.233,  position: 5, classPosition: 5, inPit: false, isPlayer: false },
-        { carIdx: 6, carNumber: '4',  driverName: 'L. Norris',   gap: 4.566,  distGap: 4.566,  position: 6, classPosition: 6, inPit: true,  isPlayer: false },
+        { carIdx: 0, carNumber: '1',  driverName: 'M. Verstappen', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'A 4.99', country: 'NL', iRating: 7200, gap: -8.120, distGap: -0.09, position: 1, classPosition: 1, inPit: false, isPlayer: false },
+        { carIdx: 1, carNumber: '44', driverName: 'L. Hamilton',   carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'A 3.50', country: 'GB', iRating: 6850, gap: -5.430, distGap: -0.06, position: 2, classPosition: 2, inPit: false, isPlayer: false },
+        { carIdx: 2, carNumber: '16', driverName: 'C. Leclerc',    carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'A 2.10', country: 'MC', iRating: 6450, gap: -3.567, distGap: -0.04, position: 3, classPosition: 3, inPit: false, isPlayer: false },
+        { carIdx: 3, carNumber: '44', driverName: 'L. Hamilton',   carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'B 3.21', country: 'GB', iRating: 6000, gap: -1.234, distGap: -0.014, position: 3, classPosition: 3, inPit: false, isPlayer: false },
+        { carIdx: 4, carNumber: '99', driverName: 'You',           carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'B 1.80', country: 'PT', iRating: 3210, gap: 0,      distGap: 0,      position: 4, classPosition: 4, inPit: false, isPlayer: true  },
+        { carIdx: 5, carNumber: '55', driverName: 'C. Sainz',      carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'C 4.00', country: 'ES', iRating: 5900, gap: 2.233,  distGap: 0.025,  position: 5, classPosition: 5, inPit: false, isPlayer: false },
+        { carIdx: 6, carNumber: '4',  driverName: 'L. Norris',     carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'C 2.90', country: 'GB', iRating: 5600, gap: 4.566,  distGap: 0.051,  position: 6, classPosition: 6, inPit: true,  isPlayer: false },
       ]
     };
 
-    function formatRelativeGap(distGap) {
-      const abs = Math.abs(distGap).toFixed(3);
-      return distGap < 0 ? '-' + abs + 's' : '+' + abs + 's';
+    function buildRelativeRow(d, gapClass, gapStr, isPlayerRow) {
+      const pos = d.classPosition > 0 ? d.classPosition : (d.position > 0 ? d.position : '');
+      const flag = countryFlag(d.country);
+      const licColor = licenseColor(d.safetyRating || d.license);
+      const licStr = d.safetyRating || d.license || '';
+      const irStr = formatIR(d.iRating);
+      const classColor = d.carClassColor || '#fff';
+      const disconnCls = d.disconnected ? ' disconnected' : '';
+
+      const numCell = `<span style="background:${classColor};color:#000;padding:1px 4px;border-radius:3px;font-size:9px;font-weight:800;font-family:'JetBrains Mono',monospace;">${d.carNumber || ''}</span>`;
+      const licCell = licStr
+        ? `<span class="license" style="color:${licColor}">${licStr}</span>`
+        : '<span class="license" style="color:#555">--</span>';
+
+      if (isPlayerRow) {
+        return `<tr class="player-row">
+          <td class="mono" style="font-weight:700">${pos}</td>
+          <td class="flag">${flag}</td>
+          <td>${numCell}</td>
+          <td style="overflow:hidden;text-overflow:ellipsis;max-width:80px">YOU</td>
+          <td>${licCell}</td>
+          <td class="irating">${irStr}</td>
+          <td class="mono" style="font-size:10px">—</td>
+        </tr>`;
+      }
+
+      return `<tr class="${disconnCls}">
+        <td class="mono" style="font-weight:700;color:rgba(255,255,255,0.7)">${pos}</td>
+        <td class="flag">${flag}</td>
+        <td>${numCell}</td>
+        <td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px">${d.driverName || ''}</td>
+        <td>${licCell}</td>
+        <td class="irating">${irStr}</td>
+        <td class="mono ${gapClass}" style="font-size:10px">${gapStr}</td>
+      </tr>`;
     }
 
     function buildRelativeRows(data) {
       const { cars } = data;
-      // cars is sorted by distGap; negatives = ahead, positives = behind
       const playerCar = cars.find(c => c.isPlayer);
-      const ahead = cars.filter(c => !c.isPlayer && c.distGap < 0).slice(-MAX_AHEAD); // closest ahead last
+      const ahead = cars.filter(c => !c.isPlayer && c.distGap < 0).slice(-MAX_AHEAD);
       const behind = cars.filter(c => !c.isPlayer && c.distGap > 0).slice(0, MAX_BEHIND);
 
       const rows = [];
-
-      for (const d of ahead) {
-        const pos = d.classPosition > 0 ? d.classPosition : (d.position > 0 ? d.position : '');
-        rows.push(`<tr>
-          <td class="mono" style="font-weight:700">${pos}</td>
-          <td style="font-weight:600">${d.carNumber || ''}</td>
-          <td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px">${d.driverName || ''}</td>
-          <td class="mono ahead" style="font-size:11px">${formatRelativeGap(d.distGap)}</td>
-        </tr>`);
-      }
-
-      // Player row
-      const playerPos = playerCar ? (playerCar.classPosition > 0 ? playerCar.classPosition : (playerCar.position > 0 ? playerCar.position : '')) : '';
-      const playerNum = playerCar ? (playerCar.carNumber || '') : '';
-      rows.push(`<tr class="player-row">
-        <td class="mono" style="font-weight:700">${playerPos}</td>
-        <td style="font-weight:700">${playerNum}</td>
-        <td>YOU</td>
-        <td class="mono" style="font-size:11px">—</td>
-      </tr>`);
-
-      for (const d of behind) {
-        const pos = d.classPosition > 0 ? d.classPosition : (d.position > 0 ? d.position : '');
-        rows.push(`<tr>
-          <td class="mono" style="font-weight:700">${pos}</td>
-          <td style="font-weight:600">${d.carNumber || ''}</td>
-          <td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px">${d.driverName || ''}</td>
-          <td class="mono behind" style="font-size:11px">${formatRelativeGap(d.distGap)}</td>
-        </tr>`);
-      }
+      for (const d of ahead) rows.push(buildRelativeRow(d, 'ahead', formatRelativeGap(d.gap), false));
+      rows.push(buildRelativeRow(playerCar || { position: 0, classPosition: 0, carNumber: '', driverName: 'You', country: '', safetyRating: '', iRating: 0, carClassColor: '#fff' }, '', '', true));
+      for (const d of behind) rows.push(buildRelativeRow(d, 'behind', formatRelativeGap(d.gap), false));
 
       return rows.join('');
     }
 
     function renderDemoRelative() {
-      const tbody = document.getElementById('relative-body');
-      tbody.innerHTML = buildRelativeRows(demoRelative);
+      document.getElementById('relative-body').innerHTML = buildRelativeRows(demoRelative);
     }
 
     renderDemoRelative();
@@ -126,20 +169,12 @@
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          if (msg.type === 'bridge-connected') { bridgeConnected = true; updateConnectionStatus(); } else if (msg.type === 'status') {
-            iracingConnected = msg.iracing;
-            updateConnectionStatus();
-          } else if (msg.type === 'data' && dataHandlers[msg.channel]) {
-            dataHandlers[msg.channel](msg.data);
-          }
+          if (msg.type === 'bridge-connected') { bridgeConnected = true; updateConnectionStatus(); }
+          else if (msg.type === 'status') { iracingConnected = msg.iracing; updateConnectionStatus(); }
+          else if (msg.type === 'data' && dataHandlers[msg.channel]) { dataHandlers[msg.channel](msg.data); }
         } catch(e) {}
       };
-      ws.onclose = () => {
-        bridgeConnected = false;
-        iracingConnected = false;
-        updateConnectionStatus();
-        setTimeout(() => connectBridge(channels), 3000);
-      };
+      ws.onclose = () => { bridgeConnected = false; iracingConnected = false; updateConnectionStatus(); setTimeout(() => connectBridge(channels), 3000); };
       ws.onerror = () => { ws.close(); };
     }
 
@@ -165,20 +200,13 @@
     let demoCleared = false;
 
     onData('relative', data => {
-      const tbody = document.getElementById('relative-body');
       if (!data || !data.cars) return;
-
-      if (!demoCleared) {
-        demoCleared = true;
-        tbody.innerHTML = '';
-      }
-
-      tbody.innerHTML = buildRelativeRows(data);
+      if (!demoCleared) { demoCleared = true; }
+      document.getElementById('relative-body').innerHTML = buildRelativeRows(data);
     });
 
     connectBridge(['relative']);
 
-    // Lock state support
     try {
       const { ipcRenderer } = require('electron');
       ipcRenderer.on('lock-state', (event, locked) => {

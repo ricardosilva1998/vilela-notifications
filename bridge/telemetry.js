@@ -23,6 +23,9 @@ let fuelHistory = [];
 let lastLap = -1;
 let fuelAtLapStart = null;
 
+// Persistent driver data — keeps drivers visible after they disconnect
+const persistedDrivers = new Map(); // carIdx -> last known standings entry
+
 function resetFuel() { fuelHistory = []; lastLap = -1; fuelAtLapStart = null; }
 
 async function startTelemetry(onStatusChange) {
@@ -58,6 +61,7 @@ async function startTelemetry(onStatusChange) {
         playerCarIdx = 0;
         pollCount = 0;
         resetFuel();
+        persistedDrivers.clear();
         log('[Telemetry] Connected to iRacing!');
         broadcastToChannel('_all', { type: 'status', iracing: true });
         if (statusCallback) statusCallback({ iracing: true });
@@ -209,6 +213,9 @@ async function startTelemetry(onStatusChange) {
             driverName: name,
             carNumber: number,
             carMake: driver?.CarScreenNameShort || driver?.CarScreenName || '',
+            carClass: driver?.CarClassShortName || '',
+            carClassColor: driver?.CarClassColor ? '#' + parseInt(driver.CarClassColor).toString(16).padStart(6, '0') : '#fff',
+            safetyRating: driver?.LicString || '',
             country: driver?.LicCountryCode || '',
             license: driver?.LicString || '',
             iRating: driver?.IRating || 0,
@@ -221,6 +228,17 @@ async function startTelemetry(onStatusChange) {
             isPlayer: i === playerCarIdx,
           });
         }
+
+        // Update persisted data for active drivers
+        standings.forEach(s => persistedDrivers.set(s.carIdx, s));
+
+        // Include persisted drivers who are no longer active (left session) but had data
+        persistedDrivers.forEach((data, idx) => {
+          if (!standings.find(s => s.carIdx === idx)) {
+            standings.push({ ...data, inPit: true, disconnected: true });
+          }
+        });
+
         standings.sort((a, b) => {
           if (a.position > 0 && b.position > 0) return a.position - b.position;
           if (a.position > 0) return -1;

@@ -3,39 +3,57 @@
 <head>
   <meta charset="UTF-8">
   <title>Standings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; }
-    .overlay-panel { background: rgba(12,13,20,0.85); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; backdrop-filter: blur(12px); overflow: hidden; }
-    .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); cursor: move; -webkit-app-region: drag; }
+    body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; font-size: 11px; }
+    .overlay-panel { background: rgba(12,13,20,0.88); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; backdrop-filter: blur(12px); overflow: hidden; }
+    .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); cursor: move; -webkit-app-region: drag; }
     .overlay-body { padding: 4px 0; }
-    .overlay-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .overlay-table th { padding: 4px 8px; text-align: left; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.35); border-bottom: 1px solid rgba(255,255,255,0.06); }
-    .overlay-table td { padding: 4px 8px; border-bottom: 1px solid rgba(255,255,255,0.03); vertical-align: middle; }
+    .overlay-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .overlay-table th { padding: 3px 6px; text-align: left; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.3); border-bottom: 1px solid rgba(255,255,255,0.06); white-space: nowrap; }
+    .overlay-table td { padding: 3px 6px; border-bottom: 1px solid rgba(255,255,255,0.03); vertical-align: middle; white-space: nowrap; }
     .overlay-table tr.player-row { background: rgba(145,70,255,0.15); }
     .overlay-table tr.player-row td { color: #fff; font-weight: 600; }
-    .pit-indicator { color: #f79009; font-weight: 700; font-size: 10px; }
-    .mono { font-family: 'Consolas', 'Courier New', monospace; }
-    .driver-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
-    .driver-sub { font-size: 9px; color: rgba(255,255,255,0.35); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
+    .overlay-table tr.disconnected { opacity: 0.35; }
+    .pit-indicator { color: #f79009; font-weight: 700; font-size: 9px; }
+    .mono { font-family: 'JetBrains Mono', 'Consolas', monospace; }
+    .driver-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 96px; display: block; }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
     .status-dot.connected { background: #3ecf8e; }
     .status-dot.disconnected { background: #f04438; }
     .status-dot.waiting { background: #f79009; }
     .status-dot.demo { background: #f79009; }
     .overlay-disconnected { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(12,13,20,0.9); color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 600; border-radius: 8px; }
+    .class-badge { display: inline-block; padding: 1px 4px; border-radius: 3px; font-size: 8px; font-weight: 700; letter-spacing: 0.5px; line-height: 1.4; }
+    .license { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; }
+    .irating { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.6); }
+    .flag { font-size: 12px; line-height: 1; }
   </style>
 </head>
 <body>
-  <div id="overlay-root" style="position:relative;width:380px;">
-    <div class="overlay-panel" style="width:380px;">
+  <div id="overlay-root" style="position:relative;width:420px;">
+    <div class="overlay-panel" style="width:420px;">
       <div class="overlay-header">
         <span>STANDINGS</span>
         <span id="connection-status"><span class="status-dot demo"></span> Demo Mode</span>
       </div>
       <div class="overlay-body">
         <table class="overlay-table">
-          <thead><tr><th>P</th><th>#</th><th>Driver</th><th>Best Lap</th><th>Last Lap</th><th>Gap</th><th>PIT</th></tr></thead>
+          <thead>
+            <tr>
+              <th style="width:22px">P</th>
+              <th style="width:20px"></th>
+              <th style="width:30px">#</th>
+              <th>Driver</th>
+              <th style="width:46px">Lic</th>
+              <th style="width:38px">iR</th>
+              <th style="width:58px">Best</th>
+              <th style="width:58px">Last</th>
+              <th style="width:54px">Gap</th>
+            </tr>
+          </thead>
           <tbody id="standings-body"></tbody>
         </table>
       </div>
@@ -57,30 +75,49 @@
       return mins > 0 ? mins + ':' + secs.toFixed(3).padStart(6, '0') : secs.toFixed(3);
     }
 
-    // Demo data (shown until iRacing connects) — bestLap/lastLap as raw seconds
+    function countryFlag(code) {
+      if (!code || code.length !== 2) return '';
+      return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+    }
+
+    function licenseColor(lic) {
+      if (!lic) return '#888';
+      const letter = lic.charAt(0).toUpperCase();
+      return { A: '#00aa00', B: '#0077cc', C: '#ccaa00', D: '#cc6600', R: '#cc0000' }[letter] || '#888';
+    }
+
+    function formatIR(ir) {
+      if (!ir || ir <= 0) return '--';
+      return ir >= 1000 ? (ir / 1000).toFixed(1) + 'k' : String(ir);
+    }
+
+    // Demo data
     const demoStandings = [
-      { position: 0, classPosition: 0, carNumber: '1',  driverName: 'M. Verstappen', carMake: 'Dallara IR18', iRating: 7200, bestLap: 92.456, lastLap: 92.891, inPit: false, isPlayer: false },
-      { position: 0, classPosition: 0, carNumber: '44', driverName: 'L. Hamilton',   carMake: 'Dallara IR18', iRating: 6850, bestLap: 92.690, lastLap: 92.990, inPit: false, isPlayer: false },
-      { position: 0, classPosition: 0, carNumber: '16', driverName: 'C. Leclerc',    carMake: 'Dallara IR18', iRating: 6450, bestLap: 93.012, lastLap: 93.456, inPit: false, isPlayer: false },
-      { position: 0, classPosition: 0, carNumber: '99', driverName: 'You',           carMake: 'Dallara IR18', iRating: 3210, bestLap: 93.456, lastLap: 93.789, inPit: false, isPlayer: true  },
-      { position: 0, classPosition: 0, carNumber: '55', driverName: 'C. Sainz',      carMake: 'Dallara IR18', iRating: 5900, bestLap: 93.890, lastLap: 94.012, inPit: false, isPlayer: false },
-      { position: 0, classPosition: 0, carNumber: '4',  driverName: 'L. Norris',     carMake: 'Dallara IR18', iRating: 5600, bestLap: 94.123, lastLap: 94.567, inPit: true,  isPlayer: false },
-      { position: 0, classPosition: 0, carNumber: '81', driverName: 'O. Piastri',    carMake: 'Dallara IR18', iRating: 5300, bestLap: 94.678, lastLap: 95.001, inPit: false, isPlayer: false },
-      { position: 0, classPosition: 0, carNumber: '63', driverName: 'G. Russell',    carMake: 'Dallara IR18', iRating: 5100, bestLap: 95.012, lastLap: 95.234, inPit: false, isPlayer: false },
+      { position: 1, classPosition: 1, carNumber: '1',  driverName: 'M. Verstappen', carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'A 4.99', country: 'NL', iRating: 7200, bestLap: 92.456, lastLap: 92.891, inPit: false, isPlayer: false },
+      { position: 2, classPosition: 2, carNumber: '44', driverName: 'L. Hamilton',   carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'A 3.50', country: 'GB', iRating: 6850, bestLap: 92.690, lastLap: 92.990, inPit: false, isPlayer: false },
+      { position: 3, classPosition: 3, carNumber: '16', driverName: 'C. Leclerc',    carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'A 2.10', country: 'MC', iRating: 6450, bestLap: 93.012, lastLap: 93.456, inPit: false, isPlayer: false },
+      { position: 4, classPosition: 4, carNumber: '99', driverName: 'You',           carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'B 3.21', country: 'PT', iRating: 3210, bestLap: 93.456, lastLap: 93.789, inPit: false, isPlayer: true  },
+      { position: 5, classPosition: 5, carNumber: '55', driverName: 'C. Sainz',      carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'B 1.80', country: 'ES', iRating: 5900, bestLap: 93.890, lastLap: 94.012, inPit: false, isPlayer: false },
+      { position: 6, classPosition: 6, carNumber: '4',  driverName: 'L. Norris',     carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'C 4.00', country: 'GB', iRating: 5600, bestLap: 94.123, lastLap: 94.567, inPit: true,  isPlayer: false },
+      { position: 7, classPosition: 7, carNumber: '81', driverName: 'O. Piastri',    carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'C 2.90', country: 'AU', iRating: 5300, bestLap: 94.678, lastLap: 95.001, inPit: false, isPlayer: false },
+      { position: 8, classPosition: 8, carNumber: '63', driverName: 'G. Russell',    carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'D 1.50', country: 'GB', iRating: 5100, bestLap: 95.012, lastLap: 95.234, inPit: false, isPlayer: false },
     ];
 
     function sortAndRankStandings(data) {
-      // If any car has position > 0, sort by position (race mode)
       const hasPositions = data.some(d => d.position > 0);
       if (hasPositions) {
         return [...data].sort((a, b) => {
+          // Disconnected go to end
+          if (a.disconnected && !b.disconnected) return 1;
+          if (!a.disconnected && b.disconnected) return -1;
           const pa = a.classPosition > 0 ? a.classPosition : (a.position > 0 ? a.position : 9999);
           const pb = b.classPosition > 0 ? b.classPosition : (b.position > 0 ? b.position : 9999);
           return pa - pb;
         });
       }
-      // Practice mode: sort by best lap (fastest first, no-lap cars at end)
       return [...data].sort((a, b) => {
+        if (a.disconnected && !b.disconnected) return 1;
+        if (!a.disconnected && b.disconnected) return -1;
         if (!a.bestLap || a.bestLap <= 0) return 1;
         if (!b.bestLap || b.bestLap <= 0) return -1;
         return a.bestLap - b.bestLap;
@@ -89,7 +126,7 @@
 
     function buildStandingsRows(data, limit) {
       const sorted = sortAndRankStandings(data);
-      const leaderBest = sorted[0] && sorted[0].bestLap > 0 ? sorted[0].bestLap : null;
+      const leaderBest = sorted.find(d => d.bestLap > 0)?.bestLap || null;
 
       const playerIdx = sorted.findIndex(d => d.isPlayer);
       let startIdx = 0;
@@ -105,35 +142,49 @@
         const lastFormatted = formatLapTime(d.lastLap);
 
         let gap = 'Leader';
-        if (!d.isPlayer && leaderBest && d.bestLap > 0 && rank > 1) {
+        if (rank > 1 && leaderBest && d.bestLap > 0) {
           const diff = d.bestLap - leaderBest;
           gap = '+' + diff.toFixed(3);
-        } else if (rank === 1 || (d.bestLap > 0 && leaderBest && d.bestLap === leaderBest)) {
-          gap = 'Leader';
         } else if (!d.bestLap || d.bestLap <= 0) {
           gap = '--';
         }
 
-        const sub = [d.carMake, d.iRating ? d.iRating + ' iR' : ''].filter(Boolean).join(' · ');
+        const flag = countryFlag(d.country);
+        const licColor = licenseColor(d.safetyRating || d.license);
+        const irStr = formatIR(d.iRating);
+        const classColor = d.carClassColor || '#fff';
+        const classLabel = d.carClass || d.carMake || '';
+        const pitMark = d.inPit ? ' <span class="pit-indicator">PIT</span>' : '';
+        const disconnCls = d.disconnected ? ' disconnected' : '';
 
-        return `<tr class="${d.isPlayer ? 'player-row' : ''}">
-          <td class="mono" style="font-weight:700">${pos}</td>
-          <td style="font-weight:600">${d.carNumber || ''}</td>
-          <td>
-            <div class="driver-name">${d.driverName || ''}</div>
-            ${sub ? `<div class="driver-sub">${sub}</div>` : ''}
-          </td>
-          <td class="mono" style="font-size:11px">${bestFormatted}</td>
-          <td class="mono" style="font-size:11px">${lastFormatted}</td>
-          <td class="mono" style="font-size:11px;color:rgba(255,255,255,0.5)">${gap}</td>
-          <td>${d.inPit ? '<span class="pit-indicator">PIT</span>' : ''}</td>
+        // Car number styled with class color background
+        const numCell = `<span style="background:${classColor};color:#000;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:800;font-family:'JetBrains Mono',monospace;">${d.carNumber || ''}</span>`;
+
+        // Driver name + class badge below
+        const badgeCell = classLabel
+          ? `<div class="driver-name">${d.driverName || ''}${pitMark}</div><div style="margin-top:1px;"><span class="class-badge" style="background:${classColor};color:#000;">${classLabel}</span></div>`
+          : `<div class="driver-name">${d.driverName || ''}${pitMark}</div>`;
+
+        const licCell = d.safetyRating || d.license
+          ? `<span class="license" style="color:${licColor}">${d.safetyRating || d.license}</span>`
+          : '<span class="license" style="color:#555">--</span>';
+
+        return `<tr class="${d.isPlayer ? 'player-row' : ''}${disconnCls}">
+          <td class="mono" style="font-weight:700;color:rgba(255,255,255,0.7)">${pos}</td>
+          <td class="flag">${flag}</td>
+          <td>${numCell}</td>
+          <td>${badgeCell}</td>
+          <td>${licCell}</td>
+          <td class="irating">${irStr}</td>
+          <td class="mono" style="font-size:10px">${bestFormatted}</td>
+          <td class="mono" style="font-size:10px;color:rgba(255,255,255,0.55)">${lastFormatted}</td>
+          <td class="mono" style="font-size:10px;color:rgba(255,255,255,0.45)">${gap}</td>
         </tr>`;
       }).join('');
     }
 
     function renderDemoStandings() {
-      const tbody = document.getElementById('standings-body');
-      tbody.innerHTML = buildStandingsRows(demoStandings, MAX_ROWS);
+      document.getElementById('standings-body').innerHTML = buildStandingsRows(demoStandings, MAX_ROWS);
     }
 
     renderDemoStandings();
@@ -148,21 +199,12 @@
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          if (msg.type === 'bridge-connected') { bridgeConnected = true; updateConnectionStatus(); } else if (msg.type === 'status') {
-            iracingConnected = msg.iracing;
-            updateConnectionStatus();
-            if (dataHandlers.status) dataHandlers.status(msg);
-          } else if (msg.type === 'data' && dataHandlers[msg.channel]) {
-            dataHandlers[msg.channel](msg.data);
-          }
+          if (msg.type === 'bridge-connected') { bridgeConnected = true; updateConnectionStatus(); }
+          else if (msg.type === 'status') { iracingConnected = msg.iracing; updateConnectionStatus(); if (dataHandlers.status) dataHandlers.status(msg); }
+          else if (msg.type === 'data' && dataHandlers[msg.channel]) { dataHandlers[msg.channel](msg.data); }
         } catch(e) {}
       };
-      ws.onclose = () => {
-        bridgeConnected = false;
-        iracingConnected = false;
-        updateConnectionStatus();
-        setTimeout(() => connectBridge(channels), 3000);
-      };
+      ws.onclose = () => { bridgeConnected = false; iracingConnected = false; updateConnectionStatus(); setTimeout(() => connectBridge(channels), 3000); };
       ws.onerror = () => { ws.close(); };
     }
 
@@ -188,20 +230,13 @@
     let demoCleared = false;
 
     onData('standings', data => {
-      const tbody = document.getElementById('standings-body');
       if (!data || !data.length) return;
-
-      if (!demoCleared) {
-        demoCleared = true;
-        tbody.innerHTML = '';
-      }
-
-      tbody.innerHTML = buildStandingsRows(data, MAX_ROWS);
+      if (!demoCleared) { demoCleared = true; }
+      document.getElementById('standings-body').innerHTML = buildStandingsRows(data, MAX_ROWS);
     });
 
     connectBridge(['standings']);
 
-    // Lock state support
     try {
       const { ipcRenderer } = require('electron');
       ipcRenderer.on('lock-state', (event, locked) => {
