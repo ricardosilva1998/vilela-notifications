@@ -5,6 +5,7 @@
   .tab-twitch.active { background: #9146ff; }
   .tab-youtube.active { background: #ff0000; }
   .tab-kick.active { background: #53fc18; color: #000; }
+  .tab-iracing.active { background: linear-gradient(135deg, #1a1a2e, #16213e); border: 1px solid #8888cc; }
   .tab-experimental.active { background: linear-gradient(135deg, #667eea, #764ba2); }
   .tab-admin.active { background: #e74c3c; }
 </style>
@@ -40,6 +41,10 @@
   </button>
   <button class="tab-btn tab-kick" data-tab="kick">
     <svg width="30" height="10" viewBox="0 0 78 26" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M0 0.0307312H8.34073V5.79423H11.1163V2.91248H13.8919V0.0307312H22.2326V8.69274H19.457V11.5745H16.6815V14.4562H19.457V17.338H22.2326V26H13.8919V23.1182H11.1163V20.2365H8.34073V26H0V0.0307312ZM55.6444 0.0307312H63.9852V5.79423H66.7608V2.91248H69.5363V0.0307312H77.8771V8.69274H75.1015V11.5745H72.3259V14.4562H75.1015V17.338H77.8771V26H69.5363V23.1182H66.7608V20.2365H63.9852V26H55.6444V0.0307312ZM25.039 0.0307312H33.3797V26H25.039V0.0307312ZM38.9462 0.0307312V2.91248H36.1706V23.1029H38.9462V25.9846H52.8535V17.3226H44.5128V8.66061H52.8535V0H38.9462V0.0307312Z"/></svg>
+  </button>
+  <button class="tab-btn tab-iracing" data-tab="iracing">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    iRacing
   </button>
   <button class="tab-btn tab-experimental" data-tab="experimental">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6v8l4 9H5l4-9V3z"/><path d="M9 3h6"/></svg>
@@ -570,6 +575,65 @@
     </div>
     <p style="color: var(--text-secondary); font-size: 16px; font-weight: 600; margin-bottom: 4px;">Coming Soon</p>
     <p style="color: var(--text-muted); font-size: 13px;">Kick.com integration with chatbot and overlay support is coming.</p>
+  </div>
+</div>
+
+<div class="tab-content" id="tab-iracing">
+
+  <!-- Bridge Download Card -->
+  <div class="card animate-in" style="margin-bottom: 16px; padding: 20px 24px;">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+      <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(26,26,46,0.4); display: flex; align-items: center; justify-content: center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8888cc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </div>
+      <div>
+        <h3 style="font-size: 16px; font-weight: 700; margin: 0;">Atleta Bridge</h3>
+        <span style="color: var(--text-muted); font-size: 12px;">Required to connect iRacing telemetry to overlays</span>
+      </div>
+    </div>
+    <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px; line-height: 1.5;">
+      Download and install the Atleta Bridge app on your Windows PC. It reads iRacing telemetry data and sends it to your overlays in real-time.
+    </p>
+    <span class="btn btn-secondary" style="opacity: 0.6; cursor: not-allowed; font-size: 13px; padding: 8px 16px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download for Windows — Coming Soon
+    </span>
+  </div>
+
+  <!-- Overlay Cards Grid -->
+  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+    <% const iracingOverlays = [
+      { type: 'standings', icon: '🏁', name: 'Standings', desc: 'Race positions, intervals, lap times' },
+      { type: 'relative', icon: '📊', name: 'Relative', desc: 'Cars ahead and behind with time gaps' },
+      { type: 'fuel', icon: '⛽', name: 'Fuel Calculator', desc: 'Fuel usage, laps remaining, pit strategy' },
+      { type: 'chat', icon: '💬', name: 'Streaming Chat', desc: 'Twitch + YouTube chat merged overlay' },
+      { type: 'wind', icon: '🌬️', name: 'Wind Direction', desc: 'Wind compass relative to car heading' },
+      { type: 'proximity', icon: '🚗', name: 'Car Proximity', desc: 'Spotter — cars alongside left/right' },
+    ]; %>
+    <% iracingOverlays.forEach(ov => {
+      const overlayUrl = streamer.overlay_token ? '/overlay/iracing/' + ov.type + '/' + streamer.overlay_token : null;
+    %>
+    <div class="card animate-in" style="padding: 20px; display: flex; flex-direction: column;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+        <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(26,26,46,0.4); display: flex; align-items: center; justify-content: center; font-size: 18px;">
+          <%= ov.icon %>
+        </div>
+        <div style="flex: 1;">
+          <h3 style="font-size: 15px; font-weight: 700; margin: 0;"><%= ov.name %></h3>
+          <span style="color: var(--text-muted); font-size: 11px;"><%= ov.desc %></span>
+        </div>
+      </div>
+      <% if (overlayUrl) { %>
+        <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+          <input type="text" value="<%= overlayUrl %>" readonly id="iracing-url-<%= ov.type %>" style="flex: 1; background: var(--bg-base); border: 1px solid var(--border); color: var(--text-primary); padding: 5px 8px; border-radius: var(--radius-sm); font-size: 10px; font-family: monospace;">
+          <button onclick="navigator.clipboard.writeText(document.getElementById('iracing-url-<%= ov.type %>').value); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy', 1500);" class="btn btn-secondary" style="font-size: 10px; padding: 5px 8px;">Copy</button>
+        </div>
+      <% } %>
+      <div style="display: flex; gap: 6px; margin-top: auto;">
+        <a href="/dashboard/iracing/overlays/<%= ov.type %>" class="btn btn-primary" style="font-size: 12px; padding: 7px 14px; text-decoration: none;">Settings</a>
+      </div>
+    </div>
+    <% }) %>
   </div>
 </div>
 

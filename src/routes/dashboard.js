@@ -136,6 +136,9 @@ router.get('/', (req, res) => {
   let overlayStats = null;
   try { overlayStats = db.getOverlayStats7d(req.streamer.id); } catch (e) {}
 
+  let iracingSettings = [];
+  try { iracingSettings = db.getIracingOverlaySettings(req.streamer.id); } catch (e) {}
+
   res.render('dashboard', {
     streamer: req.streamer,
     guilds: enrichedGuilds,
@@ -148,6 +151,7 @@ router.get('/', (req, res) => {
     botUsername,
     overlayUrl,
     overlayStats,
+    iracingSettings,
   });
 });
 
@@ -829,6 +833,30 @@ router.post('/donations', (req, res) => {
     donation_currency: b.donation_currency || 'EUR',
   });
   res.redirect('/dashboard/donations');
+});
+
+// iRacing overlay settings
+router.get('/iracing/overlays/:type', (req, res) => {
+  const validTypes = ['standings', 'relative', 'fuel', 'chat', 'wind', 'proximity'];
+  const type = req.params.type;
+  if (!validTypes.includes(type)) return res.redirect('/dashboard?tab=iracing');
+  let setting = null;
+  try { setting = db.getIracingOverlaySetting(req.streamer.id, type); } catch (e) {}
+  const overlayUrl = req.streamer.overlay_token ? `${config.app.url}/overlay/iracing/${type}/${req.streamer.overlay_token}` : null;
+  res.render('iracing-overlay-settings', { streamer: req.streamer, overlayType: type, setting, overlayUrl });
+});
+
+router.post('/iracing/overlays/:type', (req, res) => {
+  const validTypes = ['standings', 'relative', 'fuel', 'chat', 'wind', 'proximity'];
+  const type = req.params.type;
+  if (!validTypes.includes(type)) return res.redirect('/dashboard?tab=iracing');
+  const enabled = req.body.enabled ? 1 : 0;
+  const settings = {};
+  for (const [key, value] of Object.entries(req.body)) {
+    if (key !== 'enabled') settings[key] = value;
+  }
+  db.upsertIracingOverlaySetting(req.streamer.id, type, enabled, JSON.stringify(settings));
+  res.redirect(`/dashboard/iracing/overlays/${type}`);
 });
 
 // Chatbot config page

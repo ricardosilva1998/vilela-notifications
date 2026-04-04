@@ -1,0 +1,199 @@
+<%- include('header', { title: 'iRacing Overlay Settings', streamer: streamer }) %>
+
+<style>
+  .pill-toggle { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+  .pill-toggle input { opacity: 0; width: 0; height: 0; }
+  .pill-toggle .slider { position: absolute; cursor: pointer; inset: 0; background: var(--bg-elevated); border-radius: 24px; border: 1px solid var(--border); transition: 0.3s; }
+  .pill-toggle .slider:before { content: ''; position: absolute; height: 18px; width: 18px; left: 2px; bottom: 2px; background: #fff; border-radius: 50%; transition: 0.3s; }
+  .pill-toggle input:checked + .slider { background: var(--accent); border-color: var(--accent); }
+  .pill-toggle input:checked + .slider:before { transform: translateX(20px); }
+</style>
+
+<%
+  const typeLabels = {
+    standings: 'Standings',
+    relative: 'Relative',
+    fuel: 'Fuel Calculator',
+    chat: 'Streaming Chat',
+    wind: 'Wind Direction',
+    proximity: 'Car Proximity',
+  };
+  const typeDescriptions = {
+    standings: 'Race positions, intervals, and lap times displayed as a live leaderboard.',
+    relative: 'Cars directly ahead and behind you with real-time time gaps.',
+    fuel: 'Fuel usage, estimated laps remaining, and pit strategy calculator.',
+    chat: 'Twitch and YouTube chat merged into a single stream overlay.',
+    wind: 'Wind compass showing direction relative to your car heading.',
+    proximity: 'Spotter indicator showing cars alongside on the left or right.',
+  };
+  const savedSettings = setting && setting.settings ? JSON.parse(setting.settings) : {};
+  const isEnabled = setting ? !!setting.enabled : false;
+  const label = typeLabels[overlayType] || overlayType;
+  const description = typeDescriptions[overlayType] || '';
+%>
+
+<a href="/dashboard?tab=iracing" style="color: var(--text-secondary); font-size: 13px; font-family: var(--font-display); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  Back to Dashboard
+</a>
+<h2 style="margin: 16px 0 4px; font-size: 24px; font-weight: 700;" class="animate-in">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px; margin-bottom: 2px;"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+  iRacing — <%= label %> Overlay
+</h2>
+<p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 24px;"><%= description %></p>
+
+<form method="POST" action="/dashboard/iracing/overlays/<%= overlayType %>">
+
+  <!-- Enable / OBS URL -->
+  <div class="card animate-in animate-in-delay-1" style="margin-bottom: 16px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+      <h3 style="margin: 0;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px; margin-bottom: 2px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Enable Overlay
+      </h3>
+      <label class="pill-toggle">
+        <input type="checkbox" name="enabled" value="1" <%= isEnabled ? 'checked' : '' %>>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 0;">When enabled, this overlay will be active in OBS whenever the Atleta Bridge is running.</p>
+  </div>
+
+  <% if (overlayUrl) { %>
+  <!-- OBS Browser Source URL -->
+  <div class="card animate-in animate-in-delay-2" style="margin-bottom: 16px;">
+    <h3 style="margin-bottom: 10px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px; margin-bottom: 2px;"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      OBS Browser Source URL
+    </h3>
+    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 10px;">Add this URL as a Browser Source in OBS to display the overlay on your stream.</p>
+    <div style="display: flex; gap: 8px;">
+      <input type="text" id="obs-url" value="<%= overlayUrl %>" readonly style="flex: 1; background: var(--bg-base); border: 1px solid var(--border); color: var(--text-primary); padding: 8px 10px; border-radius: var(--radius-sm); font-size: 12px; font-family: monospace;">
+      <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('obs-url').value); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy URL', 1500);" class="btn btn-secondary" style="font-size: 13px; padding: 8px 16px;">Copy URL</button>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Per-type Settings -->
+  <div class="card animate-in animate-in-delay-3" style="margin-bottom: 24px;">
+    <h3 style="margin-bottom: 16px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px; margin-bottom: 2px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </h3>
+
+    <% if (overlayType === 'standings') { %>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div class="form-group" style="margin-bottom: 0;">
+        <label>Max Rows</label>
+        <select name="max_rows" style="width: 100%;">
+          <option value="10" <%= (savedSettings.max_rows || '10') === '10' ? 'selected' : '' %>>10 rows</option>
+          <option value="15" <%= savedSettings.max_rows === '15' ? 'selected' : '' %>>15 rows</option>
+          <option value="20" <%= savedSettings.max_rows === '20' ? 'selected' : '' %>>20 rows</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom: 0;">
+        <label>Width (px)</label>
+        <select name="width" style="width: 100%;">
+          <option value="280" <%= (savedSettings.width || '320') === '280' ? 'selected' : '' %>>280 px</option>
+          <option value="320" <%= (savedSettings.width || '320') === '320' ? 'selected' : '' %>>320 px</option>
+          <option value="400" <%= savedSettings.width === '400' ? 'selected' : '' %>>400 px</option>
+          <option value="500" <%= savedSettings.width === '500' ? 'selected' : '' %>>500 px</option>
+        </select>
+      </div>
+    </div>
+
+    <% } else if (overlayType === 'relative') { %>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div class="form-group" style="margin-bottom: 0;">
+        <label>Cars Shown (each side)</label>
+        <select name="cars_shown" style="width: 100%;">
+          <option value="3" <%= (savedSettings.cars_shown || '5') === '3' ? 'selected' : '' %>>3 cars</option>
+          <option value="5" <%= (savedSettings.cars_shown || '5') === '5' ? 'selected' : '' %>>5 cars</option>
+          <option value="7" <%= savedSettings.cars_shown === '7' ? 'selected' : '' %>>7 cars</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom: 0;">
+        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">Show Car Numbers</label>
+        <label class="pill-toggle" style="margin-top: 4px;">
+          <input type="checkbox" name="show_car_numbers" value="1" <%= savedSettings.show_car_numbers === '1' ? 'checked' : '' %>>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <% } else if (overlayType === 'fuel') { %>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div class="form-group" style="margin-bottom: 0;">
+        <label>Units</label>
+        <select name="units" style="width: 100%;">
+          <option value="L" <%= (savedSettings.units || 'L') === 'L' ? 'selected' : '' %>>Litres (L)</option>
+          <option value="gal" <%= savedSettings.units === 'gal' ? 'selected' : '' %>>Gallons (gal)</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom: 0;">
+        <label>Width (px)</label>
+        <select name="width" style="width: 100%;">
+          <option value="280" <%= (savedSettings.width || '320') === '280' ? 'selected' : '' %>>280 px</option>
+          <option value="320" <%= (savedSettings.width || '320') === '320' ? 'selected' : '' %>>320 px</option>
+          <option value="400" <%= savedSettings.width === '400' ? 'selected' : '' %>>400 px</option>
+          <option value="500" <%= savedSettings.width === '500' ? 'selected' : '' %>>500 px</option>
+        </select>
+      </div>
+    </div>
+
+    <% } else if (overlayType === 'chat') { %>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div class="form-group" style="margin-bottom: 0;">
+        <label>Max Messages</label>
+        <select name="max_messages" style="width: 100%;">
+          <option value="10" <%= (savedSettings.max_messages || '20') === '10' ? 'selected' : '' %>>10 messages</option>
+          <option value="20" <%= (savedSettings.max_messages || '20') === '20' ? 'selected' : '' %>>20 messages</option>
+          <option value="30" <%= savedSettings.max_messages === '30' ? 'selected' : '' %>>30 messages</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom: 0;">
+        <label>Fade Time</label>
+        <select name="fade_time" style="width: 100%;">
+          <option value="30" <%= (savedSettings.fade_time || '60') === '30' ? 'selected' : '' %>>30 seconds</option>
+          <option value="60" <%= (savedSettings.fade_time || '60') === '60' ? 'selected' : '' %>>60 seconds</option>
+          <option value="never" <%= savedSettings.fade_time === 'never' ? 'selected' : '' %>>Never</option>
+        </select>
+      </div>
+    </div>
+
+    <% } else if (overlayType === 'wind') { %>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div class="form-group" style="margin-bottom: 0;">
+        <label>Size (px)</label>
+        <select name="size" style="width: 100%;">
+          <option value="80" <%= (savedSettings.size || '120') === '80' ? 'selected' : '' %>>80 px</option>
+          <option value="120" <%= (savedSettings.size || '120') === '120' ? 'selected' : '' %>>120 px</option>
+          <option value="160" <%= savedSettings.size === '160' ? 'selected' : '' %>>160 px</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom: 0;">
+        <label>Speed Units</label>
+        <select name="units" style="width: 100%;">
+          <option value="km/h" <%= (savedSettings.units || 'km/h') === 'km/h' ? 'selected' : '' %>>km/h</option>
+          <option value="mph" <%= savedSettings.units === 'mph' ? 'selected' : '' %>>mph</option>
+        </select>
+      </div>
+    </div>
+
+    <% } else if (overlayType === 'proximity') { %>
+    <div class="form-group" style="margin-bottom: 0;">
+      <label>Size (px)</label>
+      <select name="size" style="width: 200px;">
+        <option value="100" <%= (savedSettings.size || '140') === '100' ? 'selected' : '' %>>100 px</option>
+        <option value="140" <%= (savedSettings.size || '140') === '140' ? 'selected' : '' %>>140 px</option>
+        <option value="180" <%= savedSettings.size === '180' ? 'selected' : '' %>>180 px</option>
+      </select>
+    </div>
+    <% } %>
+
+  </div>
+
+  <button type="submit" class="btn btn-primary" style="font-size: 14px; padding: 10px 24px;">Save Settings</button>
+</form>
+
+<%- include('footer') %>
