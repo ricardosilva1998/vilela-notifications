@@ -72,18 +72,19 @@
     const canvas = document.getElementById('track-canvas');
     const ctx = canvas.getContext('2d');
     let trackPoints = []; // normalized {x, y, pct} points
-    let lastCars = [];
+    let targetCars = []; // latest car positions from server
+    let displayCars = []; // interpolated positions for smooth rendering
+    let lastUpdateTime = 0;
 
     function resizeCanvas() {
       const container = canvas.parentElement;
       canvas.width = container.clientWidth;
       canvas.height = container.clientHeight;
-      draw();
     }
     window.addEventListener('resize', resizeCanvas);
     setTimeout(resizeCanvas, 100);
 
-    // If no track path from GPS, generate a circle as placeholder
+    // Placeholder circle when no track data
     function generateCirclePath() {
       const points = [];
       for (let i = 0; i <= 100; i++) {
@@ -93,44 +94,111 @@
       return points;
     }
 
+    // Normalize raw x/y path from heading+speed integration to 0-1 range
     function normalizeTrackPath(rawPath) {
       if (!rawPath || rawPath.length < 10) return generateCirclePath();
 
-      // Convert lat/lon to x/y normalized 0-1
-      let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
       rawPath.forEach(p => {
-        if (p.lat < minLat) minLat = p.lat;
-        if (p.lat > maxLat) maxLat = p.lat;
-        if (p.lon < minLon) minLon = p.lon;
-        if (p.lon > maxLon) maxLon = p.lon;
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
       });
-      const latRange = maxLat - minLat || 1;
-      const lonRange = maxLon - minLon || 1;
-      const padding = 0.1;
+      const xRange = maxX - minX || 1;
+      const yRange = maxY - minY || 1;
+      const padding = 0.08;
 
+      // Preserve aspect ratio
+      const aspect = xRange / yRange;
+      let scaleX = 1, scaleY = 1;
+      if (aspect > 1) { scaleY = 1 / aspect; } else { scaleX = aspect; }
+
+      const usable = 1 - 2 * padding;
       return rawPath.map(p => ({
-        x: padding + (1 - 2 * padding) * (p.lon - minLon) / lonRange,
-        y: padding + (1 - 2 * padding) * (1 - (p.lat - minLat) / latRange), // Flip Y
+        x: padding + (usable * scaleX) * (p.x - minX) / xRange + (usable * (1 - scaleX)) / 2,
+        y: padding + (usable * scaleY) * (1 - (p.y - minY) / yRange) + (usable * (1 - scaleY)) / 2,
         pct: p.pct,
       }));
     }
 
+    // Find track position for a given lap distance percentage
+    // Uses interpolation between two nearest points for smooth placement
     function getTrackPosition(pct) {
       if (!trackPoints.length) return { x: 0.5, y: 0.5 };
-      // Find the closest point by pct
-      let closest = trackPoints[0];
-      let minDist = Math.abs(pct - closest.pct);
-      for (const p of trackPoints) {
-        const d = Math.abs(pct - p.pct);
-        if (d < minDist) { minDist = d; closest = p; }
+
+      // Handle wrap-around: find two points that bracket pct
+      let bestIdx = 0;
+      let minDist = Math.abs(pct - trackPoints[0].pct);
+      for (let i = 1; i < trackPoints.length; i++) {
+        const d = Math.abs(pct - trackPoints[i].pct);
+        if (d < minDist) { minDist = d; bestIdx = i; }
       }
-      return closest;
+
+      // Interpolate between bestIdx and neighbor for smoother positioning
+      const p1 = trackPoints[bestIdx];
+      let p2, t;
+      if (pct >= p1.pct && bestIdx < trackPoints.length - 1) {
+        p2 = trackPoints[bestIdx + 1];
+        const range = p2.pct - p1.pct;
+        t = range > 0 ? (pct - p1.pct) / range : 0;
+      } else if (pct < p1.pct && bestIdx > 0) {
+        p2 = trackPoints[bestIdx - 1];
+        const range = p1.pct - p2.pct;
+        t = range > 0 ? (p1.pct - pct) / range : 0;
+        // Swap so we lerp from p2 to p1
+        const tmp = p1;
+        return { x: p2.x + (tmp.x - p2.x) * (1 - t), y: p2.y + (tmp.y - p2.y) * (1 - t) };
+      } else {
+        return { x: p1.x, y: p1.y };
+      }
+      return { x: p1.x + (p2.x - p1.x) * t, y: p1.y + (p2.y - p1.y) * t };
+    }
+
+    // Smooth interpolation: lerp display car pct toward target pct each frame
+    function updateDisplayCars() {
+      const now = performance.now();
+      const lerpSpeed = 0.15; // Smooth factor per frame
+
+      // Build map of target positions
+      const targetMap = new Map();
+      targetCars.forEach(c => targetMap.set(c.carIdx, c));
+
+      // Update existing display cars toward targets
+      const activeIdxs = new Set();
+      displayCars = displayCars.filter(dc => targetMap.has(dc.carIdx));
+      displayCars.forEach(dc => {
+        const target = targetMap.get(dc.carIdx);
+        if (!target) return;
+        activeIdxs.add(dc.carIdx);
+        // Lerp pct with wrap-around handling
+        let diff = target.pct - dc.pct;
+        if (diff > 0.5) diff -= 1;
+        if (diff < -0.5) diff += 1;
+        dc.pct += diff * lerpSpeed;
+        // Normalize pct to 0-1
+        if (dc.pct < 0) dc.pct += 1;
+        if (dc.pct >= 1) dc.pct -= 1;
+        // Copy latest metadata
+        dc.carNumber = target.carNumber;
+        dc.carClassColor = target.carClassColor;
+        dc.isPlayer = target.isPlayer;
+        dc.inPit = target.inPit;
+      });
+
+      // Add new cars not yet in display
+      targetCars.forEach(c => {
+        if (!activeIdxs.has(c.carIdx)) {
+          displayCars.push({ ...c });
+        }
+      });
     }
 
     function draw() {
       if (!ctx) return;
       const w = canvas.width;
       const h = canvas.height;
+      if (w === 0 || h === 0) return;
       ctx.clearRect(0, 0, w, h);
 
       if (!trackPoints.length) return;
@@ -148,8 +216,9 @@
       ctx.closePath();
       ctx.stroke();
 
-      // Draw cars
-      lastCars.forEach(car => {
+      // Draw cars using interpolated positions
+      updateDisplayCars();
+      displayCars.forEach(car => {
         const pos = getTrackPosition(car.pct);
         const x = pos.x * w;
         const y = pos.y * h;
@@ -158,7 +227,7 @@
 
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = color;
+        ctx.fillStyle = car.inPit ? 'rgba(128,128,128,0.5)' : color;
         ctx.fill();
 
         if (car.isPlayer) {
@@ -168,40 +237,43 @@
         }
 
         // Car number label
-        if (car.isPlayer || radius >= 4) {
-          ctx.fillStyle = 'rgba(255,255,255,0.7)';
-          ctx.font = '8px Segoe UI';
-          ctx.textAlign = 'center';
-          ctx.fillText(car.carNumber, x, y - radius - 3);
-        }
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.font = '8px Segoe UI';
+        ctx.textAlign = 'center';
+        ctx.fillText(car.carNumber, x, y - radius - 3);
       });
     }
+
+    // Animation loop for smooth rendering
+    function animate() {
+      draw();
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
 
     onData('trackmap', (data) => {
       if (data.trackPath && data.trackPath.length > 0) {
         trackPoints = normalizeTrackPath(data.trackPath);
-        const status = data.trackPathReady ? (trackPoints.length + ' points') : ('Mapping... ' + trackPoints.length + ' pts');
+        const status = data.trackPathReady ? (trackPoints.length + ' pts') : ('Mapping... ' + trackPoints.length + ' pts');
         document.getElementById('map-legend').textContent = status;
       } else if (trackPoints.length === 0) {
-        // Use circle placeholder until track is mapped
         trackPoints = generateCirclePath();
         document.getElementById('map-legend').textContent = 'Mapping track...';
       }
 
-      lastCars = data.cars || [];
-      draw();
+      targetCars = data.cars || [];
     });
 
     // Demo data
     trackPoints = generateCirclePath();
-    lastCars = [
+    targetCars = [
       { carIdx: 0, pct: 0.1, carNumber: '1', isPlayer: false, carClassColor: '#ff4444' },
       { carIdx: 1, pct: 0.25, carNumber: '44', isPlayer: false, carClassColor: '#00aa00' },
       { carIdx: 2, pct: 0.4, carNumber: '99', isPlayer: true, carClassColor: '#9146ff' },
       { carIdx: 3, pct: 0.6, carNumber: '55', isPlayer: false, carClassColor: '#0077cc' },
       { carIdx: 4, pct: 0.8, carNumber: '4', isPlayer: false, carClassColor: '#f7c948' },
     ];
-    draw();
+    displayCars = targetCars.map(c => ({ ...c }));
 
     // Lock state support
     try {
