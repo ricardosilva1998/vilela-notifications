@@ -31,7 +31,10 @@
     },
     "nsis": {
       "oneClick": true,
-      "allowToChangeInstallationDirectory": false
+      "allowToChangeInstallationDirectory": false,
+      "allowElevation": true,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false
     }
   }
 }

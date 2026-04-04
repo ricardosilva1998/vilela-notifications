@@ -28,6 +28,15 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Set version from run number
+        working-directory: bridge
+        shell: pwsh
+        run: |
+          $pkg = Get-Content package.json | ConvertFrom-Json
+          $pkg.version = "1.0.${{ github.run_number }}"
+          $pkg | ConvertTo-Json -Depth 10 | Set-Content package.json
+          Write-Host "Version set to 1.0.${{ github.run_number }}"
+
       - name: Install dependencies (skip native build)
         working-directory: bridge
         run: npm install --ignore-scripts
@@ -36,13 +45,13 @@ jobs:
         working-directory: bridge
         shell: pwsh
         run: |
-          cd node_modules/irsdk-node
-          # Try prebuild-install first (downloads prebuilt binary)
-          npx prebuild-install -r electron -t 28.0.0 --platform win32 --arch x64 2>$null
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "No prebuilt available, irsdk-node will run in stub mode"
-            # Create a stub so require doesn't fail
-            New-Item -ItemType Directory -Force -Path prebuilds/win32-x64 | Out-Null
+          $irsdkPath = "node_modules/irsdk-node"
+          if (Test-Path $irsdkPath) {
+            cd $irsdkPath
+            npx prebuild-install -r electron -t 28.0.0 --platform win32 --arch x64 2>$null
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "No prebuilt available, irsdk-node will run in stub mode"
+            }
           }
         continue-on-error: true
 

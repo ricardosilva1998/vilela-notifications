@@ -18,7 +18,11 @@ const OVERLAYS = [
 ];
 
 const gotLock = app.requestSingleInstanceLock();
-if (!gotLock) { app.quit(); }
+if (!gotLock) {
+  // Another instance is already running — quit this one
+  app.quit();
+  process.exit(0);
+}
 
 app.on('second-instance', () => {
   if (controlWindow) {
@@ -109,6 +113,12 @@ function createOverlayWindow(overlayId) {
   // Use highest z-level to stay on top of fullscreen games like iRacing
   win.setAlwaysOnTop(true, 'screen-saver');
 
+  // Periodically re-assert always-on-top (games can steal focus)
+  const topInterval = setInterval(() => {
+    if (win.isDestroyed()) { clearInterval(topInterval); return; }
+    try { win.setAlwaysOnTop(true, 'screen-saver'); } catch(e) {}
+  }, 2000);
+
   win.loadFile(path.join(__dirname, 'overlays', `${overlayId}.html`));
 
   if (overlaysLocked) {
@@ -117,6 +127,7 @@ function createOverlayWindow(overlayId) {
   }
 
   win.on('closed', () => {
+    clearInterval(topInterval);
     delete overlayWindows[overlayId];
     if (controlWindow && !controlWindow.isDestroyed()) {
       controlWindow.webContents.send('overlay-closed', overlayId);
