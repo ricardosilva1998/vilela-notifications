@@ -21,38 +21,32 @@ const RelativeCalculator = require('./relative');
 const fuelCalc = new FuelCalculator();
 const relativeCalc = new RelativeCalculator();
 
-function startTelemetry(onStatusChange) {
+async function startTelemetry(onStatusChange) {
   statusCallback = onStatusChange;
   log('[Telemetry] Starting telemetry reader...');
   log('[Telemetry] Log file: ' + logPath);
 
-  let iRacingSDK;
+  let sdk;
   try {
-    log('[Telemetry] Attempting to load @emiliosp/node-iracing-sdk...');
-    const sdk = require('@emiliosp/node-iracing-sdk');
-    iRacingSDK = sdk;
-    log('[Telemetry] SDK loaded successfully. Exports: ' + Object.keys(sdk).join(', '));
+    log('[Telemetry] Attempting to load @emiliosp/node-iracing-sdk via dynamic import...');
+    const iRacingSDK = await import('@emiliosp/node-iracing-sdk');
+    log('[Telemetry] SDK loaded. Exports: ' + Object.keys(iRacingSDK).join(', '));
+
+    const SDKClass = iRacingSDK.iRacingSDK || iRacingSDK.IRacingSDK || iRacingSDK.default || iRacingSDK;
+    if (typeof SDKClass === 'function') {
+      sdk = new SDKClass();
+      log('[Telemetry] SDK instance created from class');
+    } else if (typeof SDKClass === 'object' && SDKClass !== null) {
+      sdk = SDKClass;
+      log('[Telemetry] SDK used as module object');
+    } else {
+      log('[Telemetry] SDK export type: ' + typeof SDKClass);
+      return;
+    }
   } catch (e) {
     log('[Telemetry] SDK FAILED: ' + e.message);
     log('[Telemetry] Stack: ' + e.stack);
     log('[Telemetry] Running in stub mode (no iRacing data)');
-    return;
-  }
-
-  let sdk;
-  try {
-    // The SDK may export the class directly or as a named export
-    const SDKClass = iRacingSDK.iRacingSDK || iRacingSDK.IRacingSDK || iRacingSDK.default || iRacingSDK;
-    if (typeof SDKClass === 'function') {
-      sdk = new SDKClass();
-      log('[Telemetry] SDK instance created');
-    } else {
-      // Some SDKs export methods directly
-      sdk = SDKClass;
-      log('[Telemetry] SDK used as module (not class)');
-    }
-  } catch (e) {
-    log('[Telemetry] SDK init error: ' + e.message);
     return;
   }
 
