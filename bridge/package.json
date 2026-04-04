@@ -23,7 +23,8 @@
     "appId": "com.atleta.bridge",
     "productName": "Atleta Bridge",
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": true,
