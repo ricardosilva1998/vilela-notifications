@@ -358,6 +358,7 @@
 
         faceDetected = !!(result.faceBlendshapes && result.faceBlendshapes.length > 0);
 
+        // Set expressions BEFORE vrm.update() — it applies them internally
         if (result.faceBlendshapes && result.faceBlendshapes.length > 0) {
           const bs = result.faceBlendshapes;
 
@@ -391,7 +392,10 @@
           vrm.expressionManager.setValue('lookDown', lerp('lookDown', lookDown, 0.3));
         }
 
-        // Head rotation from transformation matrix (API uses both spellings across versions)
+        // vrm.update() applies expressions and resets bone transforms — call it FIRST
+        vrm.update(delta);
+
+        // Head rotation from transformation matrix — apply AFTER vrm.update() so it doesn't get overwritten
         const matrices = result.facialTransformationMatrixes || result.facialTransformationMatrices;
         if (matrices && matrices.length > 0) {
           const matrix = matrices[0];
@@ -423,11 +427,6 @@
             spine.rotation.y = lerp('spineY', yaw * 0.05, 0.15);
           }
         }
-
-        // Apply expression changes
-        vrm.expressionManager.update();
-
-        vrm.update(delta);
       }
 
       // FPS counter
