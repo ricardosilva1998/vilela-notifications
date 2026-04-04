@@ -99,12 +99,20 @@ function startSpeechWorker() {
     log('[Speech] Worker exited: ' + code);
     speechReady = false;
     speechProcess = null;
+    // Auto-restart after unexpected exit (not during app shutdown)
+    if (!stopping) {
+      log('[Speech] Auto-restarting worker in 2 seconds...');
+      setTimeout(startSpeechWorker, 2000);
+    }
   });
 
   log('[Speech] Worker spawned');
 }
 
+let stopping = false;
+
 function stopSpeechWorker() {
+  stopping = true;
   if (speechProcess) {
     try { speechProcess.stdin.write('EXIT\n'); } catch(e) {}
     setTimeout(() => {
