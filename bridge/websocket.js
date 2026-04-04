@@ -11,6 +11,8 @@ function startServer(port) {
   wss.on('connection', (ws) => {
     clients.set(ws, new Set());
     console.log('[WebSocket] Client connected');
+    // Send immediate status so client knows bridge is running
+    try { ws.send(JSON.stringify({ type: 'bridge-connected' })); } catch(e) {}
 
     ws.on('message', (raw) => {
       try {

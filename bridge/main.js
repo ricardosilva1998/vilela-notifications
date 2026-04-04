@@ -106,6 +106,9 @@ function createOverlayWindow(overlayId) {
     webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
 
+  // Use highest z-level to stay on top of fullscreen games like iRacing
+  win.setAlwaysOnTop(true, 'screen-saver');
+
   win.loadFile(path.join(__dirname, 'overlays', `${overlayId}.html`));
 
   if (overlaysLocked) {

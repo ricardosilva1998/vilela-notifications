@@ -74,7 +74,7 @@
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          if (msg.type === 'status') {
+          if (msg.type === 'bridge-connected') { bridgeConnected = true; updateConnectionStatus(); } else if (msg.type === 'status') {
             iracingConnected = msg.iracing;
             updateConnectionStatus();
           } else if (msg.type === 'data' && dataHandlers[msg.channel]) {
