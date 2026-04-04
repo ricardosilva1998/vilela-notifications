@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, screen, session } = require('electron');
 const path = require('path');
 const { startServer, stopServer } = require('./websocket');
 const { startTelemetry, stopTelemetry } = require('./telemetry');
@@ -49,6 +49,16 @@ app.on('second-instance', () => {
 });
 
 app.on('ready', () => {
+  // Grant microphone permission for Web Speech API in overlays
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === 'media' || permission === 'microphone') {
+      callback(true);
+    } else {
+      callback(true); // allow all permissions for local files
+    }
+  });
+  session.defaultSession.setPermissionCheckHandler(() => true);
+
   // Load persisted settings
   settings = loadSettings();
   if (settings.autoHideOverlays !== undefined) autoHideOverlays = settings.autoHideOverlays;

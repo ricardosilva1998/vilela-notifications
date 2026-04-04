@@ -35,17 +35,22 @@ function startVoiceInput(opts) {
 
   // Global keyboard hook for push-to-talk
   uIOhook.on('keydown', (e) => {
-    if (pushToTalkKeyCode !== null && !pushToTalkIsMouseButton && e.keycode === pushToTalkKeyCode && !isKeyHeld) {
-      isKeyHeld = true;
-      if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
-        voiceChatWindow.webContents.send('voice-start-listening');
+    if (pushToTalkKeyCode !== null && !pushToTalkIsMouseButton && e.keycode === pushToTalkKeyCode) {
+      if (!isKeyHeld) {
+        isKeyHeld = true;
+        console.log('[VoiceInput] PTT keydown (start)');
+        if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
+          voiceChatWindow.webContents.send('voice-start-listening');
+        }
       }
+      // ignore repeated keydown events while held
     }
   });
 
   uIOhook.on('keyup', (e) => {
     if (pushToTalkKeyCode !== null && !pushToTalkIsMouseButton && e.keycode === pushToTalkKeyCode && isKeyHeld) {
       isKeyHeld = false;
+      console.log('[VoiceInput] PTT keyup (stop)');
       if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
         voiceChatWindow.webContents.send('voice-stop-listening');
       }

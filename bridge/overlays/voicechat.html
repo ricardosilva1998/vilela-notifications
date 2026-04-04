@@ -257,12 +257,14 @@
 
       recognition.onerror = (event) => {
         console.log('[VoiceChat] Recognition error:', event.error);
+        addError('Mic error: ' + event.error);
         if (event.error !== 'aborted') {
           setState('idle');
         }
       };
 
       recognition.onend = () => {
+        console.log('[VoiceChat] Recognition ended, state:', state, 'transcript:', pttTranscript);
         // When recognition ends (after stop() is called), process whatever we captured
         if (state === 'listening' && pttTranscript) {
           processTranscript(pttTranscript);
@@ -272,7 +274,15 @@
       };
 
       setState('listening');
-      recognition.start();
+      console.log('[VoiceChat] Starting recognition, lang:', recognition.lang);
+      try {
+        recognition.start();
+        console.log('[VoiceChat] Recognition started successfully');
+      } catch(e) {
+        console.log('[VoiceChat] Recognition start failed:', e.message);
+        addError('Failed to start mic: ' + e.message);
+        setState('idle');
+      }
     }
 
     function stopRecognition() {
@@ -380,11 +390,13 @@
 
     // ─── IPC from main process ──────────────────────────────
     ipcRenderer.on('voice-start-listening', () => {
-      if (state === 'confirming' || state === 'processing') return; // Don't interrupt confirmation or processing
+      console.log('[VoiceChat] IPC: voice-start-listening, current state:', state);
+      if (state === 'confirming' || state === 'processing') return;
       startRecognition();
     });
 
     ipcRenderer.on('voice-stop-listening', () => {
+      console.log('[VoiceChat] IPC: voice-stop-listening, current state:', state);
       stopRecognition();
     });
 
