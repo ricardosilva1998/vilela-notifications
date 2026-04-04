@@ -111,9 +111,13 @@
       } else if (!iracingConnected) {
         if (el) el.innerHTML = '<span class="status-dot waiting"></span> Waiting';
         if (dis) { dis.textContent = 'Waiting for iRacing...'; dis.style.display = 'flex'; }
+        // Clear demo data when iRacing disconnects — show empty state
+        document.getElementById('relative-body').innerHTML = '';
       } else {
         if (el) el.innerHTML = '<span class="status-dot connected"></span> Live';
         if (dis) dis.style.display = 'none';
+        // Clear demo data immediately when iRacing connects — real data will arrive shortly
+        document.getElementById('relative-body').innerHTML = '';
       }
     }
 

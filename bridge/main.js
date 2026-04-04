@@ -2,11 +2,16 @@ const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, screen } = require
 const path = require('path');
 const { startServer, stopServer } = require('./websocket');
 const { startTelemetry, stopTelemetry } = require('./telemetry');
+const { load: loadSettings, save: saveSettings } = require('./settings');
 
 let tray = null;
 let controlWindow = null;
 const overlayWindows = {};
 let overlaysLocked = false;
+let autoHideOverlays = true;
+
+// Persisted settings
+let settings = {};
 
 const OVERLAYS = [
   { id: 'standings', name: 'Standings', width: 360, height: 500 },
@@ -33,6 +38,11 @@ app.on('second-instance', () => {
 });
 
 app.on('ready', () => {
+  // Load persisted settings
+  settings = loadSettings();
+  if (settings.autoHideOverlays !== undefined) autoHideOverlays = settings.autoHideOverlays;
+  if (settings.overlaysLocked !== undefined) overlaysLocked = settings.overlaysLocked;
+
   try {
     // Try multiple icon paths (asar, extraResources, build dir)
     const iconPaths = [
@@ -68,11 +78,48 @@ app.on('ready', () => {
     if (controlWindow && !controlWindow.isDestroyed()) {
       controlWindow.webContents.send('iracing-status', status);
     }
+    // Auto-hide/show overlays based on iRacing connection
+    if (autoHideOverlays) {
+      if (status.iracing) {
+        Object.values(overlayWindows).forEach(w => { if (w && !w.isDestroyed()) w.show(); });
+      } else {
+        Object.values(overlayWindows).forEach(w => { if (w && !w.isDestroyed()) w.hide(); });
+      }
+    }
   });
 
   showControlWindow();
+
+  // Restore enabled overlays from settings
+  if (settings.enabledOverlays && Array.isArray(settings.enabledOverlays)) {
+    settings.enabledOverlays.forEach(id => createOverlayWindow(id));
+  }
+
   console.log('[Bridge] Started');
 });
+
+function persistSettings() {
+  settings.autoHideOverlays = autoHideOverlays;
+  settings.overlaysLocked = overlaysLocked;
+  settings.enabledOverlays = Object.keys(overlayWindows);
+  // Persist overlay positions/sizes
+  settings.overlayBounds = settings.overlayBounds || {};
+  Object.entries(overlayWindows).forEach(([id, win]) => {
+    if (win && !win.isDestroyed()) {
+      try { settings.overlayBounds[id] = win.getBounds(); } catch(e) {}
+    }
+  });
+  saveSettings(settings);
+}
+
+function saveOverlayPosition(overlayId, win) {
+  if (!win || win.isDestroyed()) return;
+  try {
+    if (!settings.overlayBounds) settings.overlayBounds = {};
+    settings.overlayBounds[overlayId] = win.getBounds();
+    persistSettings();
+  } catch(e) {}
+}
 
 function showControlWindow() {
   if (controlWindow && !controlWindow.isDestroyed()) {
@@ -83,7 +130,7 @@ function showControlWindow() {
 
   controlWindow = new BrowserWindow({
     width: 420,
-    height: 600,
+    height: 640,
     resizable: false,
     maximizable: false,
     title: 'Atleta Bridge',
@@ -108,11 +155,18 @@ function createOverlayWindow(overlayId) {
   const display = screen.getPrimaryDisplay();
   const { width: screenW } = display.workAreaSize;
 
+  // Restore saved bounds if available
+  const savedBounds = settings.overlayBounds && settings.overlayBounds[overlayId];
+  const x = savedBounds ? savedBounds.x : screenW - config.width - 20;
+  const y = savedBounds ? savedBounds.y : 20 + Object.keys(overlayWindows).length * 40;
+  const width = savedBounds ? savedBounds.width : config.width;
+  const height = savedBounds ? savedBounds.height : config.height;
+
   const win = new BrowserWindow({
-    width: config.width,
-    height: config.height,
-    x: screenW - config.width - 20,
-    y: 20 + Object.keys(overlayWindows).length * 40,
+    width,
+    height,
+    x,
+    y,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -142,21 +196,28 @@ function createOverlayWindow(overlayId) {
     win.setResizable(false);
   }
 
+  // Save position/size when moved or resized
+  win.on('moved', () => saveOverlayPosition(overlayId, win));
+  win.on('resized', () => saveOverlayPosition(overlayId, win));
+
   win.on('closed', () => {
     clearInterval(topInterval);
     delete overlayWindows[overlayId];
     if (controlWindow && !controlWindow.isDestroyed()) {
       controlWindow.webContents.send('overlay-closed', overlayId);
     }
+    persistSettings();
   });
 
   overlayWindows[overlayId] = win;
+  persistSettings();
 }
 
 function closeOverlayWindow(overlayId) {
   if (overlayWindows[overlayId]) {
     overlayWindows[overlayId].destroy();
     delete overlayWindows[overlayId];
+    persistSettings();
   }
 }
 
@@ -169,6 +230,7 @@ function setOverlaysLocked(locked) {
       win.webContents.send('lock-state', locked);
     }
   });
+  persistSettings();
 }
 
 ipcMain.on('toggle-overlay', (event, overlayId, enabled) => {
@@ -180,15 +242,22 @@ ipcMain.on('toggle-lock', (event, locked) => {
   setOverlaysLocked(locked);
 });
 
+ipcMain.on('toggle-autohide', (event, enabled) => {
+  autoHideOverlays = enabled;
+  persistSettings();
+});
+
 ipcMain.on('get-overlay-states', (event) => {
   const states = {};
   OVERLAYS.forEach(o => { states[o.id] = !!overlayWindows[o.id]; });
   event.reply('overlay-states', states);
   event.reply('lock-state', overlaysLocked);
+  event.reply('autohide-state', autoHideOverlays);
 });
 
 app.on('window-all-closed', () => {});
 app.on('before-quit', () => {
+  persistSettings();
   Object.keys(overlayWindows).forEach(closeOverlayWindow);
   stopTelemetry();
   stopServer();

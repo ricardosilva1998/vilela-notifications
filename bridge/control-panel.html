@@ -65,6 +65,10 @@
       🔓 Unlocked — Drag & Resize Overlays
     </button>
     <p style="font-size: 10px; color: #3a3a4e; text-align: center; margin-top: 6px;">Lock to make overlays click-through while driving</p>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#8b8a9e;margin-top:10px;cursor:pointer;">
+      <input type="checkbox" id="autohide-check" checked onchange="toggleAutoHide(this.checked)" style="accent-color:#9146ff;">
+      Auto-hide overlays when iRacing closes
+    </label>
   </div>
 
   <div class="footer">
@@ -111,6 +115,10 @@
       updateLockBtn();
     }
 
+    function toggleAutoHide(enabled) {
+      ipcRenderer.send('toggle-autohide', enabled);
+    }
+
     function updateLockBtn() {
       const btn = document.getElementById('lock-btn');
       if (locked) {
@@ -154,6 +162,11 @@
     ipcRenderer.on('lock-state', (event, isLocked) => {
       locked = isLocked;
       updateLockBtn();
+    });
+
+    ipcRenderer.on('autohide-state', (event, enabled) => {
+      const check = document.getElementById('autohide-check');
+      if (check) check.checked = enabled;
     });
 
     ipcRenderer.send('get-overlay-states');
