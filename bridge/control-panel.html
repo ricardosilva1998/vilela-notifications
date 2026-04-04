@@ -79,6 +79,12 @@
     </div>
   </div>
 
+  <div style="margin-top:10px; text-align:center;">
+    <button onclick="checkForUpdate()" style="padding:6px 14px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:transparent; color:#8b8a9e; font-size:11px; cursor:pointer;">
+      Check for Updates
+    </button>
+  </div>
+
   <div class="footer">
     <a href="https://atletanotifications.com" target="_blank">atletanotifications.com</a>
   </div>
@@ -215,8 +221,19 @@
       document.getElementById('update-btn').style.display = 'inline-block';
     });
 
+    function checkForUpdate() {
+      ipcRenderer.send('check-for-update');
+      document.getElementById('update-bar').style.display = 'block';
+      document.getElementById('update-text').textContent = 'Checking for updates...';
+      document.getElementById('update-btn').style.display = 'none';
+    }
+
     ipcRenderer.on('update-not-available', () => {
       updateState = 'idle';
+      document.getElementById('update-bar').style.display = 'block';
+      document.getElementById('update-text').textContent = 'You are on the latest version';
+      document.getElementById('update-btn').style.display = 'none';
+      setTimeout(() => { document.getElementById('update-bar').style.display = 'none'; }, 3000);
     });
 
     ipcRenderer.on('update-progress', (event, percent) => {

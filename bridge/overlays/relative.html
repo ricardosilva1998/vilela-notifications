@@ -75,7 +75,7 @@
     function licenseColor(lic) {
       if (!lic) return '#888';
       const letter = lic.charAt(0).toUpperCase();
-      return { A: '#00aa00', B: '#0077cc', C: '#ccaa00', D: '#cc6600', R: '#cc0000' }[letter] || '#888';
+      return { A: '#0077cc', B: '#00aa00', C: '#ccaa00', D: '#cc6600', R: '#cc0000' }[letter] || '#888';
     }
 
     function formatIR(ir) {
@@ -109,21 +109,31 @@
       const licStr = d.safetyRating || d.license || '';
       const irStr = formatIR(d.iRating);
       const classColor = d.carClassColor || '#fff';
+      const classLabel = d.carClass || '';
+      const carBrand = d.carMake || '';
       const disconnCls = d.disconnected ? ' disconnected' : '';
 
       const numCell = `<span style="background:${classColor};color:#000;padding:1px 4px;border-radius:3px;font-size:9px;font-weight:800;font-family:'JetBrains Mono',monospace;">${d.carNumber || ''}</span>`;
       const licCell = licStr
-        ? `<span class="license" style="color:${licColor}">${licStr}</span>`
-        : '<span class="license" style="color:#555">--</span>';
+        ? `<span style="background:${licColor};color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">${licStr}</span>`
+        : `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">--</span>`;
+      const irCell = `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">${irStr}</span>`;
+
+      let badgeLine = '';
+      if (classLabel) badgeLine += `<span class="class-badge" style="background:${classColor};color:#000;">${classLabel}</span>`;
+      if (carBrand) badgeLine += `<span style="font-size:8px;color:rgba(255,255,255,0.45);margin-left:4px;">${carBrand}</span>`;
+      const nameCell = badgeLine
+        ? `<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px">${isPlayerRow ? 'YOU' : (d.driverName || '')}</div><div style="margin-top:1px;">${badgeLine}</div>`
+        : `<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px">${isPlayerRow ? 'YOU' : (d.driverName || '')}</div>`;
 
       if (isPlayerRow) {
         return `<tr class="player-row">
           <td class="mono" style="font-weight:700">${pos}</td>
           <td class="flag">${flag}</td>
           <td>${numCell}</td>
-          <td style="overflow:hidden;text-overflow:ellipsis;max-width:80px">YOU</td>
+          <td>${nameCell}</td>
           <td>${licCell}</td>
-          <td class="irating">${irStr}</td>
+          <td>${irCell}</td>
           <td class="mono" style="font-size:10px">—</td>
         </tr>`;
       }
@@ -132,9 +142,9 @@
         <td class="mono" style="font-weight:700;color:rgba(255,255,255,0.7)">${pos}</td>
         <td class="flag">${flag}</td>
         <td>${numCell}</td>
-        <td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px">${d.driverName || ''}</td>
+        <td>${nameCell}</td>
         <td>${licCell}</td>
-        <td class="irating">${irStr}</td>
+        <td>${irCell}</td>
         <td class="mono ${gapClass}" style="font-size:10px">${gapStr}</td>
       </tr>`;
     }

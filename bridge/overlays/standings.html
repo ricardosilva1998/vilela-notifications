@@ -7,7 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; font-size: 11px; }
+    body { background: transparent; overflow-y: auto; max-height: calc(100vh - 40px); font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; font-size: 11px; }
     .overlay-panel { background: rgba(12,13,20,0.88); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; backdrop-filter: blur(12px); overflow: hidden; }
     .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); cursor: move; -webkit-app-region: drag; }
     .overlay-body { padding: 4px 0; }
@@ -62,7 +62,6 @@
   </div>
   <script>
     const BRIDGE_URL = 'ws://localhost:9100';
-    const MAX_ROWS = 15;
     let ws = null;
     let bridgeConnected = false;
     let iracingConnected = false;
@@ -83,7 +82,7 @@
     function licenseColor(lic) {
       if (!lic) return '#888';
       const letter = lic.charAt(0).toUpperCase();
-      return { A: '#00aa00', B: '#0077cc', C: '#ccaa00', D: '#cc6600', R: '#cc0000' }[letter] || '#888';
+      return { A: '#0077cc', B: '#00aa00', C: '#ccaa00', D: '#cc6600', R: '#cc0000' }[letter] || '#888';
     }
 
     function formatIR(ir) {
@@ -124,19 +123,12 @@
       });
     }
 
-    function buildStandingsRows(data, limit) {
+    function buildStandingsRows(data) {
       const sorted = sortAndRankStandings(data);
       const leaderBest = sorted.find(d => d.bestLap > 0)?.bestLap || null;
 
-      const playerIdx = sorted.findIndex(d => d.isPlayer);
-      let startIdx = 0;
-      if (sorted.length > limit && playerIdx >= 0) {
-        startIdx = Math.max(0, Math.min(playerIdx - Math.floor(limit / 2), sorted.length - limit));
-      }
-      const visible = sorted.slice(startIdx, startIdx + limit);
-
-      return visible.map((d, i) => {
-        const rank = startIdx + i + 1;
+      return sorted.map((d, i) => {
+        const rank = i + 1;
         const pos = d.classPosition > 0 ? d.classPosition : (d.position > 0 ? d.position : rank);
         const bestFormatted = formatLapTime(d.bestLap);
         const lastFormatted = formatLapTime(d.lastLap);
@@ -153,21 +145,27 @@
         const licColor = licenseColor(d.safetyRating || d.license);
         const irStr = formatIR(d.iRating);
         const classColor = d.carClassColor || '#fff';
-        const classLabel = d.carClass || d.carMake || '';
+        const classLabel = d.carClass || '';
+        const carBrand = d.carMake || '';
         const pitMark = d.inPit ? ' <span class="pit-indicator">PIT</span>' : '';
         const disconnCls = d.disconnected ? ' disconnected' : '';
 
         // Car number styled with class color background
         const numCell = `<span style="background:${classColor};color:#000;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:800;font-family:'JetBrains Mono',monospace;">${d.carNumber || ''}</span>`;
 
-        // Driver name + class badge below
-        const badgeCell = classLabel
-          ? `<div class="driver-name">${d.driverName || ''}${pitMark}</div><div style="margin-top:1px;"><span class="class-badge" style="background:${classColor};color:#000;">${classLabel}</span></div>`
+        // Driver name + class badge + car brand below
+        let badgeLine = '';
+        if (classLabel) badgeLine += `<span class="class-badge" style="background:${classColor};color:#000;">${classLabel}</span>`;
+        if (carBrand) badgeLine += `<span style="font-size:8px;color:rgba(255,255,255,0.45);margin-left:4px;">${carBrand}</span>`;
+        const badgeCell = badgeLine
+          ? `<div class="driver-name">${d.driverName || ''}${pitMark}</div><div style="margin-top:1px;">${badgeLine}</div>`
           : `<div class="driver-name">${d.driverName || ''}${pitMark}</div>`;
 
         const licCell = d.safetyRating || d.license
-          ? `<span class="license" style="color:${licColor}">${d.safetyRating || d.license}</span>`
-          : '<span class="license" style="color:#555">--</span>';
+          ? `<span style="background:${licColor};color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">${d.safetyRating || d.license}</span>`
+          : `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">--</span>`;
+
+        const irCell = `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">${irStr}</span>`;
 
         return `<tr class="${d.isPlayer ? 'player-row' : ''}${disconnCls}">
           <td class="mono" style="font-weight:700;color:rgba(255,255,255,0.7)">${pos}</td>
@@ -175,7 +173,7 @@
           <td>${numCell}</td>
           <td>${badgeCell}</td>
           <td>${licCell}</td>
-          <td class="irating">${irStr}</td>
+          <td>${irCell}</td>
           <td class="mono" style="font-size:10px">${bestFormatted}</td>
           <td class="mono" style="font-size:10px;color:rgba(255,255,255,0.55)">${lastFormatted}</td>
           <td class="mono" style="font-size:10px;color:rgba(255,255,255,0.45)">${gap}</td>
@@ -184,7 +182,7 @@
     }
 
     function renderDemoStandings() {
-      document.getElementById('standings-body').innerHTML = buildStandingsRows(demoStandings, MAX_ROWS);
+      document.getElementById('standings-body').innerHTML = buildStandingsRows(demoStandings);
     }
 
     renderDemoStandings();
@@ -232,7 +230,7 @@
     onData('standings', data => {
       if (!data || !data.length) return;
       if (!demoCleared) { demoCleared = true; }
-      document.getElementById('standings-body').innerHTML = buildStandingsRows(data, MAX_ROWS);
+      document.getElementById('standings-body').innerHTML = buildStandingsRows(data);
     });
 
     connectBridge(['standings']);
