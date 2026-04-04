@@ -1100,9 +1100,11 @@ router.get('/youtube-chatbot', async (req, res) => {
     } catch (e) {}
   }
 
+  const guilds = db.getGuildsForStreamer(req.streamer.id);
   res.render('youtube-chatbot-config', {
     streamer: req.streamer,
     commands,
+    guilds,
     ytPolling,
     ytLive,
     ytLiveTitle,
@@ -1117,6 +1119,7 @@ router.post('/youtube-chatbot', (req, res) => {
   const b = req.body;
   db.updateYoutubeChatbotConfig(req.streamer.id, {
     yt_chatbot_enabled: b.yt_chatbot_enabled ? 1 : 0,
+    yt_mod_enabled: b.yt_mod_enabled ? 1 : 0,
     yt_chat_superchat_enabled: b.yt_chat_superchat_enabled ? 1 : 0,
     yt_chat_member_enabled: b.yt_chat_member_enabled ? 1 : 0,
     yt_chat_giftmember_enabled: b.yt_chat_giftmember_enabled ? 1 : 0,

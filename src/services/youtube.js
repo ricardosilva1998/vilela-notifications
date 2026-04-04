@@ -294,4 +294,36 @@ async function getActiveBroadcast(accessToken) {
   };
 }
 
-module.exports = { getLatestVideos, checkLiveStatus, getVideoDetails, resolveChannelId, getChannelInfo, getLiveChatId, refreshYoutubeBotToken, sendYoutubeChatMessage, fetchLiveChatMessages, findActiveLiveStream, refreshStreamerYoutubeToken, getActiveBroadcast };
+async function deleteYoutubeChatMessage(messageId, accessToken) {
+  const res = await fetch(`https://www.googleapis.com/youtube/v3/liveChat/messages?id=${encodeURIComponent(messageId)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => '');
+    console.error(`[YouTube] deleteMessage failed (${res.status}):`, err.substring(0, 200));
+  }
+}
+
+async function banYoutubeChatUser(liveChatId, channelId, durationSeconds, accessToken) {
+  const body = {
+    snippet: {
+      liveChatId,
+      type: durationSeconds ? 'temporary' : 'permanent',
+      bannedUserDetails: { channelId },
+    },
+  };
+  if (durationSeconds) body.snippet.banDurationSeconds = durationSeconds;
+
+  const res = await fetch('https://www.googleapis.com/youtube/v3/liveChat/bans?part=snippet', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => '');
+    console.error(`[YouTube] banUser failed (${res.status}):`, err.substring(0, 200));
+  }
+}
+
+module.exports = { getLatestVideos, checkLiveStatus, getVideoDetails, resolveChannelId, getChannelInfo, getLiveChatId, refreshYoutubeBotToken, sendYoutubeChatMessage, fetchLiveChatMessages, findActiveLiveStream, refreshStreamerYoutubeToken, getActiveBroadcast, deleteYoutubeChatMessage, banYoutubeChatUser };

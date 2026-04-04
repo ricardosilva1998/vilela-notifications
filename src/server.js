@@ -13,6 +13,7 @@ const paymentRoutes = require('./routes/payment');
 const tipRoutes = require('./routes/tip');
 const overlayRoutes = require('./routes/overlay');
 const vtuberRoutes = require('./routes/vtuber');
+const syncRoutes = require('./routes/sync');
 // const customOverlayRoutes = require('./routes/customOverlays'); // DISABLED for now
 
 const app = express();
@@ -97,6 +98,7 @@ app.use('/tip', tipRoutes);
 app.use('/api', apiRoutes);
 app.use('/admin', adminRoutes);
 app.use('/vtuber', vtuberRoutes);
+app.use('/sync', syncRoutes);
 app.use('/overlay', overlayRoutes);
 
 // Language switch
@@ -124,6 +126,27 @@ function start() {
 
   // Check for expired subscriptions every hour
   setInterval(() => db.expireSubscriptions(), 60 * 60 * 1000);
+
+  // Daily data sync from prod (dev environment only)
+  if (config.app.syncSourceUrl && config.app.syncSecret) {
+    const { performSync } = require('./services/sync');
+
+    if (process.env.SYNC_ON_STARTUP === 'true') {
+      setTimeout(() => performSync(), 10_000);
+    }
+
+    // Schedule daily sync at 04:00 UTC
+    const now = new Date();
+    const next = new Date(now);
+    next.setUTCHours(4, 0, 0, 0);
+    if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
+    setTimeout(() => {
+      performSync();
+      setInterval(() => performSync(), 24 * 60 * 60 * 1000);
+    }, next - now);
+
+    console.log(`[Sync] Daily sync scheduled at 04:00 UTC (next: ${next.toISOString()})`);
+  }
 }
 
 module.exports = { start };

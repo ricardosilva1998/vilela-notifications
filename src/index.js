@@ -75,6 +75,7 @@ client.on('guildDelete', (guild) => {
 // Graceful shutdown
 function shutdown() {
   console.log('Shutting down...');
+  db.closeDb();
   client.destroy();
   process.exit(0);
 }

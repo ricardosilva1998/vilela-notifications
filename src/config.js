@@ -47,13 +47,15 @@ module.exports = {
     },
   },
   features: {
-    youtube: false,  // Set to true to re-enable YouTube integration
+    youtube: true,
   },
   app: {
     url: (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, ''),
     port: parseInt(process.env.PORT) || 3000,
     sessionSecret: process.env.SESSION_SECRET || 'change-me-in-production',
     adminPassword: process.env.ADMIN_PASSWORD || null,
+    syncSecret: process.env.SYNC_SECRET || null,
+    syncSourceUrl: process.env.SYNC_SOURCE_URL || null,
   },
   intervals: {
     twitchLive: parseInt(process.env.TWITCH_POLL_INTERVAL) || 60_000,

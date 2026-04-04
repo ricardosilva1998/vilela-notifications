@@ -96,11 +96,123 @@ function formatUptime(ms) {
 
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-// ─── Main handler ─────────────────────────────────────────────────────────────
+// ─── Platform-agnostic response generator ────────────────────────────────────
+// Returns { response: string } or null (if command not found/disabled/on cooldown)
+function getBuiltinResponse(commandName, args, streamer, displayName) {
+  const sid = streamer.id;
+
+  switch (commandName) {
+    case '8ball': {
+      if (!streamer.cmd_8ball_enabled) return null;
+      if (onCooldown(sid, '8ball')) return null;
+      const question = args.join(' ');
+      const answer = pick(EIGHT_BALL);
+      return { response: question ? `🎱 ${displayName} asks: "${question}" → ${answer}` : `🎱 ${answer}` };
+    }
+    case 'roll': {
+      if (!streamer.cmd_roll_enabled) return null;
+      if (onCooldown(sid, 'roll')) return null;
+      const max = parseInt(args[0]) || 20;
+      const result = Math.floor(Math.random() * max) + 1;
+      return { response: `🎲 ${displayName} rolled a ${result}! (1-${max})` };
+    }
+    case 'hug': {
+      if (!streamer.cmd_hug_enabled) return null;
+      if (onCooldown(sid, 'hug')) return null;
+      const target = args[0]?.replace('@', '') || 'themselves';
+      return { response: `🤗 ${displayName} gives ${target} a big warm hug!` };
+    }
+    case 'slap': {
+      if (!streamer.cmd_slap_enabled) return null;
+      if (onCooldown(sid, 'slap')) return null;
+      const slapTarget = args[0]?.replace('@', '') || 'the air';
+      return { response: `${displayName} slaps ${slapTarget} with ${pick(SLAP_OBJECTS)}!` };
+    }
+    case 'love': {
+      if (!streamer.cmd_love_enabled) return null;
+      if (onCooldown(sid, 'love')) return null;
+      const loveTarget = args[0]?.replace('@', '');
+      if (!loveTarget) return { response: `Usage: !love @username` };
+      const percent = Math.floor(Math.random() * 101);
+      const hearts = percent > 75 ? '💕💕💕' : percent > 50 ? '💕💕' : percent > 25 ? '💕' : '💔';
+      return { response: `${hearts} There is ${percent}% love between ${displayName} and ${loveTarget}!` };
+    }
+    case 'rps': {
+      if (!streamer.cmd_rps_enabled) return null;
+      if (onCooldown(sid, 'rps')) return null;
+      const choices = ['rock', 'paper', 'scissors'];
+      const emojis = { rock: '🪨', paper: '📄', scissors: '✂️' };
+      const userChoice = (args[0] || '').toLowerCase();
+      if (!choices.includes(userChoice)) return { response: `Usage: !rps rock/paper/scissors` };
+      const botChoice = pick(choices);
+      let result;
+      if (userChoice === botChoice) result = "It's a tie!";
+      else if (
+        (userChoice === 'rock' && botChoice === 'scissors') ||
+        (userChoice === 'paper' && botChoice === 'rock') ||
+        (userChoice === 'scissors' && botChoice === 'paper')
+      ) result = `${displayName} wins! 🎉`;
+      else result = `Bot wins! 😎`;
+      return { response: `${displayName}: ${emojis[userChoice]} vs Bot: ${emojis[botChoice]} — ${result}` };
+    }
+    case 'coinflip':
+    case 'flip': {
+      if (!streamer.cmd_coinflip_enabled) return null;
+      if (onCooldown(sid, 'coinflip')) return null;
+      return { response: `🪙 ${displayName} flipped a coin: ${Math.random() < 0.5 ? 'Heads' : 'Tails'}!` };
+    }
+    case 'quote': {
+      if (!streamer.cmd_quote_enabled) return null;
+      if (onCooldown(sid, 'quote')) return null;
+      return { response: pick(QUOTES) };
+    }
+    case 'roast': {
+      if (!streamer.cmd_roast_enabled) return null;
+      if (onCooldown(sid, 'roast')) return null;
+      const roastTarget = args[0]?.replace('@', '') || displayName;
+      return { response: `${roastTarget}, ${pick(ROASTS)}` };
+    }
+    default:
+      return null;
+  }
+}
+
+// ─── Get available commands list ──────────────────────────────────────────────
+function getCommandsList(streamer, platform) {
+  const cmds = [];
+  // Twitch-only commands
+  if (platform !== 'youtube') {
+    if (streamer.cmd_followage_enabled) cmds.push('!followage');
+    if (streamer.cmd_subage_enabled) cmds.push('!subage');
+    if (streamer.cmd_uptime_enabled) cmds.push('!uptime');
+    if (streamer.cmd_accountage_enabled) cmds.push('!accountage');
+  }
+  // Platform-agnostic commands
+  if (streamer.cmd_8ball_enabled) cmds.push('!8ball');
+  if (streamer.cmd_roll_enabled) cmds.push('!roll');
+  if (streamer.cmd_hug_enabled) cmds.push('!hug');
+  if (streamer.cmd_slap_enabled) cmds.push('!slap');
+  if (streamer.cmd_love_enabled) cmds.push('!love');
+  if (streamer.cmd_rps_enabled) cmds.push('!rps');
+  if (streamer.cmd_coinflip_enabled) cmds.push('!coinflip');
+  if (streamer.cmd_quote_enabled) cmds.push('!quote');
+  if (streamer.cmd_roast_enabled) cmds.push('!roast');
+  cmds.push('!song');
+  // Custom commands from DB
+  try {
+    const db = require('../db');
+    const custom = db.getChatCommands(streamer.id);
+    custom.filter(c => c.enabled).forEach(c => cmds.push('!' + c.command));
+  } catch (e) {}
+  return cmds;
+}
+
+// ─── Main Twitch handler (uses getBuiltinResponse internally) ─────────────────
 async function handleBuiltinCommand(client, channel, tags, commandName, args, streamer) {
   const name = tags['display-name'] || tags.username;
   const sid = streamer.id;
 
+  // Twitch-only commands (require Twitch API)
   switch (commandName) {
     case 'followage': {
       if (!streamer.cmd_followage_enabled) return false;
@@ -119,12 +231,10 @@ async function handleBuiltinCommand(client, channel, tags, commandName, args, st
       }
       return true;
     }
-
     case 'subage': {
       if (!streamer.cmd_subage_enabled) return false;
       if (onCooldown(sid, 'subage')) return true;
       if (tags.subscriber) {
-        const badges = tags.badges || {};
         const months = tags['badge-info']?.subscriber || '0';
         client.say(channel, `🏆 ${name} has been subscribed for ${months} month${months !== '1' ? 's' : ''}!`).catch(() => {});
       } else {
@@ -132,7 +242,6 @@ async function handleBuiltinCommand(client, channel, tags, commandName, args, st
       }
       return true;
     }
-
     case 'uptime': {
       if (!streamer.cmd_uptime_enabled) return false;
       if (onCooldown(sid, 'uptime')) return true;
@@ -150,7 +259,6 @@ async function handleBuiltinCommand(client, channel, tags, commandName, args, st
       }
       return true;
     }
-
     case 'accountage': {
       if (!streamer.cmd_accountage_enabled) return false;
       if (onCooldown(sid, 'accountage')) return true;
@@ -168,143 +276,27 @@ async function handleBuiltinCommand(client, channel, tags, commandName, args, st
       }
       return true;
     }
-
-    case '8ball': {
-      if (!streamer.cmd_8ball_enabled) return false;
-      if (onCooldown(sid, '8ball')) return true;
-      const question = args.join(' ');
-      const answer = pick(EIGHT_BALL);
-      client.say(channel, question
-        ? `🎱 ${name} asks: "${question}" → ${answer}`
-        : `🎱 ${answer}`
-      ).catch(() => {});
-      return true;
-    }
-
-    case 'roll': {
-      if (!streamer.cmd_roll_enabled) return false;
-      if (onCooldown(sid, 'roll')) return true;
-      const max = parseInt(args[0]) || 20;
-      const result = Math.floor(Math.random() * max) + 1;
-      client.say(channel, `🎲 ${name} rolled a ${result}! (1-${max})`).catch(() => {});
-      return true;
-    }
-
-    case 'hug': {
-      if (!streamer.cmd_hug_enabled) return false;
-      if (onCooldown(sid, 'hug')) return true;
-      const target = args[0]?.replace('@', '') || 'themselves';
-      client.say(channel, `🤗 ${name} gives ${target} a big warm hug!`).catch(() => {});
-      return true;
-    }
-
-    case 'slap': {
-      if (!streamer.cmd_slap_enabled) return false;
-      if (onCooldown(sid, 'slap')) return true;
-      const slapTarget = args[0]?.replace('@', '') || 'the air';
-      const object = pick(SLAP_OBJECTS);
-      client.say(channel, `${name} slaps ${slapTarget} with ${object}!`).catch(() => {});
-      return true;
-    }
-
-    case 'love': {
-      if (!streamer.cmd_love_enabled) return false;
-      if (onCooldown(sid, 'love')) return true;
-      const loveTarget = args[0]?.replace('@', '');
-      if (!loveTarget) {
-        client.say(channel, `Usage: !love @username`).catch(() => {});
-      } else {
-        const percent = Math.floor(Math.random() * 101);
-        const hearts = percent > 75 ? '💕💕💕' : percent > 50 ? '💕💕' : percent > 25 ? '💕' : '💔';
-        client.say(channel, `${hearts} There is ${percent}% love between ${name} and ${loveTarget}!`).catch(() => {});
-      }
-      return true;
-    }
-
-    case 'rps': {
-      if (!streamer.cmd_rps_enabled) return false;
-      if (onCooldown(sid, 'rps')) return true;
-      const choices = ['rock', 'paper', 'scissors'];
-      const emojis = { rock: '🪨', paper: '📄', scissors: '✂️' };
-      const userChoice = (args[0] || '').toLowerCase();
-      if (!choices.includes(userChoice)) {
-        client.say(channel, `Usage: !rps rock/paper/scissors`).catch(() => {});
-        return true;
-      }
-      const botChoice = pick(choices);
-      let result;
-      if (userChoice === botChoice) result = "It's a tie!";
-      else if (
-        (userChoice === 'rock' && botChoice === 'scissors') ||
-        (userChoice === 'paper' && botChoice === 'rock') ||
-        (userChoice === 'scissors' && botChoice === 'paper')
-      ) result = `${name} wins! 🎉`;
-      else result = `Bot wins! 😎`;
-      client.say(channel, `${name}: ${emojis[userChoice]} vs Bot: ${emojis[botChoice]} — ${result}`).catch(() => {});
-      return true;
-    }
-
-    case 'coinflip':
-    case 'flip': {
-      if (!streamer.cmd_coinflip_enabled) return false;
-      if (onCooldown(sid, 'coinflip')) return true;
-      const side = Math.random() < 0.5 ? 'Heads' : 'Tails';
-      client.say(channel, `🪙 ${name} flipped a coin: ${side}!`).catch(() => {});
-      return true;
-    }
-
-    case 'quote': {
-      if (!streamer.cmd_quote_enabled) return false;
-      if (onCooldown(sid, 'quote')) return true;
-      client.say(channel, pick(QUOTES)).catch(() => {});
-      return true;
-    }
-
-    case 'roast': {
-      if (!streamer.cmd_roast_enabled) return false;
-      if (onCooldown(sid, 'roast')) return true;
-      const roastTarget = args[0]?.replace('@', '') || name;
-      client.say(channel, `${roastTarget}, ${pick(ROASTS)}`).catch(() => {});
-      return true;
-    }
-
     case 'commands':
     case 'cmds':
     case 'help': {
       if (onCooldown(sid, 'commands')) return true;
-      const cmds = [];
-      // Built-in commands
-      if (streamer.cmd_followage_enabled) cmds.push('!followage');
-      if (streamer.cmd_subage_enabled) cmds.push('!subage');
-      if (streamer.cmd_uptime_enabled) cmds.push('!uptime');
-      if (streamer.cmd_accountage_enabled) cmds.push('!accountage');
-      if (streamer.cmd_8ball_enabled) cmds.push('!8ball');
-      if (streamer.cmd_roll_enabled) cmds.push('!roll');
-      if (streamer.cmd_hug_enabled) cmds.push('!hug');
-      if (streamer.cmd_slap_enabled) cmds.push('!slap');
-      if (streamer.cmd_love_enabled) cmds.push('!love');
-      if (streamer.cmd_rps_enabled) cmds.push('!rps');
-      if (streamer.cmd_coinflip_enabled) cmds.push('!coinflip');
-      if (streamer.cmd_quote_enabled) cmds.push('!quote');
-      if (streamer.cmd_roast_enabled) cmds.push('!roast');
-      // Song command (always available if chatbot is on)
-      cmds.push('!song');
-      // Custom commands from DB
-      try {
-        const db = require('../db');
-        const custom = db.getChatCommands(sid);
-        custom.filter(c => c.enabled).forEach(c => cmds.push('!' + c.command));
-      } catch (e) {}
+      const cmds = getCommandsList(streamer, 'twitch');
       client.say(channel, cmds.length > 0
         ? `Available commands: ${cmds.join(', ')}`
         : 'No commands available.'
       ).catch(() => {});
       return true;
     }
-
-    default:
-      return false;
   }
+
+  // Platform-agnostic commands
+  const result = getBuiltinResponse(commandName, args, streamer, name);
+  if (result) {
+    client.say(channel, result.response).catch(() => {});
+    return true;
+  }
+
+  return false;
 }
 
-module.exports = { handleBuiltinCommand };
+module.exports = { handleBuiltinCommand, getBuiltinResponse, getCommandsList };

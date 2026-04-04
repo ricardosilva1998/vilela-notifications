@@ -2,6 +2,8 @@ const config = require('../config');
 const db = require('../db');
 const bus = require('./overlayBus');
 const { refreshYoutubeBotToken, sendYoutubeChatMessage, fetchLiveChatMessages } = require('./youtube');
+const { getBuiltinResponse, getCommandsList } = require('./builtinCommands');
+const { moderateYoutubeMessage, grantYoutubePermit } = require('./youtubeModeration');
 
 let botAccessToken = null;
 const activePollers = new Map(); // streamerId -> { liveChatId, pageToken, timer }
@@ -24,7 +26,7 @@ setInterval(async () => {
   }
 }, 50 * 60 * 1000);
 
-function handleChatMessage(streamerId, item) {
+async function handleChatMessage(streamerId, item) {
   const type = item.snippet?.type;
   const authorName = item.authorDetails?.displayName || 'Unknown';
 
@@ -86,37 +88,91 @@ function handleChatMessage(streamerId, item) {
 
     case 'textMessageEvent': {
       const message = item.snippet.textMessageDetails?.messageText || '';
+      const poller = activePollers.get(streamerId);
+      if (!poller) return;
+
+      // Run moderation before processing commands
+      try {
+        const token = await ensureBotToken();
+        if (token) {
+          const { moderated } = await moderateYoutubeMessage(streamerId, item, poller.liveChatId, token);
+          if (moderated) return;
+        }
+      } catch (e) {
+        console.error(`[YT Chat] Moderation error:`, e.message);
+      }
+
       if (!message.startsWith('!')) return;
 
-      const commandName = message.split(' ')[0].substring(1).toLowerCase();
-      const cooldownKey = `${streamerId}:${commandName}`;
-      const now = Date.now();
-      const lastUsed = cooldowns.get(cooldownKey) || 0;
+      const parts = message.split(' ');
+      const commandName = parts[0].substring(1).toLowerCase();
+      const args = parts.slice(1);
+      const streamer = db.getStreamerById(streamerId);
+      if (!streamer) return;
 
-      if (commandName === 'song') {
-        const streamer = db.getStreamerById(streamerId);
-        if (streamer) {
-          const { getCurrentlyPlaying } = require('./spotify');
-          getCurrentlyPlaying(streamer).then(result => {
-            let msg;
-            switch (result.status) {
-              case 'playing': msg = `🎵 Now playing: ${result.track} by ${result.artist}`; break;
-              case 'paused': msg = `⏸️ Paused: ${result.track} by ${result.artist}`; break;
-              case 'nothing_playing': msg = `🔇 Nothing playing on Spotify right now`; break;
-              default: msg = null;
+      // !permit command (moderator/owner only)
+      if (commandName === 'permit') {
+        const authorDetails = item.authorDetails || {};
+        if (authorDetails.isChatOwner || authorDetails.isChatModerator) {
+          const target = args[0]?.replace('@', '');
+          if (target) {
+            const permitDuration = streamer.mod_link_permit_seconds || 60;
+            const granted = grantYoutubePermit(streamerId, target, permitDuration);
+            if (granted) {
+              const token = await ensureBotToken();
+              if (token) sendYoutubeChatMessage(poller.liveChatId, `${target} can post links for ${permitDuration} seconds.`, token);
             }
-            if (msg) {
-              const poller = activePollers.get(streamerId);
-              if (poller) {
-                ensureBotToken().then(token => {
-                  if (token) sendYoutubeChatMessage(poller.liveChatId, msg, token);
-                });
-              }
-            }
-          }).catch(() => {});
+          }
         }
         return;
       }
+
+      // !song command
+      if (commandName === 'song') {
+        try {
+          const { getCurrentlyPlaying } = require('./spotify');
+          const result = await getCurrentlyPlaying(streamer);
+          let msg;
+          switch (result.status) {
+            case 'playing': msg = `🎵 Now playing: ${result.track} by ${result.artist}`; break;
+            case 'paused': msg = `⏸️ Paused: ${result.track} by ${result.artist}`; break;
+            case 'nothing_playing': msg = `🔇 Nothing playing on Spotify right now`; break;
+            default: msg = null;
+          }
+          if (msg) {
+            const token = await ensureBotToken();
+            if (token) sendYoutubeChatMessage(poller.liveChatId, msg, token);
+          }
+        } catch (e) {}
+        return;
+      }
+
+      // !commands / !cmds / !help
+      if (commandName === 'commands' || commandName === 'cmds' || commandName === 'help') {
+        const cooldownKey = `${streamerId}:commands`;
+        const now = Date.now();
+        if (now - (cooldowns.get(cooldownKey) || 0) < 5000) return;
+        cooldowns.set(cooldownKey, now);
+
+        const cmds = getCommandsList(streamer, 'youtube');
+        const msg = cmds.length > 0 ? `Available commands: ${cmds.join(', ')}` : 'No commands available.';
+        const token = await ensureBotToken();
+        if (token) sendYoutubeChatMessage(poller.liveChatId, msg, token);
+        return;
+      }
+
+      // Built-in fun commands
+      const builtinResult = getBuiltinResponse(commandName, args, streamer, authorName);
+      if (builtinResult) {
+        const token = await ensureBotToken();
+        if (token) sendYoutubeChatMessage(poller.liveChatId, builtinResult.response, token);
+        return;
+      }
+
+      // Custom commands
+      const cooldownKey = `${streamerId}:${commandName}`;
+      const now = Date.now();
+      const lastUsed = cooldowns.get(cooldownKey) || 0;
 
       const cmd = db.getChatCommand(streamerId, commandName);
       if (!cmd) return;
@@ -125,12 +181,8 @@ function handleChatMessage(streamerId, item) {
       cooldowns.set(cooldownKey, now);
       console.log(`[YT Chat] Command !${commandName} from ${authorName}`);
 
-      const poller = activePollers.get(streamerId);
-      if (poller) {
-        ensureBotToken().then(token => {
-          if (token) sendYoutubeChatMessage(poller.liveChatId, cmd.response, token);
-        });
-      }
+      const token = await ensureBotToken();
+      if (token) sendYoutubeChatMessage(poller.liveChatId, cmd.response, token);
       break;
     }
   }

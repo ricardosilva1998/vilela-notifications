@@ -2208,7 +2208,7 @@ function updateChatbotConfig(streamerId, config) {
 }
 
 const YT_CHATBOT_COLUMNS = new Set([
-  'yt_chatbot_enabled',
+  'yt_chatbot_enabled', 'yt_mod_enabled',
   'yt_chat_superchat_enabled', 'yt_chat_member_enabled', 'yt_chat_giftmember_enabled',
   'yt_chat_superchat_template', 'yt_chat_member_template', 'yt_chat_giftmember_template',
   'yt_overlay_superchat_enabled', 'yt_overlay_member_enabled', 'yt_overlay_giftmember_enabled',
@@ -2732,6 +2732,24 @@ try {
   }
 } catch {}
 
+// Migration: Add yt_mod_enabled to streamers
+try {
+  const cols = db.pragma('table_info(streamers)').map(c => c.name);
+  if (!cols.includes('yt_mod_enabled')) {
+    db.exec('ALTER TABLE streamers ADD COLUMN yt_mod_enabled INTEGER DEFAULT 0');
+    console.log('[DB] Added yt_mod_enabled column to streamers');
+  }
+} catch {}
+
+// Migration: Add platform column to moderation_log
+try {
+  const cols = db.pragma('table_info(moderation_log)').map(c => c.name);
+  if (!cols.includes('platform')) {
+    db.exec("ALTER TABLE moderation_log ADD COLUMN platform TEXT DEFAULT 'twitch'");
+    console.log('[DB] Added platform column to moderation_log');
+  }
+} catch {}
+
 // Seed: Bundled VTuber models
 {
   const existing = db.prepare('SELECT filename FROM vtuber_models WHERE is_bundled = 1').all().map(r => r.filename);
@@ -2927,8 +2945,8 @@ function deleteCustomOverlay(id, streamerId) {
 }
 
 // Moderation Log
-function addModLogEntry(streamerId, username, userId, action, reason, messageText) {
-  db.prepare('INSERT INTO moderation_log (streamer_id, username, user_id, action, reason, message_text) VALUES (?, ?, ?, ?, ?, ?)').run(streamerId, username, userId, action, reason, messageText);
+function addModLogEntry(streamerId, username, userId, action, reason, messageText, platform) {
+  db.prepare('INSERT INTO moderation_log (streamer_id, username, user_id, action, reason, message_text, platform) VALUES (?, ?, ?, ?, ?, ?, ?)').run(streamerId, username, userId, action, reason, messageText, platform || 'twitch');
 }
 
 function getModLog(streamerId, limit = 100) {
@@ -3214,4 +3232,6 @@ module.exports = {
   addVtuberModel,
   deleteVtuberModel,
   selectVtuberModel,
+  closeDb() { db.close(); },
+  backup(dest) { return db.backup(dest); },
 };
