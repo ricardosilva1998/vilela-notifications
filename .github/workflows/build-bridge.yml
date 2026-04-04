@@ -37,20 +37,20 @@ jobs:
           $pkg | ConvertTo-Json -Depth 10 | Set-Content package.json
           Write-Host "Version set to 1.0.${{ github.run_number }}"
 
-      - name: Install Windows 10 SDK
+      - name: Install Windows SDK via winget
         shell: pwsh
         run: |
-          $url = "https://go.microsoft.com/fwlink/?linkid=2272610"
-          $installer = "$env:TEMP\winsdksetup.exe"
-          Invoke-WebRequest -Uri $url -OutFile $installer
-          Start-Process -FilePath $installer -ArgumentList '/features', 'OptionId.DesktopCPPx64', '/quiet', '/norestart' -Wait
-          Write-Host "Windows 10 SDK installed"
+          winget install Microsoft.WindowsSDK.10.0.22621 --accept-source-agreements --accept-package-agreements --silent
+          Write-Host "Windows SDK installed via winget"
+        continue-on-error: true
 
-      - name: Install dependencies
+      - name: Install dependencies with native compilation
         working-directory: bridge
         run: npm install
+        env:
+          npm_config_msvs_version: '2022'
 
-      - name: Build Windows installer (rebuilds native addons for Electron)
+      - name: Build Windows installer (rebuilds for Electron)
         working-directory: bridge
         run: npx electron-builder --win
         env:
