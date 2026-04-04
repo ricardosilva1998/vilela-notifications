@@ -2709,6 +2709,45 @@ db.exec(`
   )
 `);
 
+// Migration: VTuber models table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS vtuber_models (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    streamer_id INTEGER,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    is_bundled INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (streamer_id) REFERENCES streamers(id)
+  )
+`);
+
+// Migration: Add vtuber_model_id to streamers
+try {
+  const cols = db.pragma('table_info(streamers)').map(c => c.name);
+  if (!cols.includes('vtuber_model_id')) {
+    db.exec('ALTER TABLE streamers ADD COLUMN vtuber_model_id INTEGER REFERENCES vtuber_models(id)');
+    console.log('[DB] Added vtuber_model_id column to streamers');
+  }
+} catch {}
+
+// Seed: Bundled VTuber models
+{
+  const existing = db.prepare('SELECT filename FROM vtuber_models WHERE is_bundled = 1').all().map(r => r.filename);
+  const bundled = [
+    { name: 'AvatarSample_A', category: 'anime', filename: 'AvatarSample_A.vrm' },
+    { name: 'AvatarSample_B', category: 'anime', filename: 'AvatarSample_B.vrm' },
+  ];
+  const insert = db.prepare('INSERT INTO vtuber_models (streamer_id, name, category, filename, is_bundled) VALUES (NULL, ?, ?, ?, 1)');
+  for (const m of bundled) {
+    if (!existing.includes(m.filename)) {
+      insert.run(m.name, m.category, m.filename);
+      console.log(`[DB] Seeded bundled VTuber model: ${m.name}`);
+    }
+  }
+}
+
 function getSponsorImages(streamerId) {
   return db.prepare('SELECT * FROM sponsor_images WHERE streamer_id = ? ORDER BY sort_order, id').all(streamerId);
 }
@@ -2949,6 +2988,28 @@ function cleanupOldOverlayEvents() {
   if (result.changes > 0) console.log(`[DB] Cleaned up ${result.changes} old overlay events`);
 }
 
+// --- VTuber Models ---
+
+function getVtuberModels(streamerId) {
+  return db.prepare('SELECT * FROM vtuber_models WHERE is_bundled = 1 OR streamer_id = ? ORDER BY is_bundled DESC, name').all(streamerId);
+}
+
+function getVtuberModel(id) {
+  return db.prepare('SELECT * FROM vtuber_models WHERE id = ?').get(id);
+}
+
+function addVtuberModel(streamerId, name, category, filename) {
+  return db.prepare('INSERT INTO vtuber_models (streamer_id, name, category, filename, is_bundled) VALUES (?, ?, ?, ?, 0)').run(streamerId, name, category, filename);
+}
+
+function deleteVtuberModel(id, streamerId) {
+  return db.prepare('DELETE FROM vtuber_models WHERE id = ? AND streamer_id = ? AND is_bundled = 0').run(id, streamerId);
+}
+
+function selectVtuberModel(streamerId, modelId) {
+  db.prepare('UPDATE streamers SET vtuber_model_id = ? WHERE id = ?').run(modelId, streamerId);
+}
+
 module.exports = {
   db,
   getStreamerByDiscordId,
@@ -3148,4 +3209,9 @@ module.exports = {
   getIracingOverlaySettings,
   getIracingOverlaySetting,
   upsertIracingOverlaySetting,
+  getVtuberModels,
+  getVtuberModel,
+  addVtuberModel,
+  deleteVtuberModel,
+  selectVtuberModel,
 };
