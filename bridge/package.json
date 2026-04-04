@@ -34,7 +34,8 @@
       "allowToChangeInstallationDirectory": false,
       "allowElevation": true,
       "runAfterFinish": true,
-      "deleteAppDataOnUninstall": false
+      "deleteAppDataOnUninstall": false,
+      "include": "installer.nsh"
     }
   }
 }
