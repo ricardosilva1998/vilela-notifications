@@ -11,10 +11,10 @@
   },
   "dependencies": {
     "ws": "^8.16.0",
-    "node-irsdk": "^2.1.0"
+    "irsdk-node": "^1.0.0"
   },
   "devDependencies": {
-    "electron": "^22.0.0",
+    "electron": "^28.0.0",
     "electron-builder": "^24.0.0"
   },
   "build": {
