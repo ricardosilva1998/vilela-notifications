@@ -114,17 +114,40 @@ function startPolling(ir, VARS) {
         log('[Debug] CarIdx VARS: ' + carIdxKeys.join(', '));
         // Try getting data with a few possible key formats
         try {
-          const testKeys = ['FUEL_LEVEL', 'FuelLevel', 'fuelLevel', 'Speed', 'SPEED', 'speed'];
-          for (const k of testKeys) {
-            const val = VARS[k] !== undefined ? ir.get(VARS[k]) : undefined;
-            log('[Debug] VARS.' + k + ' = ' + JSON.stringify(VARS[k]) + ' → ir.get() = ' + JSON.stringify(val));
+          // Log key telemetry values
+          const importantVars = ['FUEL_LEVEL', 'FUEL_LEVEL_PCT', 'FUEL_USE_PER_HOUR', 'SPEED', 'LAP', 'LAP_COMPLETED',
+            'SESSION_LAPS_REMAIN', 'SESSION_LAPS_REMAIN_EX', 'WIND_DIR', 'WIND_VEL', 'YAW',
+            'CAR_LEFT_RIGHT', 'PLAYER_CAR_POSITION', 'PLAYER_CAR_CLASS_POSITION'];
+          for (const k of importantVars) {
+            if (VARS[k] !== undefined) {
+              const val = ir.get(VARS[k]);
+              log('[Debug] ' + k + ' (' + VARS[k] + ') = ' + JSON.stringify(val));
+            }
           }
-          // Try getSessionInfo
+          // Log CarIdx arrays (first 5 entries to see the pattern)
+          const carIdxVars = ['CAR_IDX_POSITION', 'CAR_IDX_CLASS_POSITION', 'CAR_IDX_LAP_COMPLETED',
+            'CAR_IDX_BEST_LAP_TIME', 'CAR_IDX_LAST_LAP_TIME', 'CAR_IDX_ON_PIT_ROAD', 'CAR_IDX_EST_TIME'];
+          for (const k of carIdxVars) {
+            if (VARS[k] !== undefined) {
+              const val = ir.get(VARS[k]);
+              const preview = Array.isArray(val) ? val.slice(0, 10) : val;
+              log('[Debug] ' + k + ' (' + VARS[k] + ') [first 10] = ' + JSON.stringify(preview));
+            }
+          }
+          // Session info
           const si = ir.getSessionInfo?.();
           log('[Debug] getSessionInfo type: ' + typeof si);
           if (si) {
             log('[Debug] SessionInfo keys: ' + Object.keys(si).join(', '));
-            if (si.DriverInfo) log('[Debug] DriverInfo.Drivers count: ' + (si.DriverInfo.Drivers?.length || 0));
+            if (si.DriverInfo) {
+              log('[Debug] DriverInfo.DriverCarIdx: ' + si.DriverInfo.DriverCarIdx);
+              log('[Debug] DriverInfo.Drivers count: ' + (si.DriverInfo.Drivers?.length || 0));
+              // Log first 3 drivers
+              (si.DriverInfo.Drivers || []).slice(0, 3).forEach((d, i) => {
+                log('[Debug] Driver[' + i + ']: CarIdx=' + d.CarIdx + ' Name=' + d.UserName + ' #' + d.CarNumber);
+              });
+            }
+            if (si.WeekendInfo) log('[Debug] Track: ' + si.WeekendInfo.TrackDisplayName);
           }
         } catch(e) { log('[Debug] Error: ' + e.message); }
       }
