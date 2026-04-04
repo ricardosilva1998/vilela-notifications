@@ -644,31 +644,58 @@
       <span style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px;">BETA</span>
     </div>
 
+    <!-- Info Card -->
     <div class="card" style="padding: 16px; margin-bottom: 16px;">
       <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px;">
-        Track your face with your webcam and display an animated avatar on your stream via OBS Browser Source. Choose between different characters — head rotation, mouth, and eye tracking included.
+        Track your face with your webcam and display an animated 3D avatar on your stream via OBS Browser Source.
       </p>
-      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
         <div style="background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 12px; font-size: 12px; color: var(--text-secondary);">
-          <strong style="color: var(--text-primary);">1.</strong> Start the tracker below
+          <strong style="color: var(--text-primary);">1.</strong> Pick a model below
         </div>
         <div style="background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 12px; font-size: 12px; color: var(--text-secondary);">
-          <strong style="color: var(--text-primary);">2.</strong> Allow camera access
+          <strong style="color: var(--text-primary);">2.</strong> Launch tracker &amp; allow camera
         </div>
         <div style="background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 12px; font-size: 12px; color: var(--text-secondary);">
-          <strong style="color: var(--text-primary);">3.</strong> In OBS: add Browser Source → <code style="background: var(--bg-hover); padding: 1px 5px; border-radius: 3px; font-size: 11px;">http://localhost:5173?mode=stream</code>
+          <strong style="color: var(--text-primary);">3.</strong> Copy OBS URL &amp; add as Browser Source
         </div>
       </div>
     </div>
 
+    <!-- Model Selector Card -->
+    <div class="card" style="padding: 0; margin-bottom: 16px; overflow: hidden;">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border);">
+        <span style="font-size: 13px; font-weight: 600; color: var(--text-primary);">Choose Avatar</span>
+        <label style="background: rgba(102,126,234,0.15); border: 1px solid rgba(102,126,234,0.3); color: #667eea; padding: 5px 12px; border-radius: var(--radius-sm); font-size: 11px; cursor: pointer; font-weight: 600; font-family: var(--font-display);">
+          + Upload VRM
+          <input type="file" accept=".vrm" id="vtuber-upload-input" style="display: none;" onchange="uploadVtuberModel(this)">
+        </label>
+      </div>
+
+      <!-- Category Filter Pills -->
+      <div id="vtuber-category-pills" style="display: flex; gap: 6px; padding: 12px 16px 8px; flex-wrap: wrap;">
+        <button class="vtuber-cat-pill active" data-category="all" onclick="filterVtuberCategory('all', this)" style="background: #667eea; color: white; border: none; padding: 3px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; font-weight: 600; font-family: var(--font-display);">All</button>
+        <button class="vtuber-cat-pill" data-category="anime" onclick="filterVtuberCategory('anime', this)" style="background: var(--bg-hover); color: var(--text-muted); border: none; padding: 3px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; font-family: var(--font-display);">Anime</button>
+        <button class="vtuber-cat-pill" data-category="animal" onclick="filterVtuberCategory('animal', this)" style="background: var(--bg-hover); color: var(--text-muted); border: none; padding: 3px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; font-family: var(--font-display);">Animals</button>
+        <button class="vtuber-cat-pill" data-category="robot" onclick="filterVtuberCategory('robot', this)" style="background: var(--bg-hover); color: var(--text-muted); border: none; padding: 3px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; font-family: var(--font-display);">Robots</button>
+        <button class="vtuber-cat-pill" data-category="custom" onclick="filterVtuberCategory('custom', this)" style="background: var(--bg-hover); color: var(--text-muted); border: none; padding: 3px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; font-family: var(--font-display);">Custom</button>
+      </div>
+
+      <!-- Model Grid -->
+      <div id="vtuber-model-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; padding: 10px 16px 16px;">
+        <div style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 20px;">Loading models...</div>
+      </div>
+    </div>
+
+    <!-- Tracker Toolbar + Preview -->
     <div class="card" style="padding: 0; overflow: hidden;">
-      <div id="vtuber-toolbar" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg-elevated);">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg-elevated);">
         <div style="display: flex; align-items: center; gap: 8px;">
           <div id="vtuber-status" style="width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted);"></div>
           <span style="font-size: 12px; color: var(--text-secondary);" id="vtuber-status-text">Not started</span>
         </div>
         <div style="display: flex; gap: 8px;">
-          <button onclick="copyOBSUrl()" style="background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-secondary); padding: 5px 12px; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-family: var(--font-display); font-weight: 600; transition: all var(--transition);" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-secondary)'" id="copy-obs-btn">
+          <button onclick="copyVtuberOBSUrl()" id="vtuber-copy-btn" style="background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-secondary); padding: 5px 12px; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-family: var(--font-display); font-weight: 600; transition: all var(--transition);" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-secondary)'">
             Copy OBS URL
           </button>
           <button onclick="toggleVtuber()" id="vtuber-toggle-btn" style="background: linear-gradient(135deg, #667eea, #764ba2); border: none; color: white; padding: 5px 16px; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-family: var(--font-display); font-weight: 600; transition: all var(--transition);">
@@ -679,7 +706,7 @@
       <div id="vtuber-container" style="position: relative; width: 100%; height: 500px; background: #1a1a2e; display: flex; align-items: center; justify-content: center;">
         <div id="vtuber-placeholder" style="text-align: center; color: var(--text-muted);">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px; opacity: 0.5;"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-          <p style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Click "Launch Tracker" to start</p>
+          <p style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Pick a model and click "Launch Tracker"</p>
           <p style="font-size: 12px;">Your webcam will be used to track facial movements</p>
         </div>
         <iframe id="vtuber-iframe" style="display: none; width: 100%; height: 100%; border: none;" allow="camera"></iframe>
@@ -689,7 +716,146 @@
 </div>
 
 <script>
+  // --- VTuber Face Tracker ---
   let vtuberActive = false;
+  let vtuberModels = [];
+  let vtuberSelectedId = <%= typeof streamer !== 'undefined' && streamer.vtuber_model_id ? streamer.vtuber_model_id : 'null' %>;
+  const vtuberUrl = <%- typeof vtuberUrl !== 'undefined' && vtuberUrl ? JSON.stringify(vtuberUrl) : 'null' %>;
+  let vtuberCategoryFilter = 'all';
+
+  const CATEGORY_ICONS = {
+    anime: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="5"/><path d="M3 21v-2a7 7 0 0114 0v2"/></svg>',
+    animal: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 20c-4 0-8-2-8-6 0-3 2-5 4-6l1-4h6l1 4c2 1 4 3 4 6 0 4-4 6-8 6z"/><circle cx="9" cy="13" r="1" fill="currentColor"/><circle cx="15" cy="13" r="1" fill="currentColor"/></svg>',
+    robot: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="8" width="14" height="12" rx="2"/><path d="M12 2v4"/><circle cx="9" cy="14" r="1.5"/><circle cx="15" cy="14" r="1.5"/><path d="M9 18h6"/></svg>',
+    custom: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>'
+  };
+
+  async function loadVtuberModels() {
+    try {
+      const resp = await fetch('/dashboard/api/vtuber/models');
+      const data = await resp.json();
+      if (data.ok) {
+        vtuberModels = data.models;
+        renderVtuberGrid();
+      }
+    } catch (e) { console.error('Failed to load VTuber models', e); }
+  }
+
+  function renderVtuberGrid() {
+    const grid = document.getElementById('vtuber-model-grid');
+    const filtered = vtuberCategoryFilter === 'all'
+      ? vtuberModels
+      : vtuberModels.filter(m => m.category === vtuberCategoryFilter);
+
+    if (filtered.length === 0) {
+      grid.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 20px; grid-column: 1/-1;">No models in this category</div>';
+      return;
+    }
+
+    grid.innerHTML = filtered.map(m => {
+      const selected = m.id === vtuberSelectedId;
+      const icon = CATEGORY_ICONS[m.category] || CATEGORY_ICONS.custom;
+      const canDelete = !m.is_bundled;
+      return `
+        <div onclick="selectVtuberModel(${m.id})" style="border-radius: 10px; background: ${selected ? 'linear-gradient(135deg, rgba(102,126,234,0.15), rgba(118,75,162,0.15))' : 'var(--bg-elevated)'}; border: 2px solid ${selected ? '#667eea' : 'transparent'}; padding: 8px; text-align: center; cursor: pointer; position: relative; transition: all 0.2s;" onmouseover="this.style.borderColor='${selected ? '#667eea' : 'var(--border)'}'" onmouseout="this.style.borderColor='${selected ? '#667eea' : 'transparent'}'">
+          <div style="width: 100%; aspect-ratio: 1; background: rgba(0,0,0,0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 6px; color: var(--text-muted);">
+            ${icon}
+          </div>
+          <span style="font-size: 10px; color: ${selected ? 'var(--text-primary)' : 'var(--text-muted)'}; font-weight: ${selected ? '600' : '400'}; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${m.name}</span>
+          ${selected ? '<div style="position: absolute; top: 6px; right: 6px; width: 16px; height: 16px; border-radius: 50%; background: #667eea; display: flex; align-items: center; justify-content: center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>' : ''}
+          ${canDelete ? `<div onclick="event.stopPropagation(); deleteVtuberModel(${m.id}, '${m.name.replace(/'/g, "\\'")}')" style="position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; border-radius: 50%; background: rgba(231,76,60,0.8); display: none; align-items: center; justify-content: center; cursor: pointer;" onmouseover="this.style.background='#e74c3c'" onmouseout="this.style.background='rgba(231,76,60,0.8)'" class="vtuber-delete-btn"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>` : ''}
+        </div>`;
+    }).join('');
+
+    // Show delete buttons on hover for custom models
+    grid.querySelectorAll('[onclick^="selectVtuberModel"]').forEach(el => {
+      const delBtn = el.querySelector('.vtuber-delete-btn');
+      if (delBtn) {
+        el.addEventListener('mouseenter', () => delBtn.style.display = 'flex');
+        el.addEventListener('mouseleave', () => delBtn.style.display = 'none');
+      }
+    });
+  }
+
+  function filterVtuberCategory(category, btn) {
+    vtuberCategoryFilter = category;
+    document.querySelectorAll('.vtuber-cat-pill').forEach(p => {
+      p.style.background = 'var(--bg-hover)';
+      p.style.color = 'var(--text-muted)';
+      p.classList.remove('active');
+    });
+    btn.style.background = '#667eea';
+    btn.style.color = 'white';
+    btn.classList.add('active');
+    renderVtuberGrid();
+  }
+
+  async function selectVtuberModel(id) {
+    try {
+      const resp = await fetch('/dashboard/api/vtuber/select', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ modelId: id })
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        vtuberSelectedId = id;
+        renderVtuberGrid();
+        // If tracker is running, reload iframe with new model
+        if (vtuberActive) {
+          const iframe = document.getElementById('vtuber-iframe');
+          iframe.src = vtuberUrl + '?_t=' + Date.now();
+        }
+      }
+    } catch (e) { console.error('Failed to select model', e); }
+  }
+
+  async function uploadVtuberModel(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (!file.name.endsWith('.vrm')) {
+      alert('Please select a .vrm file');
+      input.value = '';
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      alert('File too large (max 50MB)');
+      input.value = '';
+      return;
+    }
+
+    const name = file.name.replace('.vrm', '');
+    try {
+      const resp = await fetch(`/dashboard/api/vtuber/models?name=${encodeURIComponent(name)}`, {
+        method: 'POST',
+        body: file
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        vtuberModels.push(data.model);
+        vtuberCategoryFilter = 'all';
+        document.querySelectorAll('.vtuber-cat-pill').forEach(p => {
+          p.style.background = p.dataset.category === 'all' ? '#667eea' : 'var(--bg-hover)';
+          p.style.color = p.dataset.category === 'all' ? 'white' : 'var(--text-muted)';
+        });
+        renderVtuberGrid();
+      }
+    } catch (e) { console.error('Failed to upload model', e); }
+    input.value = '';
+  }
+
+  async function deleteVtuberModel(id, name) {
+    if (!confirm(`Delete "${name}"?`)) return;
+    try {
+      const resp = await fetch(`/dashboard/api/vtuber/models/${id}`, { method: 'DELETE' });
+      const data = await resp.json();
+      if (data.ok) {
+        vtuberModels = vtuberModels.filter(m => m.id !== id);
+        if (vtuberSelectedId === id) vtuberSelectedId = null;
+        renderVtuberGrid();
+      }
+    } catch (e) { console.error('Failed to delete model', e); }
+  }
 
   function toggleVtuber() {
     const iframe = document.getElementById('vtuber-iframe');
@@ -699,13 +865,22 @@
     const statusText = document.getElementById('vtuber-status-text');
 
     if (!vtuberActive) {
-      iframe.src = 'http://localhost:5173';
+      if (!vtuberUrl) {
+        alert('Overlay token not generated yet. Visit the Overlay Config page first.');
+        return;
+      }
+      if (!vtuberSelectedId) {
+        alert('Please select a model first.');
+        return;
+      }
+      iframe.src = vtuberUrl + '?_t=' + Date.now();
       iframe.style.display = 'block';
       placeholder.style.display = 'none';
       btn.textContent = 'Stop Tracker';
       btn.style.background = '#e74c3c';
       status.style.background = '#2ecc71';
-      statusText.textContent = 'Running';
+      const model = vtuberModels.find(m => m.id === vtuberSelectedId);
+      statusText.textContent = 'Running' + (model ? ' — ' + model.name : '');
       vtuberActive = true;
     } else {
       iframe.src = '';
@@ -719,12 +894,21 @@
     }
   }
 
-  function copyOBSUrl() {
-    navigator.clipboard.writeText('http://localhost:5173?mode=stream').then(() => {
-      const btn = document.getElementById('copy-obs-btn');
+  function copyVtuberOBSUrl() {
+    if (!vtuberUrl) {
+      alert('Overlay token not generated yet.');
+      return;
+    }
+    navigator.clipboard.writeText(vtuberUrl + '?mode=stream').then(() => {
+      const btn = document.getElementById('vtuber-copy-btn');
       btn.textContent = 'Copied!';
       setTimeout(() => { btn.textContent = 'Copy OBS URL'; }, 2000);
     });
+  }
+
+  // Load models when experimental tab is shown
+  if (document.getElementById('tab-experimental')) {
+    loadVtuberModels();
   }
 </script>
 
