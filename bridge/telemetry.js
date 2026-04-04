@@ -378,14 +378,13 @@ async function startTelemetry(onStatusChange) {
         // === Track Map ===
         let playerLat = 0, playerLon = 0;
         try {
-          // VARS.LAT/LON may not exist in all SDK versions
           if (VARS.LAT) playerLat = ir.get(VARS.LAT)?.[0] || 0;
           if (VARS.LON) playerLon = ir.get(VARS.LON)?.[0] || 0;
-          if (playerLat === 0 && playerLon === 0) {
-            playerLat = ir.get('Lat')?.[0] || 0;
-            playerLon = ir.get('Lon')?.[0] || 0;
-          }
-        } catch(e) { /* LAT/LON not available in this session */ }
+        } catch(e) {}
+        if (playerLat === 0 && playerLon === 0) {
+          try { playerLat = ir.get('Lat')?.[0] || 0; } catch(e) {}
+          try { playerLon = ir.get('Lon')?.[0] || 0; } catch(e) {}
+        }
         const playerPct = lapDistPct[playerCarIdx] || 0;
 
         // Build track path from player GPS as they drive

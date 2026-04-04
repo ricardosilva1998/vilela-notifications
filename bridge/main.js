@@ -111,8 +111,12 @@ app.on('ready', () => {
   });
 
   // Start voice input system
-  const { getStatus } = require('./telemetry');
-  startVoiceInput({ settings, getStatus });
+  try {
+    const { getStatus } = require('./telemetry');
+    startVoiceInput({ settings, getStatus });
+  } catch(e) {
+    console.log('[Bridge] Voice input failed to start:', e.message);
+  }
 
   showControlWindow();
 

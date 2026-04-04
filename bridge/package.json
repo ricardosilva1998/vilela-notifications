@@ -27,7 +27,11 @@
       "buildResources": "build"
     },
     "extraResources": [
-      { "from": "build/icon.png", "to": "icon.png" }
+      { "from": "build/icon.png", "to": "icon.png" },
+      { "from": "speechWorker.ps1", "to": "speechWorker.ps1" }
+    ],
+    "asarUnpack": [
+      "speechWorker.ps1"
     ],
     "files": [
       "**/*",

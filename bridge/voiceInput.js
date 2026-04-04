@@ -37,11 +37,23 @@ function startSpeechWorker() {
     return;
   }
 
-  const scriptPath = path.join(__dirname, 'speechWorker.ps1');
-  if (!fs.existsSync(scriptPath)) {
-    log('[Speech] Worker script not found: ' + scriptPath);
+  // Try multiple paths: dev (same dir), packaged (extraResources), asar-unpacked
+  const candidates = [
+    path.join(__dirname, 'speechWorker.ps1'),
+    path.join(process.resourcesPath || __dirname, 'speechWorker.ps1'),
+    path.join(__dirname, '..', 'speechWorker.ps1'),
+    __dirname.replace('app.asar', 'app.asar.unpacked') + path.sep + 'speechWorker.ps1',
+  ];
+  let scriptPath = null;
+  for (const p of candidates) {
+    log('[Speech] Checking: ' + p + ' exists=' + fs.existsSync(p));
+    if (fs.existsSync(p)) { scriptPath = p; break; }
+  }
+  if (!scriptPath) {
+    log('[Speech] Worker script not found in any location');
     return;
   }
+  log('[Speech] Using: ' + scriptPath);
 
   speechProcess = spawn('powershell', ['-ExecutionPolicy', 'Bypass', '-NoProfile', '-File', scriptPath], {
     stdio: ['pipe', 'pipe', 'pipe'],
