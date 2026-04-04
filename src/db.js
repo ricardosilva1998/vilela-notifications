@@ -2736,8 +2736,8 @@ try {
 {
   const existing = db.prepare('SELECT filename FROM vtuber_models WHERE is_bundled = 1').all().map(r => r.filename);
   const bundled = [
-    { name: 'AvatarSample_A', category: 'anime', filename: 'AvatarSample_A.vrm' },
-    { name: 'AvatarSample_B', category: 'anime', filename: 'AvatarSample_B.vrm' },
+    { name: 'Seed-san', category: 'anime', filename: 'Seed-san.vrm' },
+    { name: 'Avatar Orion', category: 'anime', filename: 'Avatar_Orion.vrm' },
   ];
   const insert = db.prepare('INSERT INTO vtuber_models (streamer_id, name, category, filename, is_bundled) VALUES (NULL, ?, ?, ?, 1)');
   for (const m of bundled) {
