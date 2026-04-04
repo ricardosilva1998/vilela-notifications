@@ -2335,6 +2335,22 @@ function deleteOverlayDesign(streamerId, eventType) {
     .run(streamerId, eventType);
 }
 
+function getIracingOverlaySettings(streamerId) {
+  return db.prepare('SELECT * FROM iracing_overlay_settings WHERE streamer_id = ?').all(streamerId);
+}
+
+function getIracingOverlaySetting(streamerId, overlayType) {
+  return db.prepare('SELECT * FROM iracing_overlay_settings WHERE streamer_id = ? AND overlay_type = ?').get(streamerId, overlayType);
+}
+
+function upsertIracingOverlaySetting(streamerId, overlayType, enabled, settings) {
+  db.prepare(`
+    INSERT INTO iracing_overlay_settings (streamer_id, overlay_type, enabled, settings)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(streamer_id, overlay_type) DO UPDATE SET enabled = ?, settings = ?
+  `).run(streamerId, overlayType, enabled, settings, enabled, settings);
+}
+
 // Migration: Add card_image_scale to overlay_designs
 {
   const cols = db.pragma('table_info(overlay_designs)').map(c => c.name);
@@ -2583,6 +2599,19 @@ db.exec(`CREATE INDEX IF NOT EXISTS idx_banned_words_streamer ON banned_words(st
     )
   `);
 }
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS iracing_overlay_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    streamer_id INTEGER NOT NULL,
+    overlay_type TEXT NOT NULL,
+    enabled INTEGER DEFAULT 0,
+    settings TEXT DEFAULT '{}',
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (streamer_id) REFERENCES streamers(id) ON DELETE CASCADE,
+    UNIQUE(streamer_id, overlay_type)
+  )
+`);
 
 function getSponsorImages(streamerId) {
   return db.prepare('SELECT * FROM sponsor_images WHERE streamer_id = ? ORDER BY sort_order, id').all(streamerId);
@@ -3020,4 +3049,7 @@ module.exports = {
   getOverlayStats7d,
   getOverlayEventsRecent,
   cleanupOldOverlayEvents,
+  getIracingOverlaySettings,
+  getIracingOverlaySetting,
+  upsertIracingOverlaySetting,
 };
