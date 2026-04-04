@@ -285,12 +285,24 @@ async function startTelemetry(onStatusChange) {
             }
           });
 
-          // Also log first GT3 driver with a lap set in iRacing
-          const gt3s = standings.filter(s => s.carClass === 'IMSA23');
-          if (gt3s.length > 0) {
-            log('[Debug] First 3 GT3s:');
-            gt3s.slice(0, 3).forEach(s => log('[Debug]   ' + s.driverName + ' best=' + s.bestLap + ' last=' + s.lastLap + ' laps=' + s.lapsCompleted));
-          }
+          // Dump FULL telemetry arrays to see the actual data
+          log('[Debug] Full CarIdxBestLapTime (first 20): ' + JSON.stringify((bestLaps || []).slice(0, 20)));
+          log('[Debug] Full CarIdxLastLapTime (first 20): ' + JSON.stringify((lastLaps || []).slice(0, 20)));
+          log('[Debug] Full CarIdxLapCompleted (first 20): ' + JSON.stringify((lapsCompletedArr || []).slice(0, 20)));
+          log('[Debug] Full CarIdxPosition (first 20): ' + JSON.stringify((positions || []).slice(0, 20)));
+          log('[Debug] Full CarIdxEstTime (first 20): ' + JSON.stringify((estTime || []).slice(0, 20)));
+
+          // Check if arrays are proper arrays
+          log('[Debug] bestLaps type=' + typeof bestLaps + ' isArray=' + Array.isArray(bestLaps) + ' length=' + (bestLaps?.length || 'N/A'));
+
+          // Try reading a SINGLE CarIdx value directly
+          try {
+            const singleBest = ir.get('CarIdxBestLapTime');
+            log('[Debug] Direct ir.get("CarIdxBestLapTime") type=' + typeof singleBest + ' length=' + (singleBest?.length || 'N/A') + ' first5=' + JSON.stringify(singleBest?.slice?.(0, 5)));
+          } catch(e) { log('[Debug] Direct get error: ' + e.message); }
+
+          // Try the VARS value directly
+          log('[Debug] VARS.CAR_IDX_BEST_LAP_TIME value = ' + JSON.stringify(VARS.CAR_IDX_BEST_LAP_TIME));
         }
 
         broadcastToChannel('standings', { type: 'data', channel: 'standings', data: standings });
