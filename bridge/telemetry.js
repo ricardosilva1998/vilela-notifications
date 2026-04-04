@@ -376,55 +376,52 @@ async function startTelemetry(onStatusChange) {
         }});
 
         // === Track Map ===
-        // Try VARS constants first, fall back to direct string names
-        let playerLat = ir.get(VARS.LAT)?.[0] || 0;
-        let playerLon = ir.get(VARS.LON)?.[0] || 0;
-        if (playerLat === 0 && playerLon === 0) {
-          playerLat = ir.get('Lat')?.[0] || 0;
-          playerLon = ir.get('Lon')?.[0] || 0;
-        }
+        // Build track shape from player heading + speed (GPS vars not in SDK)
         const playerPct = lapDistPct[playerCarIdx] || 0;
+        const playerSpeed = ir.get(VARS.SPEED)?.[0] || 0;
+        const playerYaw = ir.get(VARS.YAW_NORTH)?.[0] || 0;
 
-        // Build track path from player GPS as they drive
-        if (playerLat !== 0 && playerLon !== 0 && !trackPathComplete) {
-          if (lastTrackPct < 0 || Math.abs(playerPct - lastTrackPct) > 0.002) {
+        if (!trackPathComplete && playerSpeed > 5) { // Only record when moving
+          if (lastTrackPct < 0 || Math.abs(playerPct - lastTrackPct) > 0.001) {
             const prevPct = lastTrackPct;
-            trackPath.push({ lat: playerLat, lon: playerLon, pct: playerPct });
+            // Integrate position from heading + speed (0.1s poll interval)
+            const lastPoint = trackPath.length > 0 ? trackPath[trackPath.length - 1] : { x: 0, y: 0 };
+            const dt = 0.1; // 100ms poll interval
+            const dx = Math.sin(playerYaw) * playerSpeed * dt;
+            const dy = Math.cos(playerYaw) * playerSpeed * dt;
+            trackPath.push({ x: lastPoint.x + dx, y: lastPoint.y + dy, pct: playerPct });
             lastTrackPct = playerPct;
-            // Track is complete when we have points across the full range and wrap back
+            // Complete when we wrap around (pct goes from >0.95 back to <0.05)
             if (trackPath.length > 100 && playerPct < 0.05 && prevPct > 0.95) {
               trackPathComplete = true;
-              log('[TrackMap] Path complete: ' + trackPath.length + ' points');
+              log('[TrackMap] Path complete: ' + trackPath.length + ' points (heading+speed)');
             }
           }
         }
 
-        // Broadcast car positions on track
-        if (pollCount % 5 === 0) {
-          const cars = [];
-          for (const s of standings) {
-            if (s.lapDistPct > 0 || s.estTime > 0) {
-              cars.push({
-                carIdx: s.carIdx,
-                pct: s.lapDistPct,
-                carNumber: s.carNumber,
-                driverName: s.driverName,
-                carClass: s.carClass,
-                carClassColor: s.carClassColor,
-                isPlayer: s.isPlayer,
-                inPit: s.inPit,
-              });
-            }
+        // Broadcast car positions every poll (100ms) for smooth movement
+        const cars = [];
+        for (const s of standings) {
+          if (s.lapDistPct > 0 || s.estTime > 0) {
+            cars.push({
+              carIdx: s.carIdx,
+              pct: s.lapDistPct,
+              carNumber: s.carNumber,
+              driverName: s.driverName,
+              carClass: s.carClass,
+              carClassColor: s.carClassColor,
+              isPlayer: s.isPlayer,
+              inPit: s.inPit,
+            });
           }
-          // Send partial track path while mapping (>20 points), full path once complete
-          const hasUsablePath = trackPathComplete || trackPath.length > 20;
-          broadcastToChannel('trackmap', { type: 'data', channel: 'trackmap', data: {
-            trackPath: hasUsablePath ? trackPath : [],
-            trackPathReady: trackPathComplete,
-            cars,
-            playerCarIdx,
-          }});
         }
+        const hasUsablePath = trackPathComplete || trackPath.length > 20;
+        broadcastToChannel('trackmap', { type: 'data', channel: 'trackmap', data: {
+          trackPath: hasUsablePath ? trackPath : [],
+          trackPathReady: trackPathComplete,
+          cars,
+          playerCarIdx,
+        }});
 
       } catch (e) {
         if (pollCount % 100 === 0) log('[Telemetry] Poll error: ' + e.message);
