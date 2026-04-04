@@ -9,13 +9,16 @@
     .overlay-panel { background: rgba(12,13,20,0.85); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; backdrop-filter: blur(12px); overflow: hidden; }
     .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); cursor: move; -webkit-app-region: drag; }
     .overlay-body { padding: 10px 14px; }
-    .fuel-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
-    .fuel-row:last-child { border-bottom: none; }
-    .fuel-label { font-size: 11px; color: rgba(255,255,255,0.45); }
-    .fuel-value { font-size: 14px; font-weight: 700; font-family: 'Consolas', monospace; }
+    .fuel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
+    .fuel-row { display: flex; flex-direction: column; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .fuel-label { font-size: 10px; color: rgba(255,255,255,0.40); text-transform: uppercase; letter-spacing: 0.5px; }
+    .fuel-value { font-size: 13px; font-weight: 700; font-family: 'Consolas', monospace; margin-top: 2px; }
     .fuel-value.warning { color: #f79009; }
     .fuel-value.danger { color: #f04438; }
     .fuel-value.ok { color: #3ecf8e; }
+    .fuel-main { display: flex; align-items: center; justify-content: space-between; padding: 6px 0 4px; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 4px; }
+    .fuel-main .fuel-label { font-size: 11px; }
+    .fuel-main .fuel-value { font-size: 16px; }
     .fuel-bar-track { width: 100%; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; margin-top: 8px; overflow: hidden; }
     .fuel-bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease, background 0.5s ease; }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
@@ -27,28 +30,54 @@
   </style>
 </head>
 <body>
-  <div id="overlay-root" style="position:relative;width:240px;">
-    <div class="overlay-panel" style="width:240px;">
+  <div id="overlay-root" style="position:relative;width:260px;">
+    <div class="overlay-panel" style="width:260px;">
       <div class="overlay-header">
         <span>FUEL CALCULATOR</span>
         <span id="connection-status"><span class="status-dot demo"></span> Demo Mode</span>
       </div>
       <div class="overlay-body">
-        <div class="fuel-row">
+        <div class="fuel-main">
           <span class="fuel-label">Current Fuel</span>
-          <span class="fuel-value ok" id="fuel-current">12.30 L</span>
+          <span class="fuel-value ok" id="fuel-current">12.3 L</span>
         </div>
-        <div class="fuel-row">
-          <span class="fuel-label">Per Lap</span>
-          <span class="fuel-value" id="fuel-per-lap">1.54 L</span>
-        </div>
-        <div class="fuel-row">
-          <span class="fuel-label">Laps Remaining</span>
-          <span class="fuel-value ok" id="fuel-laps">7.9</span>
-        </div>
-        <div class="fuel-row">
-          <span class="fuel-label">To Add</span>
-          <span class="fuel-value" id="fuel-to-add">0.00 L</span>
+        <div class="fuel-grid">
+          <div class="fuel-row">
+            <span class="fuel-label">Avg/Lap</span>
+            <span class="fuel-value" id="fuel-avg-lap">--</span>
+          </div>
+          <div class="fuel-row">
+            <span class="fuel-label">Laps of Fuel</span>
+            <span class="fuel-value ok" id="fuel-laps-of-fuel">--</span>
+          </div>
+          <div class="fuel-row">
+            <span class="fuel-label">Min Usage</span>
+            <span class="fuel-value" id="fuel-min">--</span>
+          </div>
+          <div class="fuel-row">
+            <span class="fuel-label">Max Usage</span>
+            <span class="fuel-value" id="fuel-max">--</span>
+          </div>
+          <div class="fuel-row">
+            <span class="fuel-label">Avg 5 Laps</span>
+            <span class="fuel-value" id="fuel-avg5">--</span>
+          </div>
+          <div class="fuel-row">
+            <span class="fuel-label">Avg 10 Laps</span>
+            <span class="fuel-value" id="fuel-avg10">--</span>
+          </div>
+          <div class="fuel-row">
+            <span class="fuel-label">Race Laps Left</span>
+            <span class="fuel-value" id="fuel-laps-remaining">--</span>
+          </div>
+          <div class="fuel-row">
+            <span class="fuel-label">To Finish</span>
+            <span class="fuel-value" id="fuel-to-finish">--</span>
+          </div>
+          <div class="fuel-row" style="grid-column:1/-1;flex-direction:row;align-items:center;justify-content:space-between;">
+            <span class="fuel-label">To Add</span>
+            <span class="fuel-value" id="fuel-to-add">--</span>
+          </div>
         </div>
         <div class="fuel-bar-track">
           <div class="fuel-bar-fill" id="fuel-bar" style="width:62%;background:#3ecf8e;"></div>
@@ -108,37 +137,86 @@
       }
     }
 
+    let demoCleared = false;
+
+    function fmtL(val) {
+      if (val === undefined || val === null || val === 0) return '--';
+      return val.toFixed(2) + ' L';
+    }
+    function fmtLaps(val) {
+      if (val === undefined || val === null || val === 0) return '--';
+      return val.toFixed(1);
+    }
+
     onData('fuel', data => {
       if (!data) return;
-      const { fuelLevel, fuelPerLap, lapsRemaining, fuelToAdd, fuelCapacity } = data;
+
+      if (!demoCleared) {
+        demoCleared = true;
+        // Reset all fields to -- so old demo values don't linger
+        ['fuel-avg-lap','fuel-laps-of-fuel','fuel-min','fuel-max','fuel-avg5','fuel-avg10','fuel-laps-remaining','fuel-to-finish','fuel-to-add'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = '--';
+        });
+      }
+
+      const {
+        fuelLevel, fuelPct,
+        avgPerLap, avg5Laps, avg10Laps, minUsage, maxUsage,
+        lapsOfFuel, lapsRemaining, fuelToFinish, fuelToAdd
+      } = data;
 
       const currentEl = document.getElementById('fuel-current');
-      const perLapEl = document.getElementById('fuel-per-lap');
-      const lapsEl = document.getElementById('fuel-laps');
-      const toAddEl = document.getElementById('fuel-to-add');
       const barEl = document.getElementById('fuel-bar');
 
       if (fuelLevel !== undefined) {
-        currentEl.textContent = fuelLevel.toFixed(2) + ' L';
-        const pct = fuelCapacity > 0 ? Math.min(100, (fuelLevel / fuelCapacity) * 100) : 0;
+        currentEl.textContent = fuelLevel.toFixed(1) + ' L';
+        const pct = fuelPct !== undefined ? Math.min(100, fuelPct * 100) : 0;
         barEl.style.width = pct + '%';
-        if (pct > 40) {
-          currentEl.className = 'fuel-value ok';
-          barEl.style.background = '#3ecf8e';
-        } else if (pct > 20) {
-          currentEl.className = 'fuel-value warning';
-          barEl.style.background = '#f79009';
+        if (pct > 40) { currentEl.className = 'fuel-value ok'; barEl.style.background = '#3ecf8e'; }
+        else if (pct > 20) { currentEl.className = 'fuel-value warning'; barEl.style.background = '#f79009'; }
+        else { currentEl.className = 'fuel-value danger'; barEl.style.background = '#f04438'; }
+      }
+
+      const avgLapEl = document.getElementById('fuel-avg-lap');
+      if (avgLapEl) avgLapEl.textContent = fmtL(avgPerLap);
+
+      const minEl = document.getElementById('fuel-min');
+      if (minEl) minEl.textContent = fmtL(minUsage);
+
+      const maxEl = document.getElementById('fuel-max');
+      if (maxEl) maxEl.textContent = fmtL(maxUsage);
+
+      const avg5El = document.getElementById('fuel-avg5');
+      if (avg5El) avg5El.textContent = fmtL(avg5Laps);
+
+      const avg10El = document.getElementById('fuel-avg10');
+      if (avg10El) avg10El.textContent = fmtL(avg10Laps);
+
+      const lapsOfFuelEl = document.getElementById('fuel-laps-of-fuel');
+      if (lapsOfFuelEl) {
+        const lof = lapsOfFuel;
+        lapsOfFuelEl.textContent = fmtLaps(lof);
+        if (lof === undefined || lof === 0) lapsOfFuelEl.className = 'fuel-value';
+        else if (lof < 1) lapsOfFuelEl.className = 'fuel-value danger';
+        else if (lof <= 3) lapsOfFuelEl.className = 'fuel-value warning';
+        else lapsOfFuelEl.className = 'fuel-value ok';
+      }
+
+      const lapsRemEl = document.getElementById('fuel-laps-remaining');
+      if (lapsRemEl) {
+        if (lapsRemaining === '∞' || lapsRemaining === Infinity) {
+          lapsRemEl.textContent = '∞';
         } else {
-          currentEl.className = 'fuel-value danger';
-          barEl.style.background = '#f04438';
+          lapsRemEl.textContent = fmtLaps(lapsRemaining);
         }
       }
-      if (fuelPerLap !== undefined) perLapEl.textContent = fuelPerLap.toFixed(2) + ' L';
-      if (lapsRemaining !== undefined) {
-        lapsEl.textContent = lapsRemaining.toFixed(1);
-        lapsEl.className = lapsRemaining < 2 ? 'fuel-value danger' : lapsRemaining < 4 ? 'fuel-value warning' : 'fuel-value ok';
-      }
-      if (fuelToAdd !== undefined) toAddEl.textContent = (fuelToAdd > 0 ? fuelToAdd.toFixed(2) : '0.00') + ' L';
+
+      const toFinishEl = document.getElementById('fuel-to-finish');
+      if (toFinishEl) toFinishEl.textContent = (fuelToFinish === 0 || fuelToFinish === undefined) ? '--' : fuelToFinish.toFixed(2) + ' L';
+
+      const toAddEl = document.getElementById('fuel-to-add');
+      if (toAddEl) toAddEl.textContent = (fuelToAdd === 0 || fuelToAdd === undefined) ? '--' : fuelToAdd.toFixed(2) + ' L';
     });
 
     connectBridge(['fuel']);

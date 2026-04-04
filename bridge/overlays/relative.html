@@ -34,7 +34,7 @@
       </div>
       <div class="overlay-body">
         <table class="overlay-table">
-          <thead><tr><th>#</th><th>Driver</th><th>Gap</th><th>P</th></tr></thead>
+          <thead><tr><th>#</th><th>Driver</th><th>Gap</th></tr></thead>
           <tbody id="relative-body"></tbody>
         </table>
       </div>
@@ -121,29 +121,62 @@
       }
     }
 
-    let playerCarIdx = -1;
-
-    onData('session', d => {
-      if (d.playerCarIdx !== undefined) playerCarIdx = d.playerCarIdx;
-    });
+    let demoCleared = false;
 
     onData('relative', data => {
       const tbody = document.getElementById('relative-body');
-      if (!data || !data.length) return;
-      tbody.innerHTML = data.map(d => {
-        const isPlayer = d.carIdx === playerCarIdx;
-        const gapClass = d.gap > 0 ? 'behind' : d.gap < 0 ? 'ahead' : '';
-        const gapStr = d.gap === 0 ? '—' : (d.gap > 0 ? '+' : '') + d.gap.toFixed(2) + 's';
-        return `<tr class="${isPlayer ? 'player-row' : ''}">
-          <td style="color:${d.classColor || '#fff'};font-weight:600">${d.carNumber || ''}</td>
+      if (!data || !data.cars) return;
+
+      if (!demoCleared) {
+        demoCleared = true;
+        tbody.innerHTML = '';
+      }
+
+      const { cars } = data;
+      const rows = [];
+
+      // cars is sorted by gap: negatives = ahead, positives = behind
+      // insert player row between the two groups
+      let playerInserted = false;
+      for (const d of cars) {
+        if (!playerInserted && (d.isPlayer || d.gap >= 0)) {
+          if (!d.isPlayer) {
+            // insert player row before the first behind car
+            rows.push(`<tr class="player-row">
+              <td style="font-weight:600">YOU</td>
+              <td>Your Car</td>
+              <td class="mono" style="font-size:11px">—</td>
+            </tr>`);
+          }
+          playerInserted = true;
+        }
+        if (d.isPlayer) {
+          rows.push(`<tr class="player-row">
+            <td style="font-weight:600">${d.carNumber || ''}</td>
+            <td>${d.driverName || ''}</td>
+            <td class="mono" style="font-size:11px">—</td>
+          </tr>`);
+          continue;
+        }
+        const gapClass = d.gap < 0 ? 'ahead' : 'behind';
+        const gapStr = d.gap < 0
+          ? '-' + Math.abs(d.gap).toFixed(2) + 's'
+          : '+' + d.gap.toFixed(2) + 's';
+        rows.push(`<tr>
+          <td style="font-weight:600">${d.carNumber || ''}</td>
           <td>${d.driverName || ''}</td>
           <td class="mono ${gapClass}" style="font-size:11px">${gapStr}</td>
-          <td class="mono" style="font-size:11px">${d.position || ''}</td>
-        </tr>`;
-      }).join('');
+        </tr>`);
+      }
+      if (!playerInserted) {
+        rows.push(`<tr class="player-row">
+          <td colspan="3" style="font-weight:600;text-align:center">YOU</td>
+        </tr>`);
+      }
+      tbody.innerHTML = rows.join('');
     });
 
-    connectBridge(['session', 'relative']);
+    connectBridge(['relative']);
 
     // Lock state support
     try {

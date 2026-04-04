@@ -34,7 +34,7 @@
       </div>
       <div class="overlay-body">
         <table class="overlay-table">
-          <thead><tr><th>P</th><th>#</th><th>Driver</th><th>Int</th><th>Last</th><th></th></tr></thead>
+          <thead><tr><th>P</th><th>#</th><th>Driver</th><th>Best</th><th>Last</th><th></th></tr></thead>
           <tbody id="standings-body"></tbody>
         </table>
       </div>
@@ -126,34 +126,37 @@
       }
     }
 
-    let playerCarIdx = -1;
-
-    onData('session', d => {
-      if (d.playerCarIdx !== undefined) playerCarIdx = d.playerCarIdx;
-    });
+    let demoCleared = false;
 
     onData('standings', data => {
       const tbody = document.getElementById('standings-body');
       if (!data || !data.length) return;
-      const playerPos = data.findIndex(d => d.carIdx === playerCarIdx);
+
+      if (!demoCleared) {
+        demoCleared = true;
+        tbody.innerHTML = '';
+      }
+
+      const playerPos = data.findIndex(d => d.isPlayer);
       let startIdx = 0;
       if (data.length > MAX_ROWS && playerPos >= 0) {
         startIdx = Math.max(0, Math.min(playerPos - Math.floor(MAX_ROWS / 2), data.length - MAX_ROWS));
       }
       const visible = data.slice(startIdx, startIdx + MAX_ROWS);
-      tbody.innerHTML = visible.map(d => `
-        <tr class="${d.carIdx === playerCarIdx ? 'player-row' : ''} ${!d.onLeadLap ? 'lapped' : ''}">
-          <td class="mono" style="font-weight:700">${d.position}</td>
-          <td style="color:${d.classColor || '#fff'};font-weight:600">${d.carNumber || ''}</td>
+      tbody.innerHTML = visible.map(d => {
+        const pos = d.classPosition > 0 ? d.classPosition : (d.position > 0 ? d.position : '-');
+        return `<tr class="${d.isPlayer ? 'player-row' : ''}">
+          <td class="mono" style="font-weight:700">${pos}</td>
+          <td style="font-weight:600">${d.carNumber || ''}</td>
           <td>${d.driverName || ''}</td>
-          <td class="mono" style="font-size:11px">${d.interval || ''}</td>
-          <td class="mono" style="font-size:11px">${d.lastLap || ''}</td>
+          <td class="mono" style="font-size:11px">${d.bestLap || '--'}</td>
+          <td class="mono" style="font-size:11px">${d.lastLap || '--'}</td>
           <td>${d.inPit ? '<span class="pit-indicator">PIT</span>' : ''}</td>
-        </tr>
-      `).join('');
+        </tr>`;
+      }).join('');
     });
 
-    connectBridge(['session', 'standings']);
+    connectBridge(['standings']);
 
     // Lock state support
     try {
