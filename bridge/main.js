@@ -1,6 +1,13 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, screen, session } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, screen, session, protocol, net } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { startServer, stopServer } = require('./websocket');
+
+// Register custom protocol as privileged BEFORE app.ready
+// This gives overlays loaded via atleta:// a proper web origin (needed for Web Speech API)
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'atleta', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, allowServiceWorkers: true } }
+]);
 const { startTelemetry, stopTelemetry } = require('./telemetry');
 const { load: loadSettings, save: saveSettings } = require('./settings');
 const { startVoiceInput, stopVoiceInput, setVoiceChatWindow } = require('./voiceInput');
@@ -21,6 +28,7 @@ let autoHideOverlays = true;
 
 // Persisted settings
 let settings = {};
+
 
 const OVERLAYS = [
   { id: 'standings', name: 'Standings', width: 480, height: 600 },
@@ -93,6 +101,13 @@ app.on('ready', () => {
     { label: 'Quit', click: () => app.quit() },
   ]);
   tray.setContextMenu(contextMenu);
+
+  // Register atleta:// protocol handler to serve overlay files with a proper web origin
+  protocol.handle('atleta', (request) => {
+    const url = new URL(request.url);
+    const filePath = path.join(__dirname, 'overlays', path.basename(url.pathname));
+    return net.fetch('file://' + filePath);
+  });
 
   startServer(9100);
   startTelemetry((status) => {
@@ -248,7 +263,12 @@ function createOverlayWindow(overlayId) {
     try { win.setAlwaysOnTop(true, 'screen-saver'); } catch(e) {}
   }, 2000);
 
-  win.loadFile(path.join(__dirname, 'overlays', `${overlayId}.html`));
+  // Voice chat needs a proper web origin for Web Speech API (file:// gives "network" error)
+  if (overlayId === 'voicechat') {
+    win.loadURL(`atleta://overlay/${overlayId}.html`);
+  } else {
+    win.loadFile(path.join(__dirname, 'overlays', `${overlayId}.html`));
+  }
 
   if (overlaysLocked) {
     win.setIgnoreMouseEvents(true, { forward: true });
