@@ -23,9 +23,18 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Setup Python (for node-gyp)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Windows Build Tools
+        run: npm install -g windows-build-tools node-gyp
+        continue-on-error: true
+
       - name: Install dependencies
         working-directory: bridge
-        run: npm install --ignore-optional
+        run: npm install
 
       - name: Build Windows installer
         working-directory: bridge

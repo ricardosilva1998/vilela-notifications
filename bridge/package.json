@@ -10,9 +10,7 @@
     "build": "electron-builder --win"
   },
   "dependencies": {
-    "ws": "^8.16.0"
-  },
-  "optionalDependencies": {
+    "ws": "^8.16.0",
     "node-irsdk": "^2.1.0"
   },
   "devDependencies": {
