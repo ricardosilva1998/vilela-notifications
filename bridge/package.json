@@ -18,7 +18,7 @@
     "electron-builder": "^24.0.0"
   },
   "build": {
-    "npmRebuild": false,
+    "npmRebuild": true,
     "appId": "com.atleta.bridge",
     "productName": "Atleta Bridge",
     "directories": {

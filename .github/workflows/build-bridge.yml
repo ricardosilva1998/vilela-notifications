@@ -37,25 +37,21 @@ jobs:
           $pkg | ConvertTo-Json -Depth 10 | Set-Content package.json
           Write-Host "Version set to 1.0.${{ github.run_number }}"
 
-      - name: Install dependencies (skip native build)
-        working-directory: bridge
-        run: npm install --ignore-scripts
-
-      - name: Download irsdk-node prebuilt binary
-        working-directory: bridge
+      - name: Install Windows 11 SDK for native compilation
         shell: pwsh
-        run: |
-          $irsdkPath = "node_modules/irsdk-node"
-          if (Test-Path $irsdkPath) {
-            cd $irsdkPath
-            npx prebuild-install -r electron -t 28.0.0 --platform win32 --arch x64 2>$null
-            if ($LASTEXITCODE -ne 0) {
-              Write-Host "No prebuilt available, irsdk-node will run in stub mode"
-            }
-          }
         continue-on-error: true
+        run: |
+          & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vs_installer.exe" modify `
+            --installPath "${env:ProgramFiles}\Microsoft Visual Studio\2022\Enterprise" `
+            --add Microsoft.VisualStudio.Component.Windows11SDK.22621 `
+            --quiet --norestart --wait
+          Write-Host "Windows SDK install completed"
 
-      - name: Build Windows installer
+      - name: Install dependencies
+        working-directory: bridge
+        run: npm install
+
+      - name: Build Windows installer (rebuilds native addons for Electron)
         working-directory: bridge
         run: npx electron-builder --win
         env:
