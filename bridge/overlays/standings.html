@@ -11,12 +11,13 @@
     .overlay-body { padding: 4px 0; }
     .overlay-table { width: 100%; border-collapse: collapse; font-size: 12px; }
     .overlay-table th { padding: 4px 8px; text-align: left; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.35); border-bottom: 1px solid rgba(255,255,255,0.06); }
-    .overlay-table td { padding: 4px 8px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .overlay-table td { padding: 4px 8px; border-bottom: 1px solid rgba(255,255,255,0.03); vertical-align: middle; }
     .overlay-table tr.player-row { background: rgba(145,70,255,0.15); }
     .overlay-table tr.player-row td { color: #fff; font-weight: 600; }
-    .overlay-table tr.lapped { opacity: 0.6; }
     .pit-indicator { color: #f79009; font-weight: 700; font-size: 10px; }
     .mono { font-family: 'Consolas', 'Courier New', monospace; }
+    .driver-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
+    .driver-sub { font-size: 9px; color: rgba(255,255,255,0.35); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
     .status-dot.connected { background: #3ecf8e; }
     .status-dot.disconnected { background: #f04438; }
@@ -26,15 +27,15 @@
   </style>
 </head>
 <body>
-  <div id="overlay-root" style="position:relative;width:340px;">
-    <div class="overlay-panel" style="width:340px;">
+  <div id="overlay-root" style="position:relative;width:380px;">
+    <div class="overlay-panel" style="width:380px;">
       <div class="overlay-header">
         <span>STANDINGS</span>
         <span id="connection-status"><span class="status-dot demo"></span> Demo Mode</span>
       </div>
       <div class="overlay-body">
         <table class="overlay-table">
-          <thead><tr><th>P</th><th>#</th><th>Driver</th><th>Best</th><th>Last</th><th></th></tr></thead>
+          <thead><tr><th>P</th><th>#</th><th>Driver</th><th>Best Lap</th><th>Last Lap</th><th>Gap</th><th>PIT</th></tr></thead>
           <tbody id="standings-body"></tbody>
         </table>
       </div>
@@ -49,30 +50,90 @@
     let iracingConnected = false;
     const dataHandlers = {};
 
-    // Demo data (shown until iRacing connects)
+    function formatLapTime(seconds) {
+      if (!seconds || seconds <= 0) return '--';
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return mins > 0 ? mins + ':' + secs.toFixed(3).padStart(6, '0') : secs.toFixed(3);
+    }
+
+    // Demo data (shown until iRacing connects) — bestLap/lastLap as raw seconds
     const demoStandings = [
-      { position: 1, carNumber: '1', driverName: 'M. Verstappen', interval: 'Leader', lastLap: '1:32.456', inPit: false, onLeadLap: true, isPlayer: false },
-      { position: 2, carNumber: '44', driverName: 'L. Hamilton', interval: '+1.234', lastLap: '1:32.890', inPit: false, onLeadLap: true, isPlayer: false },
-      { position: 3, carNumber: '16', driverName: 'C. Leclerc', interval: '+3.567', lastLap: '1:33.012', inPit: false, onLeadLap: true, isPlayer: false },
-      { position: 4, carNumber: '99', driverName: 'You', interval: '+5.890', lastLap: '1:33.456', inPit: false, onLeadLap: true, isPlayer: true },
-      { position: 5, carNumber: '55', driverName: 'C. Sainz', interval: '+8.123', lastLap: '1:33.789', inPit: false, onLeadLap: true, isPlayer: false },
-      { position: 6, carNumber: '4', driverName: 'L. Norris', interval: '+10.456', lastLap: '1:34.012', inPit: true, onLeadLap: true, isPlayer: false },
-      { position: 7, carNumber: '81', driverName: 'O. Piastri', interval: '+12.789', lastLap: '1:34.234', inPit: false, onLeadLap: true, isPlayer: false },
-      { position: 8, carNumber: '63', driverName: 'G. Russell', interval: '+15.012', lastLap: '1:34.567', inPit: false, onLeadLap: true, isPlayer: false },
+      { position: 0, classPosition: 0, carNumber: '1',  driverName: 'M. Verstappen', carMake: 'Dallara IR18', iRating: 7200, bestLap: 92.456, lastLap: 92.891, inPit: false, isPlayer: false },
+      { position: 0, classPosition: 0, carNumber: '44', driverName: 'L. Hamilton',   carMake: 'Dallara IR18', iRating: 6850, bestLap: 92.690, lastLap: 92.990, inPit: false, isPlayer: false },
+      { position: 0, classPosition: 0, carNumber: '16', driverName: 'C. Leclerc',    carMake: 'Dallara IR18', iRating: 6450, bestLap: 93.012, lastLap: 93.456, inPit: false, isPlayer: false },
+      { position: 0, classPosition: 0, carNumber: '99', driverName: 'You',           carMake: 'Dallara IR18', iRating: 3210, bestLap: 93.456, lastLap: 93.789, inPit: false, isPlayer: true  },
+      { position: 0, classPosition: 0, carNumber: '55', driverName: 'C. Sainz',      carMake: 'Dallara IR18', iRating: 5900, bestLap: 93.890, lastLap: 94.012, inPit: false, isPlayer: false },
+      { position: 0, classPosition: 0, carNumber: '4',  driverName: 'L. Norris',     carMake: 'Dallara IR18', iRating: 5600, bestLap: 94.123, lastLap: 94.567, inPit: true,  isPlayer: false },
+      { position: 0, classPosition: 0, carNumber: '81', driverName: 'O. Piastri',    carMake: 'Dallara IR18', iRating: 5300, bestLap: 94.678, lastLap: 95.001, inPit: false, isPlayer: false },
+      { position: 0, classPosition: 0, carNumber: '63', driverName: 'G. Russell',    carMake: 'Dallara IR18', iRating: 5100, bestLap: 95.012, lastLap: 95.234, inPit: false, isPlayer: false },
     ];
+
+    function sortAndRankStandings(data) {
+      // If any car has position > 0, sort by position (race mode)
+      const hasPositions = data.some(d => d.position > 0);
+      if (hasPositions) {
+        return [...data].sort((a, b) => {
+          const pa = a.classPosition > 0 ? a.classPosition : (a.position > 0 ? a.position : 9999);
+          const pb = b.classPosition > 0 ? b.classPosition : (b.position > 0 ? b.position : 9999);
+          return pa - pb;
+        });
+      }
+      // Practice mode: sort by best lap (fastest first, no-lap cars at end)
+      return [...data].sort((a, b) => {
+        if (!a.bestLap || a.bestLap <= 0) return 1;
+        if (!b.bestLap || b.bestLap <= 0) return -1;
+        return a.bestLap - b.bestLap;
+      });
+    }
+
+    function buildStandingsRows(data, limit) {
+      const sorted = sortAndRankStandings(data);
+      const leaderBest = sorted[0] && sorted[0].bestLap > 0 ? sorted[0].bestLap : null;
+
+      const playerIdx = sorted.findIndex(d => d.isPlayer);
+      let startIdx = 0;
+      if (sorted.length > limit && playerIdx >= 0) {
+        startIdx = Math.max(0, Math.min(playerIdx - Math.floor(limit / 2), sorted.length - limit));
+      }
+      const visible = sorted.slice(startIdx, startIdx + limit);
+
+      return visible.map((d, i) => {
+        const rank = startIdx + i + 1;
+        const pos = d.classPosition > 0 ? d.classPosition : (d.position > 0 ? d.position : rank);
+        const bestFormatted = formatLapTime(d.bestLap);
+        const lastFormatted = formatLapTime(d.lastLap);
+
+        let gap = 'Leader';
+        if (!d.isPlayer && leaderBest && d.bestLap > 0 && rank > 1) {
+          const diff = d.bestLap - leaderBest;
+          gap = '+' + diff.toFixed(3);
+        } else if (rank === 1 || (d.bestLap > 0 && leaderBest && d.bestLap === leaderBest)) {
+          gap = 'Leader';
+        } else if (!d.bestLap || d.bestLap <= 0) {
+          gap = '--';
+        }
+
+        const sub = [d.carMake, d.iRating ? d.iRating + ' iR' : ''].filter(Boolean).join(' · ');
+
+        return `<tr class="${d.isPlayer ? 'player-row' : ''}">
+          <td class="mono" style="font-weight:700">${pos}</td>
+          <td style="font-weight:600">${d.carNumber || ''}</td>
+          <td>
+            <div class="driver-name">${d.driverName || ''}</div>
+            ${sub ? `<div class="driver-sub">${sub}</div>` : ''}
+          </td>
+          <td class="mono" style="font-size:11px">${bestFormatted}</td>
+          <td class="mono" style="font-size:11px">${lastFormatted}</td>
+          <td class="mono" style="font-size:11px;color:rgba(255,255,255,0.5)">${gap}</td>
+          <td>${d.inPit ? '<span class="pit-indicator">PIT</span>' : ''}</td>
+        </tr>`;
+      }).join('');
+    }
 
     function renderDemoStandings() {
       const tbody = document.getElementById('standings-body');
-      tbody.innerHTML = demoStandings.map(d => `
-        <tr class="${d.isPlayer ? 'player-row' : ''} ${!d.onLeadLap ? 'lapped' : ''}">
-          <td class="mono" style="font-weight:700">${d.position}</td>
-          <td style="font-weight:600">${d.carNumber || ''}</td>
-          <td>${d.driverName || ''}</td>
-          <td class="mono" style="font-size:11px">${d.interval || ''}</td>
-          <td class="mono" style="font-size:11px">${d.lastLap || ''}</td>
-          <td>${d.inPit ? '<span class="pit-indicator">PIT</span>' : ''}</td>
-        </tr>
-      `).join('');
+      tbody.innerHTML = buildStandingsRows(demoStandings, MAX_ROWS);
     }
 
     renderDemoStandings();
@@ -116,12 +177,10 @@
       } else if (!iracingConnected) {
         if (el) el.innerHTML = '<span class="status-dot waiting"></span> Waiting';
         if (dis) { dis.textContent = 'Waiting for iRacing...'; dis.style.display = 'flex'; }
-        // Clear demo data when iRacing disconnects — show empty state
         document.getElementById('standings-body').innerHTML = '';
       } else {
         if (el) el.innerHTML = '<span class="status-dot connected"></span> Live';
         if (dis) dis.style.display = 'none';
-        // Clear demo data immediately when iRacing connects — real data will arrive shortly
         document.getElementById('standings-body').innerHTML = '';
       }
     }
@@ -137,23 +196,7 @@
         tbody.innerHTML = '';
       }
 
-      const playerPos = data.findIndex(d => d.isPlayer);
-      let startIdx = 0;
-      if (data.length > MAX_ROWS && playerPos >= 0) {
-        startIdx = Math.max(0, Math.min(playerPos - Math.floor(MAX_ROWS / 2), data.length - MAX_ROWS));
-      }
-      const visible = data.slice(startIdx, startIdx + MAX_ROWS);
-      tbody.innerHTML = visible.map(d => {
-        const pos = d.classPosition > 0 ? d.classPosition : (d.position > 0 ? d.position : '-');
-        return `<tr class="${d.isPlayer ? 'player-row' : ''}">
-          <td class="mono" style="font-weight:700">${pos}</td>
-          <td style="font-weight:600">${d.carNumber || ''}</td>
-          <td>${d.driverName || ''}</td>
-          <td class="mono" style="font-size:11px">${d.bestLap || '--'}</td>
-          <td class="mono" style="font-size:11px">${d.lastLap || '--'}</td>
-          <td>${d.inPit ? '<span class="pit-indicator">PIT</span>' : ''}</td>
-        </tr>`;
-      }).join('');
+      tbody.innerHTML = buildStandingsRows(data, MAX_ROWS);
     });
 
     connectBridge(['standings']);

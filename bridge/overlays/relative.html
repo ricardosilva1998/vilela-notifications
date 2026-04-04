@@ -14,8 +14,8 @@
     .overlay-table td { padding: 5px 8px; border-bottom: 1px solid rgba(255,255,255,0.03); }
     .overlay-table tr.player-row { background: rgba(145,70,255,0.2); }
     .overlay-table tr.player-row td { color: #fff; font-weight: 700; }
-    .ahead { color: #f04438; }
-    .behind { color: #3ecf8e; }
+    .ahead { color: #3ecf8e; }
+    .behind { color: #f04438; }
     .mono { font-family: 'Consolas', 'Courier New', monospace; }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
     .status-dot.connected { background: #3ecf8e; }
@@ -26,15 +26,15 @@
   </style>
 </head>
 <body>
-  <div id="overlay-root" style="position:relative;width:240px;">
-    <div class="overlay-panel" style="width:240px;">
+  <div id="overlay-root" style="position:relative;width:260px;">
+    <div class="overlay-panel" style="width:260px;">
       <div class="overlay-header">
         <span>RELATIVE</span>
         <span id="connection-status"><span class="status-dot demo"></span> Demo Mode</span>
       </div>
       <div class="overlay-body">
         <table class="overlay-table">
-          <thead><tr><th>#</th><th>Driver</th><th>Gap</th></tr></thead>
+          <thead><tr><th>P</th><th>#</th><th>Driver</th><th>Gap</th></tr></thead>
           <tbody id="relative-body"></tbody>
         </table>
       </div>
@@ -43,32 +43,75 @@
   </div>
   <script>
     const BRIDGE_URL = 'ws://localhost:9100';
+    const MAX_AHEAD = 5;
+    const MAX_BEHIND = 5;
     let ws = null;
     let bridgeConnected = false;
     let iracingConnected = false;
     const dataHandlers = {};
 
-    // Demo data (shown until iRacing connects)
-    const demoRelative = [
-      { carNumber: '16', driverName: 'C. Leclerc', gap: -3.567, position: 3, isPlayer: false },
-      { carNumber: '44', driverName: 'L. Hamilton', gap: -1.234, position: 2, isPlayer: false },
-      { carNumber: '99', driverName: 'You', gap: 0, position: 4, isPlayer: true },
-      { carNumber: '55', driverName: 'C. Sainz', gap: 2.233, position: 5, isPlayer: false },
-      { carNumber: '4', driverName: 'L. Norris', gap: 4.566, position: 6, isPlayer: false },
-    ];
+    // Demo data (shown until iRacing connects) — sorted by distGap
+    const demoRelative = {
+      playerCarIdx: 4,
+      cars: [
+        { carIdx: 2, carNumber: '16', driverName: 'C. Leclerc', gap: -3.567, distGap: -3.567, position: 3, classPosition: 3, inPit: false, isPlayer: false },
+        { carIdx: 3, carNumber: '44', driverName: 'L. Hamilton', gap: -1.234, distGap: -1.234, position: 2, classPosition: 2, inPit: false, isPlayer: false },
+        { carIdx: 4, carNumber: '99', driverName: 'You',         gap: 0,      distGap: 0,      position: 4, classPosition: 4, inPit: false, isPlayer: true  },
+        { carIdx: 5, carNumber: '55', driverName: 'C. Sainz',    gap: 2.233,  distGap: 2.233,  position: 5, classPosition: 5, inPit: false, isPlayer: false },
+        { carIdx: 6, carNumber: '4',  driverName: 'L. Norris',   gap: 4.566,  distGap: 4.566,  position: 6, classPosition: 6, inPit: true,  isPlayer: false },
+      ]
+    };
+
+    function formatRelativeGap(distGap) {
+      const abs = Math.abs(distGap).toFixed(3);
+      return distGap < 0 ? '-' + abs + 's' : '+' + abs + 's';
+    }
+
+    function buildRelativeRows(data) {
+      const { cars } = data;
+      // cars is sorted by distGap; negatives = ahead, positives = behind
+      const playerCar = cars.find(c => c.isPlayer);
+      const ahead = cars.filter(c => !c.isPlayer && c.distGap < 0).slice(-MAX_AHEAD); // closest ahead last
+      const behind = cars.filter(c => !c.isPlayer && c.distGap > 0).slice(0, MAX_BEHIND);
+
+      const rows = [];
+
+      for (const d of ahead) {
+        const pos = d.classPosition > 0 ? d.classPosition : (d.position > 0 ? d.position : '');
+        rows.push(`<tr>
+          <td class="mono" style="font-weight:700">${pos}</td>
+          <td style="font-weight:600">${d.carNumber || ''}</td>
+          <td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px">${d.driverName || ''}</td>
+          <td class="mono ahead" style="font-size:11px">${formatRelativeGap(d.distGap)}</td>
+        </tr>`);
+      }
+
+      // Player row
+      const playerPos = playerCar ? (playerCar.classPosition > 0 ? playerCar.classPosition : (playerCar.position > 0 ? playerCar.position : '')) : '';
+      const playerNum = playerCar ? (playerCar.carNumber || '') : '';
+      rows.push(`<tr class="player-row">
+        <td class="mono" style="font-weight:700">${playerPos}</td>
+        <td style="font-weight:700">${playerNum}</td>
+        <td>YOU</td>
+        <td class="mono" style="font-size:11px">—</td>
+      </tr>`);
+
+      for (const d of behind) {
+        const pos = d.classPosition > 0 ? d.classPosition : (d.position > 0 ? d.position : '');
+        rows.push(`<tr>
+          <td class="mono" style="font-weight:700">${pos}</td>
+          <td style="font-weight:600">${d.carNumber || ''}</td>
+          <td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px">${d.driverName || ''}</td>
+          <td class="mono behind" style="font-size:11px">${formatRelativeGap(d.distGap)}</td>
+        </tr>`);
+      }
+
+      return rows.join('');
+    }
 
     function renderDemoRelative() {
       const tbody = document.getElementById('relative-body');
-      tbody.innerHTML = demoRelative.map(d => {
-        const gapClass = d.gap > 0 ? 'behind' : d.gap < 0 ? 'ahead' : '';
-        const gapStr = d.gap === 0 ? '—' : (d.gap > 0 ? '+' : '') + d.gap.toFixed(2) + 's';
-        return `<tr class="${d.isPlayer ? 'player-row' : ''}">
-          <td style="font-weight:600">${d.carNumber || ''}</td>
-          <td>${d.driverName || ''}</td>
-          <td class="mono ${gapClass}" style="font-size:11px">${gapStr}</td>
-          <td class="mono" style="font-size:11px">${d.position || ''}</td>
-        </tr>`;
-      }).join('');
+      tbody.innerHTML = buildRelativeRows(demoRelative);
     }
 
     renderDemoRelative();
@@ -111,12 +154,10 @@
       } else if (!iracingConnected) {
         if (el) el.innerHTML = '<span class="status-dot waiting"></span> Waiting';
         if (dis) { dis.textContent = 'Waiting for iRacing...'; dis.style.display = 'flex'; }
-        // Clear demo data when iRacing disconnects — show empty state
         document.getElementById('relative-body').innerHTML = '';
       } else {
         if (el) el.innerHTML = '<span class="status-dot connected"></span> Live';
         if (dis) dis.style.display = 'none';
-        // Clear demo data immediately when iRacing connects — real data will arrive shortly
         document.getElementById('relative-body').innerHTML = '';
       }
     }
@@ -132,48 +173,7 @@
         tbody.innerHTML = '';
       }
 
-      const { cars } = data;
-      const rows = [];
-
-      // cars is sorted by gap: negatives = ahead, positives = behind
-      // insert player row between the two groups
-      let playerInserted = false;
-      for (const d of cars) {
-        if (!playerInserted && (d.isPlayer || d.gap >= 0)) {
-          if (!d.isPlayer) {
-            // insert player row before the first behind car
-            rows.push(`<tr class="player-row">
-              <td style="font-weight:600">YOU</td>
-              <td>Your Car</td>
-              <td class="mono" style="font-size:11px">—</td>
-            </tr>`);
-          }
-          playerInserted = true;
-        }
-        if (d.isPlayer) {
-          rows.push(`<tr class="player-row">
-            <td style="font-weight:600">${d.carNumber || ''}</td>
-            <td>${d.driverName || ''}</td>
-            <td class="mono" style="font-size:11px">—</td>
-          </tr>`);
-          continue;
-        }
-        const gapClass = d.gap < 0 ? 'ahead' : 'behind';
-        const gapStr = d.gap < 0
-          ? '-' + Math.abs(d.gap).toFixed(2) + 's'
-          : '+' + d.gap.toFixed(2) + 's';
-        rows.push(`<tr>
-          <td style="font-weight:600">${d.carNumber || ''}</td>
-          <td>${d.driverName || ''}</td>
-          <td class="mono ${gapClass}" style="font-size:11px">${gapStr}</td>
-        </tr>`);
-      }
-      if (!playerInserted) {
-        rows.push(`<tr class="player-row">
-          <td colspan="3" style="font-weight:600;text-align:center">YOU</td>
-        </tr>`);
-      }
-      tbody.innerHTML = rows.join('');
+      tbody.innerHTML = buildRelativeRows(data);
     });
 
     connectBridge(['relative']);
