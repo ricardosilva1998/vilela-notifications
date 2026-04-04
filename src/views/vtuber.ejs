@@ -333,22 +333,24 @@
           return;
         }
 
-        // Debug: log first successful detection
-        if (!debugLogged && result) {
-          console.log('MediaPipe result keys:', Object.keys(result));
-          console.log('faceBlendshapes:', result.faceBlendshapes?.length || 0);
-          console.log('facialTransformationMatrixes:', result.facialTransformationMatrixes?.length || 0);
-          console.log('facialTransformationMatrices:', result.facialTransformationMatrices?.length || 0);
-          if (vrm.expressionManager) {
-            console.log('VRM expressions available:', vrm.expressionManager.expressions?.map(e => e.expressionName) || 'unknown');
-          } else {
-            console.log('VRM expressionManager is null/undefined');
+        // Debug: log once when face IS detected (not on first empty frame)
+        if (!debugLogged) {
+          const hasFace = result.faceBlendshapes && result.faceBlendshapes.length > 0;
+          if (hasFace) {
+            console.log('=== Face detected! Debug info ===');
+            console.log('MediaPipe result keys:', Object.keys(result));
+            console.log('Blendshape count:', result.faceBlendshapes[0].categories.length);
+            console.log('Sample blendshapes:', result.faceBlendshapes[0].categories.slice(0, 5).map(c => `${c.categoryName}: ${c.score.toFixed(3)}`));
+            const matrices = result.facialTransformationMatrixes || result.facialTransformationMatrices;
+            console.log('Transformation matrices:', matrices?.length || 0);
+            if (matrices && matrices[0]) {
+              console.log('Matrix data type:', typeof matrices[0].data, 'length:', matrices[0].data?.length);
+            }
+            console.log('VRM expressions:', vrm.expressionManager?.expressions?.map(e => e.expressionName));
+            const head = vrm.humanoid?.getNormalizedBoneNode('head');
+            console.log('Head bone:', head ? 'found (rotation: ' + JSON.stringify({x: head.rotation.x.toFixed(3), y: head.rotation.y.toFixed(3), z: head.rotation.z.toFixed(3)}) + ')' : 'NOT FOUND');
+            debugLogged = true;
           }
-          if (vrm.humanoid) {
-            const head = vrm.humanoid.getNormalizedBoneNode('head');
-            console.log('VRM head bone:', head ? 'found' : 'NOT FOUND');
-          }
-          debugLogged = true;
         }
 
         faceDetected = !!(result.faceBlendshapes && result.faceBlendshapes.length > 0);
