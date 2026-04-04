@@ -297,14 +297,13 @@
 
     loading.style.display = 'none';
 
-    // --- Blend shape helpers ---
-    function getBlendShape(blendShapes, name) {
+    // --- Helpers ---
+    function getBS(blendShapes, name) {
       if (!blendShapes || !blendShapes[0]) return 0;
-      const shape = blendShapes[0].categories.find(c => c.categoryName === name);
-      return shape ? shape.score : 0;
+      const s = blendShapes[0].categories.find(c => c.categoryName === name);
+      return s ? s.score : 0;
     }
 
-    // Smoothing for stable tracking
     const smooth = {};
     function lerp(key, target, factor = 0.3) {
       if (smooth[key] === undefined) smooth[key] = target;
@@ -312,14 +311,53 @@
       return smooth[key];
     }
 
+    // Compute head rotation from face landmarks (nose tip, forehead, chin, ears)
+    function computeHeadRotation(landmarks) {
+      if (!landmarks || !landmarks[0]) return null;
+      const lm = landmarks[0];
+      // Key points: nose tip(1), chin(152), forehead(10), left ear(234), right ear(454)
+      const nose = lm[1];
+      const chin = lm[152];
+      const forehead = lm[10];
+      const leftEar = lm[234];
+      const rightEar = lm[454];
+
+      // Yaw: horizontal angle from ears
+      const earDx = rightEar.x - leftEar.x;
+      const earDz = rightEar.z - leftEar.z;
+      const yaw = Math.atan2(earDz, earDx);
+
+      // Pitch: vertical angle from forehead to chin
+      const faceDy = chin.y - forehead.y;
+      const faceDz = chin.z - forehead.z;
+      const pitch = Math.atan2(faceDz, faceDy);
+
+      // Roll: tilt from ear heights
+      const earDy = rightEar.y - leftEar.y;
+      const earDist = Math.sqrt(earDx * earDx + earDy * earDy);
+      const roll = Math.atan2(earDy, earDist);
+
+      return { pitch, yaw, roll };
+    }
+
+    // Cache raw bone references
+    const headBone = vrm.humanoid.getRawBoneNode('head');
+    const neckBone = vrm.humanoid.getRawBoneNode('neck');
+    const spineBone = vrm.humanoid.getRawBoneNode('upperChest') || vrm.humanoid.getRawBoneNode('spine');
+
+    // Store rest quaternions so we can compose on top of them
+    const headRest = headBone ? headBone.quaternion.clone() : null;
+    const neckRest = neckBone ? neckBone.quaternion.clone() : null;
+    const spineRest = spineBone ? spineBone.quaternion.clone() : null;
+
+    console.log('Bone setup — head:', !!headBone, 'neck:', !!neckBone, 'spine:', !!spineBone);
+
     // --- Animation Loop ---
     const clock = new THREE.Clock();
     let frameCount = 0;
     let lastFpsUpdate = 0;
     let fps = 0;
-
     let faceDetected = false;
-    let debugLogged = false;
 
     function animate() {
       requestAnimationFrame(animate);
@@ -331,100 +369,61 @@
         try {
           result = faceLandmarker.detectForVideo(videoEl, now);
         } catch (e) {
-          if (!debugLogged) { console.error('detectForVideo error:', e); debugLogged = true; }
           renderer.render(scene, camera);
           return;
         }
 
-        // Debug: log once when face IS detected (not on first empty frame)
-        if (!debugLogged) {
-          const hasFace = result.faceBlendshapes && result.faceBlendshapes.length > 0;
-          if (hasFace) {
-            console.log('=== Face detected! Debug info ===');
-            console.log('MediaPipe result keys:', Object.keys(result));
-            console.log('Blendshape count:', result.faceBlendshapes[0].categories.length);
-            console.log('Sample blendshapes:', result.faceBlendshapes[0].categories.slice(0, 5).map(c => `${c.categoryName}: ${c.score.toFixed(3)}`));
-            const matrices = result.facialTransformationMatrixes || result.facialTransformationMatrices;
-            console.log('Transformation matrices:', matrices?.length || 0);
-            if (matrices && matrices[0]) {
-              console.log('Matrix data type:', typeof matrices[0].data, 'length:', matrices[0].data?.length);
-            }
-            console.log('VRM expressions:', vrm.expressionManager?.expressions?.map(e => e.expressionName));
-            const head = vrm.humanoid?.getNormalizedBoneNode('head');
-            console.log('Head bone:', head ? 'found (rotation: ' + JSON.stringify({x: head.rotation.x.toFixed(3), y: head.rotation.y.toFixed(3), z: head.rotation.z.toFixed(3)}) + ')' : 'NOT FOUND');
-            debugLogged = true;
-          }
-        }
-
         faceDetected = !!(result.faceBlendshapes && result.faceBlendshapes.length > 0);
 
-        // Set expressions BEFORE vrm.update() — it applies them internally
-        if (result.faceBlendshapes && result.faceBlendshapes.length > 0) {
+        if (faceDetected) {
           const bs = result.faceBlendshapes;
 
-          // Eye blinks
-          const blinkL = getBlendShape(bs, 'eyeBlinkLeft');
-          const blinkR = getBlendShape(bs, 'eyeBlinkRight');
-          vrm.expressionManager.setValue('blinkLeft', lerp('blinkL', blinkL, 0.5));
-          vrm.expressionManager.setValue('blinkRight', lerp('blinkR', blinkR, 0.5));
+          // --- Expressions ---
+          vrm.expressionManager.setValue('blinkLeft', lerp('blinkL', getBS(bs, 'eyeBlinkLeft'), 0.5));
+          vrm.expressionManager.setValue('blinkRight', lerp('blinkR', getBS(bs, 'eyeBlinkRight'), 0.5));
 
-          // Mouth
-          const jawOpen = getBlendShape(bs, 'jawOpen');
-          const mouthSmile = (getBlendShape(bs, 'mouthSmileLeft') + getBlendShape(bs, 'mouthSmileRight')) / 2;
+          const jawOpen = getBS(bs, 'jawOpen');
+          const smile = (getBS(bs, 'mouthSmileLeft') + getBS(bs, 'mouthSmileRight')) / 2;
           vrm.expressionManager.setValue('aa', lerp('mouth', jawOpen * 1.2, 0.4));
-          vrm.expressionManager.setValue('happy', lerp('smile', mouthSmile, 0.3));
+          vrm.expressionManager.setValue('happy', lerp('smile', smile, 0.3));
 
-          // Brows
-          const browUp = getBlendShape(bs, 'browInnerUp');
-          const browDownL = getBlendShape(bs, 'browDownLeft');
-          const browDownR = getBlendShape(bs, 'browDownRight');
-          vrm.expressionManager.setValue('surprised', lerp('browUp', browUp * 0.7, 0.3));
-          vrm.expressionManager.setValue('angry', lerp('browDown', (browDownL + browDownR) / 2 * 0.5, 0.3));
+          vrm.expressionManager.setValue('surprised', lerp('browUp', getBS(bs, 'browInnerUp') * 0.7, 0.3));
+          vrm.expressionManager.setValue('angry', lerp('browDown', (getBS(bs, 'browDownLeft') + getBS(bs, 'browDownRight')) / 2 * 0.5, 0.3));
 
-          // Eye look direction
-          const lookLeft = getBlendShape(bs, 'eyeLookOutLeft');
-          const lookRight = getBlendShape(bs, 'eyeLookOutRight');
-          const lookUp = getBlendShape(bs, 'eyeLookUpLeft');
-          const lookDown = getBlendShape(bs, 'eyeLookDownLeft');
-          vrm.expressionManager.setValue('lookLeft', lerp('lookL', lookLeft, 0.3));
-          vrm.expressionManager.setValue('lookRight', lerp('lookR', lookRight, 0.3));
-          vrm.expressionManager.setValue('lookUp', lerp('lookUp', lookUp, 0.3));
-          vrm.expressionManager.setValue('lookDown', lerp('lookDown', lookDown, 0.3));
+          vrm.expressionManager.setValue('lookLeft', lerp('lookL', getBS(bs, 'eyeLookOutLeft'), 0.3));
+          vrm.expressionManager.setValue('lookRight', lerp('lookR', getBS(bs, 'eyeLookOutRight'), 0.3));
+          vrm.expressionManager.setValue('lookUp', lerp('lookUp', getBS(bs, 'eyeLookUpLeft'), 0.3));
+          vrm.expressionManager.setValue('lookDown', lerp('lookDown', getBS(bs, 'eyeLookDownLeft'), 0.3));
         }
 
-        // vrm.update() applies expressions and resets bone transforms — call it FIRST
+        // Let VRM system apply expressions and internal updates
         vrm.update(delta);
 
-        // Head rotation from transformation matrix — apply AFTER vrm.update() so it doesn't get overwritten
-        const matrices = result.facialTransformationMatrixes || result.facialTransformationMatrices;
-        if (matrices && matrices.length > 0) {
-          const matrix = matrices[0];
-          // MediaPipe returns row-major 4x4 — Three.js needs column-major, so transpose
-          const m = new THREE.Matrix4().fromArray(matrix.data).transpose();
-          const rotation = new THREE.Euler().setFromRotationMatrix(m, 'ZYX');
+        // --- Head rotation: apply on RAW bones AFTER vrm.update() ---
+        if (faceDetected && result.faceLandmarks && result.faceLandmarks.length > 0) {
+          const rot = computeHeadRotation(result.faceLandmarks);
+          if (rot) {
+            const p = lerp('headP', rot.pitch, 0.3);
+            const y = lerp('headY', rot.yaw, 0.3);
+            const r = lerp('headR', rot.roll, 0.3);
 
-          // Extract pitch/yaw/roll
-          const pitch = rotation.x;
-          const yaw = rotation.y;
-          const roll = rotation.z;
+            // Head: main rotation
+            if (headBone && headRest) {
+              const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(p * 0.6, y * 0.6, r * 0.4));
+              headBone.quaternion.copy(headRest).multiply(q);
+            }
 
-          const head = vrm.humanoid.getNormalizedBoneNode('head');
-          if (head) {
-            head.rotation.x = lerp('headX', pitch * 0.6, 0.3);
-            head.rotation.y = lerp('headY', yaw * 0.7, 0.3);
-            head.rotation.z = lerp('headZ', roll * 0.5, 0.3);
-          }
+            // Neck: subtle follow
+            if (neckBone && neckRest) {
+              const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(p * 0.2, y * 0.2, r * 0.1));
+              neckBone.quaternion.copy(neckRest).multiply(q);
+            }
 
-          const neck = vrm.humanoid.getNormalizedBoneNode('neck');
-          if (neck) {
-            neck.rotation.x = lerp('neckX', pitch * 0.2, 0.2);
-            neck.rotation.y = lerp('neckY', yaw * 0.2, 0.2);
-          }
-
-          const spine = vrm.humanoid.getNormalizedBoneNode('upperChest') || vrm.humanoid.getNormalizedBoneNode('spine');
-          if (spine) {
-            spine.rotation.x = lerp('spineX', pitch * 0.05, 0.15);
-            spine.rotation.y = lerp('spineY', yaw * 0.05, 0.15);
+            // Spine: very subtle
+            if (spineBone && spineRest) {
+              const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(p * 0.05, y * 0.05, 0));
+              spineBone.quaternion.copy(spineRest).multiply(q);
+            }
           }
         }
       }
