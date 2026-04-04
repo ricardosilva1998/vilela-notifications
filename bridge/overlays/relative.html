@@ -21,6 +21,7 @@
     .status-dot.connected { background: #3ecf8e; }
     .status-dot.disconnected { background: #f04438; }
     .status-dot.waiting { background: #f79009; }
+    .status-dot.demo { background: #f79009; }
     .overlay-disconnected { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(12,13,20,0.9); color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 600; border-radius: 8px; }
   </style>
 </head>
@@ -29,7 +30,7 @@
     <div class="overlay-panel" style="width:240px;">
       <div class="overlay-header">
         <span>RELATIVE</span>
-        <span id="connection-status"><span class="status-dot waiting"></span> Connecting</span>
+        <span id="connection-status"><span class="status-dot demo"></span> Demo Mode</span>
       </div>
       <div class="overlay-body">
         <table class="overlay-table">
@@ -46,6 +47,31 @@
     let bridgeConnected = false;
     let iracingConnected = false;
     const dataHandlers = {};
+
+    // Demo data (shown until iRacing connects)
+    const demoRelative = [
+      { carNumber: '16', driverName: 'C. Leclerc', gap: -3.567, position: 3, isPlayer: false },
+      { carNumber: '44', driverName: 'L. Hamilton', gap: -1.234, position: 2, isPlayer: false },
+      { carNumber: '99', driverName: 'You', gap: 0, position: 4, isPlayer: true },
+      { carNumber: '55', driverName: 'C. Sainz', gap: 2.233, position: 5, isPlayer: false },
+      { carNumber: '4', driverName: 'L. Norris', gap: 4.566, position: 6, isPlayer: false },
+    ];
+
+    function renderDemoRelative() {
+      const tbody = document.getElementById('relative-body');
+      tbody.innerHTML = demoRelative.map(d => {
+        const gapClass = d.gap > 0 ? 'behind' : d.gap < 0 ? 'ahead' : '';
+        const gapStr = d.gap === 0 ? '—' : (d.gap > 0 ? '+' : '') + d.gap.toFixed(2) + 's';
+        return `<tr class="${d.isPlayer ? 'player-row' : ''}">
+          <td style="font-weight:600">${d.carNumber || ''}</td>
+          <td>${d.driverName || ''}</td>
+          <td class="mono ${gapClass}" style="font-size:11px">${gapStr}</td>
+          <td class="mono" style="font-size:11px">${d.position || ''}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    renderDemoRelative();
 
     function connectBridge(channels) {
       try { ws = new WebSocket(BRIDGE_URL); } catch(e) { setTimeout(() => connectBridge(channels), 3000); return; }
@@ -80,8 +106,8 @@
       const el = document.getElementById('connection-status');
       const dis = document.getElementById('overlay-disconnected');
       if (!bridgeConnected) {
-        if (el) el.innerHTML = '<span class="status-dot disconnected"></span> Disconnected';
-        if (dis) { dis.textContent = 'Bridge not running'; dis.style.display = 'flex'; }
+        if (el) el.innerHTML = '<span class="status-dot demo"></span> Demo Mode';
+        if (dis) dis.style.display = 'none';
       } else if (!iracingConnected) {
         if (el) el.innerHTML = '<span class="status-dot waiting"></span> Waiting';
         if (dis) { dis.textContent = 'Waiting for iRacing...'; dis.style.display = 'flex'; }
@@ -114,6 +140,16 @@
     });
 
     connectBridge(['session', 'relative']);
+
+    // Lock state support
+    try {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.on('lock-state', (event, locked) => {
+        document.body.style.pointerEvents = locked ? 'none' : 'auto';
+        const header = document.querySelector('.overlay-header');
+        if (header) header.style.cursor = locked ? 'default' : 'move';
+      });
+    } catch(e) {}
   </script>
 </body>
 </html>

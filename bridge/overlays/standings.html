@@ -21,6 +21,7 @@
     .status-dot.connected { background: #3ecf8e; }
     .status-dot.disconnected { background: #f04438; }
     .status-dot.waiting { background: #f79009; }
+    .status-dot.demo { background: #f79009; }
     .overlay-disconnected { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(12,13,20,0.9); color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 600; border-radius: 8px; }
   </style>
 </head>
@@ -29,7 +30,7 @@
     <div class="overlay-panel" style="width:340px;">
       <div class="overlay-header">
         <span>STANDINGS</span>
-        <span id="connection-status"><span class="status-dot waiting"></span> Connecting</span>
+        <span id="connection-status"><span class="status-dot demo"></span> Demo Mode</span>
       </div>
       <div class="overlay-body">
         <table class="overlay-table">
@@ -47,6 +48,34 @@
     let bridgeConnected = false;
     let iracingConnected = false;
     const dataHandlers = {};
+
+    // Demo data (shown until iRacing connects)
+    const demoStandings = [
+      { position: 1, carNumber: '1', driverName: 'M. Verstappen', interval: 'Leader', lastLap: '1:32.456', inPit: false, onLeadLap: true, isPlayer: false },
+      { position: 2, carNumber: '44', driverName: 'L. Hamilton', interval: '+1.234', lastLap: '1:32.890', inPit: false, onLeadLap: true, isPlayer: false },
+      { position: 3, carNumber: '16', driverName: 'C. Leclerc', interval: '+3.567', lastLap: '1:33.012', inPit: false, onLeadLap: true, isPlayer: false },
+      { position: 4, carNumber: '99', driverName: 'You', interval: '+5.890', lastLap: '1:33.456', inPit: false, onLeadLap: true, isPlayer: true },
+      { position: 5, carNumber: '55', driverName: 'C. Sainz', interval: '+8.123', lastLap: '1:33.789', inPit: false, onLeadLap: true, isPlayer: false },
+      { position: 6, carNumber: '4', driverName: 'L. Norris', interval: '+10.456', lastLap: '1:34.012', inPit: true, onLeadLap: true, isPlayer: false },
+      { position: 7, carNumber: '81', driverName: 'O. Piastri', interval: '+12.789', lastLap: '1:34.234', inPit: false, onLeadLap: true, isPlayer: false },
+      { position: 8, carNumber: '63', driverName: 'G. Russell', interval: '+15.012', lastLap: '1:34.567', inPit: false, onLeadLap: true, isPlayer: false },
+    ];
+
+    function renderDemoStandings() {
+      const tbody = document.getElementById('standings-body');
+      tbody.innerHTML = demoStandings.map(d => `
+        <tr class="${d.isPlayer ? 'player-row' : ''} ${!d.onLeadLap ? 'lapped' : ''}">
+          <td class="mono" style="font-weight:700">${d.position}</td>
+          <td style="font-weight:600">${d.carNumber || ''}</td>
+          <td>${d.driverName || ''}</td>
+          <td class="mono" style="font-size:11px">${d.interval || ''}</td>
+          <td class="mono" style="font-size:11px">${d.lastLap || ''}</td>
+          <td>${d.inPit ? '<span class="pit-indicator">PIT</span>' : ''}</td>
+        </tr>
+      `).join('');
+    }
+
+    renderDemoStandings();
 
     function connectBridge(channels) {
       try { ws = new WebSocket(BRIDGE_URL); } catch(e) { setTimeout(() => connectBridge(channels), 3000); return; }
@@ -82,8 +111,8 @@
       const el = document.getElementById('connection-status');
       const dis = document.getElementById('overlay-disconnected');
       if (!bridgeConnected) {
-        if (el) el.innerHTML = '<span class="status-dot disconnected"></span> Disconnected';
-        if (dis) { dis.textContent = 'Bridge not running'; dis.style.display = 'flex'; }
+        if (el) el.innerHTML = '<span class="status-dot demo"></span> Demo Mode';
+        if (dis) dis.style.display = 'none';
       } else if (!iracingConnected) {
         if (el) el.innerHTML = '<span class="status-dot waiting"></span> Waiting';
         if (dis) { dis.textContent = 'Waiting for iRacing...'; dis.style.display = 'flex'; }
@@ -121,6 +150,16 @@
     });
 
     connectBridge(['session', 'standings']);
+
+    // Lock state support
+    try {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.on('lock-state', (event, locked) => {
+        document.body.style.pointerEvents = locked ? 'none' : 'auto';
+        const header = document.querySelector('.overlay-header');
+        if (header) header.style.cursor = locked ? 'default' : 'move';
+      });
+    } catch(e) {}
   </script>
 </body>
 </html>

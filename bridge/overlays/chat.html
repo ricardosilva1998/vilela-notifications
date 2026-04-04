@@ -22,6 +22,7 @@
     .status-dot.connected { background: #3ecf8e; }
     .status-dot.disconnected { background: #f04438; }
     .status-dot.waiting { background: #f79009; }
+    .status-dot.demo { background: #f79009; }
   </style>
 </head>
 <body>
@@ -29,18 +30,14 @@
     <div class="overlay-panel" style="width:320px;">
       <div class="overlay-header">
         <span>STREAMING CHAT</span>
-        <span id="connection-status"><span class="status-dot waiting"></span> Connecting</span>
+        <span id="connection-status"><span class="status-dot demo"></span> Demo Mode</span>
       </div>
       <div class="overlay-body" id="chat-body">
-        <div class="info-box">
-          <div class="info-icon">💬</div>
-          <div class="info-title">Chat Overlay</div>
-          <div class="info-text">
-            Connect your Twitch channel at<br>
-            <a class="info-link" href="https://atletanotifications.com" target="_blank">atletanotifications.com</a><br><br>
-            Chat messages will appear here<br>during your stream.
-          </div>
-        </div>
+        <div class="chat-message"><span class="chat-author" style="color:#9146ff;">StreamFan42</span><span class="chat-text">LET'S GOOO pogchamp</span></div>
+        <div class="chat-message"><span class="chat-author" style="color:#3ecf8e;">speedracer99</span><span class="chat-text">what lap are we on?</span></div>
+        <div class="chat-message"><span class="chat-author" style="color:#f79009;">TurboMike</span><span class="chat-text">that last corner was insane!!!</span></div>
+        <div class="chat-message"><span class="chat-author" style="color:#e879f9;">Atleta_Bot</span><span class="chat-text">Welcome to the stream! Type !commands for a list</span></div>
+        <div class="chat-message"><span class="chat-author" style="color:#60a5fa;">driftkween</span><span class="chat-text">PogChamp PogChamp PogChamp</span></div>
       </div>
     </div>
   </div>
@@ -75,13 +72,23 @@
       const el = document.getElementById('connection-status');
       if (!el) return;
       if (!bridgeConnected) {
-        el.innerHTML = '<span class="status-dot disconnected"></span> Disconnected';
+        el.innerHTML = '<span class="status-dot demo"></span> Demo Mode';
       } else {
-        el.innerHTML = '<span class="status-dot connected"></span> Ready';
+        el.innerHTML = '<span class="status-dot connected"></span> Live';
       }
     }
 
     connectBridge();
+
+    // Lock state support
+    try {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.on('lock-state', (event, locked) => {
+        document.body.style.pointerEvents = locked ? 'none' : 'auto';
+        const header = document.querySelector('.overlay-header');
+        if (header) header.style.cursor = locked ? 'default' : 'move';
+      });
+    } catch(e) {}
   </script>
 </body>
 </html>

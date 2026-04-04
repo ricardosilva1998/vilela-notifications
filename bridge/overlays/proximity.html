@@ -21,6 +21,7 @@
     .status-dot.connected { background: #3ecf8e; }
     .status-dot.disconnected { background: #f04438; }
     .status-dot.waiting { background: #f79009; }
+    .status-dot.demo { background: #f79009; }
     .overlay-disconnected { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(12,13,20,0.9); color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 600; border-radius: 8px; }
   </style>
 </head>
@@ -29,17 +30,17 @@
     <div class="overlay-panel" style="width:150px;">
       <div class="overlay-header">
         <span>PROXIMITY</span>
-        <span id="connection-status"><span class="status-dot waiting"></span></span>
+        <span id="connection-status"><span class="status-dot demo"></span></span>
       </div>
       <div class="overlay-body">
         <div class="proximity-view">
           <div class="road-lane"></div>
-          <div class="car-icon car-ahead" id="car-ahead">🚗</div>
-          <div class="car-icon car-left" id="car-left">🚗</div>
-          <div class="car-icon car-right" id="car-right">🚗</div>
-          <div class="car-icon car-player">🚗</div>
+          <div class="car-icon car-ahead" id="car-ahead">&#x1F697;</div>
+          <div class="car-icon car-left" id="car-left" style="opacity:1;">&#x1F697;</div>
+          <div class="car-icon car-right" id="car-right">&#x1F697;</div>
+          <div class="car-icon car-player">&#x1F697;</div>
         </div>
-        <div class="indicator-label" id="proximity-label">Clear</div>
+        <div class="indicator-label" id="proximity-label">Car Left</div>
       </div>
     </div>
     <div class="overlay-disconnected" id="overlay-disconnected"></div>
@@ -84,8 +85,8 @@
       const el = document.getElementById('connection-status');
       const dis = document.getElementById('overlay-disconnected');
       if (!bridgeConnected) {
-        if (el) el.innerHTML = '<span class="status-dot disconnected"></span>';
-        if (dis) { dis.textContent = 'Bridge not running'; dis.style.display = 'flex'; }
+        if (el) el.innerHTML = '<span class="status-dot demo"></span>';
+        if (dis) dis.style.display = 'none';
       } else if (!iracingConnected) {
         if (el) el.innerHTML = '<span class="status-dot waiting"></span>';
         if (dis) { dis.textContent = 'Waiting for iRacing...'; dis.style.display = 'flex'; }
@@ -113,6 +114,16 @@
     });
 
     connectBridge(['proximity']);
+
+    // Lock state support
+    try {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.on('lock-state', (event, locked) => {
+        document.body.style.pointerEvents = locked ? 'none' : 'auto';
+        const header = document.querySelector('.overlay-header');
+        if (header) header.style.cursor = locked ? 'default' : 'move';
+      });
+    } catch(e) {}
   </script>
 </body>
 </html>

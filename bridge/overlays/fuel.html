@@ -22,6 +22,7 @@
     .status-dot.connected { background: #3ecf8e; }
     .status-dot.disconnected { background: #f04438; }
     .status-dot.waiting { background: #f79009; }
+    .status-dot.demo { background: #f79009; }
     .overlay-disconnected { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(12,13,20,0.9); color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 600; border-radius: 8px; }
   </style>
 </head>
@@ -30,27 +31,27 @@
     <div class="overlay-panel" style="width:240px;">
       <div class="overlay-header">
         <span>FUEL CALCULATOR</span>
-        <span id="connection-status"><span class="status-dot waiting"></span> Connecting</span>
+        <span id="connection-status"><span class="status-dot demo"></span> Demo Mode</span>
       </div>
       <div class="overlay-body">
         <div class="fuel-row">
           <span class="fuel-label">Current Fuel</span>
-          <span class="fuel-value ok" id="fuel-current">— L</span>
+          <span class="fuel-value ok" id="fuel-current">12.30 L</span>
         </div>
         <div class="fuel-row">
           <span class="fuel-label">Per Lap</span>
-          <span class="fuel-value" id="fuel-per-lap">— L</span>
+          <span class="fuel-value" id="fuel-per-lap">1.54 L</span>
         </div>
         <div class="fuel-row">
           <span class="fuel-label">Laps Remaining</span>
-          <span class="fuel-value" id="fuel-laps">—</span>
+          <span class="fuel-value ok" id="fuel-laps">7.9</span>
         </div>
         <div class="fuel-row">
           <span class="fuel-label">To Add</span>
-          <span class="fuel-value" id="fuel-to-add">— L</span>
+          <span class="fuel-value" id="fuel-to-add">0.00 L</span>
         </div>
         <div class="fuel-bar-track">
-          <div class="fuel-bar-fill" id="fuel-bar" style="width:0%;background:#3ecf8e;"></div>
+          <div class="fuel-bar-fill" id="fuel-bar" style="width:62%;background:#3ecf8e;"></div>
         </div>
       </div>
     </div>
@@ -96,8 +97,8 @@
       const el = document.getElementById('connection-status');
       const dis = document.getElementById('overlay-disconnected');
       if (!bridgeConnected) {
-        if (el) el.innerHTML = '<span class="status-dot disconnected"></span> Disconnected';
-        if (dis) { dis.textContent = 'Bridge not running'; dis.style.display = 'flex'; }
+        if (el) el.innerHTML = '<span class="status-dot demo"></span> Demo Mode';
+        if (dis) dis.style.display = 'none';
       } else if (!iracingConnected) {
         if (el) el.innerHTML = '<span class="status-dot waiting"></span> Waiting';
         if (dis) { dis.textContent = 'Waiting for iRacing...'; dis.style.display = 'flex'; }
@@ -141,6 +142,16 @@
     });
 
     connectBridge(['fuel']);
+
+    // Lock state support
+    try {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.on('lock-state', (event, locked) => {
+        document.body.style.pointerEvents = locked ? 'none' : 'auto';
+        const header = document.querySelector('.overlay-header');
+        if (header) header.style.cursor = locked ? 'default' : 'move';
+      });
+    } catch(e) {}
   </script>
 </body>
 </html>

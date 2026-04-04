@@ -26,6 +26,7 @@
     .status-dot.connected { background: #3ecf8e; }
     .status-dot.disconnected { background: #f04438; }
     .status-dot.waiting { background: #f79009; }
+    .status-dot.demo { background: #f79009; }
     .overlay-disconnected { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(12,13,20,0.9); color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 600; border-radius: 8px; }
   </style>
 </head>
@@ -34,17 +35,17 @@
     <div class="overlay-panel" style="width:130px;">
       <div class="overlay-header">
         <span>WIND</span>
-        <span id="connection-status"><span class="status-dot waiting"></span></span>
+        <span id="connection-status"><span class="status-dot demo"></span></span>
       </div>
       <div class="overlay-body">
         <div class="compass">
           <div class="compass-ring">
             <span class="compass-n">N</span>
-            <div class="wind-arrow" id="wind-arrow"></div>
-            <div class="car-arrow" id="car-arrow"></div>
+            <div class="wind-arrow" id="wind-arrow" style="transform:rotate(45deg);"></div>
+            <div class="car-arrow" id="car-arrow" style="transform:rotate(0deg);"></div>
           </div>
         </div>
-        <div class="wind-speed" id="wind-speed">0.0 <span class="wind-unit">m/s</span></div>
+        <div class="wind-speed" id="wind-speed">3.2 <span class="wind-unit">m/s</span></div>
         <div class="legend">
           <span><span class="legend-dot" style="background:#9146ff;"></span>Wind</span>
           <span><span class="legend-dot" style="background:#3ecf8e;"></span>Car</span>
@@ -93,8 +94,8 @@
       const el = document.getElementById('connection-status');
       const dis = document.getElementById('overlay-disconnected');
       if (!bridgeConnected) {
-        if (el) el.innerHTML = '<span class="status-dot disconnected"></span>';
-        if (dis) { dis.textContent = 'Bridge not running'; dis.style.display = 'flex'; }
+        if (el) el.innerHTML = '<span class="status-dot demo"></span>';
+        if (dis) dis.style.display = 'none';
       } else if (!iracingConnected) {
         if (el) el.innerHTML = '<span class="status-dot waiting"></span>';
         if (dis) { dis.textContent = 'Waiting for iRacing...'; dis.style.display = 'flex'; }
@@ -124,6 +125,16 @@
     });
 
     connectBridge(['wind']);
+
+    // Lock state support
+    try {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.on('lock-state', (event, locked) => {
+        document.body.style.pointerEvents = locked ? 'none' : 'auto';
+        const header = document.querySelector('.overlay-header');
+        if (header) header.style.cursor = locked ? 'default' : 'move';
+      });
+    } catch(e) {}
   </script>
 </body>
 </html>
