@@ -4,7 +4,6 @@ const fs = require('fs');
 const path = require('path');
 
 const logPath = path.join(require('os').homedir(), 'atleta-bridge.log');
-// Clear log on startup
 try { fs.writeFileSync(logPath, ''); } catch(e) {}
 function log(msg) {
   const line = `[${new Date().toISOString()}] ${msg}\n`;
@@ -18,43 +17,44 @@ let pollInterval = null;
 let connectInterval = null;
 
 const { broadcastToChannel } = require('./websocket');
-const FuelCalculator = require('./fuel-calculator');
 
-const fuelCalc = new FuelCalculator();
+// Fuel tracking
+let fuelHistory = []; // per-lap fuel usage
+let lastLap = -1;
+let fuelAtLapStart = null;
+
+function resetFuel() {
+  fuelHistory = [];
+  lastLap = -1;
+  fuelAtLapStart = null;
+}
 
 async function startTelemetry(onStatusChange) {
   statusCallback = onStatusChange;
-  log('[Telemetry] Starting telemetry reader...');
-  log('[Telemetry] Log file: ' + logPath);
+  log('[Telemetry] Starting...');
 
   let IRSDK, VARS;
   try {
-    log('[Telemetry] Loading @emiliosp/node-iracing-sdk...');
     const sdk = await import('@emiliosp/node-iracing-sdk');
     IRSDK = sdk.IRSDK;
     VARS = sdk.VARS;
-    log('[Telemetry] SDK loaded. IRSDK type: ' + typeof IRSDK + ', VARS keys: ' + (VARS ? Object.keys(VARS).length : 0));
+    log('[Telemetry] SDK loaded. VARS: ' + Object.keys(VARS).length);
   } catch (e) {
     log('[Telemetry] SDK FAILED: ' + e.message);
-    log('[Telemetry] Running in stub mode');
-    return;
-  }
-
-  if (!IRSDK || !VARS) {
-    log('[Telemetry] IRSDK or VARS not available');
     return;
   }
 
   let ir = null;
+  let debugDumped = false;
 
-  // Try to connect periodically
   connectInterval = setInterval(async () => {
     if (ir && connected) return;
-
     try {
       ir = await IRSDK.connect();
       if (ir && !connected) {
         connected = true;
+        debugDumped = false;
+        resetFuel();
         log('[Telemetry] Connected to iRacing!');
         broadcastToChannel('_all', { type: 'status', iracing: true });
         if (statusCallback) statusCallback({ iracing: true });
@@ -64,167 +64,187 @@ async function startTelemetry(onStatusChange) {
       if (connected) {
         connected = false;
         ir = null;
-        log('[Telemetry] iRacing disconnected: ' + e.message);
+        log('[Telemetry] Disconnected: ' + e.message);
         broadcastToChannel('_all', { type: 'status', iracing: false });
         if (statusCallback) statusCallback({ iracing: false });
-        fuelCalc.reset();
+        resetFuel();
         if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
       }
     }
   }, 3000);
-}
 
-function startPolling(ir, VARS) {
-  if (pollInterval) clearInterval(pollInterval);
-  let debugDumped = false;
+  function startPolling(ir, VARS) {
+    if (pollInterval) clearInterval(pollInterval);
 
-  pollInterval = setInterval(() => {
-    try {
-      if (!ir || !ir.isConnected()) {
-        if (connected) {
-          connected = false;
-          log('[Telemetry] iRacing disconnected during poll');
-          broadcastToChannel('_all', { type: 'status', iracing: false });
-          if (statusCallback) statusCallback({ iracing: false });
-          fuelCalc.reset();
-          clearInterval(pollInterval);
-          pollInterval = null;
+    pollInterval = setInterval(() => {
+      try {
+        if (!ir.isConnected()) {
+          if (connected) {
+            connected = false;
+            log('[Telemetry] Disconnected during poll');
+            broadcastToChannel('_all', { type: 'status', iracing: false });
+            if (statusCallback) statusCallback({ iracing: false });
+            resetFuel();
+            clearInterval(pollInterval);
+            pollInterval = null;
+          }
+          return;
         }
-        return;
-      }
 
-      ir.refreshSharedMemory();
+        ir.refreshSharedMemory();
 
-      // One-time debug dump of available VARS and sample data
-      if (!debugDumped) {
-        debugDumped = true;
-        // Log some VARS keys to understand the naming
-        const sampleKeys = Object.keys(VARS).slice(0, 30);
-        log('[Debug] First 30 VARS keys: ' + sampleKeys.join(', '));
-        // Try to find fuel-related keys
-        const fuelKeys = Object.keys(VARS).filter(k => k.toLowerCase().includes('fuel'));
-        log('[Debug] Fuel VARS: ' + fuelKeys.join(', '));
-        const windKeys = Object.keys(VARS).filter(k => k.toLowerCase().includes('wind'));
-        log('[Debug] Wind VARS: ' + windKeys.join(', '));
-        const posKeys = Object.keys(VARS).filter(k => k.toLowerCase().includes('position') || k.toLowerCase().includes('pos'));
-        log('[Debug] Position VARS: ' + posKeys.join(', '));
-        const lapKeys = Object.keys(VARS).filter(k => k.toLowerCase().includes('lap'));
-        log('[Debug] Lap VARS: ' + lapKeys.join(', '));
-        const carIdxKeys = Object.keys(VARS).filter(k => k.toLowerCase().includes('caridx'));
-        log('[Debug] CarIdx VARS: ' + carIdxKeys.join(', '));
-        // Try getting data with a few possible key formats
-        try {
-          // Log key telemetry values
-          const importantVars = ['FUEL_LEVEL', 'FUEL_LEVEL_PCT', 'FUEL_USE_PER_HOUR', 'SPEED', 'LAP', 'LAP_COMPLETED',
-            'SESSION_LAPS_REMAIN', 'SESSION_LAPS_REMAIN_EX', 'WIND_DIR', 'WIND_VEL', 'YAW',
-            'CAR_LEFT_RIGHT', 'PLAYER_CAR_POSITION', 'PLAYER_CAR_CLASS_POSITION'];
-          for (const k of importantVars) {
-            if (VARS[k] !== undefined) {
-              const val = ir.get(VARS[k]);
-              log('[Debug] ' + k + ' (' + VARS[k] + ') = ' + JSON.stringify(val));
-            }
+        // === Session Info ===
+        const si = ir.getSessionInfo?.();
+        const drivers = si?.DriverInfo?.Drivers || [];
+        const playerCarIdx = si?.DriverInfo?.DriverCarIdx ?? 0;
+
+        // Debug dump once
+        if (!debugDumped && si) {
+          debugDumped = true;
+          log('[Debug] Track: ' + (si.WeekendInfo?.TrackDisplayName || '?'));
+          log('[Debug] PlayerCarIdx: ' + playerCarIdx);
+          log('[Debug] Drivers: ' + drivers.length);
+          drivers.slice(0, 5).forEach((d, i) => log('[Debug] D[' + i + '] idx=' + d.CarIdx + ' ' + d.UserName + ' #' + d.CarNumber));
+        }
+
+        // === Fuel ===
+        const fuelLevel = ir.get(VARS.FUEL_LEVEL)?.[0] || 0;
+        const fuelPct = ir.get(VARS.FUEL_LEVEL_PCT)?.[0] || 0;
+        const fuelUsePerHour = ir.get(VARS.FUEL_USE_PER_HOUR)?.[0] || 0;
+        const currentLap = ir.get(VARS.LAP)?.[0] || 0;
+        const lapsCompleted = ir.get(VARS.LAP_COMPLETED)?.[0] || 0;
+        const sessionLapsRemain = ir.get(VARS.SESSION_LAPS_REMAIN_EX)?.[0] || 0;
+
+        // Track fuel per lap
+        if (currentLap > lastLap && lastLap >= 0 && fuelAtLapStart !== null) {
+          const used = fuelAtLapStart - fuelLevel;
+          if (used > 0.01) {
+            fuelHistory.push(used);
+            if (fuelHistory.length > 20) fuelHistory.shift();
           }
-          // Log CarIdx arrays (first 5 entries to see the pattern)
-          const carIdxVars = ['CAR_IDX_POSITION', 'CAR_IDX_CLASS_POSITION', 'CAR_IDX_LAP_COMPLETED',
-            'CAR_IDX_BEST_LAP_TIME', 'CAR_IDX_LAST_LAP_TIME', 'CAR_IDX_ON_PIT_ROAD', 'CAR_IDX_EST_TIME'];
-          for (const k of carIdxVars) {
-            if (VARS[k] !== undefined) {
-              const val = ir.get(VARS[k]);
-              const preview = Array.isArray(val) ? val.slice(0, 10) : val;
-              log('[Debug] ' + k + ' (' + VARS[k] + ') [first 10] = ' + JSON.stringify(preview));
-            }
-          }
-          // Session info
-          const si = ir.getSessionInfo?.();
-          log('[Debug] getSessionInfo type: ' + typeof si);
-          if (si) {
-            log('[Debug] SessionInfo keys: ' + Object.keys(si).join(', '));
-            if (si.DriverInfo) {
-              log('[Debug] DriverInfo.DriverCarIdx: ' + si.DriverInfo.DriverCarIdx);
-              log('[Debug] DriverInfo.Drivers count: ' + (si.DriverInfo.Drivers?.length || 0));
-              // Log first 3 drivers
-              (si.DriverInfo.Drivers || []).slice(0, 3).forEach((d, i) => {
-                log('[Debug] Driver[' + i + ']: CarIdx=' + d.CarIdx + ' Name=' + d.UserName + ' #' + d.CarNumber);
-              });
-            }
-            if (si.WeekendInfo) log('[Debug] Track: ' + si.WeekendInfo.TrackDisplayName);
-          }
-        } catch(e) { log('[Debug] Error: ' + e.message); }
-      }
+          fuelAtLapStart = fuelLevel;
+        }
+        if (lastLap < 0 || currentLap > lastLap) {
+          if (fuelAtLapStart === null) fuelAtLapStart = fuelLevel;
+          lastLap = currentLap;
+        }
 
-      // Fuel
-      const fuelLevel = ir.get(VARS.FUEL_LEVEL)?.[0] || 0;
-      const lap = ir.get(VARS.LAP)?.[0] || 0;
-      const lapsRemaining = ir.get(VARS.SESSION_LAPS_REMAIN_EX)?.[0] || ir.get(VARS.SESSION_LAPS_REMAIN)?.[0] || 0;
-      fuelCalc.update({ FuelLevel: fuelLevel, Lap: lap, SessionLapsRemain: lapsRemaining });
-      broadcastToChannel('fuel', { type: 'data', channel: 'fuel', data: fuelCalc.getData() });
+        const avg5 = fuelHistory.length > 0 ? fuelHistory.slice(-5).reduce((a, b) => a + b, 0) / Math.min(fuelHistory.length, 5) : 0;
+        const avg10 = fuelHistory.length > 0 ? fuelHistory.slice(-10).reduce((a, b) => a + b, 0) / Math.min(fuelHistory.length, 10) : 0;
+        const avgAll = fuelHistory.length > 0 ? fuelHistory.reduce((a, b) => a + b, 0) / fuelHistory.length : 0;
+        const minUsage = fuelHistory.length > 0 ? Math.min(...fuelHistory) : 0;
+        const maxUsage = fuelHistory.length > 0 ? Math.max(...fuelHistory) : 0;
+        const lapsOfFuel = avgAll > 0 ? fuelLevel / avgAll : 0;
+        const isUnlimited = sessionLapsRemain >= 32767;
+        const fuelToFinish = (!isUnlimited && avgAll > 0) ? sessionLapsRemain * avgAll : 0;
+        const fuelToAdd = fuelToFinish > 0 ? Math.max(0, fuelToFinish - fuelLevel) : 0;
 
-      // Wind
-      const windDir = ir.get(VARS.WIND_DIR)?.[0] || 0;
-      const windVel = ir.get(VARS.WIND_VEL)?.[0] || 0;
-      const yaw = ir.get(VARS.YAW)?.[0] || 0;
-      broadcastToChannel('wind', { type: 'data', channel: 'wind', data: {
-        windDirection: windDir,
-        windSpeed: windVel,
-        carHeading: yaw,
-      }});
+        broadcastToChannel('fuel', { type: 'data', channel: 'fuel', data: {
+          fuelLevel,
+          fuelPct,
+          fuelUsePerHour,
+          avgPerLap: avgAll,
+          avg5Laps: avg5,
+          avg10Laps: avg10,
+          minUsage,
+          maxUsage,
+          lapsOfFuel,
+          lapsRemaining: isUnlimited ? '∞' : sessionLapsRemain,
+          fuelToFinish,
+          fuelToAdd,
+          lapsCompleted,
+          lapCount: fuelHistory.length,
+        }});
 
-      // Proximity
-      const carLeftRight = ir.get(VARS.CAR_LEFT_RIGHT)?.[0] || 0;
-      broadcastToChannel('proximity', { type: 'data', channel: 'proximity', data: {
-        carLeftRight,
-      }});
+        // === Wind ===
+        broadcastToChannel('wind', { type: 'data', channel: 'wind', data: {
+          windDirection: ir.get(VARS.WIND_DIR)?.[0] || 0,
+          windSpeed: ir.get(VARS.WIND_VEL)?.[0] || 0,
+          carHeading: ir.get(VARS.YAW)?.[0] || 0,
+        }});
 
-      // Session + Standings (read from session info)
-      const sessionInfo = ir.getSessionInfo?.();
-      if (sessionInfo) {
-        const drivers = sessionInfo.DriverInfo?.Drivers || [];
-        const playerCarIdx = sessionInfo.DriverInfo?.DriverCarIdx || 0;
-        const trackName = sessionInfo.WeekendInfo?.TrackDisplayName || '';
+        // === Proximity ===
+        broadcastToChannel('proximity', { type: 'data', channel: 'proximity', data: {
+          carLeftRight: ir.get(VARS.CAR_LEFT_RIGHT)?.[0] || 0,
+        }});
+
+        // === Standings ===
+        const positions = ir.get(VARS.CAR_IDX_POSITION) || [];
+        const classPositions = ir.get(VARS.CAR_IDX_CLASS_POSITION) || [];
+        const lapsCompletedArr = ir.get(VARS.CAR_IDX_LAP_COMPLETED) || [];
+        const bestLaps = ir.get(VARS.CAR_IDX_BEST_LAP_TIME) || [];
+        const lastLaps = ir.get(VARS.CAR_IDX_LAST_LAP_TIME) || [];
+        const onPitRoad = ir.get(VARS.CAR_IDX_ON_PIT_ROAD) || [];
+        const estTime = ir.get(VARS.CAR_IDX_EST_TIME) || [];
+        const lapDistPct = ir.get(VARS.CAR_IDX_LAP_DIST_PCT) || [];
 
         broadcastToChannel('session', { type: 'data', channel: 'session', data: {
           playerCarIdx,
-          trackName,
+          trackName: si?.WeekendInfo?.TrackDisplayName || '',
           drivers: drivers.map(d => ({
             carIdx: d.CarIdx,
             driverName: d.UserName,
             carNumber: d.CarNumber,
-            classColor: '#fff',
           })),
         }});
 
-        // Standings from telemetry arrays
-        const positions = ir.get(VARS.CAR_IDX_POSITION);
-        const lastLaps = ir.get(VARS.CAR_IDX_LAST_LAP_TIME);
-        const bestLaps = ir.get(VARS.CAR_IDX_BEST_LAP_TIME);
-        const onPitRoad = ir.get(VARS.CAR_IDX_ON_PIT_ROAD);
+        // Build standings — include all active cars (lapCompleted >= 0)
+        const standings = [];
+        for (let i = 0; i < Math.max(positions.length, lapsCompletedArr.length); i++) {
+          if (lapsCompletedArr[i] === undefined || lapsCompletedArr[i] < 0) continue;
+          const driver = drivers.find(d => d.CarIdx === i);
+          if (!driver) continue;
 
-        if (positions) {
-          const standings = [];
-          for (let i = 0; i < positions.length; i++) {
-            if (positions[i] <= 0) continue;
-            standings.push({
-              carIdx: i,
-              position: positions[i],
-              driverName: drivers[i]?.UserName || '',
-              carNumber: drivers[i]?.CarNumber || '',
-              interval: '',
-              lastLap: lastLaps?.[i] > 0 ? lastLaps[i].toFixed(3) : '',
-              bestLap: bestLaps?.[i] > 0 ? bestLaps[i].toFixed(3) : '',
-              inPit: !!onPitRoad?.[i],
-              onLeadLap: true,
-              classColor: '#fff',
-            });
-          }
-          standings.sort((a, b) => a.position - b.position);
-          broadcastToChannel('standings', { type: 'data', channel: 'standings', data: standings });
+          standings.push({
+            carIdx: i,
+            position: positions[i] || 0,
+            classPosition: classPositions[i] || 0,
+            driverName: driver.UserName || '',
+            carNumber: driver.CarNumber || '',
+            lastLap: lastLaps[i] > 0 ? lastLaps[i].toFixed(3) : '',
+            bestLap: bestLaps[i] > 0 ? bestLaps[i].toFixed(3) : '',
+            inPit: !!onPitRoad[i],
+            lapsCompleted: lapsCompletedArr[i] || 0,
+            estTime: estTime[i] || 0,
+            lapDistPct: lapDistPct[i] || 0,
+            isPlayer: i === playerCarIdx,
+          });
         }
-      }
+        // Sort: by position if available, otherwise by laps completed + distance
+        standings.sort((a, b) => {
+          if (a.position > 0 && b.position > 0) return a.position - b.position;
+          if (a.position > 0) return -1;
+          if (b.position > 0) return 1;
+          if (a.lapsCompleted !== b.lapsCompleted) return b.lapsCompleted - a.lapsCompleted;
+          return b.lapDistPct - a.lapDistPct;
+        });
+        broadcastToChannel('standings', { type: 'data', channel: 'standings', data: standings });
 
-    } catch (e) {
-      if (Math.random() < 0.01) log('[Telemetry] Poll error: ' + e.message);
-    }
-  }, 100);
+        // === Relative ===
+        const playerEstTime = estTime[playerCarIdx] || 0;
+        const playerLapDist = lapDistPct[playerCarIdx] || 0;
+        const relative = standings
+          .filter(s => s.carIdx !== playerCarIdx && s.estTime > 0)
+          .map(s => {
+            let gap = s.estTime - playerEstTime;
+            // Normalize gap (track is circular)
+            if (gap > 50) gap -= 100;
+            if (gap < -50) gap += 100;
+            return { ...s, gap };
+          })
+          .sort((a, b) => a.gap - b.gap)
+          .filter(s => Math.abs(s.gap) < 30); // Only show cars within 30 seconds
+
+        broadcastToChannel('relative', { type: 'data', channel: 'relative', data: {
+          playerCarIdx,
+          cars: relative,
+        }});
+
+      } catch (e) {
+        if (Math.random() < 0.005) log('[Telemetry] Poll error: ' + e.message);
+      }
+    }, 100);
+  }
 }
 
 function stopTelemetry() {
@@ -233,8 +253,4 @@ function stopTelemetry() {
   if (connectInterval) clearInterval(connectInterval);
 }
 
-function getStatus() {
-  return { iracing: connected };
-}
-
-module.exports = { startTelemetry, stopTelemetry, getStatus };
+module.exports = { startTelemetry, stopTelemetry, getStatus: () => ({ iracing: connected }) };
