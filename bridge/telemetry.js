@@ -260,12 +260,19 @@ async function startTelemetry(onStatusChange) {
         });
 
         // Log standings count periodically
-        if (pollCount === 10) {
-          log('[Standings] Built: ' + standings.length + ' cars (sessionInfo: ' + (sessionInfoFound ? 'yes' : 'no') + ', drivers: ' + drivers.length + ')');
-          if (standings.length > 0) log('[Standings] First: ' + JSON.stringify(standings[0]));
-          if (standings.length === 0) {
-            log('[Standings] LapsCompleted active: ' + lapsCompletedArr.filter(l => l >= 0).length);
-            log('[Standings] LapsCompleted[0..9]: ' + JSON.stringify(lapsCompletedArr.slice(0, 10)));
+        if (pollCount === 10 || pollCount === 100) {
+          log('[Standings] Built: ' + standings.length + ' cars (sessionInfo: ' + (sessionInfoFound ? 'yes' : 'no') + ', drivers: ' + drivers.length + ', activeIndices: ' + activeIndices.size + ')');
+          // Count by class
+          const classCounts = {};
+          standings.forEach(s => { classCounts[s.carClass || 'Unknown'] = (classCounts[s.carClass || 'Unknown'] || 0) + 1; });
+          log('[Standings] Classes: ' + JSON.stringify(classCounts));
+          // Log cars with/without best laps
+          const withBest = standings.filter(s => s.bestLap > 0).length;
+          const withLast = standings.filter(s => s.lastLap > 0).length;
+          const withCompleted = standings.filter(s => s.lapsCompleted >= 1).length;
+          log('[Standings] WithBestLap: ' + withBest + ', WithLastLap: ' + withLast + ', WithLapsCompleted>=1: ' + withCompleted);
+          if (standings.length > 0 && standings.length <= 5) {
+            standings.forEach((s, i) => log('[Standings] [' + i + '] ' + s.driverName + ' class=' + s.carClass + ' best=' + s.bestLap + ' last=' + s.lastLap + ' laps=' + s.lapsCompleted));
           }
         }
 

@@ -165,15 +165,12 @@
     }
 
     function buildStandingsHTML(data) {
-      // Filter: only show cars that have completed at least 1 lap
-      const withLaps = data.filter(d => d.lapsCompleted >= 1 || d.bestLap > 0 || d.lastLap > 0);
-
-      // Get settings for max cars per class
-      const maxPerClass = parseInt(getSetting('maxPerClass', '0')) || 0; // 0 = unlimited
+      // Show ALL drivers — sorted by best lap within each class
+      const maxPerClass = parseInt(getSetting('maxPerClass', '0')) || 0;
 
       // Group by class
       const classes = {};
-      withLaps.forEach(d => {
+      data.forEach(d => {
         const cls = d.carClass || 'Overall';
         if (!classes[cls]) classes[cls] = { color: d.carClassColor || '#fff', drivers: [] };
         classes[cls].drivers.push(d);
