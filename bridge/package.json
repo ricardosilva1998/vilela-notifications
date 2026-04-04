@@ -35,7 +35,8 @@
     "publish": {
       "provider": "github",
       "owner": "ricardosilva1998",
-      "repo": "atleta-notifications-helper"
+      "repo": "atleta-notifications-helper",
+      "releaseType": "release"
     },
     "win": {
       "target": "nsis",
