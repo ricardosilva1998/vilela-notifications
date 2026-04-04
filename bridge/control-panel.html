@@ -112,6 +112,7 @@
       { id: 'proximity', icon: '🚗', name: 'Car Proximity' },
       { id: 'chat', icon: '💬', name: 'Streaming Chat' },
       { id: 'trackmap', icon: '🗺️', name: 'Track Map' },
+      { id: 'voicechat', icon: '🎙️', name: 'Voice Chat' },
     ];
 
     const list = document.getElementById('overlay-list');
@@ -171,6 +172,20 @@
       trackmap: [
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
+      voicechat: [
+        { key: 'pushToTalk', label: 'Push-to-Talk Key', type: 'hotkey', default: null },
+        { key: 'wakeWordEnabled', label: 'Wake word ("message") always listening', type: 'checkbox', default: false },
+        { key: 'language', label: 'Speech Language', type: 'select', default: 'en-US', options: [
+          { value: 'en-US', label: 'English (US)' },
+          { value: 'en-GB', label: 'English (UK)' },
+          { value: 'pt-BR', label: 'Portuguese (BR)' },
+          { value: 'pt-PT', label: 'Portuguese (PT)' },
+          { value: 'es-ES', label: 'Spanish' },
+          { value: 'fr-FR', label: 'French' },
+          { value: 'de-DE', label: 'German' },
+        ]},
+        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
+      ],
     };
 
     function openCustomize(id, name) {
@@ -196,6 +211,19 @@
               <input type="checkbox" id="cust-${f.key}" ${val ? 'checked' : ''} style="accent-color:#9146ff;">
               ${f.label}
             </label>`;
+          } else if (f.type === 'hotkey') {
+            const keyName = val && val.name ? val.name : 'Not set';
+            return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:11px;color:#8b8a9e;">${f.label}</span>
+              <button id="cust-${f.key}" onclick="captureHotkey('${f.key}')" style="padding:4px 10px;background:#0c0d14;border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#e8e6f0;font-size:11px;cursor:pointer;min-width:80px;text-align:center;" data-value='${JSON.stringify(val || null)}'>${keyName}</button>
+            </div>`;
+          } else if (f.type === 'select') {
+            return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:11px;color:#8b8a9e;">${f.label}</span>
+              <select id="cust-${f.key}" style="padding:4px;background:#0c0d14;border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#e8e6f0;font-size:11px;">
+                ${f.options.map(o => `<option value="${o.value}" ${val === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}
+              </select>
+            </div>`;
           }
           return '';
         }).join('');
@@ -209,6 +237,18 @@
       currentCustomizeId = null;
     }
 
+    function captureHotkey(key) {
+      const btn = document.getElementById('cust-' + key);
+      btn.textContent = 'Press any key...';
+      btn.style.borderColor = '#9146ff';
+      ipcRenderer.send('voice-capture-key');
+      ipcRenderer.once('voice-key-captured', (event, keyData) => {
+        btn.textContent = keyData.name;
+        btn.dataset.value = JSON.stringify(keyData);
+        btn.style.borderColor = 'rgba(255,255,255,0.1)';
+      });
+    }
+
     function saveCustomize() {
       if (!currentCustomizeId) return;
       const fields = CUSTOMIZE_FIELDS[currentCustomizeId] || [];
@@ -217,10 +257,22 @@
         const el = document.getElementById('cust-' + f.key);
         if (f.type === 'number') settings[f.key] = el.value;
         else if (f.type === 'checkbox') settings[f.key] = el.checked;
+        else if (f.type === 'hotkey') {
+          try { settings[f.key] = JSON.parse(el.dataset.value); } catch(e) { settings[f.key] = null; }
+        }
+        else if (f.type === 'select') settings[f.key] = el.value;
       });
       localStorage.setItem('overlay_' + currentCustomizeId, JSON.stringify(settings));
       // Send to main process to save in persistent settings and notify overlays
       ipcRenderer.send('save-overlay-settings', currentCustomizeId, settings);
+      // Forward voice settings to voice input module
+      if (currentCustomizeId === 'voicechat') {
+        const voiceUpdate = {};
+        if (settings.pushToTalk !== undefined) voiceUpdate.pushToTalkKey = settings.pushToTalk;
+        if (settings.wakeWordEnabled !== undefined) voiceUpdate.wakeWordEnabled = settings.wakeWordEnabled;
+        if (settings.language !== undefined) voiceUpdate.language = settings.language;
+        ipcRenderer.send('voice-settings-update', voiceUpdate);
+      }
       closeCustomize();
     }
 
