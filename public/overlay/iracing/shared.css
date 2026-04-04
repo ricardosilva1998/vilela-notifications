@@ -1,0 +1,50 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: transparent; overflow: hidden; font-family: 'Outfit', -apple-system, sans-serif; color: #e8e6f0; }
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+.overlay-container { position: relative; }
+.overlay-panel {
+  background: rgba(12,13,20,0.85);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+}
+.overlay-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;
+  color: rgba(255,255,255,0.5);
+}
+.overlay-body { padding: 4px 0; }
+
+.overlay-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.overlay-table th {
+  padding: 4px 8px; text-align: left; font-size: 9px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.35);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.overlay-table td { padding: 4px 8px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.overlay-table tr.player-row { background: rgba(145,70,255,0.15); }
+.overlay-table tr.player-row td { color: #fff; font-weight: 600; }
+.overlay-table tr.lapped { opacity: 0.6; }
+.overlay-table .pit-indicator { color: #f79009; font-weight: 700; font-size: 10px; }
+
+.status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+.status-dot.connected { background: #3ecf8e; }
+.status-dot.disconnected { background: #f04438; }
+.status-dot.waiting { background: #f79009; }
+
+.overlay-disconnected {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(12,13,20,0.9); color: rgba(255,255,255,0.4); font-size: 11px;
+  font-family: 'Outfit', sans-serif; font-weight: 600; border-radius: 8px;
+}
+
+.mono { font-family: 'JetBrains Mono', monospace; }
+.text-muted { color: rgba(255,255,255,0.4); }
+.text-success { color: #3ecf8e; }
+.text-danger { color: #f04438; }
+.text-warning { color: #f79009; }

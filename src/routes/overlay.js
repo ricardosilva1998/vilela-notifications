@@ -210,6 +210,43 @@ router.get('/sponsors/:token', (req, res) => {
 // router.get('/custom-alerts/events/:token', (req, res) => customSSE(req, res, 'custom-alert'));
 // router.get('/custom-alerts/:token', (req, res) => customPage(req, res, 'custom-alert'));
 
+// iRacing overlay pages
+router.get('/iracing/:type/:token', (req, res) => {
+  const validTypes = ['standings', 'relative', 'fuel', 'chat', 'wind', 'proximity'];
+  const type = req.params.type;
+  if (!validTypes.includes(type)) return res.status(404).send('Invalid overlay type');
+  const streamer = db.getStreamerByOverlayToken(req.params.token);
+  if (!streamer) return res.status(404).send('Invalid overlay token');
+
+  let settings = {};
+  try {
+    const setting = db.getIracingOverlaySetting(streamer.id, type);
+    if (setting) settings = JSON.parse(setting.settings || '{}');
+  } catch (e) {}
+
+  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>iRacing ${type.charAt(0).toUpperCase() + type.slice(1)} Overlay</title>
+  <link rel="stylesheet" href="/overlay/iracing/shared.css">
+  <link rel="stylesheet" href="/overlay/iracing/${type}.css">
+</head>
+<body>
+  <div id="overlay-root"></div>
+  <script>
+    window.OVERLAY_TOKEN = ${JSON.stringify(req.params.token)};
+    window.OVERLAY_TYPE = ${JSON.stringify(type)};
+    window.OVERLAY_SETTINGS = ${JSON.stringify(settings)};
+    window.STREAMER_ID = ${streamer.id};
+  </script>
+  <script src="/overlay/iracing/shared.js"></script>
+  <script src="/overlay/iracing/${type}.js"></script>
+</body>
+</html>`);
+});
+
 // Serve overlay page — AFTER /events/:token so the wildcard doesn't catch SSE requests
 router.get('/:token', (req, res) => {
   const streamer = db.getStreamerByOverlayToken(req.params.token);
