@@ -300,18 +300,26 @@
       wakeWordRecognition.interimResults = true;
       wakeWordRecognition.maxAlternatives = 1;
 
+      let wakeWordTriggered = false;
       wakeWordRecognition.onresult = (event) => {
-        // Check all results for wake word
+        if (wakeWordTriggered) return;
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript.trim().toLowerCase();
-          if (event.results[i].isFinal) {
-            // Full sentence — check if it starts with "message"
+          // Check interim results for early wake word detection
+          if (!event.results[i].isFinal) {
             if (transcript.startsWith('message ') && state === 'idle') {
-              // Stop wake word recognition, process the full command
+              wakeWordTriggered = true;
+              // Wait for the final result to get the complete command
+            }
+          } else {
+            // Final result — process if wake word detected (interim or now)
+            if ((wakeWordTriggered || transcript.startsWith('message ')) && state === 'idle') {
+              wakeWordTriggered = false;
               try { wakeWordRecognition.abort(); } catch(e) {}
               processTranscript(event.results[i][0].transcript.trim());
-              // Restart wake word after a delay
               setTimeout(startWakeWord, 1000);
+            } else {
+              wakeWordTriggered = false;
             }
           }
         }
