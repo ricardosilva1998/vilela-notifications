@@ -34,7 +34,20 @@ app.on('second-instance', () => {
 
 app.on('ready', () => {
   try {
-    tray = new Tray(nativeImage.createFromPath(path.join(__dirname, 'build', 'icon.png')));
+    // Try multiple icon paths (asar, extraResources, build dir)
+    const iconPaths = [
+      path.join(__dirname, 'build', 'icon.png'),
+      path.join(process.resourcesPath || __dirname, 'icon.png'),
+      path.join(__dirname, '..', 'icon.png'),
+    ];
+    let trayIcon = nativeImage.createEmpty();
+    for (const p of iconPaths) {
+      try {
+        const img = nativeImage.createFromPath(p);
+        if (!img.isEmpty()) { trayIcon = img.resize({ width: 16, height: 16 }); break; }
+      } catch(e) {}
+    }
+    tray = new Tray(trayIcon);
   } catch (e) {
     tray = new Tray(nativeImage.createEmpty());
   }
@@ -74,6 +87,7 @@ function showControlWindow() {
     resizable: false,
     maximizable: false,
     title: 'Atleta Bridge',
+    icon: path.join(process.resourcesPath || __dirname, 'icon.png'),
     backgroundColor: '#0c0d14',
     webPreferences: { nodeIntegration: true, contextIsolation: false },
   });

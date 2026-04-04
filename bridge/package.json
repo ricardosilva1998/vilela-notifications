@@ -24,6 +24,13 @@
     "directories": {
       "buildResources": "build"
     },
+    "extraResources": [
+      { "from": "build/icon.png", "to": "icon.png" }
+    ],
+    "files": [
+      "**/*",
+      "build/icon.png"
+    ],
     "win": {
       "target": "nsis",
       "signAndEditExecutable": false,
