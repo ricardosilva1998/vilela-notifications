@@ -17,6 +17,7 @@ let pollInterval = null;
 let connectInterval = null;
 
 const { broadcastToChannel, getClientInfo } = require('./websocket');
+const settings = require('./settings');
 
 // Fuel tracking
 let fuelHistory = [];
@@ -24,9 +25,32 @@ let lastLap = -1;
 let fuelAtLapStart = null;
 
 // Track map
-const trackPath = []; // Array of {lat, lon, pct} points
+const trackPath = []; // Array of {x, y, pct} points (heading+speed integration)
 let trackPathComplete = false;
 let lastTrackPct = -1;
+
+// Track map cache — persisted to settings so tracks load instantly on revisit
+const TRACK_MAPS_DIR = path.join(require('os').homedir(), 'Documents', 'Atleta Bridge', 'trackmaps');
+
+function loadCachedTrack(trackName) {
+  try {
+    const file = path.join(TRACK_MAPS_DIR, trackName.replace(/[^a-zA-Z0-9_-]/g, '_') + '.json');
+    if (fs.existsSync(file)) {
+      const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+      if (data && data.length > 50) return data;
+    }
+  } catch(e) {}
+  return null;
+}
+
+function saveCachedTrack(trackName, pathData) {
+  try {
+    if (!fs.existsSync(TRACK_MAPS_DIR)) fs.mkdirSync(TRACK_MAPS_DIR, { recursive: true });
+    const file = path.join(TRACK_MAPS_DIR, trackName.replace(/[^a-zA-Z0-9_-]/g, '_') + '.json');
+    fs.writeFileSync(file, JSON.stringify(pathData));
+    log('[TrackMap] Cached track: ' + trackName + ' (' + pathData.length + ' points)');
+  } catch(e) { log('[TrackMap] Cache save error: ' + e.message); }
+}
 
 // Persistent driver data — keeps drivers visible after they disconnect
 const persistedDrivers = new Map();
@@ -126,8 +150,19 @@ async function startTelemetry(onStatusChange) {
             if (driverInfo && driverInfo.Drivers) {
               if (!sessionInfoFound) {
                 sessionInfoFound = true;
+                trackName = weekendInfo?.TrackDisplayName || '';
                 log('[SessionInfo] Found! Drivers: ' + driverInfo.Drivers.length);
-                log('[SessionInfo] Track: ' + (weekendInfo?.TrackDisplayName || '?'));
+                log('[SessionInfo] Track: ' + trackName);
+
+                // Load cached track map if available — instant track shape on revisit
+                if (trackName && !trackPathComplete && trackPath.length === 0) {
+                  const cached = loadCachedTrack(trackName);
+                  if (cached) {
+                    trackPath.push(...cached);
+                    trackPathComplete = true;
+                    log('[TrackMap] Loaded cached track: ' + trackName + ' (' + cached.length + ' points)');
+                  }
+                }
                 driverInfo.Drivers.slice(0, 3).forEach((d, i) => {
                   const keys = Object.keys(d);
                   log('[SessionInfo] D[' + i + '] keys: ' + keys.join(', '));
@@ -395,6 +430,8 @@ async function startTelemetry(onStatusChange) {
             if (trackPath.length > 100 && playerPct < 0.05 && prevPct > 0.95) {
               trackPathComplete = true;
               log('[TrackMap] Path complete: ' + trackPath.length + ' points (heading+speed)');
+              // Cache for instant loading next time
+              if (trackName) saveCachedTrack(trackName, trackPath);
             }
           }
         }
