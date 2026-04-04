@@ -121,7 +121,7 @@ try {
 } catch {}
 
 // Migration: Add overlay notification columns to streamers
-{
+try {
   const cols = db.pragma('table_info(streamers)').map(c => c.name);
   if (!cols.includes('overlay_token')) {
     db.exec(`
@@ -142,10 +142,10 @@ try {
     db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_streamers_overlay_token ON streamers(overlay_token) WHERE overlay_token IS NOT NULL');
     console.log('[DB] Added overlay notification columns to streamers');
   }
-}
+} catch {}
 
 // Migration: Add chatbot columns to streamers
-{
+try {
   const cols = db.pragma('table_info(streamers)').map(c => c.name);
   if (!cols.includes('bot_access_token')) {
     db.exec(`
@@ -169,7 +169,7 @@ try {
     `);
     console.log('[DB] Added chatbot columns to streamers');
   }
-}
+} catch {}
 
 // Migration: Create chat_commands table
 {
@@ -189,7 +189,7 @@ try {
 }
 
 // Migration: Add overlay raid columns
-{
+try {
   const cols = db.pragma('table_info(streamers)').map(c => c.name);
   if (!cols.includes('overlay_raid_enabled')) {
     db.exec(`
@@ -198,10 +198,10 @@ try {
     `);
     console.log('[DB] Added overlay raid columns');
   }
-}
+} catch {}
 
 // Migration: Add YouTube chatbot/overlay columns to streamers
-{
+try {
   const cols = db.pragma('table_info(streamers)').map(c => c.name);
   if (!cols.includes('yt_chatbot_enabled')) {
     db.exec(`
@@ -221,10 +221,10 @@ try {
     `);
     console.log('[DB] Added YouTube chatbot/overlay columns to streamers');
   }
-}
+} catch {}
 
 // Migration: Add YouTube OAuth columns to streamers
-{
+try {
   const cols = db.pragma('table_info(streamers)').map(c => c.name);
   if (!cols.includes('yt_access_token')) {
     db.exec(`
@@ -235,10 +235,10 @@ try {
     `);
     console.log('[DB] Added YouTube OAuth columns to streamers');
   }
-}
+} catch {}
 
 // Migration: Add Spotify OAuth columns to streamers
-{
+try {
   const cols = db.pragma('table_info(streamers)').map(c => c.name);
   if (!cols.includes('spotify_access_token')) {
     db.exec(`
@@ -248,10 +248,10 @@ try {
     `);
     console.log('[DB] Added Spotify columns to streamers');
   }
-}
+} catch {}
 
 // Migration: Add donation page columns to streamers
-{
+try {
   const cols = db.pragma('table_info(streamers)').map(c => c.name);
   if (!cols.includes('paypal_email')) {
     db.exec(`
@@ -262,7 +262,7 @@ try {
     `);
     console.log('[DB] Added donation page columns to streamers');
   }
-}
+} catch {}
 
 // Migration: Create overlay_designs table
 db.exec(`
@@ -294,7 +294,7 @@ db.exec(`
 `);
 
 // Migration: Add custom x/y position to overlay_designs
-{
+try {
   const cols = db.pragma('table_info(overlay_designs)').map(c => c.name);
   if (!cols.includes('card_custom_x')) {
     db.exec(`
@@ -303,7 +303,7 @@ db.exec(`
     `);
     console.log('[DB] Added custom x/y position to overlay_designs');
   }
-}
+} catch {}
 
 // --- Schema ---
 
@@ -324,6 +324,88 @@ db.exec(`
     youtube_api_key TEXT,
     enabled INTEGER DEFAULT 1,
     admin_note TEXT,
+    overlay_token TEXT,
+    overlay_enabled INTEGER DEFAULT 0,
+    streamelements_jwt TEXT,
+    overlay_follow_enabled INTEGER DEFAULT 1,
+    overlay_sub_enabled INTEGER DEFAULT 1,
+    overlay_bits_enabled INTEGER DEFAULT 1,
+    overlay_donation_enabled INTEGER DEFAULT 1,
+    overlay_follow_duration INTEGER DEFAULT 5,
+    overlay_sub_duration INTEGER DEFAULT 7,
+    overlay_bits_duration INTEGER DEFAULT 6,
+    overlay_donation_duration INTEGER DEFAULT 6,
+    overlay_volume REAL DEFAULT 0.8,
+    broadcaster_scopes TEXT,
+    bot_access_token TEXT,
+    bot_refresh_token TEXT,
+    bot_token_expires_at INTEGER,
+    bot_username TEXT,
+    chatbot_enabled INTEGER DEFAULT 0,
+    chat_follow_enabled INTEGER DEFAULT 1,
+    chat_sub_enabled INTEGER DEFAULT 1,
+    chat_giftsub_enabled INTEGER DEFAULT 1,
+    chat_bits_enabled INTEGER DEFAULT 1,
+    chat_donation_enabled INTEGER DEFAULT 1,
+    chat_raid_enabled INTEGER DEFAULT 1,
+    chat_follow_template TEXT DEFAULT 'Welcome to the pit crew, {username}!',
+    chat_sub_template TEXT DEFAULT '{username} just joined the podium! Tier {tier} for {months} months!',
+    chat_giftsub_template TEXT DEFAULT '{username} gifted {amount} subs! What a sponsor!',
+    chat_bits_template TEXT DEFAULT '{username} fueled up {amount} bits!',
+    chat_donation_template TEXT DEFAULT '{username} donated {amount}! {message}',
+    chat_raid_template TEXT DEFAULT '{username} is raiding with {viewers} viewers! Welcome racers!',
+    overlay_raid_enabled INTEGER DEFAULT 1,
+    overlay_raid_duration INTEGER DEFAULT 7,
+    spotify_access_token TEXT,
+    spotify_refresh_token TEXT,
+    spotify_token_expires_at INTEGER,
+    twitch_profile_image TEXT,
+    discord_guild_id TEXT,
+    sponsor_rotation_enabled INTEGER DEFAULT 0,
+    sponsor_rotation_interval INTEGER DEFAULT 60,
+    sponsor_send_chat INTEGER DEFAULT 0,
+    sponsor_chat_interval_minutes INTEGER DEFAULT 15,
+    mod_banned_words_enabled INTEGER DEFAULT 0,
+    mod_link_protection_enabled INTEGER DEFAULT 0,
+    mod_link_permit_seconds INTEGER DEFAULT 60,
+    mod_caps_enabled INTEGER DEFAULT 0,
+    mod_caps_min_length INTEGER DEFAULT 10,
+    mod_caps_max_percent INTEGER DEFAULT 70,
+    mod_emote_spam_enabled INTEGER DEFAULT 0,
+    mod_emote_max_count INTEGER DEFAULT 15,
+    mod_repetition_enabled INTEGER DEFAULT 0,
+    mod_repetition_window INTEGER DEFAULT 30,
+    mod_symbol_spam_enabled INTEGER DEFAULT 0,
+    mod_symbol_max_percent INTEGER DEFAULT 50,
+    mod_slow_mode_cmd_enabled INTEGER DEFAULT 0,
+    mod_raid_protection_enabled INTEGER DEFAULT 0,
+    mod_raid_protection_duration INTEGER DEFAULT 120,
+    mod_first_chatter_enabled INTEGER DEFAULT 0,
+    mod_follow_age_enabled INTEGER DEFAULT 0,
+    mod_follow_age_minutes INTEGER DEFAULT 10,
+    mod_action_response TEXT DEFAULT 'delete',
+    mod_escalation_enabled INTEGER DEFAULT 0,
+    mod_log_discord_enabled INTEGER DEFAULT 0,
+    mod_log_discord_channel_id TEXT,
+    mod_exempt_subs INTEGER DEFAULT 1,
+    mod_exempt_vips INTEGER DEFAULT 1,
+    cmd_followage_enabled INTEGER DEFAULT 0,
+    cmd_subage_enabled INTEGER DEFAULT 0,
+    cmd_uptime_enabled INTEGER DEFAULT 0,
+    cmd_accountage_enabled INTEGER DEFAULT 0,
+    cmd_8ball_enabled INTEGER DEFAULT 0,
+    cmd_roll_enabled INTEGER DEFAULT 0,
+    cmd_hug_enabled INTEGER DEFAULT 0,
+    cmd_slap_enabled INTEGER DEFAULT 0,
+    cmd_love_enabled INTEGER DEFAULT 0,
+    cmd_rps_enabled INTEGER DEFAULT 0,
+    cmd_coinflip_enabled INTEGER DEFAULT 0,
+    cmd_quote_enabled INTEGER DEFAULT 0,
+    cmd_roast_enabled INTEGER DEFAULT 0,
+    paypal_email TEXT,
+    donation_page_enabled INTEGER DEFAULT 0,
+    donation_min_amount REAL DEFAULT 1.00,
+    donation_currency TEXT DEFAULT 'EUR',
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -343,6 +425,13 @@ db.exec(`
     youtube_enabled INTEGER DEFAULT 0,
     welcome_enabled INTEGER DEFAULT 0,
     sub_sync_enabled INTEGER DEFAULT 0,
+    recap_enabled INTEGER DEFAULT 0,
+    milestones_enabled INTEGER DEFAULT 0,
+    weekly_highlights_enabled INTEGER DEFAULT 0,
+    instagram_enabled INTEGER DEFAULT 0,
+    tiktok_enabled INTEGER DEFAULT 0,
+    twitter_enabled INTEGER DEFAULT 0,
+    iracing_enabled INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     UNIQUE(guild_id, streamer_id)
   );
@@ -442,6 +531,7 @@ db.exec(`
     notify_live INTEGER DEFAULT 1,
     notify_clips INTEGER DEFAULT 1,
     enabled INTEGER DEFAULT 1,
+    profile_image_url TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     UNIQUE(guild_id, streamer_id, twitch_username)
   );
@@ -450,7 +540,12 @@ db.exec(`
     twitch_username TEXT PRIMARY KEY,
     twitch_broadcaster_id TEXT,
     is_live INTEGER DEFAULT 0,
-    last_clip_created_at TEXT
+    last_clip_created_at TEXT,
+    stream_title TEXT,
+    stream_category TEXT,
+    stream_thumbnail_url TEXT,
+    stream_started_at TEXT,
+    peak_viewers INTEGER DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS watched_youtube_channels (
@@ -464,6 +559,7 @@ db.exec(`
     notify_videos INTEGER DEFAULT 1,
     notify_live INTEGER DEFAULT 1,
     enabled INTEGER DEFAULT 1,
+    profile_image_url TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     UNIQUE(guild_id, streamer_id, youtube_channel_id)
   );
@@ -2352,25 +2448,25 @@ function upsertIracingOverlaySetting(streamerId, overlayType, enabled, settings)
 }
 
 // Migration: Add card_image_scale to overlay_designs
-{
+try {
   const cols = db.pragma('table_info(overlay_designs)').map(c => c.name);
   if (!cols.includes('card_image_scale')) {
     db.exec(`ALTER TABLE overlay_designs ADD COLUMN card_image_scale REAL DEFAULT 1.0`);
     console.log('[DB] Added card_image_scale to overlay_designs');
   }
-}
+} catch {}
 
 // Migration: Add sponsor_animation to overlay_designs
-{
+try {
   const cols = db.pragma('table_info(overlay_designs)').map(c => c.name);
   if (!cols.includes('sponsor_animation')) {
     db.exec(`ALTER TABLE overlay_designs ADD COLUMN sponsor_animation TEXT DEFAULT 'fade'`);
     console.log('[DB] Added sponsor_animation to overlay_designs');
   }
-}
+} catch {}
 
 // Migration: Add per-text styling columns to overlay_designs
-{
+try {
   const cols = db.pragma('table_info(overlay_designs)').map(c => c.name);
   if (!cols.includes('label_font_family')) {
     db.exec(`
@@ -2389,19 +2485,19 @@ function upsertIracingOverlaySetting(streamerId, overlayType, enabled, settings)
     `);
     console.log('[DB] Added per-text styling columns to overlay_designs');
   }
-}
+} catch {}
 
 // Migration: Add card_side_icon to overlay_designs
-{
+try {
   const cols = db.pragma('table_info(overlay_designs)').map(c => c.name);
   if (!cols.includes('card_side_icon')) {
     db.exec(`ALTER TABLE overlay_designs ADD COLUMN card_side_icon TEXT`);
     console.log('[DB] Added card_side_icon to overlay_designs');
   }
-}
+} catch {}
 
 // Migration: Add effect_amount and effect_size to overlay_designs
-{
+try {
   const cols = db.pragma('table_info(overlay_designs)').map(c => c.name);
   if (!cols.includes('effect_amount')) {
     db.exec(`
@@ -2410,19 +2506,19 @@ function upsertIracingOverlaySetting(streamerId, overlayType, enabled, settings)
     `);
     console.log('[DB] Added effect_amount and effect_size to overlay_designs');
   }
-}
+} catch {}
 
 // Migration: Add effect_direction to overlay_designs
-{
+try {
   const cols = db.pragma('table_info(overlay_designs)').map(c => c.name);
   if (!cols.includes('effect_direction')) {
     db.exec(`ALTER TABLE overlay_designs ADD COLUMN effect_direction TEXT DEFAULT 'down'`);
     console.log('[DB] Added effect_direction to overlay_designs');
   }
-}
+} catch {}
 
 // Migration: Add advanced theme columns to overlay_designs
-{
+try {
   const cols = db.pragma('table_info(overlay_designs)').map(c => c.name);
   if (!cols.includes('bg_opacity')) {
     db.exec(`
@@ -2440,7 +2536,7 @@ function upsertIracingOverlaySetting(streamerId, overlayType, enabled, settings)
     `);
     console.log('[DB] Added advanced theme columns to overlay_designs');
   }
-}
+} catch {}
 
 // Migration: Create sponsor_images table
 {
@@ -2460,7 +2556,7 @@ function upsertIracingOverlaySetting(streamerId, overlayType, enabled, settings)
 }
 
 // Migration: Add sponsor rotation columns to streamers
-{
+try {
   const cols = db.pragma('table_info(streamers)').map(c => c.name);
   if (!cols.includes('sponsor_rotation_enabled')) {
     db.exec(`
@@ -2470,25 +2566,25 @@ function upsertIracingOverlaySetting(streamerId, overlayType, enabled, settings)
     `);
     console.log('[DB] Added sponsor rotation columns to streamers');
   }
-}
+} catch {}
 
 // Migration: Add display_duration to sponsor_images
-{
+try {
   const cols = db.pragma('table_info(sponsor_images)').map(c => c.name);
   if (!cols.includes('display_duration')) {
     db.exec(`ALTER TABLE sponsor_images ADD COLUMN display_duration INTEGER DEFAULT 30`);
     console.log('[DB] Added display_duration to sponsor_images');
   }
-}
+} catch {}
 
 // Migration: Add image_scale to sponsor_images
-{
+try {
   const cols = db.pragma('table_info(sponsor_images)').map(c => c.name);
   if (!cols.includes('image_scale')) {
     db.exec(`ALTER TABLE sponsor_images ADD COLUMN image_scale REAL DEFAULT 1.0`);
     console.log('[DB] Added image_scale to sponsor_images');
   }
-}
+} catch {}
 
 // Migration: Create sponsor_messages table
 {
@@ -2507,7 +2603,7 @@ function upsertIracingOverlaySetting(streamerId, overlayType, enabled, settings)
 }
 
 // Migration: Add sponsor_chat_interval_minutes to streamers
-{
+try {
   const cols = db.pragma('table_info(streamers)').map(c => c.name);
   if (!cols.includes('sponsor_chat_interval_minutes')) {
     db.exec(`ALTER TABLE streamers ADD COLUMN sponsor_chat_interval_minutes INTEGER DEFAULT 10`);
@@ -2562,7 +2658,7 @@ function upsertIracingOverlaySetting(streamerId, overlayType, enabled, settings)
     `);
     console.log('[DB] Added built-in command columns to streamers');
   }
-}
+} catch {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS banned_words (
