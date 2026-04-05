@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { clipboard } = require('electron');
 const logPath = path.join(require('os').homedir(), 'atleta-bridge.log');
 function log(msg) {
   const line = `[${new Date().toISOString()}] ${msg}\n`;
@@ -101,17 +102,26 @@ async function pressKeyViaEvent(vk, scan) {
 }
 
 /**
- * Type a string using SendInput with KEYEVENTF_UNICODE (layout-independent).
+ * Paste text using clipboard + Ctrl+V (most reliable for game chat boxes).
  */
-async function typeString(str) {
-  if (!sendInputFn) return;
-  for (let i = 0; i < str.length; i++) {
-    const charCode = str.charCodeAt(i);
-    sendInputFn({ type: INPUT_KEYBOARD, ki: { wVk: 0, wScan: charCode, dwFlags: KEYEVENTF_UNICODE, time: 0, dwExtraInfo: 0 } });
-    await sleep(10);
-    sendInputFn({ type: INPUT_KEYBOARD, ki: { wVk: 0, wScan: charCode, dwFlags: KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, time: 0, dwExtraInfo: 0 } });
-    await sleep(10);
+async function pasteText(str) {
+  // Save current clipboard, paste, restore
+  const oldClip = clipboard.readText();
+  clipboard.writeText(str);
+  await sleep(50);
+  // Ctrl+V via keybd_event
+  if (keybdEventFn) {
+    keybdEventFn(0x11, 0x1D, 0, 0); // Ctrl down (VK=0x11, scan=0x1D)
+    await sleep(30);
+    keybdEventFn(0x56, 0x2F, 0, 0); // V down (VK=0x56, scan=0x2F)
+    await sleep(30);
+    keybdEventFn(0x56, 0x2F, KEYEVENTF_KEYUP, 0); // V up
+    await sleep(30);
+    keybdEventFn(0x11, 0x1D, KEYEVENTF_KEYUP, 0); // Ctrl up
+    await sleep(50);
   }
+  // Restore clipboard after a delay
+  setTimeout(() => { clipboard.writeText(oldClip); }, 500);
 }
 
 /**
@@ -138,13 +148,14 @@ async function sendChatCommand(command) {
     focusIRacing();
     await sleep(500);
 
-    // Open chat using keybd_event (better game compat)
+    // Open chat using keybd_event
     log('[KeyboardSim] Opening chat (VK=0x' + chatOpenVK.toString(16) + ')...');
     await pressKeyViaEvent(chatOpenVK, chatOpenScan);
     await sleep(400);
 
-    // Type the command using Unicode SendInput (for text in chat box)
-    await typeString(command);
+    // Paste the command via clipboard + Ctrl+V (Unicode SendInput doesn't work in iRacing)
+    log('[KeyboardSim] Pasting: ' + command);
+    await pasteText(command);
     await sleep(100);
 
     // Send with Enter via keybd_event
