@@ -332,7 +332,8 @@
       if (match) {
         const msg = words.slice(match.wordsUsed).join(' ');
         if (!msg) return { error: 'No message text after driver name' };
-        return { command: '/p ' + match.driver.driverName + ' ' + msg, targetLabel: 'To: ' + match.driver.driverName + ' (private)', targetType: '', text: msg };
+        const carNum = match.driver.carNumber || '0';
+        return { command: '#' + carNum + '@ ' + msg, targetLabel: 'To: ' + match.driver.driverName + ' #' + carNum + ' (private)', targetType: '', text: msg };
       }
       return { error: 'No driver found matching "' + words.slice(0, 3).join(' ') + '"' };
     }
