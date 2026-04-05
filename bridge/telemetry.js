@@ -143,8 +143,9 @@ async function startTelemetry(onStatusChange) {
   statusCallback = onStatusChange;
   log('[Telemetry] Starting...');
 
-  // Bulk scan .ibt files in background — extracts all track layouts and uploads to server
-  bulkScanIBTs(uploadTrackToServer).catch(e => log('[BulkScan] Error: ' + e.message));
+  // Bulk scan disabled — was causing OOM crash by importing SDK 348 times
+  // TODO: fix extractFromFile to reuse a single SDK import
+  // bulkScanIBTs(uploadTrackToServer).catch(e => log('[BulkScan] Error: ' + e.message));
 
   let IRSDK, VARS;
   try {
