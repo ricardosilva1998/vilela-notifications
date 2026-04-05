@@ -231,7 +231,8 @@
     } catch(e) {}
 
     // ─── Trace Graph ───────────────────────────────────────────────────
-    const TRACE_POINTS = 50; // 5 seconds at 10Hz
+    // ~300 points = 5 seconds at 60fps, fed from the render loop using smoothed values
+    const TRACE_POINTS = 300;
     const traceBuffer = {
       throttle: new Float32Array(TRACE_POINTS),
       brake: new Float32Array(TRACE_POINTS),
@@ -241,7 +242,16 @@
     let traceFilled = false;
 
     const canvas = document.getElementById('trace-canvas');
+    // Use higher resolution canvas for crisp lines on HiDPI displays
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = 160 * dpr;
+    canvas.height = 88 * dpr;
+    canvas.style.width = '160px';
+    canvas.style.height = '88px';
     const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    const CW = 160; // logical width
+    const CH = 88;  // logical height
 
     function pushTrace(throttle, brake, clutch) {
       traceBuffer.throttle[traceIndex] = throttle;
@@ -252,18 +262,16 @@
     }
 
     function drawTrace() {
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
+      ctx.clearRect(0, 0, CW, CH);
 
       // Grid lines at 25%, 50%, 75%
       ctx.strokeStyle = 'rgba(255,255,255,0.05)';
       ctx.lineWidth = 0.5;
       for (const pct of [0.25, 0.5, 0.75]) {
-        const y = h - pct * h;
+        const y = CH - pct * CH;
         ctx.beginPath();
         ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
+        ctx.lineTo(CW, y);
         ctx.stroke();
       }
 
@@ -278,38 +286,42 @@
 
       for (const t of traces) {
         const buf = traceBuffer[t.key];
+
+        // Build points array
+        const points = [];
+        for (let i = 0; i < count; i++) {
+          const bufIdx = traceFilled ? (traceIndex + i) % TRACE_POINTS : i;
+          points.push({
+            x: (i / (TRACE_POINTS - 1)) * CW,
+            y: CH - buf[bufIdx] * CH,
+          });
+        }
+
+        // Draw smooth curve using quadratic bezier between midpoints
         ctx.beginPath();
         ctx.strokeStyle = t.color;
         ctx.lineWidth = 1.5;
+        ctx.moveTo(points[0].x, points[0].y);
 
-        for (let i = 0; i < count; i++) {
-          // Read from circular buffer: oldest first
-          const bufIdx = traceFilled ? (traceIndex + i) % TRACE_POINTS : i;
-          const x = (i / (TRACE_POINTS - 1)) * w;
-          const y = h - buf[bufIdx] * h;
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
+        for (let i = 0; i < points.length - 1; i++) {
+          const midX = (points[i].x + points[i + 1].x) / 2;
+          const midY = (points[i].y + points[i + 1].y) / 2;
+          ctx.quadraticCurveTo(points[i].x, points[i].y, midX, midY);
         }
+        // Last segment
+        const last = points[points.length - 1];
+        ctx.lineTo(last.x, last.y);
         ctx.stroke();
 
         // Fill under throttle and brake
         if (t.fill) {
-          ctx.lineTo((count - 1) / (TRACE_POINTS - 1) * w, h);
-          ctx.lineTo(0, h);
+          ctx.lineTo(last.x, CH);
+          ctx.lineTo(points[0].x, CH);
           ctx.closePath();
           ctx.fillStyle = t.fill;
           ctx.fill();
         }
       }
-
-      // Current position indicator (right edge)
-      const rightX = ((count - 1) / (TRACE_POINTS - 1)) * w;
-      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(rightX, 0);
-      ctx.lineTo(rightX, h);
-      ctx.stroke();
     }
 
     // ─── Smoothing (lerp interpolation between WebSocket ticks) ───────
@@ -342,9 +354,6 @@
       if (data.gear === -1) gearNumber.textContent = 'R';
       else if (data.gear === 0) gearNumber.textContent = 'N';
       else gearNumber.textContent = data.gear;
-
-      // Push raw values to trace buffer (no smoothing on trace — we want actual data)
-      pushTrace(data.throttle, data.brake, data.clutch);
     });
 
     // ─── Render loop ───────────────────────────────────────────────────
@@ -374,6 +383,9 @@
 
       // Steering wheel
       wheelGroup.setAttribute('transform', `rotate(${current.steer}, 40, 40)`);
+
+      // Push smoothed values to trace (60fps = smooth graph)
+      pushTrace(current.throttle, current.brake, current.clutch);
 
       // Trace graph
       drawTrace();
