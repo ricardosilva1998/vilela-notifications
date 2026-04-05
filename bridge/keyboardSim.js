@@ -47,19 +47,23 @@ if (isWindows) {
 
     sendInput = user32.func('SendInput', 'uint32', ['uint32', koffi.pointer(INPUT), 'int32']);
 
-    // Helper to wrap the call
     const _sendInput = sendInput;
     sendInput = function(input) {
       return _sendInput(1, input, INPUT_size);
     };
 
-    // Window focus functions for bringing iRacing to front
-    findWindowA = user32.func('FindWindowA', 'pointer', ['string', 'string']);
-    setForegroundWindow = user32.func('SetForegroundWindow', 'int32', ['pointer']);
+    log('[KeyboardSim] Loaded SendInput');
 
-    log('[KeyboardSim] Loaded Windows SendInput + SetForegroundWindow');
+    // Window focus — load separately so SendInput still works if this fails
+    try {
+      findWindowA = user32.func('FindWindowA', 'pointer', ['pointer', 'pointer']);
+      setForegroundWindow = user32.func('SetForegroundWindow', 'int32', ['pointer']);
+      log('[KeyboardSim] Loaded FindWindow + SetForegroundWindow');
+    } catch(e2) {
+      log('[KeyboardSim] FindWindow not available: ' + (e2.message || e2));
+    }
   } catch (e) {
-    log('[KeyboardSim] Failed to load koffi/user32:', e.message);
+    log('[KeyboardSim] Failed to load koffi/user32: ' + (e.message || e));
     sendInput = null;
   }
 }
@@ -69,19 +73,22 @@ if (isWindows) {
  */
 function focusIRacing() {
   if (!findWindowA || !setForegroundWindow) return false;
-  // Try common iRacing window titles
   const titles = ['iRacing.com Simulator', 'iRacing'];
   for (const title of titles) {
     try {
-      const hwnd = findWindowA(null, title);
-      if (hwnd) {
+      const koffi = require('koffi');
+      // FindWindowA(lpClassName, lpWindowName) — pass null for class, title for name
+      const hwnd = findWindowA(koffi.nullptr, Buffer.from(title + '\0', 'utf8'));
+      if (hwnd && !koffi.isNullPtr(hwnd)) {
         setForegroundWindow(hwnd);
         log('[KeyboardSim] Focused iRacing window: "' + title + '"');
         return true;
       }
-    } catch(e) {}
+    } catch(e) {
+      log('[KeyboardSim] FindWindow error: ' + (e.message || e));
+    }
   }
-  log('[KeyboardSim] iRacing window not found, typing into current focus');
+  log('[KeyboardSim] iRacing window not found');
   return false;
 }
 
