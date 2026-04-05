@@ -244,6 +244,7 @@
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       chat: [
+        { key: 'twitchChannel', label: 'Twitch Channel', type: 'text', default: '', placeholder: 'your_channel_name' },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       trackmap: [
@@ -293,6 +294,11 @@
               <span style="font-size:11px;color:#8b8a9e;">${f.label}</span>
               <button id="cust-${f.key}" onclick="captureHotkey('${f.key}')" style="padding:4px 10px;background:#0c0d14;border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#e8e6f0;font-size:11px;cursor:pointer;min-width:80px;text-align:center;" data-value='${JSON.stringify(val || null)}'>${keyName}</button>
             </div>`;
+          } else if (f.type === 'text') {
+            return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:11px;color:#8b8a9e;">${f.label}</span>
+              <input type="text" id="cust-${f.key}" value="${val || ''}" placeholder="${f.placeholder || ''}" style="width:140px;padding:4px 6px;background:#0c0d14;border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#e8e6f0;font-size:11px;">
+            </div>`;
           } else if (f.type === 'select') {
             return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
               <span style="font-size:11px;color:#8b8a9e;">${f.label}</span>
@@ -332,6 +338,7 @@
       fields.forEach(f => {
         const el = document.getElementById('cust-' + f.key);
         if (f.type === 'number') settings[f.key] = el.value;
+        else if (f.type === 'text') settings[f.key] = el.value.trim();
         else if (f.type === 'checkbox') settings[f.key] = el.checked;
         else if (f.type === 'hotkey') {
           try { settings[f.key] = JSON.parse(el.dataset.value); } catch(e) { settings[f.key] = null; }

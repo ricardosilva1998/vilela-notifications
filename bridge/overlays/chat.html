@@ -6,76 +6,125 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; }
-    .overlay-panel { background: rgba(12,13,20,0.85); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; backdrop-filter: blur(12px); overflow: hidden; display: flex; flex-direction: column; height: 480px; }
+    .overlay-panel { background: rgba(12,13,20,0.85); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; backdrop-filter: blur(12px); overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
     .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); cursor: move; -webkit-app-region: drag; flex-shrink: 0; }
-    .overlay-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding: 8px; gap: 4px; }
-    .chat-message { font-size: 12px; line-height: 1.4; word-break: break-word; }
+    .overlay-body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; justify-content: flex-end; padding: 8px; gap: 3px; scrollbar-width: none; -ms-overflow-style: none; }
+    .overlay-body::-webkit-scrollbar { display: none; }
+    .chat-message { font-size: 12px; line-height: 1.4; word-break: break-word; padding: 2px 0; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .chat-badge { height: 14px; vertical-align: middle; margin-right: 2px; }
     .chat-author { font-weight: 700; margin-right: 4px; }
     .chat-text { color: rgba(255,255,255,0.85); }
-    .info-box { margin: auto; text-align: center; padding: 20px 16px; }
-    .info-icon { font-size: 32px; margin-bottom: 10px; }
-    .info-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
-    .info-text { font-size: 11px; color: rgba(255,255,255,0.4); line-height: 1.5; }
-    .info-link { color: #9146ff; text-decoration: none; font-weight: 600; }
-    .info-link:hover { text-decoration: underline; }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
     .status-dot.connected { background: #3ecf8e; }
-    .status-dot.disconnected { background: #f04438; }
     .status-dot.waiting { background: #f79009; }
     .status-dot.demo { background: #f79009; }
+    .status-dot.error { background: #f04438; }
+    .info-box { margin: auto; text-align: center; padding: 20px 16px; }
+    .info-icon { font-size: 28px; margin-bottom: 8px; }
+    .info-title { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+    .info-text { font-size: 10px; color: rgba(255,255,255,0.35); line-height: 1.5; }
   </style>
 </head>
 <body>
-  <div id="overlay-root" style="width:320px;">
-    <div class="overlay-panel" style="width:320px;">
-      <div class="overlay-header">
-        <span>STREAMING CHAT</span>
-        <span id="connection-status"><span class="status-dot demo"></span> Demo Mode</span>
-      </div>
-      <div class="overlay-body" id="chat-body">
-        <div class="chat-message"><span class="chat-author" style="color:#9146ff;">StreamFan42</span><span class="chat-text">LET'S GOOO pogchamp</span></div>
-        <div class="chat-message"><span class="chat-author" style="color:#3ecf8e;">speedracer99</span><span class="chat-text">what lap are we on?</span></div>
-        <div class="chat-message"><span class="chat-author" style="color:#f79009;">TurboMike</span><span class="chat-text">that last corner was insane!!!</span></div>
-        <div class="chat-message"><span class="chat-author" style="color:#e879f9;">Atleta_Bot</span><span class="chat-text">Welcome to the stream! Type !commands for a list</span></div>
-        <div class="chat-message"><span class="chat-author" style="color:#60a5fa;">driftkween</span><span class="chat-text">PogChamp PogChamp PogChamp</span></div>
+  <div class="overlay-panel">
+    <div class="overlay-header">
+      <span>STREAMING CHAT</span>
+      <span id="connection-status"><span class="status-dot demo"></span> No Channel</span>
+    </div>
+    <div class="overlay-body" id="chat-body">
+      <div class="info-box" id="setup-info">
+        <div class="info-icon">&#128172;</div>
+        <div class="info-title">Set your Twitch channel</div>
+        <div class="info-text">Click the &#9881; gear icon on the Chat card in the control panel to enter your Twitch channel name.</div>
       </div>
     </div>
   </div>
+
   <script>
-    // Chat overlay connects to the Atleta notification server SSE endpoint,
-    // not the bridge WebSocket — it relies on the user having set up their
-    // Twitch channel through the web dashboard. For now we show a helpful
-    // prompt and connect to bridge just to reflect status.
+    const MAX_MESSAGES = 50;
     const BRIDGE_URL = 'ws://localhost:9100';
     let ws = null;
     let bridgeConnected = false;
-    let iracingConnected = false;
 
     function connectBridge() {
       try { ws = new WebSocket(BRIDGE_URL); } catch(e) { setTimeout(connectBridge, 3000); return; }
       ws.onopen = () => {
         bridgeConnected = true;
-        updateStatus();
-        ws.send(JSON.stringify({ type: 'subscribe', channels: [] }));
+        ws.send(JSON.stringify({ type: 'subscribe', channels: ['chat'] }));
       };
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          if (msg.type === 'bridge-connected') { bridgeConnected = true; updateConnectionStatus(); } else if (msg.type === 'status') { iracingConnected = msg.iracing; updateStatus(); }
+          if (msg.type === 'data' && msg.channel === 'chat') {
+            handleChatMessage(msg.data);
+          } else if (msg.type === 'chat-status') {
+            updateStatus(msg.status, msg.channel);
+          }
         } catch(e) {}
       };
-      ws.onclose = () => { bridgeConnected = false; iracingConnected = false; updateStatus(); setTimeout(connectBridge, 3000); };
+      ws.onclose = () => {
+        bridgeConnected = false;
+        updateStatus('disconnected');
+        setTimeout(connectBridge, 3000);
+      };
       ws.onerror = () => { ws.close(); };
     }
 
-    function updateStatus() {
+    function updateStatus(status, channel) {
       const el = document.getElementById('connection-status');
       if (!el) return;
-      if (!bridgeConnected) {
-        el.innerHTML = '<span class="status-dot demo"></span> Demo Mode';
+      if (status === 'connected') {
+        el.innerHTML = '<span class="status-dot connected"></span> ' + (channel || 'Live');
+        // Hide setup info once connected
+        const info = document.getElementById('setup-info');
+        if (info) info.style.display = 'none';
+      } else if (status === 'connecting') {
+        el.innerHTML = '<span class="status-dot waiting"></span> Connecting...';
+      } else if (status === 'no-channel') {
+        el.innerHTML = '<span class="status-dot demo"></span> No Channel';
       } else {
-        el.innerHTML = '<span class="status-dot connected"></span> Live';
+        el.innerHTML = '<span class="status-dot error"></span> Disconnected';
       }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function handleChatMessage(data) {
+      const body = document.getElementById('chat-body');
+      // Remove setup info on first message
+      const info = document.getElementById('setup-info');
+      if (info) info.remove();
+
+      const msg = document.createElement('div');
+      msg.className = 'chat-message';
+
+      const color = data.color || '#' + Math.floor(Math.random() * 0xFFFFFF).toString(16).padStart(6, '0');
+      let badges = '';
+      if (data.badges) {
+        if (data.badges.broadcaster) badges += '<img class="chat-badge" src="https://static-cdn.jtvnbs.com/chat-badges/broadcaster.png" alt="B">';
+        if (data.badges.moderator) badges += '<img class="chat-badge" src="https://static-cdn.jtvnbs.com/chat-badges/mod.png" alt="M">';
+        if (data.badges.subscriber) badges += '<img class="chat-badge" src="https://static-cdn.jtvnbs.com/chat-badges/subscriber.png" alt="S">';
+        if (data.badges.vip) badges += '<img class="chat-badge" src="https://static-cdn.jtvnbs.com/badges/v1/b817aba4-fad8-49e2-b88a-7cc744571c22/1" alt="V">';
+      }
+
+      msg.innerHTML = badges +
+        '<span class="chat-author" style="color:' + escapeHtml(color) + ';">' + escapeHtml(data.username) + '</span>' +
+        '<span class="chat-text">' + escapeHtml(data.message) + '</span>';
+
+      body.appendChild(msg);
+
+      // Limit messages
+      while (body.children.length > MAX_MESSAGES) {
+        body.removeChild(body.firstChild);
+      }
+
+      // Auto-scroll to bottom
+      body.scrollTop = body.scrollHeight;
     }
 
     connectBridge();

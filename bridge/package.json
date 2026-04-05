@@ -10,10 +10,11 @@
     "build": "electron-builder --win"
   },
   "dependencies": {
-    "ws": "^8.16.0",
     "@emiliosp/node-iracing-sdk": "^1.0.10",
     "electron-updater": "^6.1.0",
-    "uiohook-napi": "^1.5.5"
+    "tmi.js": "^1.8.5",
+    "uiohook-napi": "^1.5.5",
+    "ws": "^8.16.0"
   },
   "devDependencies": {
     "electron": "^28.0.0",
