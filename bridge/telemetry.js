@@ -18,7 +18,7 @@ let connectInterval = null;
 
 const { broadcastToChannel, getClientInfo } = require('./websocket');
 const settings = require('./settings');
-const { extractTrackFromIBT, bulkScanIBTs } = require('./trackExtractor');
+const { extractTrackFromIBT, bulkScanIBTs, geoKeyFromSessionInfo, loadCachedTrackByGeo, saveCachedTrackByGeo } = require('./trackExtractor');
 
 // Fuel tracking
 let fuelHistory = [];
@@ -236,35 +236,45 @@ async function startTelemetry(onStatusChange) {
                 log('[SessionInfo] Found! Drivers: ' + driverInfo.Drivers.length);
                 log('[SessionInfo] Track: ' + trackName);
 
-                // Load track map: local cache → server DB → .ibt telemetry files → manual mapping
-                if (trackName && !trackPathComplete && trackPathOutput.length === 0) {
-                  const cached = loadCachedTrack(trackName);
+                // Load track map: geo-key cache → server → .ibt files → manual mapping
+                const trackGeoKey = geoKeyFromSessionInfo(
+                  weekendInfo?.TrackLatitude, weekendInfo?.TrackLongitude
+                );
+                log('[TrackMap] Track: ' + trackName + ' geo=' + (trackGeoKey || 'unknown'));
+
+                if (!trackPathComplete && trackPathOutput.length === 0) {
+                  // Try local geo-key cache first (also try old name-based cache)
+                  const cached = (trackGeoKey && loadCachedTrackByGeo(trackGeoKey)) || loadCachedTrack(trackName);
                   if (cached) {
                     trackPathOutput = cached;
                     trackPathComplete = true;
                     filledSlots = TRACK_SLOTS;
-                    log('[TrackMap] Loaded from local cache: ' + trackName);
+                    log('[TrackMap] Loaded from cache (' + cached.length + ' points)');
                   } else {
                     // Try server, then .ibt files (async, non-blocking)
                     (async () => {
-                      // Try server first
-                      const serverData = await fetchTrackFromServer(trackName);
+                      // Try server by geo-key and by name
+                      let serverData = trackGeoKey ? await fetchTrackFromServer(trackGeoKey) : null;
+                      if (!serverData) serverData = await fetchTrackFromServer(trackName);
                       if (serverData && !trackPathComplete) {
                         trackPathOutput = serverData;
                         trackPathComplete = true;
                         filledSlots = TRACK_SLOTS;
+                        if (trackGeoKey) saveCachedTrackByGeo(trackGeoKey, serverData);
                         saveCachedTrack(trackName, serverData);
+                        log('[TrackMap] Loaded from server (' + serverData.length + ' points)');
                         return;
                       }
-                      // Try extracting from .ibt telemetry files
-                      const ibtData = await extractTrackFromIBT(trackName);
-                      if (ibtData && !trackPathComplete) {
-                        trackPathOutput = ibtData;
+                      // Try .ibt files
+                      const ibtResult = await extractTrackFromIBT();
+                      if (ibtResult && ibtResult.points && !trackPathComplete) {
+                        trackPathOutput = ibtResult.points;
                         trackPathComplete = true;
                         filledSlots = TRACK_SLOTS;
-                        saveCachedTrack(trackName, ibtData);
-                        uploadTrackToServer(trackName, ibtData);
-                        log('[TrackMap] Built from .ibt file, uploaded to server');
+                        if (trackGeoKey) saveCachedTrackByGeo(trackGeoKey, ibtResult.points);
+                        saveCachedTrack(trackName, ibtResult.points);
+                        uploadTrackToServer(trackGeoKey || trackName, ibtResult.points);
+                        log('[TrackMap] Extracted from .ibt (' + ibtResult.points.length + ' points)');
                       }
                     })();
                   }

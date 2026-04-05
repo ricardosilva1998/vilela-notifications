@@ -13,10 +13,9 @@ function log(msg) {
 
 const IBT_DIR = path.join(os.homedir(), 'Documents', 'iRacing', 'telemetry');
 const TRACK_MAPS_DIR = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'trackmaps');
-const SCANNED_FILE = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'scanned_ibts.json');
+const SCANNED_FILE = path.join(TRACK_MAPS_DIR, 'scanned_ibts.json');
 const SLOT_COUNT = 500;
 
-// Track which files we've already scanned so we don't re-process
 function loadScannedList() {
   try {
     if (fs.existsSync(SCANNED_FILE)) return JSON.parse(fs.readFileSync(SCANNED_FILE, 'utf8'));
@@ -26,20 +25,35 @@ function loadScannedList() {
 
 function saveScannedList(list) {
   try {
-    const dir = path.dirname(SCANNED_FILE);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    if (!fs.existsSync(TRACK_MAPS_DIR)) fs.mkdirSync(TRACK_MAPS_DIR, { recursive: true });
     fs.writeFileSync(SCANNED_FILE, JSON.stringify(list));
   } catch(e) {}
 }
 
+// Generate a geo-key from center coordinates (matches tracks within ~100m)
+function geoKey(points) {
+  const avgX = points.reduce((s, p) => s + p.x, 0) / points.length;
+  const avgY = points.reduce((s, p) => s + p.y, 0) / points.length;
+  return avgY.toFixed(2) + '_' + avgX.toFixed(2);
+}
+
+// Generate a geo-key from TrackLatitude/TrackLongitude strings (e.g., "49.327833 m")
+function geoKeyFromSessionInfo(trackLat, trackLon) {
+  const lat = parseFloat(trackLat) || 0;
+  const lon = parseFloat(trackLon) || 0;
+  if (lat === 0 && lon === 0) return null;
+  return lat.toFixed(2) + '_' + lon.toFixed(2);
+}
+
 /**
- * Extract track layout from a single .ibt file.
- * Returns { trackName, points } or null.
+ * Extract track layout from a single .ibt file using the SDK's IBT reader.
+ * Returns { geoId, points, filled } or null.
  */
-function extractFromFile(filePath) {
+async function extractFromFile(filePath) {
   let ibt = null;
   try {
-    const { IBT } = require('@emiliosp/node-iracing-sdk');
+    const sdk = await import('@emiliosp/node-iracing-sdk');
+    const IBT = sdk.IBT;
     ibt = new IBT();
     ibt.open(filePath);
 
@@ -51,10 +65,6 @@ function extractFromFile(filePath) {
 
     const recordCount = ibt.sessionRecordCount;
     if (recordCount < 100) { ibt.close(); return null; }
-
-    // Get track name from filename (format: "YYYY-MM-DD HH-MM-SS TrackName CarName.ibt")
-    // We'll use the filename as a fallback identifier
-    const basename = path.basename(filePath, '.ibt');
 
     const sampleRate = Math.max(1, Math.floor(recordCount / 2000));
     const slots = new Array(SLOT_COUNT).fill(null);
@@ -83,13 +93,12 @@ function extractFromFile(filePath) {
 
     if (filled < SLOT_COUNT * 0.5) return null;
 
-    // Build path from filled slots
     const points = [];
     for (let i = 0; i < SLOT_COUNT; i++) {
       if (slots[i]) points.push(slots[i]);
     }
 
-    // Smooth
+    // Smooth with moving average
     const win = 3;
     const smoothed = [];
     for (let i = 0; i < points.length; i++) {
@@ -101,17 +110,44 @@ function extractFromFile(filePath) {
       smoothed.push({ x: sx / count, y: sy / count, pct: points[i].pct });
     }
 
-    return { trackName: basename, points: smoothed, filled };
+    return { geoId: geoKey(smoothed), points: smoothed, filled };
   } catch(e) {
+    log('[TrackExtract] File error (' + path.basename(filePath) + '): ' + e.message);
     if (ibt) try { ibt.close(); } catch(e2) {}
     return null;
   }
 }
 
 /**
- * Extract track layout for a specific track from .ibt files.
+ * Load a cached track by geo-key (TrackLatitude/TrackLongitude from session info).
  */
-async function extractTrackFromIBT(trackDisplayName) {
+function loadCachedTrackByGeo(geoId) {
+  try {
+    if (!geoId) return null;
+    const file = path.join(TRACK_MAPS_DIR, 'geo_' + geoId + '.json');
+    if (fs.existsSync(file)) {
+      const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+      if (data && data.length > 50) return data;
+    }
+  } catch(e) {}
+  return null;
+}
+
+/**
+ * Save a track by geo-key.
+ */
+function saveCachedTrackByGeo(geoId, points) {
+  try {
+    if (!fs.existsSync(TRACK_MAPS_DIR)) fs.mkdirSync(TRACK_MAPS_DIR, { recursive: true });
+    const file = path.join(TRACK_MAPS_DIR, 'geo_' + geoId + '.json');
+    fs.writeFileSync(file, JSON.stringify(points));
+  } catch(e) {}
+}
+
+/**
+ * Extract track for current session — try to find a matching .ibt file.
+ */
+async function extractTrackFromIBT() {
   try {
     if (!fs.existsSync(IBT_DIR)) return null;
 
@@ -125,13 +161,12 @@ async function extractTrackFromIBT(trackDisplayName) {
       .sort((a, b) => b.mtime - a.mtime);
 
     if (files.length === 0) return null;
-    log('[TrackExtract] Scanning for ' + trackDisplayName + ' in ' + files.length + ' .ibt files');
 
-    for (const entry of files.slice(0, 10)) {
-      const result = extractFromFile(path.join(IBT_DIR, entry.file));
+    for (const entry of files.slice(0, 5)) {
+      const result = await extractFromFile(path.join(IBT_DIR, entry.file));
       if (result && result.points.length > 50) {
-        log('[TrackExtract] Found track in ' + entry.file + ' (' + result.points.length + ' points)');
-        return result.points;
+        log('[TrackExtract] Extracted from ' + entry.file + ' (' + result.points.length + ' pts, geo=' + result.geoId + ')');
+        return result;
       }
     }
     return null;
@@ -142,89 +177,70 @@ async function extractTrackFromIBT(trackDisplayName) {
 }
 
 /**
- * Bulk scan: process ALL .ibt files, extract unique tracks, cache locally + upload to server.
- * Runs in background on app startup. Skips already-scanned files.
+ * Bulk scan ALL .ibt files on startup. Extracts unique tracks, caches + uploads.
  */
 async function bulkScanIBTs(uploadFn) {
   try {
     if (!fs.existsSync(IBT_DIR)) {
-      log('[BulkScan] Telemetry dir not found: ' + IBT_DIR);
+      log('[BulkScan] No iRacing telemetry folder found');
       return;
     }
 
     const files = fs.readdirSync(IBT_DIR).filter(f => f.endsWith('.ibt'));
-    if (files.length === 0) { log('[BulkScan] No .ibt files found'); return; }
+    if (files.length === 0) { log('[BulkScan] No .ibt files'); return; }
 
     const scanned = loadScannedList();
     const newFiles = files.filter(f => !scanned[f]);
-    if (newFiles.length === 0) { log('[BulkScan] All ' + files.length + ' .ibt files already scanned'); return; }
+    if (newFiles.length === 0) {
+      log('[BulkScan] All ' + files.length + ' .ibt files already scanned');
+      return;
+    }
 
-    log('[BulkScan] Scanning ' + newFiles.length + ' new .ibt files (of ' + files.length + ' total)');
+    log('[BulkScan] Scanning ' + newFiles.length + ' new .ibt files...');
 
-    // Track unique tracks we've extracted (keyed by approximate lat/lon center to deduplicate)
-    const extracted = {};
-    let processedCount = 0;
-    let extractedCount = 0;
+    const tracks = {}; // geoId -> { points, filled }
+    let processed = 0;
 
     for (const file of newFiles) {
-      processedCount++;
-      const filePath = path.join(IBT_DIR, file);
-
+      processed++;
       try {
-        const result = extractFromFile(filePath);
-        scanned[file] = true; // Mark as scanned regardless of result
+        const result = await extractFromFile(path.join(IBT_DIR, file));
+        scanned[file] = true;
 
         if (result && result.points.length > 50) {
-          // Generate a track key from the center coordinates (deduplicate same track, different sessions)
-          const avgX = result.points.reduce((s, p) => s + p.x, 0) / result.points.length;
-          const avgY = result.points.reduce((s, p) => s + p.y, 0) / result.points.length;
-          const trackKey = avgX.toFixed(3) + '_' + avgY.toFixed(3);
-
-          if (!extracted[trackKey] || result.filled > extracted[trackKey].filled) {
-            extracted[trackKey] = { file, points: result.points, filled: result.filled, trackName: result.trackName };
+          if (!tracks[result.geoId] || result.filled > tracks[result.geoId].filled) {
+            tracks[result.geoId] = result;
           }
-          extractedCount++;
         }
       } catch(e) {
-        scanned[file] = true; // Don't retry broken files
+        scanned[file] = true;
       }
 
-      // Log progress every 20 files
-      if (processedCount % 20 === 0) {
-        log('[BulkScan] Progress: ' + processedCount + '/' + newFiles.length + ' files, ' + extractedCount + ' tracks extracted');
+      if (processed % 10 === 0) {
+        log('[BulkScan] ' + processed + '/' + newFiles.length + ' files, ' + Object.keys(tracks).length + ' tracks found');
       }
     }
 
-    // Save scanned list so we don't re-process next time
     saveScannedList(scanned);
 
-    // Cache and upload unique tracks
-    const trackKeys = Object.keys(extracted);
-    log('[BulkScan] Found ' + trackKeys.length + ' unique tracks from ' + newFiles.length + ' files');
+    const geoIds = Object.keys(tracks);
+    log('[BulkScan] Extracted ' + geoIds.length + ' unique tracks');
 
     if (!fs.existsSync(TRACK_MAPS_DIR)) fs.mkdirSync(TRACK_MAPS_DIR, { recursive: true });
 
-    for (const key of trackKeys) {
-      const track = extracted[key];
-      // Use the .ibt filename as the track name (best we have without session info parsing)
-      const trackName = track.trackName;
-      const cacheFile = path.join(TRACK_MAPS_DIR, trackName.replace(/[^a-zA-Z0-9_-]/g, '_') + '.json');
-
-      // Save locally
-      try { fs.writeFileSync(cacheFile, JSON.stringify(track.points)); } catch(e) {}
-
-      // Upload to server
+    for (const geoId of geoIds) {
+      const track = tracks[geoId];
+      saveCachedTrackByGeo(geoId, track.points);
       if (uploadFn) {
-        try { uploadFn(trackName, track.points); } catch(e) {}
+        try { uploadFn(geoId, track.points); } catch(e) {}
       }
-
-      log('[BulkScan] Stored: ' + trackName + ' (' + track.points.length + ' points)');
+      log('[BulkScan] Stored track geo=' + geoId + ' (' + track.points.length + ' points)');
     }
 
-    log('[BulkScan] Complete! ' + trackKeys.length + ' tracks stored and uploaded');
+    log('[BulkScan] Done! ' + geoIds.length + ' tracks cached + uploaded');
   } catch(e) {
     log('[BulkScan] Error: ' + e.message);
   }
 }
 
-module.exports = { extractTrackFromIBT, bulkScanIBTs };
+module.exports = { extractTrackFromIBT, bulkScanIBTs, geoKeyFromSessionInfo, loadCachedTrackByGeo, saveCachedTrackByGeo };
