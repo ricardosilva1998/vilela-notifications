@@ -53,7 +53,7 @@
     .pedal-fill {
       position: absolute; bottom: 0; width: 100%;
       border-radius: 0 0 3px 3px;
-      transition: height 50ms linear;
+      transition: none;
     }
     .pedal-fill.throttle { background: linear-gradient(to top, #00aa33, #00ff55); }
     .pedal-fill.brake { background: linear-gradient(to top, #aa0000, #ff3333); }
@@ -312,6 +312,13 @@
       ctx.stroke();
     }
 
+    // ─── Smoothing (lerp interpolation between WebSocket ticks) ───────
+    const LERP_SPEED = 0.25; // 0-1, higher = snappier, lower = smoother
+    const current = { throttle: 0, brake: 0, clutch: 0, steer: 0, speed: 0 };
+    const target = { throttle: 0, brake: 0, clutch: 0, steer: 0, speed: 0 };
+
+    function lerp(a, b, t) { return a + (b - a) * t; }
+
     // ─── Data Handler ──────────────────────────────────────────────────
     const barThrottle = document.getElementById('bar-throttle');
     const barBrake = document.getElementById('bar-brake');
@@ -324,37 +331,51 @@
     onData('inputs', data => {
       if (!data) return;
 
-      // Pedal bars
-      barThrottle.style.height = (data.throttle * 100) + '%';
-      barBrake.style.height = (data.brake * 100) + '%';
-      barClutch.style.height = (data.clutch * 100) + '%';
+      // Store targets — render loop will interpolate towards these
+      target.throttle = data.throttle;
+      target.brake = data.brake;
+      target.clutch = data.clutch;
+      target.steer = data.steer * (180 / Math.PI); // radians to degrees
+      target.speed = data.speed;
 
-      // Gear
+      // Gear updates instantly (discrete value, no interpolation)
       if (data.gear === -1) gearNumber.textContent = 'R';
       else if (data.gear === 0) gearNumber.textContent = 'N';
       else gearNumber.textContent = data.gear;
 
-      // Speed (data.speed is in m/s)
-      let displaySpeed;
-      if (speedUnit === 'mph') {
-        displaySpeed = Math.round(data.speed * 2.23694);
-        speedUnitEl.textContent = 'mph';
-      } else {
-        displaySpeed = Math.round(data.speed * 3.6);
-        speedUnitEl.textContent = 'km/h';
-      }
-      speedNumber.textContent = displaySpeed;
-
-      // Steering wheel (steer is in radians, negative = left)
-      const steerDeg = data.steer * (180 / Math.PI);
-      wheelGroup.setAttribute('transform', `rotate(${steerDeg}, 40, 40)`);
-
-      // Push to trace buffer
+      // Push raw values to trace buffer (no smoothing on trace — we want actual data)
       pushTrace(data.throttle, data.brake, data.clutch);
     });
 
     // ─── Render loop ───────────────────────────────────────────────────
     function renderLoop() {
+      // Interpolate current values toward targets
+      current.throttle = lerp(current.throttle, target.throttle, LERP_SPEED);
+      current.brake = lerp(current.brake, target.brake, LERP_SPEED);
+      current.clutch = lerp(current.clutch, target.clutch, LERP_SPEED);
+      current.steer = lerp(current.steer, target.steer, LERP_SPEED);
+      current.speed = lerp(current.speed, target.speed, LERP_SPEED);
+
+      // Pedal bars
+      barThrottle.style.height = (current.throttle * 100) + '%';
+      barBrake.style.height = (current.brake * 100) + '%';
+      barClutch.style.height = (current.clutch * 100) + '%';
+
+      // Speed
+      let displaySpeed;
+      if (speedUnit === 'mph') {
+        displaySpeed = Math.round(current.speed * 2.23694);
+        speedUnitEl.textContent = 'mph';
+      } else {
+        displaySpeed = Math.round(current.speed * 3.6);
+        speedUnitEl.textContent = 'km/h';
+      }
+      speedNumber.textContent = displaySpeed;
+
+      // Steering wheel
+      wheelGroup.setAttribute('transform', `rotate(${current.steer}, 40, 40)`);
+
+      // Trace graph
       drawTrace();
       requestAnimationFrame(renderLoop);
     }
