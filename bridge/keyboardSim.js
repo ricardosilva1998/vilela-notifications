@@ -21,6 +21,9 @@ const KEYEVENTF_KEYUP = 0x0002;
 const VK_RETURN = 0x0D;
 const VK_T = 0x54;
 
+let findWindowA = null;
+let setForegroundWindow = null;
+
 if (isWindows) {
   try {
     const koffi = require('koffi');
@@ -50,11 +53,36 @@ if (isWindows) {
       return _sendInput(1, input, INPUT_size);
     };
 
-    log('[KeyboardSim] Loaded Windows SendInput');
+    // Window focus functions for bringing iRacing to front
+    findWindowA = user32.func('FindWindowA', 'pointer', ['string', 'string']);
+    setForegroundWindow = user32.func('SetForegroundWindow', 'int32', ['pointer']);
+
+    log('[KeyboardSim] Loaded Windows SendInput + SetForegroundWindow');
   } catch (e) {
     log('[KeyboardSim] Failed to load koffi/user32:', e.message);
     sendInput = null;
   }
+}
+
+/**
+ * Try to bring iRacing window to the foreground.
+ */
+function focusIRacing() {
+  if (!findWindowA || !setForegroundWindow) return false;
+  // Try common iRacing window titles
+  const titles = ['iRacing.com Simulator', 'iRacing'];
+  for (const title of titles) {
+    try {
+      const hwnd = findWindowA(null, title);
+      if (hwnd) {
+        setForegroundWindow(hwnd);
+        log('[KeyboardSim] Focused iRacing window: "' + title + '"');
+        return true;
+      }
+    } catch(e) {}
+  }
+  log('[KeyboardSim] iRacing window not found, typing into current focus');
+  return false;
 }
 
 function sleep(ms) {
@@ -102,10 +130,13 @@ async function sendChatCommand(command) {
   }
 
   try {
+    // Focus iRacing window before typing
+    focusIRacing();
+    await sleep(200);
     // Press T to open iRacing chat
     await pressKey(VK_T);
     // Wait for chat box to open
-    await sleep(150);
+    await sleep(200);
     // Type the command using Unicode input
     await typeString(command);
     await sleep(50);
