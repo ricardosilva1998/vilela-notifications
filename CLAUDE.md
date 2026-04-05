@@ -8,7 +8,7 @@ Self-service streaming toolkit. Monitors Twitch (live streams, clips, recaps, mi
 - **Backend:** Express v5, EJS templates (server-rendered)
 - **Database:** SQLite via better-sqlite3 (WAL mode, foreign keys)
 - **Bot:** discord.js v14
-- **External APIs:** Twitch Helix, Twitch EventSub (WebSocket), StreamElements (socket.io), YouTube Data API v3 + Live Chat API + RSS feeds, Spotify Web API, PayPal
+- **External APIs:** Twitch Helix, Twitch EventSub (WebSocket), StreamElements (socket.io), YouTube Data API v3 + Live Chat API + RSS feeds, Spotify Web API, PayPal, BetterTTV API
 - **Chatbot:** tmi.js (Twitch IRC) — single shared connection for all channels; YouTube Live Chat API polling
 - **i18n:** Custom JSON-based translation system (7 languages)
 - **Deployment:** Docker on Railway with persistent volume at `/app/data`
@@ -30,7 +30,7 @@ src/
 ├── index.js              # Entry point — boots bot, pollers, EventSub, StreamElements, chat managers, web server
 ├── config.js             # Env vars + tier definitions + intervals
 ├── db.js                 # SQLite schema, migrations, seeds, and all queries
-├── server.js             # Express app + middleware (session, i18n, language, static files)
+├── server.js             # Express app + middleware (session, i18n, language, static files) + public Bridge APIs (track-map, voice state)
 ├── discord.js            # Discord client + embed helpers (recap, digest, milestone)
 ├── i18n.js               # Translation helper — loads JSON locale files
 ├── commands.js           # Slash commands
@@ -62,7 +62,7 @@ src/
 │   ├── customOverlays.js # Custom overlays CRUD, SSE, file upload (DISABLED — commented out in server.js/overlay.js)
 │   ├── dashboard.js      # Dashboard, account, guild config (tabbed), stats, channel CRUD, overlay config, chatbot config, overlay builder, YouTube chatbot, sound management, sponsor upload/settings, donation settings, built-in commands
 │   ├── tip.js            # Public donation page — PayPal Checkout flow, captures payment, fires overlay alert
-│   ├── api.js            # API endpoints
+│   ├── api.js            # API endpoints (guild channels/roles)
 │   ├── admin.js          # Admin panel
 │   └── payment.js        # PayPal subscriptions
 └── views/
@@ -106,10 +106,34 @@ data/
 ├── bot.db                # SQLite database (persistent volume on Railway)
 ├── sounds/               # Uploaded custom alert sounds (persistent, survives deploys)
 └── sponsors/             # Uploaded sponsor images for rotation (persistent, survives deploys)
+bridge/
+├── main.js               # Electron main process — window management, system tray, overlay registry
+├── telemetry.js          # iRacing SDK integration — reads shared memory, broadcasts via WebSocket channels
+├── websocket.js          # WebSocket server (ws://localhost:9100) — channel-based pub/sub
+├── control-panel.html    # Control panel UI — overlay toggles, settings, updates tab
+├── settings.js           # Settings persistence (~/Documents/Atleta Bridge/settings.json)
+├── twitchChat.js         # Twitch chat integration for chat overlay
+├── keyboardSim.js        # Windows SendInput API wrapper for iRacing chat
+├── voiceInput.js         # Global input hook (uiohook) for push-to-talk
+├── fuel-calculator.js    # Fuel calculation logic
+├── trackExtractor.js     # Extract track layouts from .ibt telemetry files
+├── package.json          # Electron app dependencies
+└── overlays/
+    ├── standings.html    # Session standings table
+    ├── relative.html     # Relative gap to nearby cars
+    ├── fuel.html         # Fuel calculator
+    ├── wind.html         # Wind direction/speed
+    ├── proximity.html    # Car proximity warnings
+    ├── trackmap.html     # Track map with car positions
+    ├── chat.html         # Twitch chat (7TV + BTTV emotes)
+    ├── voicechat.html    # Voice chat overlay (speech-to-text)
+    ├── inputs.html       # Driver inputs — trace graph, pedal bars, gear, speed, steering wheel
+    └── discord.html      # Discord voice channel — members with avatars, mute/deafen status
 ```
 
 ## Key Architecture
 
+- **Atleta Bridge (Electron desktop app):** Local Windows app that reads iRacing telemetry via `@emiliosp/node-iracing-sdk` shared memory and broadcasts data over WebSocket (`ws://localhost:9100`) to HTML overlay windows. 10 overlays: standings, relative, fuel, wind, proximity, chat, trackmap, voicechat, inputs, discord. Each overlay is a frameless transparent `BrowserWindow` (always-on-top, screen-saver level). Overlays subscribe to WebSocket channels (`connectBridge(['fuel', 'wind'])`), receive JSON updates, and render independently. Control panel provides toggle/settings per overlay, lock mode (click-through), auto-hide on iRacing disconnect, and auto-updater. Settings persisted to `~/Documents/Atleta Bridge/settings.json`. Track maps cached locally and synced with main server via `atletanotifications.com/api/track-map`.
 - **Dashboard:** Platform-tabbed main page (Discord | Twitch | YouTube | Kick | Admin) with localStorage tab persistence. Discord tab shows guild management. Twitch tab shows 7-day activity stats card (follows/subs/bits/donations/raids/giftsubs) + overlay/chatbot/Spotify/donations/sponsor cards. YouTube tab shows "Coming Soon" (disabled via features flag). Kick is coming soon. Admin tab is admin-only.
 - **OBS Overlay:** EventSub receives Twitch events → overlayBus EventEmitter → SSE push to OBS browser source. Centered card design with per-event themes and full-screen effects (confetti, gold rain, money rain, robots, tire marks). All event types use the same card structure: top-accent + card-body (with optional side icons) + car-track (always visible for consistent height). Card animations built dynamically by `buildBottomAnimation()` — bottom-track types (car, checkered, equalizer) stay in track; full-card types (flames, sparkles, lightning, neon sweep, pulse) use `.card-anim-overlay` div. YouTube events (Super Chat, Member, Gift) also emit to the same overlay. Custom designs stored in `overlay_designs` table with advanced theme columns (opacity, gradient, border, glow, shadow). Donation alerts show message on separate line below amount. Moderation actions use Twitch Helix API (not tmi.js IRC) for message deletion/timeouts.
 - **Overlay Builder:** Visual editor at `/dashboard/overlay-builder` with left control panel + right live preview. Events grouped by platform tabs (Twitch/YouTube/Kick/General). Customize per-event: colors, fonts (Google Fonts with live preview dropdown), text, animation entrance/screen effects, card size, position (9-cell grid + free drag with pixel coordinates), border radius. Advanced theme editor with 14 presets, gradient direction (7 options + solid), background opacity, border thickness/opacity, glow intensity, shadow blur/spread/opacity. Card animations split into Card Animation tab (entrance + bottom bar) and Canvas Animation tab (screen effects). Bottom bar animations: Car L→R, Car R→L, Checkered Flag, Equalizer (bottom track); Flames, Sparkles, Lightning, Neon Sweep, Pulse (full-card overlays). Preview shows stream screenshot background with draggable alert card. Designs saved to DB and applied at runtime via `applyCustomDesign()`.
@@ -131,6 +155,9 @@ data/
 - **Admin panel:** Accessible via Admin tab on dashboard (admin-only), tabbed UI with Stats/Users/Issues/Feedback/Discounts/Testing
 - **Custom Overlays (DISABLED):** Template-based scene banners, info bars, and custom alerts controlled via chat commands. Code exists (`customOverlays.js`, `scenes.js`, `bar.js`, `custom-alerts.js`, `custom-overlays.ejs`) but all integrations are commented out in `server.js`, `overlay.js`, `twitchChat.js`, `dashboard.ejs`, `overlay-builder.ejs`, `overlay-config.ejs`, and `overlay.css`. DB table `custom_overlays` exists. Re-enable by uncommenting the marked sections.
 - **Sponsor Overlay (separate source):** Sponsors have their own OBS browser source at `/overlay/sponsors/TOKEN` via `sponsors.js`, independent from the main alert overlay.
+- **Bridge — Driver Inputs Overlay:** Horizontal strip overlay showing real-time driver inputs. Left to right: canvas trace graph (~5s history, 300-point buffer fed at 60fps with bezier curves), vertical pedal bars (throttle green/brake red/clutch blue), gear number (N/R/1-10), speed (configurable km/h or mph), rotating SVG 3-spoke steering wheel with red 12 o'clock marker. All values use lerp interpolation in the render loop for smooth animation between 100ms WebSocket ticks. Telemetry broadcasts via `inputs` channel: `THROTTLE`, `BRAKE`, `CLUTCH` (inverted — iRacing sends 1=released), `STEERING_WHEEL_ANGLE` (radians), `GEAR`, `SPEED` (m/s, converted client-side).
+- **Bridge — Discord Voice Overlay:** Shows Discord voice channel members with circular avatars, display names, and mute/deafen/streaming/camera icons. Polls `GET /api/voice/:discordUserId` on the main server every 3 seconds. The main server uses `GuildVoiceStates` intent to track voice states via Discord Gateway cache. Endpoint is public (no auth) since the bridge has no session cookies. Streamer highlighted in purple, sorted first. Green ring on unmuted avatars, gray on muted. Requires Discord User ID configured in overlay settings.
+- **Bridge — Chat Emotes:** Chat overlay loads both 7TV and BetterTTV emotes (global + channel-specific). Both providers fetched in parallel via `loadAllEmotes()` and merged into a single `emoteMap`. BTTV endpoint: `api.betterttv.net/3/cached/users/twitch/{userId}` returns `channelEmotes` + `sharedEmotes`. Emote rendering is provider-agnostic — word-based lookup in the shared map.
 - **iRacing (coming soon):** Full integration built but disabled — waiting for iRacing OAuth credentials
 - **DB migrations:** Auto-run on startup in `src/db.js`
 - **No ORM:** All SQL is raw in `db.js`
