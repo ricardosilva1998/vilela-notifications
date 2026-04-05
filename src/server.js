@@ -95,20 +95,18 @@ app.use('/dashboard', dashboardRoutes);
 // app.use('/dashboard/custom-overlays', customOverlayRoutes); // DISABLED for now
 app.use('/payment', paymentRoutes);
 app.use('/tip', tipRoutes);
+// Public Bridge API (no auth) — BEFORE /api auth middleware
+app.get('/api/bridge/config', (req, res) => {
+  res.json({ openaiKey: process.env.OPENAI_API_KEY || '' });
+});
+
 app.use('/api', apiRoutes);
 app.use('/admin', adminRoutes);
 app.use('/vtuber', vtuberRoutes);
 app.use('/sync', syncRoutes);
 app.use('/overlay', overlayRoutes);
 
-// Track map API (public, used by Bridge app)
-// Bridge config — provides shared API keys to all Bridge app instances
-app.get('/api/bridge/config', (req, res) => {
-  res.json({
-    openaiKey: process.env.OPENAI_API_KEY || '',
-  });
-});
-
+// Track map API (public)
 app.get('/api/track-map/:trackName', (req, res) => {
   try {
     const row = db.prepare('SELECT track_data FROM track_maps WHERE track_name = ?').get(req.params.trackName);
