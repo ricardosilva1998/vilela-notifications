@@ -12,7 +12,8 @@
     .overlay-body::-webkit-scrollbar { display: none; }
     .chat-message { font-size: 12px; line-height: 1.4; word-break: break-word; padding: 2px 0; animation: fadeIn 0.2s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-    .chat-badge { height: 14px; vertical-align: middle; margin-right: 2px; }
+    .chat-badge { display: inline-block; width: 16px; height: 16px; vertical-align: middle; margin-right: 2px; border-radius: 2px; }
+    .chat-emote { height: 24px; vertical-align: middle; margin: -2px 1px; }
     .chat-author { font-weight: 700; margin-right: 4px; }
     .chat-text { color: rgba(255,255,255,0.85); }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
@@ -47,6 +48,76 @@
     let ws = null;
     let bridgeConnected = false;
 
+    // ─── 7TV Emotes ────────────────────────────────────────────
+    const emoteMap = new Map(); // name -> url
+    let emotesLoaded = false;
+    let currentChannelName = '';
+
+    async function load7TVEmotes(twitchUserId) {
+      try {
+        // Global emotes
+        if (!emotesLoaded) {
+          const globalRes = await fetch('https://7tv.io/v3/emote-sets/global');
+          const globalData = await globalRes.json();
+          if (globalData.emotes) {
+            globalData.emotes.forEach(e => {
+              emoteMap.set(e.name, 'https://cdn.7tv.app/emote/' + e.id + '/1x.webp');
+            });
+          }
+          emotesLoaded = true;
+        }
+
+        // Channel emotes via Twitch user ID
+        if (twitchUserId) {
+          try {
+            const res = await fetch('https://7tv.io/v3/users/twitch/' + twitchUserId);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.emote_set && data.emote_set.emotes) {
+                data.emote_set.emotes.forEach(e => {
+                  emoteMap.set(e.name, 'https://cdn.7tv.app/emote/' + e.id + '/1x.webp');
+                });
+              }
+            }
+          } catch(e) {} // Channel may not have 7TV
+        }
+
+        console.log('[7TV] Loaded ' + emoteMap.size + ' emotes (channel: ' + (twitchUserId || 'global only') + ')');
+      } catch(e) {
+        console.log('[7TV] Failed to load: ' + e.message);
+        emotesLoaded = true; // Don't retry endlessly
+      }
+    }
+
+    function replaceEmotes(text) {
+      if (!emotesLoaded || emoteMap.size === 0) return escapeHtml(text);
+      // Split by spaces, replace matching words with emote images
+      return text.split(' ').map(word => {
+        const url = emoteMap.get(word);
+        if (url) return '<img class="chat-emote" src="' + url + '" alt="' + escapeHtml(word) + '" title="' + escapeHtml(word) + '">';
+        return escapeHtml(word);
+      }).join(' ');
+    }
+
+    // ─── Badge Rendering (inline SVG — no external CDN needed) ─
+    const BADGE_SVGS = {
+      broadcaster: '<svg class="chat-badge" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="#e91916"/><path d="M4 4l4 3.5L12 4v8L8 8.5 4 12z" fill="#fff"/></svg>',
+      moderator: '<svg class="chat-badge" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="#00ad03"/><path d="M8 2L3 6v4l5 4 5-4V6z" fill="#fff"/></svg>',
+      vip: '<svg class="chat-badge" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="#e005b9"/><path d="M8 3l2.5 3.5H14L10.5 10 12 14 8 11 4 14l1.5-4L2 6.5h3.5z" fill="#fff"/></svg>',
+      subscriber: '<svg class="chat-badge" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="#9146ff"/><path d="M8 3l1.5 3H13l-2.5 2.5L12 13 8 10.5 4 13l1.5-4.5L3 6h3.5z" fill="#fff"/></svg>',
+    };
+
+    function renderBadges(badges) {
+      if (!badges) return '';
+      let html = '';
+      if (badges.broadcaster) html += BADGE_SVGS.broadcaster;
+      if (badges.moderator) html += BADGE_SVGS.moderator;
+      if (badges.vip) html += BADGE_SVGS.vip;
+      if (badges.subscriber) html += BADGE_SVGS.subscriber;
+      return html;
+    }
+
+    // ─── WebSocket Connection ──────────────────────────────────
     function connectBridge() {
       try { ws = new WebSocket(BRIDGE_URL); } catch(e) { setTimeout(connectBridge, 3000); return; }
       ws.onopen = () => {
@@ -76,9 +147,10 @@
       if (!el) return;
       if (status === 'connected') {
         el.innerHTML = '<span class="status-dot connected"></span> ' + (channel || 'Live');
-        // Hide setup info once connected
         const info = document.getElementById('setup-info');
         if (info) info.style.display = 'none';
+        // Load 7TV global emotes on connect (channel emotes load from first message's roomId)
+        if (!emotesLoaded) load7TVEmotes(null);
       } else if (status === 'connecting') {
         el.innerHTML = '<span class="status-dot waiting"></span> Connecting...';
       } else if (status === 'no-channel') {
@@ -94,36 +166,36 @@
       return div.innerHTML;
     }
 
+    let channelEmotesLoaded = false;
+
     function handleChatMessage(data) {
       const body = document.getElementById('chat-body');
-      // Remove setup info on first message
       const info = document.getElementById('setup-info');
       if (info) info.remove();
+
+      // Load channel 7TV emotes using Twitch room ID from first message
+      if (!channelEmotesLoaded && data.roomId) {
+        channelEmotesLoaded = true;
+        load7TVEmotes(data.roomId);
+      }
 
       const msg = document.createElement('div');
       msg.className = 'chat-message';
 
       const color = data.color || '#' + Math.floor(Math.random() * 0xFFFFFF).toString(16).padStart(6, '0');
-      let badges = '';
-      if (data.badges) {
-        if (data.badges.broadcaster) badges += '<img class="chat-badge" src="https://static-cdn.jtvnbs.com/chat-badges/broadcaster.png" alt="B">';
-        if (data.badges.moderator) badges += '<img class="chat-badge" src="https://static-cdn.jtvnbs.com/chat-badges/mod.png" alt="M">';
-        if (data.badges.subscriber) badges += '<img class="chat-badge" src="https://static-cdn.jtvnbs.com/chat-badges/subscriber.png" alt="S">';
-        if (data.badges.vip) badges += '<img class="chat-badge" src="https://static-cdn.jtvnbs.com/badges/v1/b817aba4-fad8-49e2-b88a-7cc744571c22/1" alt="V">';
-      }
+      const badgeHtml = renderBadges(data.badges);
+      const messageHtml = replaceEmotes(data.message);
 
-      msg.innerHTML = badges +
+      msg.innerHTML = badgeHtml +
         '<span class="chat-author" style="color:' + escapeHtml(color) + ';">' + escapeHtml(data.username) + '</span>' +
-        '<span class="chat-text">' + escapeHtml(data.message) + '</span>';
+        '<span class="chat-text">' + messageHtml + '</span>';
 
       body.appendChild(msg);
 
-      // Limit messages
       while (body.children.length > MAX_MESSAGES) {
         body.removeChild(body.firstChild);
       }
 
-      // Auto-scroll to bottom
       body.scrollTop = body.scrollHeight;
     }
 
