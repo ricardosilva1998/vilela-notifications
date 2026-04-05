@@ -158,7 +158,11 @@ function startVoiceInput(opts) {
     }
   }
 
+  // Track hook health — restart if it stops receiving events
+  let lastHookEvent = Date.now();
+
   uIOhook.on('keydown', (e) => {
+    lastHookEvent = Date.now();
     if (pushToTalkKeyCode !== null && !pushToTalkIsMouseButton && e.keycode === pushToTalkKeyCode) {
       const now = Date.now();
       if (now - lastToggleTime < 500) return;
@@ -168,6 +172,7 @@ function startVoiceInput(opts) {
   });
 
   uIOhook.on('mousedown', (e) => {
+    lastHookEvent = Date.now();
     if (pushToTalkIsMouseButton && e.button === pushToTalkMouseButton) {
       const now = Date.now();
       if (now - lastToggleTime < 500) return;
@@ -176,8 +181,34 @@ function startVoiceInput(opts) {
     }
   });
 
-  uIOhook.start();
-  log('[VoiceInput] Global hook started');
+  function startHook() {
+    try {
+      uIOhook.start();
+      log('[VoiceInput] Global hook started');
+    } catch(e) {
+      log('[VoiceInput] Hook start failed: ' + e.message);
+    }
+  }
+
+  startHook();
+
+  // Periodic health check — restart hook if no events for 60 seconds
+  // (uiohook can silently die after getUserMedia captures audio)
+  setInterval(() => {
+    if (Date.now() - lastHookEvent > 60000) {
+      log('[VoiceInput] Hook appears dead (no events for 60s), restarting...');
+      try { uIOhook.stop(); } catch(e) {}
+      // Reset recording state in case it was stuck
+      if (isRecording) {
+        isRecording = false;
+        if (autoStopTimer) { clearTimeout(autoStopTimer); autoStopTimer = null; }
+        if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
+          voiceChatWindow.webContents.send('voice-stop-recording');
+        }
+      }
+      setTimeout(startHook, 500);
+    }
+  }, 15000);
 
   ipcMain.on('voice-wav-ready', (event, wavPath) => { transcribeWav(wavPath); });
 
