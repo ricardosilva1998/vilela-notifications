@@ -133,6 +133,52 @@ app.post('/api/track-map', (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Discord voice state API (public, used by Bridge app)
+app.get('/api/voice/:discordUserId', (req, res) => {
+  try {
+    const { discordUserId } = req.params;
+    const { client } = require('./discord');
+
+    // Find which guild the user is in by checking all cached guilds
+    let voiceState = null;
+    for (const guild of client.guilds.cache.values()) {
+      const vs = guild.voiceStates.cache.get(discordUserId);
+      if (vs && vs.channelId) {
+        voiceState = vs;
+        break;
+      }
+    }
+
+    if (!voiceState || !voiceState.channel) {
+      return res.json({ channelName: null, members: [] });
+    }
+
+    const channel = voiceState.channel;
+    const members = channel.members.map(member => {
+      const vs = member.voice;
+      const user = member.user;
+      const avatar = user.avatar
+        ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.webp?size=64`
+        : `https://cdn.discordapp.com/embed/avatars/${(BigInt(user.id) >> 22n) % 6n}.png`;
+      return {
+        id: user.id,
+        username: user.username,
+        displayName: member.displayName || user.displayName || user.username,
+        avatar,
+        selfMute: vs.selfMute || false,
+        selfDeaf: vs.selfDeaf || false,
+        serverMute: vs.serverMute || false,
+        serverDeaf: vs.serverDeaf || false,
+        streaming: vs.streaming || false,
+        camera: vs.selfVideo || false,
+        isStreamer: user.id === discordUserId,
+      };
+    });
+
+    res.json({ channelName: channel.name, members });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // Language switch
 app.post('/set-language', (req, res) => {
   const lang = SUPPORTED_LANGS.includes(req.body.lang) ? req.body.lang : 'en';

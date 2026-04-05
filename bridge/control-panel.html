@@ -207,6 +207,7 @@
       { id: 'trackmap', icon: '&#127758;', name: 'Track Map' },
       { id: 'voicechat', icon: '&#127908;', name: 'Voice Chat' },
       { id: 'inputs', icon: '&#127918;', name: 'Driver Inputs' },
+      { id: 'discord', icon: '&#127897;', name: 'Discord Voice' },
     ];
 
     const grid = document.getElementById('overlay-grid');
@@ -293,6 +294,10 @@
           { value: 'kmh', label: 'km/h' },
           { value: 'mph', label: 'mph' },
         ]},
+        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
+      ],
+      discord: [
+        { key: 'discordUserId', label: 'Discord User ID', type: 'text', default: '', placeholder: 'Right-click your name → Copy User ID' },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
     };

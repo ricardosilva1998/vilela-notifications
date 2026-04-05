@@ -34,6 +34,7 @@ const OVERLAYS = [
   { id: 'trackmap', name: 'Track Map', width: 300, height: 300 },
   { id: 'voicechat', name: 'Voice Chat', width: 340, height: 400 },
   { id: 'inputs', name: 'Driver Inputs', width: 520, height: 140 },
+  { id: 'discord', name: 'Discord Voice', width: 200, height: 300 },
 ];
 
 const gotLock = app.requestSingleInstanceLock();
@@ -202,7 +203,7 @@ function showControlWindow() {
 
   controlWindow = new BrowserWindow({
     width: 540,
-    height: 680,
+    height: 720,
     resizable: false,
     maximizable: false,
     title: 'Atleta Bridge',

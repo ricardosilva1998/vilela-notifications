@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Discord Voice</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; }
+    .overlay-panel {
+      background: rgba(12,13,20,0.85);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      backdrop-filter: blur(12px);
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .overlay-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.04);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;
+      color: rgba(255,255,255,0.5);
+      cursor: move; -webkit-app-region: drag;
+      flex-shrink: 0;
+    }
+    .channel-name {
+      font-size: 10px; color: rgba(255,255,255,0.4); font-weight: 600;
+      padding: 6px 12px; border-bottom: 1px solid rgba(255,255,255,0.04);
+      flex-shrink: 0;
+    }
+    .channel-name span { color: rgba(255,255,255,0.6); }
+    .member-list {
+      flex: 1; overflow-y: auto; padding: 6px 10px;
+      scrollbar-width: none; -ms-overflow-style: none;
+    }
+    .member-list::-webkit-scrollbar { display: none; }
+    .member {
+      display: flex; align-items: center; gap: 10px;
+      padding: 5px 4px; border-radius: 6px;
+      transition: background 0.15s;
+    }
+    .member:hover { background: rgba(255,255,255,0.04); }
+    .avatar-wrap {
+      position: relative; width: 32px; height: 32px; flex-shrink: 0;
+    }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 2px solid transparent;
+      transition: border-color 0.3s;
+    }
+    .avatar.unmuted { border-color: #3ecf8e; }
+    .avatar.muted { border-color: rgba(255,255,255,0.1); filter: grayscale(30%); }
+    .member-info { flex: 1; min-width: 0; }
+    .member-name {
+      font-size: 12px; font-weight: 600; color: #e8e6f0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .member-name.is-streamer { color: #9146ff; }
+    .member-icons {
+      display: flex; align-items: center; gap: 3px; flex-shrink: 0;
+    }
+    .member-icon {
+      width: 14px; height: 14px; opacity: 0.5;
+    }
+    .member-icon.active { opacity: 0.9; }
+
+    .empty-state {
+      display: flex; align-items: center; justify-content: center;
+      flex: 1; color: rgba(255,255,255,0.3); font-size: 11px; font-weight: 600;
+      text-align: center; padding: 20px;
+    }
+
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+    .status-dot.connected { background: #3ecf8e; }
+    .status-dot.disconnected { background: #f04438; }
+    .status-dot.waiting { background: #f79009; }
+    .status-dot.demo { background: #f79009; }
+  </style>
+</head>
+<body>
+  <div class="overlay-panel">
+    <div class="overlay-header">
+      <span>DISCORD</span>
+      <span id="connection-status"><span class="status-dot demo"></span></span>
+    </div>
+    <div class="channel-name" id="channel-name" style="display:none;">
+      <span id="channel-name-text"></span>
+    </div>
+    <div class="member-list" id="member-list"></div>
+    <div class="empty-state" id="empty-state">Configure Discord User ID<br>in overlay settings</div>
+  </div>
+
+  <script>
+    // ─── Settings ──────────────────────────────────────────────────────
+    const API_BASE = 'https://atletanotifications.com';
+    let discordUserId = '';
+    try {
+      const saved = JSON.parse(localStorage.getItem('overlay_discord') || '{}');
+      if (saved.discordUserId) discordUserId = saved.discordUserId;
+    } catch(e) {}
+
+    // ─── SVG Icons ─────────────────────────────────────────────────────
+    const ICONS = {
+      mute: '<svg class="member-icon active" viewBox="0 0 24 24"><path fill="#f04438" d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path fill="#f04438" d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.93V21H8a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2h-3v-3.07A7 7 0 0 0 19 11z"/><line x1="3" y1="3" x2="21" y2="21" stroke="#f04438" stroke-width="2" stroke-linecap="round"/></svg>',
+      deaf: '<svg class="member-icon active" viewBox="0 0 24 24"><path fill="#f04438" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 13.5v-7l6 3.5-6 3.5z"/><line x1="3" y1="3" x2="21" y2="21" stroke="#f04438" stroke-width="2" stroke-linecap="round"/></svg>',
+      streaming: '<svg class="member-icon active" viewBox="0 0 24 24"><path fill="#9146ff" d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><polygon points="10,8 16,11 10,14" fill="#fff"/><line x1="8" y1="21" x2="16" y2="21" stroke="#9146ff" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="18" x2="12" y2="21" stroke="#9146ff" stroke-width="2"/></svg>',
+      camera: '<svg class="member-icon active" viewBox="0 0 24 24"><path fill="#3ecf8e" d="M2 6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6z"/><path fill="#3ecf8e" d="M17 9l4-2v10l-4-2V9z"/></svg>',
+    };
+
+    // ─── DOM Elements ──────────────────────────────────────────────────
+    const memberList = document.getElementById('member-list');
+    const emptyState = document.getElementById('empty-state');
+    const channelNameEl = document.getElementById('channel-name');
+    const channelNameText = document.getElementById('channel-name-text');
+    const statusEl = document.getElementById('connection-status');
+
+    // ─── Rendering ─────────────────────────────────────────────────────
+    function renderMembers(data) {
+      if (!data || !data.members || data.members.length === 0) {
+        memberList.innerHTML = '';
+        channelNameEl.style.display = 'none';
+        emptyState.style.display = 'flex';
+        emptyState.textContent = data?.channelName === null ? 'Not in a voice channel' : 'No members';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      channelNameEl.style.display = 'block';
+      channelNameText.textContent = data.channelName;
+
+      // Sort: streamer first, then alphabetical
+      const sorted = [...data.members].sort((a, b) => {
+        if (a.isStreamer) return -1;
+        if (b.isStreamer) return 1;
+        return a.displayName.localeCompare(b.displayName);
+      });
+
+      memberList.innerHTML = sorted.map(m => {
+        const isMuted = m.selfMute || m.serverMute;
+        const isDeaf = m.selfDeaf || m.serverDeaf;
+        const avatarClass = (isMuted || isDeaf) ? 'muted' : 'unmuted';
+        const nameClass = m.isStreamer ? 'member-name is-streamer' : 'member-name';
+
+        let icons = '';
+        if (isDeaf) icons += ICONS.deaf;
+        else if (isMuted) icons += ICONS.mute;
+        if (m.streaming) icons += ICONS.streaming;
+        if (m.camera) icons += ICONS.camera;
+
+        return `<div class="member">
+          <div class="avatar-wrap">
+            <img class="avatar ${avatarClass}" src="${m.avatar}" alt="" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect fill=%22%23555%22 width=%2232%22 height=%2232%22 rx=%2216%22/></svg>'">
+          </div>
+          <div class="member-info">
+            <div class="${nameClass}">${escapeHtml(m.displayName)}</div>
+          </div>
+          <div class="member-icons">${icons}</div>
+        </div>`;
+      }).join('');
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ─── Polling ───────────────────────────────────────────────────────
+    let apiConnected = false;
+
+    async function pollVoiceState() {
+      if (!discordUserId) {
+        emptyState.style.display = 'flex';
+        emptyState.innerHTML = 'Configure Discord User ID<br>in overlay settings';
+        return;
+      }
+
+      try {
+        const res = await fetch(API_BASE + '/api/voice/' + discordUserId, { signal: AbortSignal.timeout(5000) });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+
+        if (!apiConnected) {
+          apiConnected = true;
+          statusEl.innerHTML = '<span class="status-dot connected"></span>';
+        }
+
+        renderMembers(data);
+      } catch(e) {
+        if (apiConnected) {
+          apiConnected = false;
+          statusEl.innerHTML = '<span class="status-dot disconnected"></span>';
+        }
+      }
+    }
+
+    // Poll every 3 seconds
+    pollVoiceState();
+    setInterval(pollVoiceState, 3000);
+
+    // ─── Lock state support ────────────────────────────────────────────
+    try {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.on('lock-state', (event, locked) => {
+        document.body.style.pointerEvents = locked ? 'none' : 'auto';
+        const header = document.querySelector('.overlay-header');
+        if (header) header.style.cursor = locked ? 'default' : 'move';
+      });
+    } catch(e) {}
+  </script>
+</body>
+</html>
