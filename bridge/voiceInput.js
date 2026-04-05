@@ -30,6 +30,9 @@ let voiceChatWindow = null;
 let pushToTalkKeyCode = null;
 let pushToTalkIsMouseButton = false;
 let pushToTalkMouseButton = null;
+let pushToTalkIsGamepad = false;
+let pushToTalkGamepadIndex = null;
+let pushToTalkGamepadButton = null;
 let autoStopTimer = null;
 let settings = {};
 let getIracingStatus = null;
@@ -235,7 +238,10 @@ function startVoiceInput(opts) {
   });
 
   ipcMain.on('voice-capture-key', (event) => {
+    let captured = false;
     const onKey = (e) => {
+      if (captured) return;
+      captured = true;
       const keyName = keyCodeToName[e.keycode] || ('Key' + e.keycode);
       const keyData = { type: 'keyboard', keycode: e.keycode, name: keyName };
       applyPushToTalkKey(keyData);
@@ -244,7 +250,9 @@ function startVoiceInput(opts) {
       uIOhook.off('mousedown', onMouse);
     };
     const onMouse = (e) => {
+      if (captured) return;
       if (e.button <= 2) return;
+      captured = true;
       const name = mouseButtonNames[e.button] || ('Mouse' + e.button);
       const keyData = { type: 'mouse', button: e.button, name };
       applyPushToTalkKey(keyData);
@@ -254,6 +262,29 @@ function startVoiceInput(opts) {
     };
     uIOhook.on('keydown', onKey);
     uIOhook.on('mousedown', onMouse);
+    // Also tell overlay to start scanning gamepads
+    if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
+      voiceChatWindow.webContents.send('voice-capture-gamepad-start');
+    }
+  });
+
+  // Gamepad button captured from overlay renderer
+  ipcMain.on('voice-gamepad-captured', (event, keyData) => {
+    applyPushToTalkKey(keyData);
+    // Forward to control panel
+    if (event.sender) event.sender.send('voice-key-captured', keyData);
+    // Also forward to whoever started capture
+    log('[VoiceInput] Gamepad PTT set: ' + keyData.name);
+  });
+
+  // Gamepad PTT press/release from overlay renderer
+  ipcMain.on('voice-gamepad-ptt', (event, pressed) => {
+    if (!pushToTalkIsGamepad) return;
+    lastHookEvent = Date.now(); // Keep hook health check happy
+    const now = Date.now();
+    if (now - lastToggleTime < 500) return;
+    lastToggleTime = now;
+    handlePttToggle();
   });
 
   ipcMain.on('voice-settings-update', (event, newSettings) => {
@@ -271,13 +302,21 @@ function startVoiceInput(opts) {
 
 function applyPushToTalkKey(keyData) {
   if (!keyData) return;
+  pushToTalkIsMouseButton = false;
+  pushToTalkIsGamepad = false;
+  pushToTalkMouseButton = null;
+  pushToTalkKeyCode = null;
+  pushToTalkGamepadIndex = null;
+  pushToTalkGamepadButton = null;
+
   if (keyData.type === 'mouse') {
     pushToTalkIsMouseButton = true;
     pushToTalkMouseButton = keyData.button;
-    pushToTalkKeyCode = null;
+  } else if (keyData.type === 'gamepad') {
+    pushToTalkIsGamepad = true;
+    pushToTalkGamepadIndex = keyData.gamepadIndex;
+    pushToTalkGamepadButton = keyData.button;
   } else {
-    pushToTalkIsMouseButton = false;
-    pushToTalkMouseButton = null;
     pushToTalkKeyCode = keyData.keycode;
   }
   if (!settings.voiceChat) settings.voiceChat = {};

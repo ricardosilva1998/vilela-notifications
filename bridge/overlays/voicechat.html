@@ -381,6 +381,84 @@
       document.body.style.pointerEvents = locked ? 'none' : 'auto';
       document.querySelector('.overlay-header').style.cursor = locked ? 'default' : 'move';
     });
+
+    // ─── Gamepad Support ────────────────────────────────────
+    // Gamepad API only works in renderer (browser context)
+    let gamepadPttIndex = null;
+    let gamepadPttButton = null;
+    let gamepadPttWasPressed = false;
+    let gamepadCaptureMode = false;
+
+    // Load saved gamepad PTT from settings
+    try {
+      const _settingsFile = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'settings.json');
+      if (fs.existsSync(_settingsFile)) {
+        const _all = JSON.parse(fs.readFileSync(_settingsFile, 'utf8'));
+        const _ptt = _all.voiceChat && _all.voiceChat.pushToTalkKey;
+        if (_ptt && _ptt.type === 'gamepad') {
+          gamepadPttIndex = _ptt.gamepadIndex;
+          gamepadPttButton = _ptt.button;
+          log('Gamepad PTT loaded: pad ' + gamepadPttIndex + ' btn ' + gamepadPttButton);
+        }
+      }
+    } catch(e) {}
+
+    // Capture mode — detect any gamepad button press
+    ipcRenderer.on('voice-capture-gamepad-start', () => {
+      gamepadCaptureMode = true;
+      log('Gamepad capture mode started');
+    });
+
+    // Poll gamepads every 50ms
+    setInterval(() => {
+      const gamepads = navigator.getGamepads();
+      if (!gamepads) return;
+
+      for (let gi = 0; gi < gamepads.length; gi++) {
+        const gp = gamepads[gi];
+        if (!gp) continue;
+
+        for (let bi = 0; bi < gp.buttons.length; bi++) {
+          const btn = gp.buttons[bi];
+          const pressed = btn.pressed || btn.value > 0.5;
+
+          // Capture mode — first button press gets assigned
+          if (gamepadCaptureMode && pressed) {
+            gamepadCaptureMode = false;
+            gamepadPttIndex = gi;
+            gamepadPttButton = bi;
+            const name = (gp.id || 'Gamepad ' + gi).substring(0, 25) + ' Btn ' + bi;
+            const keyData = { type: 'gamepad', gamepadIndex: gi, button: bi, name };
+            ipcRenderer.send('voice-gamepad-captured', keyData);
+            log('Gamepad captured: ' + name);
+            return;
+          }
+        }
+      }
+
+      // PTT mode — check if assigned button is pressed
+      if (gamepadPttIndex !== null && gamepadPttButton !== null) {
+        const gp = gamepads[gamepadPttIndex];
+        if (gp && gp.buttons[gamepadPttButton]) {
+          const pressed = gp.buttons[gamepadPttButton].pressed || gp.buttons[gamepadPttButton].value > 0.5;
+          if (pressed && !gamepadPttWasPressed) {
+            gamepadPttWasPressed = true;
+            ipcRenderer.send('voice-gamepad-ptt', true);
+          } else if (!pressed && gamepadPttWasPressed) {
+            gamepadPttWasPressed = false;
+            // Don't send release — we use toggle mode
+          }
+        }
+      }
+    }, 50);
+
+    // Update gamepad settings when changed from control panel
+    ipcRenderer.on('voice-settings-update', (event, s) => {
+      if (s && s.pushToTalkKey && s.pushToTalkKey.type === 'gamepad') {
+        gamepadPttIndex = s.pushToTalkKey.gamepadIndex;
+        gamepadPttButton = s.pushToTalkKey.button;
+      }
+    });
   </script>
 </body>
 </html>

@@ -357,7 +357,7 @@
 
     function captureHotkey(key) {
       const btn = document.getElementById('cust-' + key);
-      btn.textContent = 'Press any key...';
+      btn.textContent = 'Press key, mouse, or wheel button...';
       btn.style.borderColor = '#9146ff';
       ipcRenderer.send('voice-capture-key');
       ipcRenderer.once('voice-key-captured', (event, keyData) => {
