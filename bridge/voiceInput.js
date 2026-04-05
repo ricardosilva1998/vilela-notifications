@@ -23,6 +23,7 @@ let pushToTalkKeyCode = null;
 let pushToTalkIsMouseButton = false;
 let pushToTalkMouseButton = null;
 let isKeyHeld = false;
+let autoStopTimer = null;
 let settings = {};
 let getIracingStatus = null;
 let scriptPath = null;
@@ -97,13 +98,29 @@ function startVoiceInput(opts) {
         if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
           voiceChatWindow.webContents.send('voice-start-recording');
         }
+        // Auto-stop after 15 seconds in case keyup is missed
+        if (autoStopTimer) clearTimeout(autoStopTimer);
+        autoStopTimer = setTimeout(() => {
+          if (isKeyHeld) {
+            log('[VoiceInput] Auto-stop after 15s timeout');
+            isKeyHeld = false;
+            if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
+              voiceChatWindow.webContents.send('voice-stop-recording');
+            }
+          }
+        }, 15000);
       }
     }
   });
 
+  // Log ALL keyup events to diagnose missing keyup
   uIOhook.on('keyup', (e) => {
+    if (pushToTalkKeyCode !== null && e.keycode === pushToTalkKeyCode) {
+      log('[VoiceInput] Raw keyup: keycode=' + e.keycode + ' isKeyHeld=' + isKeyHeld + ' isMouse=' + pushToTalkIsMouseButton);
+    }
     if (pushToTalkKeyCode !== null && !pushToTalkIsMouseButton && e.keycode === pushToTalkKeyCode && isKeyHeld) {
       isKeyHeld = false;
+      if (autoStopTimer) { clearTimeout(autoStopTimer); autoStopTimer = null; }
       log('[VoiceInput] PTT keyup (stop)');
       if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
         voiceChatWindow.webContents.send('voice-stop-recording');
