@@ -32,7 +32,7 @@
     .license { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; }
     .irating { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.6); }
     .flag { font-size: 12px; line-height: 1; }
-    .brand-logo { width: 18px; height: 18px; display: inline-block; background-image: url('logos/car-icons-sprite.png'); background-size: 1024px 1024px; background-repeat: no-repeat; opacity: 0.85; vertical-align: middle; }
+    .brand-logo { width: 22px; height: 22px; display: inline-block; background-image: url('logos/car-icons-sprite.png'); background-size: 1024px 1024px; background-repeat: no-repeat; opacity: 0.85; vertical-align: middle; }
   </style>
 </head>
 <body>
@@ -49,6 +49,7 @@
               <th style="width:22px">P</th>
               <th style="width:20px"></th>
               <th style="width:30px">#</th>
+              <th style="width:24px"></th>
               <th>Driver</th>
               <th style="width:46px">Lic</th>
               <th style="width:38px">iR</th>
@@ -117,7 +118,7 @@
     function getManufacturer(carMake) {
       if (!carMake) return '';
       const lower = carMake.toLowerCase();
-      if (lower.includes('corvette')) return 'corvette';
+      if (lower.includes('corvette')) return 'chevrolet';
       const first = lower.split(' ')[0];
       const map = { amr: 'aston martin', 'aston': 'aston martin' };
       return (map[first] || first);
@@ -139,7 +140,6 @@
       'aston martin':{ x: 384, y: 128 },
       'volkswagen': { x: 512, y: 128 },
       'honda':      { x: 640, y: 128 },
-      'corvette':   { x: 768, y: 128 },
       'toyota':     { x: 896, y: 128 },
       // Row 2: Pontiac, Mazda, LucasOil, Renault, Subaru, Holden, Lotus, Cadillac
       'pontiac':    { x: 0, y: 256 },
@@ -168,7 +168,7 @@
       const pos = BRAND_SPRITE[mfr];
       if (!pos) return '';
       // Scale: 18px display / 128px sprite cell
-      const scale = 18 / 128;
+      const scale = 22 / 128;
       const bgX = -(pos.x * scale);
       const bgY = -(pos.y * scale);
       const bgSize = 1024 * scale;
