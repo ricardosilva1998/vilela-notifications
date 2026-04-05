@@ -206,6 +206,7 @@
       { id: 'chat', icon: '&#128172;', name: 'Chat' },
       { id: 'trackmap', icon: '&#127758;', name: 'Track Map' },
       { id: 'voicechat', icon: '&#127908;', name: 'Voice Chat' },
+      { id: 'inputs', icon: '&#127918;', name: 'Driver Inputs' },
     ];
 
     const grid = document.getElementById('overlay-grid');
@@ -283,6 +284,13 @@
           { value: 'es-ES', label: 'Spanish' },
           { value: 'fr-FR', label: 'French' },
           { value: 'de-DE', label: 'German' },
+        ]},
+        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
+      ],
+      inputs: [
+        { key: 'speedUnit', label: 'Speed Unit', type: 'select', default: 'kmh', options: [
+          { value: 'kmh', label: 'km/h' },
+          { value: 'mph', label: 'mph' },
         ]},
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],

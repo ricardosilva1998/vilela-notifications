@@ -408,19 +408,281 @@
 
 <!-- ==================== iRACING TAB ==================== -->
 <div class="tab-content" id="tab-iracing">
-  <div class="card" style="text-align: center; padding: 48px 24px;">
-    <div style="width: 64px; height: 64px; border-radius: 16px; background: rgba(26,26,46,0.3); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C1.4 11.3 1 12.1 1 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+  <!-- Track Map Upload -->
+  <div class="card animate-in">
+    <h3 style="margin-bottom: 4px;">Track Map Upload</h3>
+    <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">Upload iRacing .ibt telemetry files to extract track layouts for the Atleta Bridge track map overlay. Extracted tracks are shared with all Atleta Bridge users.</p>
+
+    <div id="ibt-drop-zone" style="border: 2px dashed rgba(255,255,255,0.1); border-radius: 12px; padding: 32px; text-align: center; cursor: pointer; transition: all 0.2s;" ondragover="event.preventDefault(); this.style.borderColor='var(--primary)'; this.style.background='rgba(145,70,255,0.05)';" ondragleave="this.style.borderColor='rgba(255,255,255,0.1)'; this.style.background='none';" ondrop="handleIBTDrop(event)" onclick="document.getElementById('ibt-file-input').click()">
+      <input type="file" id="ibt-file-input" accept=".ibt" multiple style="display:none" onchange="handleIBTFiles(this.files)">
+      <div style="font-size: 28px; margin-bottom: 8px;">&#127959;</div>
+      <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Drop .ibt files here or click to browse</div>
+      <div style="font-size: 12px; color: var(--text-muted);">Files are parsed in your browser — nothing is uploaded until you confirm</div>
     </div>
-    <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">iRacing — Coming Soon</h3>
-    <p style="color: var(--text-secondary); font-size: 14px; max-width: 400px; margin: 0 auto 16px; line-height: 1.6;">
-      Automatic race result notifications, qualifying leaderboards, and driver stats are on the way.
-    </p>
+
+    <div id="ibt-progress" style="display:none; margin-top: 16px;">
+      <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;" id="ibt-progress-text">Processing...</div>
+      <div style="height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1); overflow: hidden;">
+        <div id="ibt-progress-bar" style="height: 100%; background: var(--primary); width: 0%; transition: width 0.3s;"></div>
+      </div>
+    </div>
+
+    <div id="ibt-results" style="margin-top: 16px;"></div>
+  </div>
+
+  <!-- Coming Soon -->
+  <div class="card animate-in" style="text-align: center; padding: 32px 24px; margin-top: 16px;">
+    <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">Race Notifications — Coming Soon</h3>
     <p style="color: var(--text-muted); font-size: 13px; max-width: 400px; margin: 0 auto;">
-      We're waiting for iRacing to re-enable API access for third-party apps. Once available, you'll be able to track any driver's races and get results posted to Discord automatically.
+      Automatic race result notifications, qualifying leaderboards, and driver stats. Waiting for iRacing API access to be re-enabled.
     </p>
   </div>
 </div>
+
+<script>
+// ─── IBT Parser (browser-side) ─────────────────────────────
+const VAR_TYPE_MAP = ['c', '?', 'i', 'I', 'f', 'd'];
+function getTypeSize(t) { return { i: 4, I: 4, f: 4, d: 8, '?': 1, c: 1 }[t] || 0; }
+
+function parseIBT(arrayBuffer) {
+  const data = new Uint8Array(arrayBuffer);
+  const view = new DataView(arrayBuffer);
+
+  // Header
+  const numVars = view.getInt32(24, true);
+  const varHeaderOffset = view.getInt32(28, true);
+  const numBuf = view.getInt32(32, true);
+  const bufLen = view.getInt32(36, true);
+  const recordCount = view.getInt32(140, true);
+
+  // Find the latest buffer
+  let bestTick = -1, bestBufOffset = 0;
+  for (let i = 0; i < numBuf; i++) {
+    const off = 48 + i * 16;
+    const tick = view.getInt32(off, true);
+    const bufOff = view.getInt32(off + 4, true);
+    if (tick > bestTick) { bestTick = tick; bestBufOffset = bufOff; }
+  }
+
+  // Read var headers
+  const vars = {};
+  for (let i = 0; i < numVars; i++) {
+    const off = varHeaderOffset + i * 144;
+    const type = view.getInt32(off, true);
+    const typeChar = VAR_TYPE_MAP[type] || 'i';
+    const typeSize = getTypeSize(typeChar);
+    const varOffset = view.getInt32(off + 4, true);
+    const count = view.getInt32(off + 8, true);
+    // Read name (32 bytes at offset+16)
+    let name = '';
+    for (let j = 0; j < 32; j++) { const b = data[off + 16 + j]; if (b === 0) break; name += String.fromCharCode(b); }
+    vars[name] = { typeChar, typeSize, offset: varOffset, count };
+  }
+
+  function readVar(name, frameIdx) {
+    const v = vars[name];
+    if (!v) return null;
+    const off = bestBufOffset + v.offset + frameIdx * bufLen;
+    const dv = new DataView(arrayBuffer, off, v.typeSize);
+    if (v.typeChar === 'f') return dv.getFloat32(0, true);
+    if (v.typeChar === 'd') return dv.getFloat64(0, true);
+    if (v.typeChar === 'i') return dv.getInt32(0, true);
+    return 0;
+  }
+
+  return { vars, recordCount, readVar };
+}
+
+function extractTrackFromParsed(ibt) {
+  if (!ibt.vars['Lat'] || !ibt.vars['Lon'] || !ibt.vars['LapDistPct']) return null;
+
+  const SLOTS = 500;
+  const slots = new Array(SLOTS).fill(null);
+  let filled = 0;
+  const sampleRate = Math.max(1, Math.floor(ibt.recordCount / 2000));
+
+  for (let i = 0; i < ibt.recordCount; i += sampleRate) {
+    const lat = ibt.readVar('Lat', i);
+    const lon = ibt.readVar('Lon', i);
+    const pct = ibt.readVar('LapDistPct', i);
+    if (lat && lon && pct >= 0 && pct <= 1 && lat !== 0 && lon !== 0) {
+      const idx = Math.floor(pct * SLOTS) % SLOTS;
+      if (!slots[idx]) filled++;
+      slots[idx] = { x: lon, y: lat, pct };
+    }
+  }
+
+  if (filled < SLOTS * 0.5) return null;
+
+  // Build + smooth
+  const points = [];
+  for (let i = 0; i < SLOTS; i++) { if (slots[i]) points.push(slots[i]); }
+  const win = 3;
+  const smoothed = [];
+  for (let i = 0; i < points.length; i++) {
+    let sx = 0, sy = 0, c = 0;
+    for (let j = -win; j <= win; j++) {
+      const idx = (i + j + points.length) % points.length;
+      sx += points[idx].x; sy += points[idx].y; c++;
+    }
+    smoothed.push({ x: sx / c, y: sy / c, pct: points[i].pct });
+  }
+
+  const avgY = smoothed.reduce((s, p) => s + p.y, 0) / smoothed.length;
+  const avgX = smoothed.reduce((s, p) => s + p.x, 0) / smoothed.length;
+  const geoId = avgY.toFixed(2) + '_' + avgX.toFixed(2);
+
+  return { points: smoothed, geoId, filled };
+}
+
+function drawTrackPreview(canvas, points) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  if (!points || points.length < 10) return;
+
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  points.forEach(p => { if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x; if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y; });
+  const xR = maxX - minX || 1, yR = maxY - minY || 1;
+  const pad = 0.08, aspect = xR / yR;
+  let scX = 1, scY = 1;
+  if (aspect > 1) scY = 1 / aspect; else scX = aspect;
+  const u = 1 - 2 * pad;
+
+  ctx.beginPath();
+  ctx.strokeStyle = '#9146ff';
+  ctx.lineWidth = 2;
+  points.forEach((p, i) => {
+    const x = (pad + u * scX * (p.x - minX) / xR + u * (1 - scX) / 2) * w;
+    const y = (pad + u * scY * (1 - (p.y - minY) / yR) + u * (1 - scY) / 2) * h;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.closePath();
+  ctx.stroke();
+
+  // Start/finish dot
+  const sf = points[0];
+  const sfx = (pad + u * scX * (sf.x - minX) / xR + u * (1 - scX) / 2) * w;
+  const sfy = (pad + u * scY * (1 - (sf.y - minY) / yR) + u * (1 - scY) / 2) * h;
+  ctx.beginPath(); ctx.arc(sfx, sfy, 4, 0, Math.PI * 2); ctx.fillStyle = '#3ecf8e'; ctx.fill();
+}
+
+// ─── File Handling ──────────────────────────────────────────
+function handleIBTDrop(e) {
+  e.preventDefault();
+  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+  e.currentTarget.style.background = 'none';
+  handleIBTFiles(e.dataTransfer.files);
+}
+
+async function handleIBTFiles(fileList) {
+  const files = Array.from(fileList).filter(f => f.name.endsWith('.ibt'));
+  if (files.length === 0) return;
+
+  const progress = document.getElementById('ibt-progress');
+  const progressText = document.getElementById('ibt-progress-text');
+  const progressBar = document.getElementById('ibt-progress-bar');
+  const results = document.getElementById('ibt-results');
+  progress.style.display = 'block';
+  results.innerHTML = '';
+
+  const extracted = [];
+
+  for (let i = 0; i < files.length; i++) {
+    progressText.textContent = 'Processing ' + (i + 1) + '/' + files.length + ': ' + files[i].name;
+    progressBar.style.width = ((i + 1) / files.length * 100) + '%';
+
+    try {
+      const buf = await files[i].arrayBuffer();
+      const ibt = parseIBT(buf);
+      const track = extractTrackFromParsed(ibt);
+      if (track) {
+        extracted.push({ name: files[i].name, ...track });
+      }
+    } catch(e) {
+      console.error('Error parsing ' + files[i].name, e);
+    }
+  }
+
+  progress.style.display = 'none';
+
+  if (extracted.length === 0) {
+    results.innerHTML = '<p style="color: var(--text-muted); font-size: 13px;">No track data found in the uploaded files. Make sure the .ibt files contain at least one lap of driving data.</p>';
+    return;
+  }
+
+  // Deduplicate by geoId
+  const unique = {};
+  extracted.forEach(t => {
+    if (!unique[t.geoId] || t.filled > unique[t.geoId].filled) unique[t.geoId] = t;
+  });
+
+  const tracks = Object.values(unique);
+  results.innerHTML = '<h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">' + tracks.length + ' track' + (tracks.length > 1 ? 's' : '') + ' found</h4>';
+
+  tracks.forEach(track => {
+    const card = document.createElement('div');
+    card.style.cssText = 'background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 16px; margin-bottom: 12px; display: flex; gap: 16px; align-items: center;';
+    card.innerHTML = `
+      <canvas width="160" height="160" style="border-radius: 8px; background: rgba(0,0,0,0.3); flex-shrink: 0;"></canvas>
+      <div style="flex: 1;">
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 4px;">Track from: ${track.name.replace(/</g, '&lt;')}</div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">${track.points.length} points | geo: ${track.geoId}</div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">${track.filled}/500 slots filled</div>
+        <button class="btn btn-primary" style="font-size: 12px; padding: 6px 16px;" onclick="uploadTrack(this, '${track.geoId}')">Upload to Database</button>
+        <span class="upload-status" style="font-size: 11px; color: var(--text-muted); margin-left: 8px;"></span>
+      </div>
+    `;
+    results.appendChild(card);
+
+    // Draw preview
+    const canvas = card.querySelector('canvas');
+    drawTrackPreview(canvas, track.points);
+
+    // Store points for upload
+    card._trackData = track.points;
+  });
+}
+
+async function uploadTrack(btn, geoId) {
+  const card = btn.closest('div').parentElement;
+  const points = card._trackData;
+  const status = btn.nextElementSibling;
+
+  btn.disabled = true;
+  btn.textContent = 'Uploading...';
+  status.textContent = '';
+
+  try {
+    const res = await fetch('/api/track-map', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trackName: geoId, trackData: points }),
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      btn.textContent = 'Uploaded';
+      btn.style.background = 'var(--success, #3ecf8e)';
+      status.textContent = 'Stored in database';
+      status.style.color = '#3ecf8e';
+    } else if (data.status === 'exists') {
+      btn.textContent = 'Already exists';
+      btn.style.background = 'rgba(255,255,255,0.1)';
+      status.textContent = data.message;
+    } else {
+      btn.textContent = 'Error';
+      status.textContent = data.error || 'Upload failed';
+      status.style.color = '#f04438';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    btn.textContent = 'Error';
+    status.textContent = e.message;
+    status.style.color = '#f04438';
+    btn.disabled = false;
+  }
+}
+</script>
 
 <!-- Old iRacing tab content (kept for when API access is restored)
 <div class="tab-content" id="tab-iracing">

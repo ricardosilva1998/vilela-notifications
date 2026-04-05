@@ -18,7 +18,7 @@ let connectInterval = null;
 
 const { broadcastToChannel, getClientInfo } = require('./websocket');
 const settings = require('./settings');
-const { extractTrackFromIBT, bulkScanIBTs, geoKeyFromSessionInfo, loadCachedTrackByGeo, saveCachedTrackByGeo } = require('./trackExtractor');
+const { extractTrackFromIBT, geoKeyFromSessionInfo, loadCachedTrackByGeo, saveCachedTrackByGeo } = require('./trackExtractor');
 
 // Fuel tracking
 let fuelHistory = [];
@@ -142,10 +142,6 @@ function resetFuel() { fuelHistory = []; lastLap = -1; fuelAtLapStart = null; }
 async function startTelemetry(onStatusChange) {
   statusCallback = onStatusChange;
   log('[Telemetry] Starting...');
-
-  // Bulk scan disabled — was causing OOM crash by importing SDK 348 times
-  // TODO: fix extractFromFile to reuse a single SDK import
-  // bulkScanIBTs(uploadTrackToServer).catch(e => log('[BulkScan] Error: ' + e.message));
 
   let IRSDK, VARS;
   try {
@@ -351,6 +347,19 @@ async function startTelemetry(onStatusChange) {
           fuelLevel, fuelPct, fuelUsePerHour, avgPerLap: avgAll, avg5Laps: avg5, avg10Laps: avg10,
           minUsage, maxUsage, lapsOfFuel, lapsRemaining: isUnlimited ? '∞' : sessionLapsRemain,
           fuelToFinish, fuelToAdd, lapsCompleted, lapCount: fuelHistory.length,
+        }});
+
+        // === Driver Inputs ===
+        const throttle = ir.get(VARS.THROTTLE)?.[0] || 0;
+        const brake = ir.get(VARS.BRAKE)?.[0] || 0;
+        const rawClutch = ir.get(VARS.CLUTCH)?.[0] || 0;
+        const clutch = 1 - rawClutch; // iRacing: 1=released, 0=pressed → invert for display
+        const steer = ir.get(VARS.STEERING_WHEEL_ANGLE)?.[0] || 0;
+        const gear = ir.get(VARS.GEAR)?.[0] || 0;
+        const speed = ir.get(VARS.SPEED)?.[0] || 0; // m/s
+
+        broadcastToChannel('inputs', { type: 'data', channel: 'inputs', data: {
+          throttle, brake, clutch, steer, gear, speed,
         }});
 
         // === Wind ===

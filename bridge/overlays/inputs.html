@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Driver Inputs</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; }
+    .overlay-panel {
+      background: rgba(12,13,20,0.85);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      backdrop-filter: blur(12px);
+      overflow: hidden;
+    }
+    .overlay-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 12px;
+      background: rgba(255,255,255,0.04);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;
+      color: rgba(255,255,255,0.5);
+      cursor: move; -webkit-app-region: drag;
+    }
+    .overlay-body {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      height: 108px;
+    }
+    .divider {
+      width: 1px;
+      height: 70px;
+      background: rgba(255,255,255,0.1);
+      flex-shrink: 0;
+    }
+
+    /* Trace graph */
+    .trace-container { width: 160px; height: 88px; flex-shrink: 0; }
+    .trace-container canvas { display: block; }
+
+    /* Pedal bars */
+    .pedals { display: flex; gap: 5px; align-items: flex-end; height: 88px; flex-shrink: 0; }
+    .pedal { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .pedal-bar {
+      width: 22px; height: 68px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 4px;
+      position: relative; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .pedal-fill {
+      position: absolute; bottom: 0; width: 100%;
+      border-radius: 0 0 3px 3px;
+      transition: height 50ms linear;
+    }
+    .pedal-fill.throttle { background: linear-gradient(to top, #00aa33, #00ff55); }
+    .pedal-fill.brake { background: linear-gradient(to top, #aa0000, #ff3333); }
+    .pedal-fill.clutch { background: linear-gradient(to top, #0055cc, #3399ff); }
+    .pedal-label { font-size: 8px; font-weight: 600; letter-spacing: 0.5px; }
+    .pedal-label.throttle { color: #00dd44; }
+    .pedal-label.brake { color: #ee2222; }
+    .pedal-label.clutch { color: #2288ff; }
+
+    /* Gear */
+    .gear-display {
+      text-align: center; flex-shrink: 0;
+    }
+    .gear-number {
+      font-size: 44px; font-weight: 900; color: #ffffff; line-height: 1;
+      font-family: 'Consolas', 'JetBrains Mono', 'SF Mono', monospace;
+    }
+
+    /* Speed */
+    .speed-display {
+      text-align: center; flex-shrink: 0;
+    }
+    .speed-number {
+      font-size: 22px; font-weight: 700; color: rgba(255,255,255,0.85); line-height: 1;
+      font-family: 'Consolas', 'JetBrains Mono', 'SF Mono', monospace;
+    }
+    .speed-unit {
+      font-size: 8px; color: rgba(255,255,255,0.3);
+      text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px;
+    }
+
+    /* Steering wheel */
+    .wheel-container { width: 76px; height: 76px; flex-shrink: 0; }
+
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+    .status-dot.connected { background: #3ecf8e; }
+    .status-dot.disconnected { background: #f04438; }
+    .status-dot.waiting { background: #f79009; }
+    .status-dot.demo { background: #f79009; }
+    .overlay-disconnected {
+      position: absolute; inset: 0; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(12,13,20,0.9);
+      color: rgba(255,255,255,0.4);
+      font-size: 11px; font-weight: 600; border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="overlay-root" style="position:relative;">
+    <div class="overlay-panel">
+      <div class="overlay-header">
+        <span>INPUTS</span>
+        <span id="connection-status"><span class="status-dot demo"></span></span>
+      </div>
+      <div class="overlay-body">
+        <!-- Trace Graph -->
+        <div class="trace-container">
+          <canvas id="trace-canvas" width="160" height="88"></canvas>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Pedal Bars -->
+        <div class="pedals">
+          <div class="pedal">
+            <div class="pedal-bar"><div class="pedal-fill throttle" id="bar-throttle"></div></div>
+            <div class="pedal-label throttle">THR</div>
+          </div>
+          <div class="pedal">
+            <div class="pedal-bar"><div class="pedal-fill brake" id="bar-brake"></div></div>
+            <div class="pedal-label brake">BRK</div>
+          </div>
+          <div class="pedal">
+            <div class="pedal-bar"><div class="pedal-fill clutch" id="bar-clutch"></div></div>
+            <div class="pedal-label clutch">CLT</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Gear -->
+        <div class="gear-display">
+          <div class="gear-number" id="gear-number">N</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Speed -->
+        <div class="speed-display">
+          <div class="speed-number" id="speed-number">0</div>
+          <div class="speed-unit" id="speed-unit">km/h</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Steering Wheel -->
+        <div class="wheel-container">
+          <svg id="steering-wheel" viewBox="0 0 80 80" width="76" height="76">
+            <g id="wheel-group" transform="rotate(0, 40, 40)">
+              <!-- Outer ring -->
+              <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="5" stroke-linecap="round"/>
+              <!-- Center hub -->
+              <circle cx="40" cy="40" r="8" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+              <!-- Left spoke -->
+              <line x1="32" y1="40" x2="12" y2="48" stroke="rgba(255,255,255,0.5)" stroke-width="3.5" stroke-linecap="round"/>
+              <!-- Right spoke -->
+              <line x1="48" y1="40" x2="68" y2="48" stroke="rgba(255,255,255,0.5)" stroke-width="3.5" stroke-linecap="round"/>
+              <!-- Bottom spoke -->
+              <line x1="40" y1="48" x2="40" y2="74" stroke="rgba(255,255,255,0.5)" stroke-width="3.5" stroke-linecap="round"/>
+              <!-- 12 o'clock marker -->
+              <circle cx="40" cy="7" r="3" fill="#ff4444" opacity="0.9"/>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div class="overlay-disconnected" id="overlay-disconnected"></div>
+  </div>
+
+  <script>
+    // ─── WebSocket Connection (same pattern as all other overlays) ─��────
+    const BRIDGE_URL = 'ws://localhost:9100';
+    let ws = null;
+    let bridgeConnected = false;
+    let iracingConnected = false;
+    const dataHandlers = {};
+
+    function connectBridge(channels) {
+      try { ws = new WebSocket(BRIDGE_URL); } catch(e) { setTimeout(() => connectBridge(channels), 3000); return; }
+      ws.onopen = () => {
+        bridgeConnected = true;
+        updateConnectionStatus();
+        ws.send(JSON.stringify({ type: 'subscribe', channels }));
+      };
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'bridge-connected') { bridgeConnected = true; updateConnectionStatus(); }
+          else if (msg.type === 'status') { iracingConnected = msg.iracing; updateConnectionStatus(); }
+          else if (msg.type === 'data' && dataHandlers[msg.channel]) { dataHandlers[msg.channel](msg.data); }
+        } catch(e) {}
+      };
+      ws.onclose = () => {
+        bridgeConnected = false;
+        iracingConnected = false;
+        updateConnectionStatus();
+        setTimeout(() => connectBridge(channels), 3000);
+      };
+      ws.onerror = () => { ws.close(); };
+    }
+
+    function onData(ch, fn) { dataHandlers[ch] = fn; }
+
+    function updateConnectionStatus() {
+      const el = document.getElementById('connection-status');
+      const dis = document.getElementById('overlay-disconnected');
+      if (!bridgeConnected) {
+        if (el) el.innerHTML = '<span class="status-dot demo"></span>';
+        if (dis) dis.style.display = 'none';
+      } else if (!iracingConnected) {
+        if (el) el.innerHTML = '<span class="status-dot waiting"></span>';
+        if (dis) { dis.textContent = 'Waiting for iRacing...'; dis.style.display = 'flex'; }
+      } else {
+        if (el) el.innerHTML = '<span class="status-dot connected"></span>';
+        if (dis) dis.style.display = 'none';
+      }
+    }
+
+    // ─── Settings ──────────────────────────────────────────────────────
+    let speedUnit = 'kmh';
+    try {
+      const saved = JSON.parse(localStorage.getItem('overlay_inputs') || '{}');
+      if (saved.speedUnit) speedUnit = saved.speedUnit;
+    } catch(e) {}
+
+    // ─── Trace Graph ───────────────────────────────────────────────────
+    const TRACE_POINTS = 50; // 5 seconds at 10Hz
+    const traceBuffer = {
+      throttle: new Float32Array(TRACE_POINTS),
+      brake: new Float32Array(TRACE_POINTS),
+      clutch: new Float32Array(TRACE_POINTS),
+    };
+    let traceIndex = 0;
+    let traceFilled = false;
+
+    const canvas = document.getElementById('trace-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function pushTrace(throttle, brake, clutch) {
+      traceBuffer.throttle[traceIndex] = throttle;
+      traceBuffer.brake[traceIndex] = brake;
+      traceBuffer.clutch[traceIndex] = clutch;
+      traceIndex = (traceIndex + 1) % TRACE_POINTS;
+      if (traceIndex === 0) traceFilled = true;
+    }
+
+    function drawTrace() {
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      // Grid lines at 25%, 50%, 75%
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      ctx.lineWidth = 0.5;
+      for (const pct of [0.25, 0.5, 0.75]) {
+        const y = h - pct * h;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      const count = traceFilled ? TRACE_POINTS : traceIndex;
+      if (count < 2) return;
+
+      const traces = [
+        { key: 'throttle', color: '#00dd44', fill: 'rgba(0,221,68,0.12)' },
+        { key: 'brake', color: '#ee2222', fill: 'rgba(238,34,34,0.12)' },
+        { key: 'clutch', color: '#2288ff', fill: null },
+      ];
+
+      for (const t of traces) {
+        const buf = traceBuffer[t.key];
+        ctx.beginPath();
+        ctx.strokeStyle = t.color;
+        ctx.lineWidth = 1.5;
+
+        for (let i = 0; i < count; i++) {
+          // Read from circular buffer: oldest first
+          const bufIdx = traceFilled ? (traceIndex + i) % TRACE_POINTS : i;
+          const x = (i / (TRACE_POINTS - 1)) * w;
+          const y = h - buf[bufIdx] * h;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Fill under throttle and brake
+        if (t.fill) {
+          ctx.lineTo((count - 1) / (TRACE_POINTS - 1) * w, h);
+          ctx.lineTo(0, h);
+          ctx.closePath();
+          ctx.fillStyle = t.fill;
+          ctx.fill();
+        }
+      }
+
+      // Current position indicator (right edge)
+      const rightX = ((count - 1) / (TRACE_POINTS - 1)) * w;
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(rightX, 0);
+      ctx.lineTo(rightX, h);
+      ctx.stroke();
+    }
+
+    // ─── Data Handler ──────────────────────────────────────────────────
+    const barThrottle = document.getElementById('bar-throttle');
+    const barBrake = document.getElementById('bar-brake');
+    const barClutch = document.getElementById('bar-clutch');
+    const gearNumber = document.getElementById('gear-number');
+    const speedNumber = document.getElementById('speed-number');
+    const speedUnitEl = document.getElementById('speed-unit');
+    const wheelGroup = document.getElementById('wheel-group');
+
+    onData('inputs', data => {
+      if (!data) return;
+
+      // Pedal bars
+      barThrottle.style.height = (data.throttle * 100) + '%';
+      barBrake.style.height = (data.brake * 100) + '%';
+      barClutch.style.height = (data.clutch * 100) + '%';
+
+      // Gear
+      if (data.gear === -1) gearNumber.textContent = 'R';
+      else if (data.gear === 0) gearNumber.textContent = 'N';
+      else gearNumber.textContent = data.gear;
+
+      // Speed (data.speed is in m/s)
+      let displaySpeed;
+      if (speedUnit === 'mph') {
+        displaySpeed = Math.round(data.speed * 2.23694);
+        speedUnitEl.textContent = 'mph';
+      } else {
+        displaySpeed = Math.round(data.speed * 3.6);
+        speedUnitEl.textContent = 'km/h';
+      }
+      speedNumber.textContent = displaySpeed;
+
+      // Steering wheel (steer is in radians, negative = left)
+      const steerDeg = data.steer * (180 / Math.PI);
+      wheelGroup.setAttribute('transform', `rotate(${steerDeg}, 40, 40)`);
+
+      // Push to trace buffer
+      pushTrace(data.throttle, data.brake, data.clutch);
+    });
+
+    // ─── Render loop ───────────────────────────────────────────────────
+    function renderLoop() {
+      drawTrace();
+      requestAnimationFrame(renderLoop);
+    }
+    requestAnimationFrame(renderLoop);
+
+    // ─── Connect ───────────────────────────────────────────────────────
+    connectBridge(['inputs']);
+
+    // ─── Lock state support ────────────────────────────────────────────
+    try {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.on('lock-state', (event, locked) => {
+        document.body.style.pointerEvents = locked ? 'none' : 'auto';
+        const header = document.querySelector('.overlay-header');
+        if (header) header.style.cursor = locked ? 'default' : 'move';
+      });
+    } catch(e) {}
+  </script>
+</body>
+</html>
