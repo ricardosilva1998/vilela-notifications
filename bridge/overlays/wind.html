@@ -140,54 +140,60 @@
 
               <!-- === DARK FACE (right half) === -->
               <path d="
-                M 60 12
-                C 63 20, 65 35, 64.5 60
-                L 66 72
-                L 60 68
+                M 60 108
+                C 63 100, 65 85, 64.5 60
+                L 66 48
+                L 60 52
                 Z
               " fill="url(#needleDarkFace)" />
 
               <!-- === LIGHT FACE (left half) === -->
               <path d="
-                M 60 12
-                C 57 20, 55 35, 55.5 60
-                L 54 72
-                L 60 68
+                M 60 108
+                C 57 100, 55 85, 55.5 60
+                L 54 48
+                L 60 52
                 Z
               " fill="url(#needleLightFace)" />
 
               <!-- === CENTRE SPINE / RIDGE HIGHLIGHT (bevel seam) === -->
               <path d="
-                M 60 12
-                C 60 25, 60 45, 60 68
+                M 60 108
+                C 60 95, 60 75, 60 52
               " stroke="rgba(255,255,255,0.30)" stroke-width="0.8" fill="none" stroke-linecap="round"/>
 
               <!-- === TIP INNER HIGHLIGHT (specular glint along front face) === -->
               <path d="
-                M 60 12
-                C 58.5 22, 57.5 38, 57.2 56
+                M 60 108
+                C 58.5 98, 57.5 82, 57.2 64
               " stroke="rgba(255,255,255,0.45)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
 
               <!-- === TAIL COUNTERWEIGHT (dark blunt base) === -->
               <path d="
-                M 60 68
-                L 54 72
-                Q 60 78, 66 72
+                M 60 52
+                L 54 48
+                Q 60 42, 66 48
                 Z
               " fill="url(#needleTailGrad)" stroke="rgba(145,70,255,0.25)" stroke-width="0.5"/>
 
               <!-- === TIP PULSE GLOW (animated dot at the needle point) === -->
-              <circle cx="60" cy="12" r="2.5" fill="#e9d5ff" filter="url(#tipPulse)" opacity="0.9">
+              <circle cx="60" cy="108" r="2.5" fill="#e9d5ff" filter="url(#tipPulse)" opacity="0.9">
                 <animate attributeName="opacity" values="0.9;0.3;0.9" dur="2s" repeatCount="indefinite"/>
                 <animate attributeName="r" values="2.5;3.8;2.5" dur="2s" repeatCount="indefinite"/>
               </circle>
               <!-- Static bright dot on top of the pulse -->
-              <circle cx="60" cy="12" r="1.4" fill="white" opacity="0.85"/>
+              <circle cx="60" cy="108" r="1.4" fill="white" opacity="0.85"/>
             </g>
 
-            <!-- Center car indicator -->
-            <circle cx="60" cy="60" r="6" fill="rgba(62,207,142,0.2)" stroke="rgba(62,207,142,0.4)" stroke-width="1"/>
-            <circle cx="60" cy="60" r="3" fill="#3ecf8e"/>
+            <!-- Top-down car icon at center -->
+            <g transform="translate(52, 52)">
+              <rect x="2" y="0" width="12" height="16" rx="3" fill="#3ecf8e" opacity="0.8"/>
+              <rect x="0" y="2" width="3" height="4" rx="1" fill="#3ecf8e" opacity="0.6"/>
+              <rect x="13" y="2" width="3" height="4" rx="1" fill="#3ecf8e" opacity="0.6"/>
+              <rect x="0" y="10" width="3" height="4" rx="1" fill="#3ecf8e" opacity="0.6"/>
+              <rect x="13" y="10" width="3" height="4" rx="1" fill="#3ecf8e" opacity="0.6"/>
+              <rect x="4" y="3" width="8" height="5" rx="1.5" fill="rgba(255,255,255,0.4)"/>
+            </g>
           </svg>
         </div>
         <div class="wind-info">
