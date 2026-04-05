@@ -507,8 +507,8 @@ async function startTelemetry(onStatusChange) {
         const playerSpeed = ir.get(VARS.SPEED)?.[0] || 0;
         const playerYaw = ir.get(VARS.YAW_NORTH)?.[0] || 0;
         const trackSurface = ir.get(VARS.PLAYER_TRACK_SURFACE)?.[0] || 0;
-        // iRacing TrackSurface: 1=OffTrack, 2=InPitStall, 3=ApproachPits, 4=OnTrack
-        const isOnTrack = trackSurface >= 3 && trackSurface <= 4;
+        // iRacing TrackSurface: -1=NotInWorld, 0=OffTrack, 1=InPitStall, 2=ApproachPits, 3=OnTrack
+        const isOnTrack = trackSurface >= 2; // Record on track + pit approach
 
         // Diagnostic: log track map state periodically
         if (pollCount === 50 || pollCount === 300) {
@@ -528,8 +528,13 @@ async function startTelemetry(onStatusChange) {
 
           // Write to the slot for this pct value
           const slotIdx = Math.floor(playerPct * TRACK_SLOTS) % TRACK_SLOTS;
-          if (!trackSlots[slotIdx]) filledSlots++;
+          const isNew = !trackSlots[slotIdx];
+          if (isNew) filledSlots++;
           trackSlots[slotIdx] = { x: lastIntX, y: lastIntY };
+          // Log progress every 50 new slots
+          if (isNew && filledSlots % 50 === 0) {
+            log('[TrackMap] Mapping: ' + filledSlots + '/' + TRACK_SLOTS + ' slots (' + Math.round(filledSlots/TRACK_SLOTS*100) + '%)');
+          }
 
           // Check completion: >90% of slots filled
           if (filledSlots > TRACK_SLOTS * 0.9) {
