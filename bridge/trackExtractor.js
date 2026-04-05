@@ -12,77 +12,51 @@ function log(msg) {
 }
 
 const IBT_DIR = path.join(os.homedir(), 'Documents', 'iRacing', 'telemetry');
+const TRACK_MAPS_DIR = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'trackmaps');
+const SCANNED_FILE = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'scanned_ibts.json');
+const SLOT_COUNT = 500;
 
-/**
- * Extract track layout from an iRacing .ibt telemetry file.
- * Reads Lat, Lon, and LapDistPct to build a track shape.
- * Returns array of {x, y, pct} points or null if not found.
- */
-async function extractTrackFromIBT(trackDisplayName) {
+// Track which files we've already scanned so we don't re-process
+function loadScannedList() {
   try {
-    if (!fs.existsSync(IBT_DIR)) {
-      log('[TrackExtract] Telemetry dir not found: ' + IBT_DIR);
-      return null;
-    }
-
-    // Find .ibt files, sorted by most recent first
-    const files = fs.readdirSync(IBT_DIR)
-      .filter(f => f.endsWith('.ibt'))
-      .map(f => {
-        try {
-          return { file: f, mtime: fs.statSync(path.join(IBT_DIR, f)).mtime.getTime() };
-        } catch(e) { return null; }
-      })
-      .filter(Boolean)
-      .sort((a, b) => b.mtime - a.mtime);
-
-    if (files.length === 0) {
-      log('[TrackExtract] No .ibt files found');
-      return null;
-    }
-
-    log('[TrackExtract] Found ' + files.length + ' .ibt files, scanning for ' + trackDisplayName);
-
-    // Try the most recent files first (up to 10)
-    for (const entry of files.slice(0, 10)) {
-      const result = tryExtractFromFile(path.join(IBT_DIR, entry.file), trackDisplayName);
-      if (result) return result;
-    }
-
-    log('[TrackExtract] No matching .ibt file found for ' + trackDisplayName);
-    return null;
-  } catch(e) {
-    log('[TrackExtract] Error: ' + e.message);
-    return null;
-  }
+    if (fs.existsSync(SCANNED_FILE)) return JSON.parse(fs.readFileSync(SCANNED_FILE, 'utf8'));
+  } catch(e) {}
+  return {};
 }
 
-function tryExtractFromFile(filePath, trackDisplayName) {
+function saveScannedList(list) {
+  try {
+    const dir = path.dirname(SCANNED_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(SCANNED_FILE, JSON.stringify(list));
+  } catch(e) {}
+}
+
+/**
+ * Extract track layout from a single .ibt file.
+ * Returns { trackName, points } or null.
+ */
+function extractFromFile(filePath) {
   let ibt = null;
   try {
     const { IBT } = require('@emiliosp/node-iracing-sdk');
     ibt = new IBT();
     ibt.open(filePath);
 
-    // Check if this file has Lat/Lon variables
     const vars = ibt.varHeadersNamesList;
-    if (!vars || !vars.includes('Lat') || !vars.includes('Lon')) {
+    if (!vars || !vars.includes('Lat') || !vars.includes('Lon') || !vars.includes('LapDistPct')) {
       ibt.close();
       return null;
     }
 
     const recordCount = ibt.sessionRecordCount;
-    if (recordCount < 100) {
-      ibt.close();
-      return null;
-    }
+    if (recordCount < 100) { ibt.close(); return null; }
 
-    log('[TrackExtract] Reading ' + path.basename(filePath) + ' (' + recordCount + ' frames)');
+    // Get track name from filename (format: "YYYY-MM-DD HH-MM-SS TrackName CarName.ibt")
+    // We'll use the filename as a fallback identifier
+    const basename = path.basename(filePath, '.ibt');
 
-    // Sample every Nth frame to keep it fast (target ~500 points per lap)
-    // At 60Hz, a 90s lap = 5400 frames. Sample every 10th = 540 points.
     const sampleRate = Math.max(1, Math.floor(recordCount / 2000));
-    const SLOT_COUNT = 500;
     const slots = new Array(SLOT_COUNT).fill(null);
     let filled = 0;
 
@@ -107,37 +81,150 @@ function tryExtractFromFile(filePath, trackDisplayName) {
     ibt.close();
     ibt = null;
 
-    log('[TrackExtract] Extracted ' + filled + '/' + SLOT_COUNT + ' slots from ' + path.basename(filePath));
+    if (filled < SLOT_COUNT * 0.5) return null;
 
-    if (filled < SLOT_COUNT * 0.7) return null; // Need at least 70% coverage
-
-    // Build continuous path from filled slots
+    // Build path from filled slots
     const points = [];
     for (let i = 0; i < SLOT_COUNT; i++) {
       if (slots[i]) points.push(slots[i]);
     }
 
-    // Smooth with moving average
+    // Smooth
     const win = 3;
     const smoothed = [];
     for (let i = 0; i < points.length; i++) {
       let sx = 0, sy = 0, count = 0;
       for (let j = -win; j <= win; j++) {
         const idx = (i + j + points.length) % points.length;
-        sx += points[idx].x;
-        sy += points[idx].y;
-        count++;
+        sx += points[idx].x; sy += points[idx].y; count++;
       }
       smoothed.push({ x: sx / count, y: sy / count, pct: points[i].pct });
     }
 
-    log('[TrackExtract] Track extracted: ' + smoothed.length + ' points');
-    return smoothed;
+    return { trackName: basename, points: smoothed, filled };
   } catch(e) {
-    log('[TrackExtract] File error: ' + e.message);
     if (ibt) try { ibt.close(); } catch(e2) {}
     return null;
   }
 }
 
-module.exports = { extractTrackFromIBT };
+/**
+ * Extract track layout for a specific track from .ibt files.
+ */
+async function extractTrackFromIBT(trackDisplayName) {
+  try {
+    if (!fs.existsSync(IBT_DIR)) return null;
+
+    const files = fs.readdirSync(IBT_DIR)
+      .filter(f => f.endsWith('.ibt'))
+      .map(f => {
+        try { return { file: f, mtime: fs.statSync(path.join(IBT_DIR, f)).mtime.getTime() }; }
+        catch(e) { return null; }
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.mtime - a.mtime);
+
+    if (files.length === 0) return null;
+    log('[TrackExtract] Scanning for ' + trackDisplayName + ' in ' + files.length + ' .ibt files');
+
+    for (const entry of files.slice(0, 10)) {
+      const result = extractFromFile(path.join(IBT_DIR, entry.file));
+      if (result && result.points.length > 50) {
+        log('[TrackExtract] Found track in ' + entry.file + ' (' + result.points.length + ' points)');
+        return result.points;
+      }
+    }
+    return null;
+  } catch(e) {
+    log('[TrackExtract] Error: ' + e.message);
+    return null;
+  }
+}
+
+/**
+ * Bulk scan: process ALL .ibt files, extract unique tracks, cache locally + upload to server.
+ * Runs in background on app startup. Skips already-scanned files.
+ */
+async function bulkScanIBTs(uploadFn) {
+  try {
+    if (!fs.existsSync(IBT_DIR)) {
+      log('[BulkScan] Telemetry dir not found: ' + IBT_DIR);
+      return;
+    }
+
+    const files = fs.readdirSync(IBT_DIR).filter(f => f.endsWith('.ibt'));
+    if (files.length === 0) { log('[BulkScan] No .ibt files found'); return; }
+
+    const scanned = loadScannedList();
+    const newFiles = files.filter(f => !scanned[f]);
+    if (newFiles.length === 0) { log('[BulkScan] All ' + files.length + ' .ibt files already scanned'); return; }
+
+    log('[BulkScan] Scanning ' + newFiles.length + ' new .ibt files (of ' + files.length + ' total)');
+
+    // Track unique tracks we've extracted (keyed by approximate lat/lon center to deduplicate)
+    const extracted = {};
+    let processedCount = 0;
+    let extractedCount = 0;
+
+    for (const file of newFiles) {
+      processedCount++;
+      const filePath = path.join(IBT_DIR, file);
+
+      try {
+        const result = extractFromFile(filePath);
+        scanned[file] = true; // Mark as scanned regardless of result
+
+        if (result && result.points.length > 50) {
+          // Generate a track key from the center coordinates (deduplicate same track, different sessions)
+          const avgX = result.points.reduce((s, p) => s + p.x, 0) / result.points.length;
+          const avgY = result.points.reduce((s, p) => s + p.y, 0) / result.points.length;
+          const trackKey = avgX.toFixed(3) + '_' + avgY.toFixed(3);
+
+          if (!extracted[trackKey] || result.filled > extracted[trackKey].filled) {
+            extracted[trackKey] = { file, points: result.points, filled: result.filled, trackName: result.trackName };
+          }
+          extractedCount++;
+        }
+      } catch(e) {
+        scanned[file] = true; // Don't retry broken files
+      }
+
+      // Log progress every 20 files
+      if (processedCount % 20 === 0) {
+        log('[BulkScan] Progress: ' + processedCount + '/' + newFiles.length + ' files, ' + extractedCount + ' tracks extracted');
+      }
+    }
+
+    // Save scanned list so we don't re-process next time
+    saveScannedList(scanned);
+
+    // Cache and upload unique tracks
+    const trackKeys = Object.keys(extracted);
+    log('[BulkScan] Found ' + trackKeys.length + ' unique tracks from ' + newFiles.length + ' files');
+
+    if (!fs.existsSync(TRACK_MAPS_DIR)) fs.mkdirSync(TRACK_MAPS_DIR, { recursive: true });
+
+    for (const key of trackKeys) {
+      const track = extracted[key];
+      // Use the .ibt filename as the track name (best we have without session info parsing)
+      const trackName = track.trackName;
+      const cacheFile = path.join(TRACK_MAPS_DIR, trackName.replace(/[^a-zA-Z0-9_-]/g, '_') + '.json');
+
+      // Save locally
+      try { fs.writeFileSync(cacheFile, JSON.stringify(track.points)); } catch(e) {}
+
+      // Upload to server
+      if (uploadFn) {
+        try { uploadFn(trackName, track.points); } catch(e) {}
+      }
+
+      log('[BulkScan] Stored: ' + trackName + ' (' + track.points.length + ' points)');
+    }
+
+    log('[BulkScan] Complete! ' + trackKeys.length + ' tracks stored and uploaded');
+  } catch(e) {
+    log('[BulkScan] Error: ' + e.message);
+  }
+}
+
+module.exports = { extractTrackFromIBT, bulkScanIBTs };
