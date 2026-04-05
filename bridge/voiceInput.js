@@ -41,17 +41,16 @@ let whisperLoading = false;
 async function initWhisper() {
   if (whisperPipeline || whisperLoading) return;
   whisperLoading = true;
-  log('[Whisper] Loading model (whisper-base.en)...');
+  log('[Whisper] Loading model (whisper-tiny.en)...');
 
   try {
     const { pipeline, env } = await import('@xenova/transformers');
-    // Cache models in app data directory
     const cacheDir = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'whisper-models');
     env.cacheDir = cacheDir;
     env.allowLocalModels = true;
 
     const startTime = Date.now();
-    whisperPipeline = await pipeline('automatic-speech-recognition', 'Xenova/whisper-base.en', {
+    whisperPipeline = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en', {
       quantized: true,
     });
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -157,8 +156,7 @@ function startVoiceInput(opts) {
     setChatKey(k.vk, k.scan);
   }
 
-  // Pre-load Whisper model in background
-  initWhisper();
+  // Whisper loads lazily on first transcription (pre-loading uses too much memory)
 
   // Toggle mode: press once to start, press again to stop
   let isRecording = false;
