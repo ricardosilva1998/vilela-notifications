@@ -89,62 +89,67 @@ function startVoiceInput(opts) {
 
   scriptPath = findSpeechScript();
 
-  // Global keyboard hook for push-to-talk
-  uIOhook.on('keydown', (e) => {
-    if (pushToTalkKeyCode !== null && !pushToTalkIsMouseButton && e.keycode === pushToTalkKeyCode) {
-      if (!isKeyHeld) {
-        isKeyHeld = true;
-        log('[VoiceInput] PTT keydown (start)');
-        if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
-          voiceChatWindow.webContents.send('voice-start-recording');
-        }
-        // Auto-stop after 15 seconds in case keyup is missed
-        if (autoStopTimer) clearTimeout(autoStopTimer);
-        autoStopTimer = setTimeout(() => {
-          if (isKeyHeld) {
-            log('[VoiceInput] Auto-stop after 15s timeout');
-            isKeyHeld = false;
-            if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
-              voiceChatWindow.webContents.send('voice-stop-recording');
-            }
-          }
-        }, 15000);
-      }
-    }
-  });
+  // Toggle mode: press once to start recording, press again to stop
+  // (keyup detection is unreliable during audio capture)
+  let isRecording = false;
 
-  // Log ALL keyup events to diagnose missing keyup
-  uIOhook.on('keyup', (e) => {
-    if (pushToTalkKeyCode !== null && e.keycode === pushToTalkKeyCode) {
-      log('[VoiceInput] Raw keyup: keycode=' + e.keycode + ' isKeyHeld=' + isKeyHeld + ' isMouse=' + pushToTalkIsMouseButton);
-    }
-    if (pushToTalkKeyCode !== null && !pushToTalkIsMouseButton && e.keycode === pushToTalkKeyCode && isKeyHeld) {
+  function handlePttToggle() {
+    if (!isRecording) {
+      // Start recording
+      isRecording = true;
+      isKeyHeld = true;
+      log('[VoiceInput] PTT toggle → START');
+      if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
+        voiceChatWindow.webContents.send('voice-start-recording');
+      }
+      // Auto-stop after 30 seconds max
+      if (autoStopTimer) clearTimeout(autoStopTimer);
+      autoStopTimer = setTimeout(() => {
+        if (isRecording) {
+          log('[VoiceInput] Auto-stop after 30s');
+          isRecording = false;
+          isKeyHeld = false;
+          if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
+            voiceChatWindow.webContents.send('voice-stop-recording');
+          }
+        }
+      }, 30000);
+    } else {
+      // Stop recording
+      isRecording = false;
       isKeyHeld = false;
       if (autoStopTimer) { clearTimeout(autoStopTimer); autoStopTimer = null; }
-      log('[VoiceInput] PTT keyup (stop)');
+      log('[VoiceInput] PTT toggle → STOP');
       if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
         voiceChatWindow.webContents.send('voice-stop-recording');
       }
+    }
+  }
+
+  uIOhook.on('keydown', (e) => {
+    if (pushToTalkKeyCode !== null && !pushToTalkIsMouseButton && e.keycode === pushToTalkKeyCode) {
+      // Debounce: ignore rapid keydown repeats
+      if (isKeyHeld && isRecording) return;
+      handlePttToggle();
+    }
+  });
+
+  uIOhook.on('keyup', (e) => {
+    if (pushToTalkKeyCode !== null && !pushToTalkIsMouseButton && e.keycode === pushToTalkKeyCode) {
+      isKeyHeld = false; // Reset held state, but don't stop recording (toggle mode)
     }
   });
 
   uIOhook.on('mousedown', (e) => {
-    if (pushToTalkIsMouseButton && e.button === pushToTalkMouseButton && !isKeyHeld) {
-      isKeyHeld = true;
-      log('[VoiceInput] PTT mousedown (start)');
-      if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
-        voiceChatWindow.webContents.send('voice-start-recording');
-      }
+    if (pushToTalkIsMouseButton && e.button === pushToTalkMouseButton) {
+      if (isKeyHeld && isRecording) return; // debounce
+      handlePttToggle();
     }
   });
 
   uIOhook.on('mouseup', (e) => {
-    if (pushToTalkIsMouseButton && e.button === pushToTalkMouseButton && isKeyHeld) {
+    if (pushToTalkIsMouseButton && e.button === pushToTalkMouseButton) {
       isKeyHeld = false;
-      log('[VoiceInput] PTT mouseup (stop)');
-      if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
-        voiceChatWindow.webContents.send('voice-stop-recording');
-      }
     }
   });
 
