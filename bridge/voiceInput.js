@@ -126,30 +126,24 @@ function startVoiceInput(opts) {
     }
   }
 
+  // Time-based debounce (500ms) — keyup is unreliable during audio capture
+  let lastToggleTime = 0;
+
   uIOhook.on('keydown', (e) => {
     if (pushToTalkKeyCode !== null && !pushToTalkIsMouseButton && e.keycode === pushToTalkKeyCode) {
-      // Debounce: ignore rapid keydown repeats
-      if (isKeyHeld && isRecording) return;
+      const now = Date.now();
+      if (now - lastToggleTime < 500) return; // debounce key repeat
+      lastToggleTime = now;
       handlePttToggle();
-    }
-  });
-
-  uIOhook.on('keyup', (e) => {
-    if (pushToTalkKeyCode !== null && !pushToTalkIsMouseButton && e.keycode === pushToTalkKeyCode) {
-      isKeyHeld = false; // Reset held state, but don't stop recording (toggle mode)
     }
   });
 
   uIOhook.on('mousedown', (e) => {
     if (pushToTalkIsMouseButton && e.button === pushToTalkMouseButton) {
-      if (isKeyHeld && isRecording) return; // debounce
+      const now = Date.now();
+      if (now - lastToggleTime < 500) return;
+      lastToggleTime = now;
       handlePttToggle();
-    }
-  });
-
-  uIOhook.on('mouseup', (e) => {
-    if (pushToTalkIsMouseButton && e.button === pushToTalkMouseButton) {
-      isKeyHeld = false;
     }
   });
 
