@@ -3,17 +3,10 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { spawn } = require('child_process');
 const { ipcMain } = require('electron');
 const { uIOhook, UiohookKey } = require('uiohook-napi');
 const { sendChatCommand, setChatKey } = require('./keyboardSim');
-
-// Map key names to VK codes + scan codes
-const CHAT_KEY_MAP = {
-  'T': { vk: 0x54, scan: 0x14 },
-  'Y': { vk: 0x59, scan: 0x15 },
-  'U': { vk: 0x55, scan: 0x16 },
-  'Enter': { vk: 0x0D, scan: 0x1C },
-};
 
 const logPath = path.join(os.homedir(), 'atleta-bridge.log');
 function log(msg) {
@@ -26,6 +19,13 @@ const keyCodeToName = {};
 Object.entries(UiohookKey).forEach(([name, code]) => { keyCodeToName[code] = name; });
 const mouseButtonNames = { 1: 'Mouse1', 2: 'Mouse2', 3: 'Mouse3', 4: 'Mouse4', 5: 'Mouse5' };
 
+const CHAT_KEY_MAP = {
+  'T': { vk: 0x54, scan: 0x14 },
+  'Y': { vk: 0x59, scan: 0x15 },
+  'U': { vk: 0x55, scan: 0x16 },
+  'Enter': { vk: 0x0D, scan: 0x1C },
+};
+
 let voiceChatWindow = null;
 let pushToTalkKeyCode = null;
 let pushToTalkIsMouseButton = false;
@@ -34,100 +34,55 @@ let autoStopTimer = null;
 let settings = {};
 let getIracingStatus = null;
 
-// ─── Whisper Worker Thread ──────────────────────────────────
-const { Worker } = require('worker_threads');
-let whisperWorker = null;
-let whisperReady = false;
-let transcribeCallbacks = new Map();
-let transcribeId = 0;
+// Speech Recognition via PowerShell SAPI (transcribes WAV files)
+let scriptPath = null;
 
-function startWhisperWorker() {
-  // Find whisperWorker.js (same path logic as speechWorker.ps1)
+function findSpeechScript() {
+  if (process.platform !== 'win32') return null;
   const candidates = [
-    path.join(__dirname, 'whisperWorker.js'),
-    path.join(process.resourcesPath || __dirname, 'whisperWorker.js'),
-    __dirname.replace('app.asar', 'app.asar.unpacked') + path.sep + 'whisperWorker.js',
+    path.join(__dirname, 'speechWorker.ps1'),
+    path.join(process.resourcesPath || __dirname, 'speechWorker.ps1'),
+    __dirname.replace('app.asar', 'app.asar.unpacked') + path.sep + 'speechWorker.ps1',
   ];
-  let workerPath = null;
   for (const p of candidates) {
-    if (fs.existsSync(p)) { workerPath = p; break; }
-  }
-  if (!workerPath) {
-    log('[Whisper] Worker script not found');
-    return;
-  }
-  log('[Whisper] Starting worker: ' + workerPath);
-
-  whisperWorker = new Worker(workerPath, {
-    resourceLimits: {
-      maxOldGenerationSizeMb: 2048, // 2GB heap for Whisper
-    },
-  });
-
-  whisperWorker.on('message', (msg) => {
-    if (msg.type === 'log') {
-      log('[Whisper] ' + msg.msg);
-    } else if (msg.type === 'ready') {
-      whisperReady = true;
-      if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
-        voiceChatWindow.webContents.send('voice-whisper-ready');
-      }
-    } else if (msg.type === 'result') {
-      const cb = transcribeCallbacks.get(msg.id);
-      if (cb) {
-        transcribeCallbacks.delete(msg.id);
-        cb(msg.text, msg.error);
-      }
+    if (fs.existsSync(p)) {
+      log('[Speech] Found script: ' + p);
+      return p;
     }
-  });
-
-  whisperWorker.on('error', (err) => {
-    log('[Whisper] Worker error: ' + err.message);
-  });
-
-  whisperWorker.on('exit', (code) => {
-    log('[Whisper] Worker exited: ' + code);
-    whisperWorker = null;
-    whisperReady = false;
-  });
+  }
+  log('[Speech] Script not found');
+  return null;
 }
 
 function transcribeWav(wavPath) {
-  if (!whisperWorker) {
-    startWhisperWorker();
-  }
-  if (!whisperWorker) {
-    log('[Whisper] No worker available');
-    if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
-      voiceChatWindow.webContents.send('voice-error', 'Whisper not available');
-    }
-    return;
-  }
+  if (!scriptPath) { log('[Speech] No script'); return; }
+  log('[Speech] Transcribing: ' + wavPath);
 
-  const id = ++transcribeId;
-  log('[Whisper] Transcribing: ' + wavPath);
+  const proc = spawn('powershell', [
+    '-ExecutionPolicy', 'Bypass', '-NoProfile', '-File', scriptPath, wavPath
+  ], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
 
-  if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
-    voiceChatWindow.webContents.send('voice-whisper-loading');
-  }
-
-  transcribeCallbacks.set(id, (text, error) => {
-    if (error) {
-      log('[Whisper] Error: ' + error);
-      if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
-        voiceChatWindow.webContents.send('voice-error', 'Transcription failed');
-      }
-    } else {
-      if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
-        voiceChatWindow.webContents.send('voice-transcript', text);
-      }
-    }
+  let stdout = '';
+  proc.stdout.on('data', (d) => { stdout += d.toString(); });
+  proc.stderr.on('data', (d) => {
+    d.toString().split('\n').forEach(line => {
+      const t = line.trim();
+      if (t) log('[Speech] ' + t);
+    });
   });
 
-  whisperWorker.postMessage({ type: 'transcribe', wavPath, id });
+  proc.on('exit', (code) => {
+    const transcript = stdout.trim();
+    log('[Speech] Done (code ' + code + '): "' + transcript + '"');
+    try { fs.unlinkSync(wavPath); } catch(e) {}
+
+    if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
+      voiceChatWindow.webContents.send('voice-transcript', transcript);
+    }
+  });
 }
 
-// ─── Voice Input System ──────────────────────────────────────
+// Voice Input System
 function startVoiceInput(opts) {
   settings = opts.settings;
   getIracingStatus = opts.getStatus;
@@ -135,14 +90,12 @@ function startVoiceInput(opts) {
   if (settings.voiceChat && settings.voiceChat.pushToTalkKey) {
     applyPushToTalkKey(settings.voiceChat.pushToTalkKey);
   }
-
-  // Apply saved chat key
   if (settings.voiceChat && settings.voiceChat.chatKey && CHAT_KEY_MAP[settings.voiceChat.chatKey]) {
     const k = CHAT_KEY_MAP[settings.voiceChat.chatKey];
     setChatKey(k.vk, k.scan);
   }
 
-  // Whisper loads lazily on first transcription (pre-loading uses too much memory)
+  scriptPath = findSpeechScript();
 
   // Toggle mode: press once to start, press again to stop
   let isRecording = false;
@@ -196,19 +149,14 @@ function startVoiceInput(opts) {
   uIOhook.start();
   log('[VoiceInput] Global hook started');
 
-  // IPC: Overlay sends recorded WAV file for transcription
-  ipcMain.on('voice-wav-ready', (event, wavPath) => {
-    transcribeWav(wavPath);
-  });
+  ipcMain.on('voice-wav-ready', (event, wavPath) => { transcribeWav(wavPath); });
 
-  // IPC: Manual stop from overlay button
   ipcMain.on('voice-manual-stop', () => {
     isRecording = false;
     if (autoStopTimer) { clearTimeout(autoStopTimer); autoStopTimer = null; }
     log('[VoiceInput] Manual stop from overlay');
   });
 
-  // IPC: Overlay sends confirmed chat command
   ipcMain.on('voice-send-chat', (event, data) => {
     const status = getIracingStatus ? getIracingStatus() : { iracing: false };
     if (!status.iracing) {
@@ -225,7 +173,6 @@ function startVoiceInput(opts) {
     });
   });
 
-  // IPC: Control panel requests to set push-to-talk key
   ipcMain.on('voice-capture-key', (event) => {
     const onKey = (e) => {
       const keyName = keyCodeToName[e.keycode] || ('Key' + e.keycode);
@@ -248,11 +195,9 @@ function startVoiceInput(opts) {
     uIOhook.on('mousedown', onMouse);
   });
 
-  // IPC: Control panel updates voice settings
   ipcMain.on('voice-settings-update', (event, newSettings) => {
     if (!settings.voiceChat) settings.voiceChat = {};
     Object.assign(settings.voiceChat, newSettings);
-    // Apply chat key setting
     if (newSettings.chatKey && CHAT_KEY_MAP[newSettings.chatKey]) {
       const k = CHAT_KEY_MAP[newSettings.chatKey];
       setChatKey(k.vk, k.scan);
@@ -283,7 +228,6 @@ function setVoiceChatWindow(win) {
   if (win && !win.isDestroyed()) {
     win.webContents.once('did-finish-load', () => {
       if (settings.voiceChat) win.webContents.send('voice-settings-update', settings.voiceChat);
-      if (whisperReady) win.webContents.send('voice-whisper-ready');
     });
   }
 }
