@@ -265,17 +265,8 @@ async function startTelemetry(onStatusChange) {
                         log('[TrackMap] Loaded from server (' + serverData.length + ' points)');
                         return;
                       }
-                      // Try .ibt files
-                      const ibtResult = await extractTrackFromIBT();
-                      if (ibtResult && ibtResult.points && !trackPathComplete) {
-                        trackPathOutput = ibtResult.points;
-                        trackPathComplete = true;
-                        filledSlots = TRACK_SLOTS;
-                        if (trackGeoKey) saveCachedTrackByGeo(trackGeoKey, ibtResult.points);
-                        saveCachedTrack(trackName, ibtResult.points);
-                        uploadTrackToServer(trackGeoKey || trackName, ibtResult.points);
-                        log('[TrackMap] Extracted from .ibt (' + ibtResult.points.length + ' points)');
-                      }
+                      // .ibt extraction disabled — causes OOM by importing SDK per file
+                      // Track maps come from: server, geo-key cache, or manual driving
                     })();
                   }
                 }
