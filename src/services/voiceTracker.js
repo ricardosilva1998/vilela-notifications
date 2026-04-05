@@ -8,6 +8,7 @@ let currentChannelId = null;
 let disconnectTimer = null;
 
 async function ensureConnected(channel) {
+  console.log('[VoiceTracker] ensureConnected called, channel=' + channel.name + ' current=' + currentChannelId);
   if (currentConnection && currentChannelId === channel.id) {
     clearDisconnectTimer();
     return currentConnection;

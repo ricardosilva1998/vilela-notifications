@@ -118,8 +118,8 @@ app.get('/api/voice/:discordUserId', async (req, res) => {
 
     const channel = voiceState.channel;
 
-    // Join voice channel for speaking detection (non-blocking — don't delay the response)
-    ensureConnected(channel).catch(() => {});
+    // Join voice channel for speaking detection (non-blocking)
+    ensureConnected(channel).catch(e => console.log('[VoiceTracker] ensureConnected error:', e.message));
     scheduleDisconnect(); // Auto-leave after 5 min of no polls
 
     // Filter out bots (like the Atleta bot itself)
