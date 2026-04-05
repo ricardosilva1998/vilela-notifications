@@ -220,7 +220,7 @@ async function startTelemetry(onStatusChange) {
         pollCount++;
 
         // === Get session info (requires key parameter!) ===
-        if (!sessionInfoFound || pollCount % 100 === 0) {
+        if (!sessionInfoFound || pollCount % 300 === 0) {
           try {
             // getSessionInfo takes a KEY parameter, not called with no args!
             const driverInfo = ir.getSessionInfo('DriverInfo');
@@ -289,7 +289,7 @@ async function startTelemetry(onStatusChange) {
               drivers = driverInfo.Drivers;
               playerCarIdx = driverInfo.DriverCarIdx ?? 0;
               trackName = weekendInfo?.TrackDisplayName || '';
-            } else if (pollCount % 100 === 0) {
+            } else if (pollCount % 300 === 0) {
               log('[SessionInfo] DriverInfo not available yet (poll ' + pollCount + ')');
             }
 
@@ -314,7 +314,7 @@ async function startTelemetry(onStatusChange) {
               }
             }
           } catch(e) {
-            if (pollCount % 100 === 0) log('[SessionInfo] Error: ' + e.message);
+            if (pollCount % 300 === 0) log('[SessionInfo] Error: ' + e.message);
           }
         }
 
@@ -486,7 +486,7 @@ async function startTelemetry(onStatusChange) {
         });
 
         // Diagnostic: log lap time sources (first few polls only)
-        if (pollCount === 30 || pollCount === 100) {
+        if (pollCount === 90 || pollCount === 300) {
           log('[Diag] === LAP TIME DIAGNOSTICS ===');
           log('[Diag] SessionResults entries: ' + sessionResults.size);
           const sample = standings.slice(0, 5);
@@ -502,7 +502,7 @@ async function startTelemetry(onStatusChange) {
         }
 
         // Only broadcast standings every 1 second (every 10th poll) to prevent flickering
-        if (pollCount % 10 === 0) {
+        if (pollCount % 30 === 0) {
           broadcastToChannel('standings', { type: 'data', channel: 'standings', data: standings });
         }
 
@@ -532,7 +532,7 @@ async function startTelemetry(onStatusChange) {
           })
           .sort((a, b) => a.distGap - b.distGap);
 
-        if (pollCount % 5 === 0) broadcastToChannel('relative', { type: 'data', channel: 'relative', data: {
+        if (pollCount % 15 === 0) broadcastToChannel('relative', { type: 'data', channel: 'relative', data: {
           playerCarIdx, cars: relative,
         }});
 
@@ -547,7 +547,7 @@ async function startTelemetry(onStatusChange) {
         const isOnTrack = trackSurface >= 2; // Record on track + pit approach
 
         // Diagnostic: log track map state periodically
-        if (pollCount === 50 || pollCount === 300) {
+        if (pollCount === 150 || pollCount === 900) {
           log('[TrackMap] Diag: speed=' + playerSpeed.toFixed(1) + ' surface=' + trackSurface +
             ' isOnTrack=' + isOnTrack + ' pct=' + playerPct.toFixed(3) +
             ' slots=' + filledSlots + '/' + TRACK_SLOTS +
@@ -584,7 +584,7 @@ async function startTelemetry(onStatusChange) {
           }
 
           // Build partial path for progressive display every 50 polls
-          if (!trackPathComplete && pollCount % 50 === 0 && filledSlots > 30) {
+          if (!trackPathComplete && pollCount % 150 === 0 && filledSlots > 30) {
             trackPathOutput = buildTrackPath();
           }
         }
@@ -613,9 +613,9 @@ async function startTelemetry(onStatusChange) {
         }});
 
       } catch (e) {
-        if (pollCount % 100 === 0) log('[Telemetry] Poll error: ' + e.message);
+        if (pollCount % 300 === 0) log('[Telemetry] Poll error: ' + e.message);
       }
-    }, 100);
+    }, 33); // ~30Hz for responsive driver inputs graph
   }
 }
 
