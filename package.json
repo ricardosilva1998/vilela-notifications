@@ -21,6 +21,7 @@
     "ejs": "^5.0.1",
     "express": "^5.2.1",
     "fast-xml-parser": "^5.5.8",
+    "opusscript": "^0.0.8",
     "socket.io-client": "^2.5.0",
     "tmi.js": "^1.8.5",
     "tweetnacl": "^1.0.3",
