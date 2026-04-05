@@ -32,7 +32,7 @@
     .license { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; }
     .irating { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.6); }
     .flag { font-size: 12px; line-height: 1; }
-    .brand-logo { width: 16px; height: 16px; opacity: 0.7; vertical-align: middle; }
+    .brand-logo { width: 18px; height: 18px; display: inline-block; background-image: url('logos/car-icons-sprite.png'); background-size: 1024px 1024px; background-repeat: no-repeat; opacity: 0.85; vertical-align: middle; }
   </style>
 </head>
 <body>
@@ -121,6 +121,47 @@
       return (map[first] || first);
     }
 
+    // Sprite positions (col, row) in 1024x1024 sprite, 8 columns, ~128px each
+    const BRAND_SPRITE = {
+      'dallara':    { x: 0, y: 0 },
+      'audi':       { x: 128, y: 0 },
+      'bmw':        { x: 256, y: 0 },
+      'mercedes':   { x: 384, y: 0 },
+      'ford':       { x: 512, y: 0 },
+      'chevrolet':  { x: 640, y: 0 },
+      'ferrari':    { x: 768, y: 0 },
+      'lamborghini':{ x: 896, y: 0 },
+      'mclaren':    { x: 0, y: 128 },
+      'porsche':    { x: 128, y: 128 },
+      'cadillac':   { x: 256, y: 128 },
+      'honda':      { x: 384, y: 128 },
+      'volkswagen': { x: 512, y: 128 },
+      'hyundai':    { x: 640, y: 128 },
+      'toyota':     { x: 896, y: 128 },
+      'mazda':      { x: 0, y: 256 },
+      'renault':    { x: 256, y: 256 },
+      'lotus':      { x: 768, y: 256 },
+      'kia':        { x: 0, y: 384 },
+      'lexus':      { x: 128, y: 384 },
+      'nissan':     { x: 256, y: 384 },
+      'jaguar':     { x: 384, y: 384 },
+      'ruf':        { x: 512, y: 384 },
+      'radical':    { x: 640, y: 384 },
+      'acura':      { x: 512, y: 512 },
+    };
+
+    function getBrandLogoStyle(carMake) {
+      const mfr = getManufacturer(carMake);
+      const pos = BRAND_SPRITE[mfr];
+      if (!pos) return '';
+      // Scale: 18px display / 128px sprite cell
+      const scale = 18 / 128;
+      const bgX = -(pos.x * scale);
+      const bgY = -(pos.y * scale);
+      const bgSize = 1024 * scale;
+      return `background-position: ${bgX}px ${bgY}px; background-size: ${bgSize}px ${bgSize}px;`;
+    }
+
     const CLUB_FLAGS = {
       1:'🇺🇸',2:'🇺🇸',3:'🇺🇸',4:'🇺🇸',5:'🇺🇸',6:'🇺🇸',7:'🇺🇸',8:'🇺🇸',9:'🇺🇸',10:'🇺🇸',
       11:'🇺🇸',12:'🇺🇸',13:'🇺🇸',14:'🇺🇸',15:'🇺🇸',16:'🇺🇸',17:'🇺🇸',18:'🇺🇸',19:'🇺🇸',20:'🇺🇸',
@@ -179,8 +220,8 @@
 
       const numCell = `<span style="background:${classColor};color:#000;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:800;font-family:'JetBrains Mono',monospace;">${d.carNumber || ''}</span>`;
 
-      const mfr = getManufacturer(carBrand);
-      const logoImg = mfr ? `<img class="brand-logo" src="logos/${mfr}.svg" onerror="this.style.display='none'">` : '';
+      const logoStyle = getBrandLogoStyle(carBrand);
+      const logoImg = logoStyle ? `<span class="brand-logo" style="${logoStyle}"></span>` : '';
       const badgeCell = `<div class="driver-name">${d.driverName || ''}${pitMark}</div>`;
 
       const licCell = d.safetyRating || d.license
