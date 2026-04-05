@@ -18,7 +18,7 @@ let connectInterval = null;
 
 const { broadcastToChannel, getClientInfo } = require('./websocket');
 const settings = require('./settings');
-const { extractTrackFromIBT } = require('./trackExtractor');
+const { extractTrackFromIBT, bulkScanIBTs } = require('./trackExtractor');
 
 // Fuel tracking
 let fuelHistory = [];
@@ -142,6 +142,9 @@ function resetFuel() { fuelHistory = []; lastLap = -1; fuelAtLapStart = null; }
 async function startTelemetry(onStatusChange) {
   statusCallback = onStatusChange;
   log('[Telemetry] Starting...');
+
+  // Bulk scan .ibt files in background — extracts all track layouts and uploads to server
+  bulkScanIBTs(uploadTrackToServer).catch(e => log('[BulkScan] Error: ' + e.message));
 
   let IRSDK, VARS;
   try {
