@@ -351,6 +351,13 @@ ipcMain.on('get-overlay-states', (event) => {
   event.reply('autohide-state', autoHideOverlays);
 });
 
+ipcMain.on('get-overlay-settings', (event, overlayId) => {
+  const overlaySettings = settings.overlayCustom && settings.overlayCustom[overlayId];
+  if (overlaySettings) {
+    event.reply('overlay-settings', overlayId, overlaySettings);
+  }
+});
+
 ipcMain.on('check-for-update', () => {
   if (autoUpdater) try { autoUpdater.checkForUpdates(); } catch(e) {}
 });

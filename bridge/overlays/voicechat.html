@@ -323,7 +323,7 @@
       if (text.startsWith('all ') || text === 'all') {
         const msg = text === 'all' ? '' : extractMsg('all');
         if (!msg) return { error: 'Say "message all" followed by your message' };
-        return { command: '/all ' + msg, targetLabel: 'To: All', targetType: 'all', text: msg };
+        return { command: msg, targetLabel: 'To: All', targetType: 'all', text: msg };
       }
       if (text.startsWith('team ') || text === 'team') {
         const msg = text === 'team' ? '' : extractMsg('team');

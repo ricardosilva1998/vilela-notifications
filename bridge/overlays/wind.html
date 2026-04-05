@@ -5,15 +5,17 @@
   <title>Wind Direction</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; }
+    body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; scrollbar-width: none; }
+    ::-webkit-scrollbar { display: none; }
     .overlay-panel { background: rgba(12,13,20,0.85); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; backdrop-filter: blur(12px); overflow: hidden; }
     .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); cursor: move; -webkit-app-region: drag; }
-    .overlay-body { padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
-    .compass { position: relative; width: 90px; height: 90px; }
-    .compass-svg { width: 90px; height: 90px; }
-    .wind-speed { font-size: 16px; font-weight: 700; font-family: 'Consolas', monospace; }
-    .wind-unit { font-size: 10px; color: rgba(255,255,255,0.4); }
-    .car-label { font-size: 9px; color: rgba(255,255,255,0.35); text-align: center; }
+    .overlay-body { padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .compass { position: relative; width: 100px; height: 100px; }
+    .compass-svg { width: 100px; height: 100px; }
+    .wind-info { display: flex; align-items: center; gap: 8px; }
+    .wind-dir { font-size: 18px; font-weight: 800; color: #9146ff; font-family: 'Consolas', monospace; letter-spacing: 1px; }
+    .wind-speed { font-size: 14px; font-weight: 700; font-family: 'Consolas', monospace; color: #e8e6f0; }
+    .wind-unit { font-size: 9px; color: rgba(255,255,255,0.4); }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
     .status-dot.connected { background: #3ecf8e; }
     .status-dot.disconnected { background: #f04438; }
@@ -23,42 +25,55 @@
   </style>
 </head>
 <body>
-  <div id="overlay-root" style="position:relative;width:130px;">
-    <div class="overlay-panel" style="width:130px;">
+  <div id="overlay-root" style="position:relative;width:140px;">
+    <div class="overlay-panel" style="width:140px;">
       <div class="overlay-header">
         <span>WIND</span>
         <span id="connection-status"><span class="status-dot demo"></span></span>
       </div>
       <div class="overlay-body">
         <div class="compass">
-          <!-- SVG compass: center dot = your car, arrow FROM wind source TOWARD center -->
-          <svg class="compass-svg" id="compass-svg" viewBox="0 0 90 90">
-            <!-- Outer ring -->
-            <circle cx="45" cy="45" r="40" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5"/>
-            <!-- Cross hairs -->
-            <line x1="45" y1="5" x2="45" y2="85" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
-            <line x1="5" y1="45" x2="85" y2="45" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+          <svg class="compass-svg" viewBox="0 0 100 100">
+            <!-- Outer ring with subtle glow -->
+            <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+            <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(145,70,255,0.15)" stroke-width="3"/>
+            <!-- Tick marks at 45-degree intervals -->
+            <line x1="50" y1="8" x2="50" y2="14" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+            <line x1="50" y1="86" x2="50" y2="92" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+            <line x1="8" y1="50" x2="14" y2="50" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+            <line x1="86" y1="50" x2="92" y2="50" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+            <!-- Diagonal ticks -->
+            <line x1="19.3" y1="19.3" x2="23.5" y2="23.5" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+            <line x1="76.5" y1="19.3" x2="80.7" y2="23.5" stroke="rgba(255,255,255,0.1)" stroke-width="1" transform="rotate(90,50,50)"/>
+            <line x1="76.5" y1="76.5" x2="80.7" y2="80.7" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+            <line x1="19.3" y1="76.5" x2="23.5" y2="80.7" stroke="rgba(255,255,255,0.1)" stroke-width="1" transform="rotate(90,50,50)"/>
             <!-- Cardinal labels -->
-            <text x="45" y="11" text-anchor="middle" font-size="8" font-weight="700" fill="#f04438" font-family="Segoe UI,sans-serif">N</text>
-            <text x="45" y="83" text-anchor="middle" font-size="8" font-weight="700" fill="rgba(255,255,255,0.35)" font-family="Segoe UI,sans-serif">S</text>
-            <text x="83" y="48" text-anchor="middle" font-size="8" font-weight="700" fill="rgba(255,255,255,0.35)" font-family="Segoe UI,sans-serif">E</text>
-            <text x="7" y="48" text-anchor="middle" font-size="8" font-weight="700" fill="rgba(255,255,255,0.35)" font-family="Segoe UI,sans-serif">W</text>
-            <!-- Wind arrow: drawn FROM edge TOWARD center. Group rotates around center. -->
-            <!-- Arrow shaft goes from edge (y=5, relative to center) down to near center (y=28) -->
-            <!-- Arrowhead points toward center (downward in local coords before rotation) -->
-            <g id="wind-arrow-group" transform="rotate(45, 45, 45)">
-              <!-- Shaft: from edge inward toward center -->
-              <line x1="45" y1="10" x2="45" y2="38" stroke="#9146ff" stroke-width="2.5" stroke-linecap="round"/>
-              <!-- Arrowhead pointing toward center (downward) -->
-              <polygon points="45,42 41,34 49,34" fill="#9146ff"/>
+            <text x="50" y="22" text-anchor="middle" font-size="9" font-weight="800" fill="#f04438" font-family="Segoe UI,sans-serif">N</text>
+            <text x="50" y="88" text-anchor="middle" font-size="9" font-weight="700" fill="rgba(255,255,255,0.3)" font-family="Segoe UI,sans-serif">S</text>
+            <text x="88" y="53" text-anchor="middle" font-size="9" font-weight="700" fill="rgba(255,255,255,0.3)" font-family="Segoe UI,sans-serif">E</text>
+            <text x="12" y="53" text-anchor="middle" font-size="9" font-weight="700" fill="rgba(255,255,255,0.3)" font-family="Segoe UI,sans-serif">W</text>
+
+            <!-- Wind arrow group — rotates around center -->
+            <g id="wind-arrow-group" transform="rotate(45, 50, 50)">
+              <!-- Arrow glow -->
+              <line x1="50" y1="10" x2="50" y2="42" stroke="#9146ff" stroke-width="5" stroke-linecap="round" opacity="0.3"/>
+              <!-- Arrow shaft -->
+              <line x1="50" y1="10" x2="50" y2="42" stroke="#9146ff" stroke-width="3" stroke-linecap="round"/>
+              <!-- Arrowhead -->
+              <polygon points="50,48 44,38 56,38" fill="#9146ff"/>
+              <!-- Small circle at arrow origin -->
+              <circle cx="50" cy="10" r="3" fill="#9146ff" opacity="0.6"/>
             </g>
-            <!-- Center dot = your car -->
-            <circle cx="45" cy="45" r="4" fill="#3ecf8e"/>
-            <circle cx="45" cy="45" r="2" fill="#fff"/>
+
+            <!-- Center car dot -->
+            <circle cx="50" cy="50" r="5" fill="rgba(62,207,142,0.3)"/>
+            <circle cx="50" cy="50" r="3" fill="#3ecf8e"/>
           </svg>
         </div>
-        <div class="car-label">● = your car</div>
-        <div class="wind-speed" id="wind-speed">3.2 <span class="wind-unit">m/s</span></div>
+        <div class="wind-info">
+          <span class="wind-dir" id="wind-dir">NE</span>
+          <span class="wind-speed" id="wind-speed">3.2 <span class="wind-unit">m/s</span></span>
+        </div>
       </div>
     </div>
     <div class="overlay-disconnected" id="overlay-disconnected"></div>
@@ -114,19 +129,28 @@
       }
     }
 
+    // Convert angle (0-360) to compass direction
+    function angleToCompass(deg) {
+      const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+      const idx = Math.round(((deg % 360) + 360) % 360 / 45) % 8;
+      return dirs[idx];
+    }
+
     onData('wind', data => {
       if (!data) return;
       const { windDirection, windSpeed, carHeading } = data;
       const arrowGroup = document.getElementById('wind-arrow-group');
       const speedEl = document.getElementById('wind-speed');
+      const dirEl = document.getElementById('wind-dir');
+
       if (windDirection !== undefined && arrowGroup) {
-        // Convert radians to degrees if needed (iRacing sends radians)
         const windDeg = windDirection * 180 / Math.PI;
         const carDeg = (carHeading || 0) * 180 / Math.PI;
-        // Relative angle: direction FROM which wind comes, relative to car heading
-        // Arrow originates from edge at this angle and points toward center (the car)
         const relativeAngle = ((windDeg - carDeg) + 360) % 360;
-        arrowGroup.setAttribute('transform', `rotate(${relativeAngle}, 45, 45)`);
+        arrowGroup.setAttribute('transform', `rotate(${relativeAngle}, 50, 50)`);
+
+        // Show compass direction of wind source (absolute, not relative to car)
+        if (dirEl) dirEl.textContent = angleToCompass(windDeg);
       }
       if (windSpeed !== undefined && speedEl) {
         speedEl.innerHTML = windSpeed.toFixed(1) + ' <span class="wind-unit">m/s</span>';
@@ -135,7 +159,6 @@
 
     connectBridge(['wind']);
 
-    // Lock state support
     try {
       const { ipcRenderer } = require('electron');
       ipcRenderer.on('lock-state', (event, locked) => {

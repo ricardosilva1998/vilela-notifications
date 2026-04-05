@@ -97,9 +97,22 @@
     // ─── Settings ──────────────────────────────────────────────────────
     const API_BASE = 'https://atletanotifications.com';
     let discordUserId = '';
+    // Load from localStorage (control panel saves here) and also from Electron settings
     try {
       const saved = JSON.parse(localStorage.getItem('overlay_discord') || '{}');
       if (saved.discordUserId) discordUserId = saved.discordUserId;
+    } catch(e) {}
+    // Also try loading from Electron persisted settings (more reliable across windows)
+    try {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.on('overlay-settings', (event, id, settings) => {
+        if (id === 'discord' && settings && settings.discordUserId) {
+          discordUserId = settings.discordUserId;
+          pollVoiceState();
+        }
+      });
+      // Request current settings from main process
+      ipcRenderer.send('get-overlay-settings', 'discord');
     } catch(e) {}
 
     // ─── SVG Icons ─────────────────────────────────────────────────────
