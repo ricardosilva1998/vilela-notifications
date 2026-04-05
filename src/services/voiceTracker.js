@@ -1,19 +1,25 @@
 'use strict';
 
-const { joinVoiceChannel, VoiceConnectionStatus, entersState } = require('@discordjs/voice');
+const { joinVoiceChannel, VoiceConnectionStatus, entersState, getVoiceConnection } = require('@discordjs/voice');
 
 const speakingUsers = new Map();
 let currentConnection = null;
 let currentChannelId = null;
 let disconnectTimer = null;
+let connecting = false; // Lock to prevent concurrent join attempts
 
 async function ensureConnected(channel) {
-  console.log('[VoiceTracker] ensureConnected called, channel=' + channel.name + ' current=' + currentChannelId);
+  // Already connected to this channel
   if (currentConnection && currentChannelId === channel.id) {
     clearDisconnectTimer();
     return currentConnection;
   }
 
+  // Another attempt is in progress — skip
+  if (connecting) return null;
+  connecting = true;
+
+  // Disconnect previous
   if (currentConnection) {
     try { currentConnection.destroy(); } catch(e) {}
     currentConnection = null;
@@ -22,6 +28,15 @@ async function ensureConnected(channel) {
   }
 
   try {
+    console.log('[VoiceTracker] Joining: ' + channel.name + ' (' + channel.id + ')');
+
+    // Check if a connection already exists for this guild
+    const existing = getVoiceConnection(channel.guild.id);
+    if (existing) {
+      console.log('[VoiceTracker] Destroying existing connection');
+      try { existing.destroy(); } catch(e) {}
+    }
+
     const connection = joinVoiceChannel({
       channelId: channel.id,
       guildId: channel.guild.id,
@@ -30,65 +45,61 @@ async function ensureConnected(channel) {
       selfMute: true,
     });
 
-    await entersState(connection, VoiceConnectionStatus.Ready, 15000);
-    console.log('[VoiceTracker] Connected to: ' + channel.name);
+    // Log state changes for debugging
+    connection.on('stateChange', (oldState, newState) => {
+      console.log('[VoiceTracker] State: ' + oldState.status + ' -> ' + newState.status);
+    });
 
-    // Speaking events via receiver
+    // Wait for Ready with timeout
+    try {
+      await entersState(connection, VoiceConnectionStatus.Ready, 20000);
+    } catch(e) {
+      console.log('[VoiceTracker] Timeout waiting for Ready, current state: ' + connection.state.status);
+      // If signalling but not ready, it might still work — don't destroy
+      if (connection.state.status !== VoiceConnectionStatus.Ready) {
+        try { connection.destroy(); } catch(e2) {}
+        connecting = false;
+        return null;
+      }
+    }
+
+    console.log('[VoiceTracker] Connected! State: ' + connection.state.status);
+
+    // Set up speaking detection
     const receiver = connection.receiver;
 
-    // Method 1: speaking map events (newer versions)
     if (receiver.speaking) {
-      console.log('[VoiceTracker] Using receiver.speaking events');
       receiver.speaking.on('start', (userId) => {
-        console.log('[VoiceTracker] Speaking START: ' + userId);
         speakingUsers.set(userId, { speaking: true, ts: Date.now() });
       });
       receiver.speaking.on('end', (userId) => {
-        console.log('[VoiceTracker] Speaking END: ' + userId);
         const entry = speakingUsers.get(userId);
         if (entry) entry.speaking = false;
       });
     }
 
-    // Method 2: direct 'speaking' event on receiver (some versions)
-    receiver.on('speaking', (userId, speaking) => {
-      console.log('[VoiceTracker] Speaking event: ' + userId + ' = ' + speaking);
-      if (speaking) {
-        speakingUsers.set(userId, { speaking: true, ts: Date.now() });
-      } else {
-        const entry = speakingUsers.get(userId);
-        if (entry) entry.speaking = false;
-      }
-    });
-
-    // Auto-timeout speaking after 3 seconds of no event (safety)
-    setInterval(() => {
-      const now = Date.now();
-      for (const [id, entry] of speakingUsers) {
-        if (entry.speaking && now - entry.ts > 3000) {
-          entry.speaking = false;
-        }
-      }
-    }, 1000);
-
-    // Subscribe to all members' audio to enable speaking detection
-    // Some versions require this for speaking events to fire
+    // Subscribe to all members for speaking events
     try {
       for (const [, member] of channel.members) {
         if (!member.user.bot) {
           receiver.subscribe(member.id, { end: { behavior: 0 } });
-          console.log('[VoiceTracker] Subscribed to: ' + member.user.username);
         }
       }
+      console.log('[VoiceTracker] Subscribed to ' + channel.members.filter(m => !m.user.bot).size + ' members');
     } catch(e) {
-      console.log('[VoiceTracker] Subscribe error (ok): ' + e.message);
+      console.log('[VoiceTracker] Subscribe note: ' + e.message);
     }
 
-    connection.on(VoiceConnectionStatus.Disconnected, () => {
-      console.log('[VoiceTracker] Disconnected');
-      currentConnection = null;
-      currentChannelId = null;
-      speakingUsers.clear();
+    connection.on(VoiceConnectionStatus.Disconnected, async () => {
+      console.log('[VoiceTracker] Disconnected, attempting reconnect...');
+      try {
+        await entersState(connection, VoiceConnectionStatus.Connecting, 5000);
+      } catch {
+        currentConnection = null;
+        currentChannelId = null;
+        speakingUsers.clear();
+        try { connection.destroy(); } catch(e) {}
+      }
     });
 
     connection.on(VoiceConnectionStatus.Destroyed, () => {
@@ -97,11 +108,21 @@ async function ensureConnected(channel) {
       speakingUsers.clear();
     });
 
+    // Auto-timeout speaking after 3 seconds
+    setInterval(() => {
+      const now = Date.now();
+      for (const [, entry] of speakingUsers) {
+        if (entry.speaking && now - entry.ts > 3000) entry.speaking = false;
+      }
+    }, 1000);
+
     currentConnection = connection;
     currentChannelId = channel.id;
+    connecting = false;
     return connection;
   } catch(e) {
     console.log('[VoiceTracker] Failed: ' + e.message);
+    connecting = false;
     return null;
   }
 }
