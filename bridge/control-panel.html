@@ -431,6 +431,7 @@
         ]},
         { key: 'rowHeight', label: 'Row height (px)', type: 'number', default: '24', min: 16, max: 40 },
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
+        { key: 'showIRatingGain', label: 'Show iRating gain/loss', type: 'checkbox', default: false },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       relative: [
@@ -438,6 +439,7 @@
         { key: 'carsBehind', label: 'Cars behind', type: 'number', default: '5', min: 1, max: 15 },
         { key: 'rowHeight', label: 'Row height (px)', type: 'number', default: '24', min: 16, max: 40 },
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
+        { key: 'showIRatingGain', label: 'Show iRating gain/loss', type: 'checkbox', default: false },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       fuel: [
@@ -454,6 +456,9 @@
           { value: 'kmh', label: 'km/h' },
           { value: 'mph', label: 'mph' },
         ]},
+        { key: 'arrowColor', label: 'Arrow color', type: 'text', default: '#9146ff', placeholder: '#hex' },
+        { key: 'compassNColor', label: 'North label color', type: 'text', default: '#f04438', placeholder: '#hex' },
+        { key: 'dotColor', label: 'Car dot color', type: 'text', default: '#3ecf8e', placeholder: '#hex' },
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
@@ -468,6 +473,9 @@
       ],
       trackmap: [
         { key: 'overlaySize', label: 'Overlay size (px)', type: 'number', default: '500', min: 200, max: 1200 },
+        { key: 'trackColor', label: 'Track outline color', type: 'text', default: 'rgba(255,255,255,0.15)', placeholder: '#hex or rgba' },
+        { key: 'playerColor', label: 'Player dot color', type: 'text', default: '#9146ff', placeholder: '#hex' },
+        { key: 'focusColor', label: 'Focused driver color', type: 'text', default: '#3ecf8e', placeholder: '#hex' },
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],

@@ -137,6 +137,8 @@
     // SOF by class — populated from session data
     let _sofByClass = {};
 
+    const showIRatingGain = getSetting('showIRatingGain', false);
+
     function buildTableHead() {
       const labels = { pos: 'P', flag: '', number: '#', logo: '', name: 'Driver', license: 'Lic', irating: 'iR', best: 'Best', last: 'Last', gap: 'Gap' };
       return '<tr>' + enabledColumns.map(c => `<th>${labels[c] || ''}</th>`).join('') + '</tr>';
@@ -307,7 +309,9 @@
         ? `<span style="background:${licColor};color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">${d.safetyRating || d.license}</span>`
         : `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">--</span>`;
 
-      const irCell = `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">${irStr}</span>`;
+      const irGain = showIRatingGain && d.startIRating > 0 && d.iRating !== d.startIRating ? d.iRating - d.startIRating : 0;
+      const irGainStr = irGain > 0 ? `<span style="color:#3ecf8e;font-size:8px;margin-left:2px;">+${irGain}</span>` : (irGain < 0 ? `<span style="color:#f04438;font-size:8px;margin-left:2px;">${irGain}</span>` : '');
+      const irCell = `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">${irStr}${irGainStr}</span>`;
 
       const rowClass = d.isSpectated && !d.isPlayer ? 'spectated-row' : (d.isPlayer ? 'player-row' : '');
       const cells = {
@@ -528,6 +532,13 @@
           _mouseOverPanel = true;
           ipcRenderer.send('set-ignore-mouse', false);
         } else if (!over && _mouseOverPanel) {
+          _mouseOverPanel = false;
+          ipcRenderer.send('set-ignore-mouse', true);
+        }
+      });
+      // Fallback: reset when mouse leaves the window entirely
+      document.addEventListener('mouseleave', () => {
+        if (_mouseOverPanel) {
           _mouseOverPanel = false;
           ipcRenderer.send('set-ignore-mouse', true);
         }

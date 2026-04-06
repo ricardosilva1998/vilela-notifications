@@ -47,6 +47,10 @@
     } catch(e) {}
     function getSetting(k, d) { return _overlaySettings[k] !== undefined ? _overlaySettings[k] : d; }
 
+    const trackColor = getSetting('trackColor', 'rgba(255,255,255,0.15)');
+    const playerColor = getSetting('playerColor', '#9146ff');
+    const focusColor = getSetting('focusColor', '#3ecf8e');
+
     const BRIDGE_URL = 'ws://localhost:9100';
     let ws = null;
     let bridgeConnected = false;
@@ -182,7 +186,7 @@
 
       // Draw track outline — coords are 0-1, multiply by s
       ctx.beginPath();
-      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.strokeStyle = trackColor;
       ctx.lineWidth = 3;
       trackPoints.forEach((p, i) => {
         const x = p.x * s, y = p.y * s;
@@ -257,7 +261,7 @@
         const x = pos.x * s, y = pos.y * s;
         const isFocused = car.isSpectated && !car.isPlayer;
         const radius = car.isPlayer ? 6 : (isFocused ? 7 : 4);
-        const color = car.isPlayer ? '#9146ff' : (isFocused ? '#3ecf8e' : (car.carClassColor || '#fff'));
+        const color = car.isPlayer ? playerColor : (isFocused ? focusColor : (car.carClassColor || '#fff'));
 
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -330,6 +334,13 @@
           _mouseOverPanel = true;
           ipcRenderer.send('set-ignore-mouse', false);
         } else if (!over && _mouseOverPanel) {
+          _mouseOverPanel = false;
+          ipcRenderer.send('set-ignore-mouse', true);
+        }
+      });
+      // Fallback: reset when mouse leaves the window entirely
+      document.addEventListener('mouseleave', () => {
+        if (_mouseOverPanel) {
           _mouseOverPanel = false;
           ipcRenderer.send('set-ignore-mouse', true);
         }

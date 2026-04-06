@@ -45,12 +45,12 @@ const OVERLAYS = [
   { id: 'standings', name: 'Standings', width: 480, height: 600 },
   { id: 'relative', name: 'Relative', width: 380, height: 450 },
   { id: 'fuel', name: 'Fuel Calculator', width: 300, height: 240 },
-  { id: 'wind', name: 'Wind Direction', width: 150, height: 150 },
-  { id: 'proximity', name: 'Car Proximity', width: 160, height: 280 },
+  { id: 'wind', name: 'Wind Direction', width: 170, height: 180 },
+  { id: 'proximity', name: 'Car Proximity', width: 180, height: 280 },
   { id: 'chat', name: 'Streaming Chat', width: 340, height: 500 },
   { id: 'trackmap', name: 'Track Map', width: 500, height: 500 },
   { id: 'voicechat', name: 'Voice Chat', width: 340, height: 400 },
-  { id: 'inputs', name: 'Driver Inputs', width: 520, height: 140 },
+  { id: 'inputs', name: 'Driver Inputs', width: 540, height: 150 },
   // { id: 'discord', name: 'Discord Voice', width: 200, height: 300 }, // DISABLED — Railway doesn't support UDP for voice speaking detection
 ];
 
@@ -300,13 +300,14 @@ function createOverlayWindow(overlayId) {
   });
 
   // Lock aspect ratio during resize (trackmap forced to square)
-  const initialAspect = overlayId === 'trackmap' ? 1 : (width / height);
-  win.on('will-resize', (event, newBounds) => {
-    event.preventDefault();
-    const newW = newBounds.width;
-    const newH = Math.round(newW / initialAspect);
-    win.setBounds({ x: newBounds.x, y: newBounds.y, width: newW, height: newH });
-  });
+  // Only lock aspect ratio for trackmap (square); other overlays stretch freely
+  if (overlayId === 'trackmap') {
+    win.on('will-resize', (event, newBounds) => {
+      event.preventDefault();
+      const newW = newBounds.width;
+      win.setBounds({ x: newBounds.x, y: newBounds.y, width: newW, height: newW });
+    });
+  }
 
   // Use highest z-level to stay on top of fullscreen games like iRacing
   win.setAlwaysOnTop(true, 'screen-saver');

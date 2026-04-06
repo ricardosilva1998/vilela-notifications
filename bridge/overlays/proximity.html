@@ -139,6 +139,13 @@
           ipcRenderer.send('set-ignore-mouse', true);
         }
       });
+      // Fallback: reset when mouse leaves the window entirely
+      document.addEventListener('mouseleave', () => {
+        if (_mouseOverPanel) {
+          _mouseOverPanel = false;
+          ipcRenderer.send('set-ignore-mouse', true);
+        }
+      });
     } catch(e) {}
   </script>
 </body>

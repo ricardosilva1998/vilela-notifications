@@ -100,6 +100,29 @@
     } catch(e) {}
     function getWindSetting(k, d) { return _windSettings[k] !== undefined ? _windSettings[k] : d; }
     const speedUnit = getWindSetting('speedUnit', 'kmh');
+    const arrowColor = getWindSetting('arrowColor', '#9146ff');
+    const compassNColor = getWindSetting('compassNColor', '#f04438');
+    const dotColor = getWindSetting('dotColor', '#3ecf8e');
+
+    // Apply color settings to SVG elements
+    try {
+      const stops = document.querySelectorAll('#arrowGrad stop');
+      if (stops[0]) stops[0].setAttribute('stop-color', arrowColor);
+      if (stops[1]) stops[1].setAttribute('stop-color', arrowColor);
+      const nLabel = document.querySelector('text[fill="#f04438"]');
+      if (nLabel) nLabel.setAttribute('fill', compassNColor);
+      document.querySelectorAll('circle[fill="#3ecf8e"]').forEach(c => c.setAttribute('fill', dotColor));
+      document.querySelectorAll('circle[fill="rgba(62,207,142,0.25)"]').forEach(c => {
+        // Build rgba version with 0.25 opacity
+        const hex = dotColor.replace('#', '');
+        if (hex.length === 6) {
+          const r = parseInt(hex.substr(0,2), 16), g = parseInt(hex.substr(2,2), 16), b = parseInt(hex.substr(4,2), 16);
+          c.setAttribute('fill', `rgba(${r},${g},${b},0.25)`);
+        } else {
+          c.setAttribute('fill', dotColor);
+        }
+      });
+    } catch(e) {}
 
     const BRIDGE_URL = 'ws://localhost:9100';
     let ws = null;
@@ -200,6 +223,13 @@
           _mouseOverPanel = true;
           ipcRenderer.send('set-ignore-mouse', false);
         } else if (!over && _mouseOverPanel) {
+          _mouseOverPanel = false;
+          ipcRenderer.send('set-ignore-mouse', true);
+        }
+      });
+      // Fallback: reset when mouse leaves the window entirely
+      document.addEventListener('mouseleave', () => {
+        if (_mouseOverPanel) {
           _mouseOverPanel = false;
           ipcRenderer.send('set-ignore-mouse', true);
         }

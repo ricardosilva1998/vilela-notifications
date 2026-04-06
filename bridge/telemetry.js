@@ -136,6 +136,8 @@ const cachedLastLaps = new Map(); // carIdx -> last lap time
 const cachedLapsCompleted = new Map(); // carIdx -> laps completed
 // Session results — lap data from YAML (more complete than real-time telemetry)
 const sessionResults = new Map(); // carIdx -> { bestLap, lastLap, lapsComplete }
+// Starting iRatings — captured once at session start for gain/loss display
+const startingIRatings = new Map(); // carIdx -> starting iRating
 
 function resetFuel() { fuelHistory = []; lastLap = -1; fuelAtLapStart = null; }
 
@@ -174,6 +176,7 @@ async function startTelemetry(onStatusChange) {
         pollCount = 0;
         lastFocusCarIdx = -1;
         resetSelectedCar();
+        startingIRatings.clear();
         resetFuel();
         trackSlots.fill(null);
         trackPathComplete = false;
@@ -247,6 +250,12 @@ async function startTelemetry(onStatusChange) {
               if (!sessionInfoFound) {
                 sessionInfoFound = true;
                 trackName = newTrackName;
+                // Store starting iRatings for gain/loss tracking
+                driverInfo.Drivers.forEach(d => {
+                  if (d.IRating > 0 && !startingIRatings.has(d.CarIdx)) {
+                    startingIRatings.set(d.CarIdx, d.IRating);
+                  }
+                });
                 log('[SessionInfo] Found! Drivers: ' + driverInfo.Drivers.length);
                 log('[SessionInfo] Track: ' + trackName);
                 // Dump ALL fields from first driver to discover country data
@@ -522,6 +531,7 @@ async function startTelemetry(onStatusChange) {
             clubId: driver?.ClubID || 0,
             license: driver?.LicString || '',
             iRating: driver?.IRating || 0,
+            startIRating: startingIRatings.get(i) || 0,
             bestLap,
             lastLap: lastLapVal,
             inPit: !!onPitRoad[i],
