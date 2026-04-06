@@ -15,7 +15,7 @@ process.on('uncaughtException', (err) => {
   } catch(e) {}
 });
 
-const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, screen, session } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, screen, session, Notification } = require('electron');
 const path = require('path');
 const { startServer, stopServer } = require('./websocket');
 const { startTelemetry, stopTelemetry } = require('./telemetry');
@@ -158,6 +158,15 @@ app.on('ready', () => {
       if (controlWindow && !controlWindow.isDestroyed()) {
         controlWindow.webContents.send('update-available', info.version);
       }
+      // System notification so user sees it even without opening control panel
+      try {
+        const notif = new Notification({
+          title: 'Atleta Bridge Update Available',
+          body: `Version ${info.version} is ready to download. Click to open settings.`,
+        });
+        notif.on('click', () => showControlWindow());
+        notif.show();
+      } catch(e) {}
     });
     autoUpdater.on('update-not-available', () => {
       console.log('[Updater] No updates');
@@ -175,6 +184,14 @@ app.on('ready', () => {
       if (controlWindow && !controlWindow.isDestroyed()) {
         controlWindow.webContents.send('update-downloaded');
       }
+      try {
+        const notif = new Notification({
+          title: 'Atleta Bridge Update Ready',
+          body: 'Update downloaded. It will install when you close the app.',
+        });
+        notif.on('click', () => showControlWindow());
+        notif.show();
+      } catch(e) {}
     });
     autoUpdater.on('error', (err) => {
       console.log('[Updater] Error:', err.message);
@@ -281,8 +298,10 @@ function createOverlayWindow(overlayId) {
 
   win.loadFile(path.join(__dirname, 'overlays', `${overlayId}.html`));
 
+  // Always ignore mouse events on transparent areas, forward clicks through
+  // Overlays use IPC to temporarily capture events when mouse enters visible content
+  win.setIgnoreMouseEvents(true, { forward: true });
   if (overlaysLocked) {
-    win.setIgnoreMouseEvents(true, { forward: true });
     win.setResizable(false);
   }
 
@@ -324,7 +343,8 @@ function setOverlaysLocked(locked) {
   overlaysLocked = locked;
   Object.values(overlayWindows).forEach(win => {
     if (win && !win.isDestroyed()) {
-      win.setIgnoreMouseEvents(locked, { forward: locked });
+      // Always forward mouse events through transparent areas
+      win.setIgnoreMouseEvents(true, { forward: true });
       win.setResizable(!locked);
       win.webContents.send('lock-state', locked);
     }
@@ -339,6 +359,14 @@ ipcMain.on('toggle-overlay', (event, overlayId, enabled) => {
 
 ipcMain.on('toggle-lock', (event, locked) => {
   setOverlaysLocked(locked);
+});
+
+// Overlays call this when mouse enters/leaves visible content
+ipcMain.on('set-ignore-mouse', (event, ignore) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win && !win.isDestroyed() && !overlaysLocked) {
+    win.setIgnoreMouseEvents(ignore, { forward: true });
+  }
 });
 
 ipcMain.on('toggle-autohide', (event, enabled) => {
