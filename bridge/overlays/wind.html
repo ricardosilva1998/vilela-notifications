@@ -86,6 +86,21 @@
     <div class="overlay-disconnected" id="overlay-disconnected"></div>
   </div>
   <script>
+    // Load settings
+    let _windSettings = {};
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const os = require('os');
+      const settingsFile = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'settings.json');
+      if (fs.existsSync(settingsFile)) {
+        const all = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+        _windSettings = (all.overlayCustom && all.overlayCustom.wind) || {};
+      }
+    } catch(e) {}
+    function getWindSetting(k, d) { return _windSettings[k] !== undefined ? _windSettings[k] : d; }
+    const speedUnit = getWindSetting('speedUnit', 'kmh');
+
     const BRIDGE_URL = 'ws://localhost:9100';
     let ws = null;
     let bridgeConnected = false;
@@ -156,7 +171,11 @@
         if (dirEl) dirEl.textContent = angleToCompass(windDeg);
       }
       if (windSpeed !== undefined && speedEl) {
-        speedEl.innerHTML = windSpeed.toFixed(1) + ' <span class="wind-unit">m/s</span>';
+        let displaySpeed = windSpeed;
+        let unit = 'km/h';
+        if (speedUnit === 'mph') { displaySpeed = windSpeed * 2.23694; unit = 'mph'; }
+        else { displaySpeed = windSpeed * 3.6; unit = 'km/h'; }
+        speedEl.innerHTML = displaySpeed.toFixed(1) + ' <span class="wind-unit">' + unit + '</span>';
       }
     });
 

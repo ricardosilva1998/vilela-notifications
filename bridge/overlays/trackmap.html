@@ -75,6 +75,8 @@
     let targetCars = []; // latest car positions from server
     let displayCars = []; // interpolated positions for smooth rendering
     let lastUpdateTime = 0;
+    let windDir = 0; // wind direction in radians
+    let windSpeed = 0;
 
     function resizeCanvas() {
       const container = canvas.parentElement;
@@ -107,7 +109,7 @@
       });
       const xRange = maxX - minX || 1;
       const yRange = maxY - minY || 1;
-      const padding = 0.08;
+      const padding = 0.03;
 
       // Preserve aspect ratio
       const aspect = xRange / yRange;
@@ -221,6 +223,38 @@
       ctx.closePath();
       ctx.stroke();
 
+      // Draw wind arrow on canvas edge (compass-style: north=top, south=bottom)
+      if (windSpeed > 0) {
+        const cx = w / 2;
+        const cy = h / 2;
+        const arrowDist = Math.min(w, h) * 0.44; // near edge of canvas
+        const arrowLen = 14;
+        // windDir is radians from north (0=N, PI/2=E, PI=S, 3PI/2=W)
+        const ax = cx + Math.sin(windDir) * arrowDist;
+        const ay = cy - Math.cos(windDir) * arrowDist;
+        const tipX = cx + Math.sin(windDir) * (arrowDist - arrowLen);
+        const tipY = cy - Math.cos(windDir) * (arrowDist - arrowLen);
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(145,70,255,0.6)';
+        ctx.fillStyle = 'rgba(145,70,255,0.6)';
+        ctx.lineWidth = 2;
+        // Shaft
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(tipX, tipY);
+        ctx.stroke();
+        // Arrowhead
+        const angle = Math.atan2(tipY - ay, tipX - ax);
+        ctx.beginPath();
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(tipX - 6 * Math.cos(angle - 0.5), tipY - 6 * Math.sin(angle - 0.5));
+        ctx.lineTo(tipX - 6 * Math.cos(angle + 0.5), tipY - 6 * Math.sin(angle + 0.5));
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
       // Draw cars using interpolated positions
       updateDisplayCars();
       displayCars.forEach(car => {
@@ -269,6 +303,12 @@
       targetCars = data.cars || [];
     });
 
+    onData('wind', data => {
+      if (!data) return;
+      windDir = data.windDirection || 0;
+      windSpeed = data.windSpeed || 0;
+    });
+
     // Demo data
     trackPoints = generateCirclePath();
     targetCars = [
@@ -306,7 +346,7 @@
       });
     } catch(e) {}
 
-    connectBridge(['trackmap']);
+    connectBridge(['trackmap', 'wind']);
   </script>
 </body>
 </html>

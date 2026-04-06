@@ -449,6 +449,10 @@
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       wind: [
+        { key: 'speedUnit', label: 'Speed unit', type: 'select', default: 'kmh', options: [
+          { value: 'kmh', label: 'km/h' },
+          { value: 'mph', label: 'mph' },
+        ]},
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
@@ -466,7 +470,7 @@
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       voicechat: [
-        { key: 'openaiKey', label: 'OpenAI API Key (for Whisper)', type: 'text', default: '', placeholder: 'sk-...' },
+        { key: 'openaiKey', label: 'OpenAI API Key (for Whisper)', type: 'password', default: '', placeholder: 'sk-...' },
         { key: 'pushToTalk', label: 'Push-to-Talk Key', type: 'hotkey', default: null },
         { key: 'chatKey', label: 'iRacing Chat Key', type: 'select', default: 'T', options: [
           { value: 'T', label: 'T (default)' },
@@ -726,10 +730,10 @@
           <span class="field-label">${f.label}</span>
           <button class="hotkey-btn" id="field-${overlayId}-${f.key}" onclick="captureHotkey('${overlayId}', '${f.key}')" data-value='${JSON.stringify(val || null)}'>${keyName}</button>
         </div>`;
-      } else if (f.type === 'text') {
+      } else if (f.type === 'text' || f.type === 'password') {
         return `<div class="field-row">
           <span class="field-label">${f.label}</span>
-          <input type="text" class="field-input-wide" id="field-${overlayId}-${f.key}" value="${val || ''}" placeholder="${f.placeholder || ''}">
+          <input type="${f.type}" class="field-input-wide" id="field-${overlayId}-${f.key}" value="${val || ''}" placeholder="${f.placeholder || ''}">
         </div>`;
       } else if (f.type === 'select') {
         return `<div class="field-row">
@@ -829,7 +833,7 @@
         const el = document.getElementById('field-' + overlayId + '-' + f.key);
         if (!el) return;
         if (f.type === 'number') settings[f.key] = el.value;
-        else if (f.type === 'text') settings[f.key] = el.value.trim();
+        else if (f.type === 'text' || f.type === 'password') settings[f.key] = el.value.trim();
         else if (f.type === 'checkbox') settings[f.key] = el.checked;
         else if (f.type === 'hotkey') {
           try { settings[f.key] = JSON.parse(el.dataset.value); } catch(e) { settings[f.key] = null; }
