@@ -406,6 +406,8 @@
         { key: 'rowHeight', label: 'Row height (px)', type: 'number', default: '24', min: 16, max: 40 },
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'showIRatingGain', label: 'Show estimated iRating gain/loss', type: 'checkbox', default: true },
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '', min: 0, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '', min: 0, max: 3000 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       relative: [
@@ -414,6 +416,8 @@
         { key: 'rowHeight', label: 'Row height (px)', type: 'number', default: '24', min: 16, max: 40 },
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'showIRatingGain', label: 'Show estimated iRating gain/loss', type: 'checkbox', default: true },
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '', min: 0, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '', min: 0, max: 3000 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       fuel: [
@@ -423,6 +427,8 @@
         { key: 'showToFinish', label: 'Show Fuel to Finish', type: 'checkbox', default: true },
         { key: 'showToAdd', label: 'Show Fuel to Add', type: 'checkbox', default: true },
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '', min: 0, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '', min: 0, max: 3000 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       wind: [
@@ -434,15 +440,21 @@
         { key: 'compassNColor', label: 'North label color', type: 'text', default: '#f04438', placeholder: '#hex' },
         { key: 'dotColor', label: 'Car dot color', type: 'text', default: '#3ecf8e', placeholder: '#hex' },
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '', min: 0, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '', min: 0, max: 3000 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       proximity: [
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '', min: 0, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '', min: 0, max: 3000 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       chat: [
         { key: 'twitchChannel', label: 'Twitch Channel', type: 'text', default: '', placeholder: 'your_channel_name' },
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '', min: 0, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '', min: 0, max: 3000 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       trackmap: [
@@ -451,6 +463,8 @@
         { key: 'playerColor', label: 'Player dot color', type: 'text', default: '#9146ff', placeholder: '#hex' },
         { key: 'focusColor', label: 'Focused driver color', type: 'text', default: '#3ecf8e', placeholder: '#hex' },
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '', min: 0, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '', min: 0, max: 3000 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       voicechat: [
@@ -473,6 +487,8 @@
           { value: 'de-DE', label: 'German' },
         ]},
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '', min: 0, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '', min: 0, max: 3000 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       inputs: [
@@ -486,10 +502,14 @@
           { value: 'mph', label: 'mph' },
         ]},
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '', min: 0, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '', min: 0, max: 3000 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       discord: [
         { key: 'discordUserId', label: 'Discord User ID', type: 'text', default: '', placeholder: 'Right-click your name > Copy User ID' },
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '', min: 0, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '', min: 0, max: 3000 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
     };

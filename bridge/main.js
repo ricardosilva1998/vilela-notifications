@@ -394,6 +394,15 @@ ipcMain.on('save-overlay-settings', (event, overlayId, overlaySettings) => {
       overlayWindows[overlayId].reload();
     }
   }
+  // Move overlay window if position changed
+  if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
+    const posX = parseInt(overlaySettings.posX);
+    const posY = parseInt(overlaySettings.posY);
+    if (!isNaN(posX) && !isNaN(posY)) {
+      const bounds = overlayWindows[overlayId].getBounds();
+      overlayWindows[overlayId].setBounds({ x: posX, y: posY, width: bounds.width, height: bounds.height });
+    }
+  }
   // Reconnect Twitch chat if channel changed
   if (overlayId === 'chat' && overlaySettings.twitchChannel !== undefined) {
     connectTwitchChat(overlaySettings.twitchChannel);
