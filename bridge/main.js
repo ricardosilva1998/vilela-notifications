@@ -265,17 +265,21 @@ function createOverlayWindow(overlayId) {
   const display = screen.getPrimaryDisplay();
   const { width: screenW } = display.workAreaSize;
 
-  // Trackmap: square size from settings
-  if (overlayId === 'trackmap' && settings.overlayCustom && settings.overlayCustom.trackmap) {
-    const size = parseInt(settings.overlayCustom.trackmap.overlaySize) || config.width;
-    config.width = size;
-    config.height = size;
+  // Trackmap: always square, size from settings, ignore saved bounds
+  if (overlayId === 'trackmap') {
+    if (settings.overlayCustom && settings.overlayCustom.trackmap) {
+      const size = parseInt(settings.overlayCustom.trackmap.overlaySize) || config.width;
+      config.width = size;
+      config.height = size;
+    }
+    // Clear saved bounds — trackmap size always comes from settings
+    if (settings.overlayBounds) delete settings.overlayBounds.trackmap;
   }
   const savedBounds = settings.overlayBounds && settings.overlayBounds[overlayId];
   const x = savedBounds ? savedBounds.x : screenW - config.width - 20;
   const y = savedBounds ? savedBounds.y : 20 + Object.keys(overlayWindows).length * 40;
-  const width = overlayId === 'trackmap' ? config.width : (savedBounds ? savedBounds.width : config.width);
-  const height = overlayId === 'trackmap' ? config.height : (savedBounds ? savedBounds.height : config.height);
+  const width = savedBounds ? savedBounds.width : config.width;
+  const height = savedBounds ? savedBounds.height : config.height;
 
   const win = new BrowserWindow({
     width,
