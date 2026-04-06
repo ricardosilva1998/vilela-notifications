@@ -487,6 +487,16 @@
       ],
     };
 
+    // Migrate old column keys to new ones
+    const COL_KEY_MIGRATION = { position: 'pos', carNumber: 'number', driverName: 'name', bestLap: 'best', lastLap: 'last' };
+    function migrateColKey(k) { return COL_KEY_MIGRATION[k] || k; }
+    function migrateColKeys(arr) { return arr.map(migrateColKey); }
+    function migrateColEnabled(obj) {
+      const out = {};
+      Object.entries(obj).forEach(([k, v]) => { out[migrateColKey(k)] = v; });
+      return out;
+    }
+
     // Standings & Relative column definitions
     const STANDINGS_COLUMNS = [
       { key: 'pos',     label: 'Position', default: true },
@@ -597,8 +607,8 @@
         // ─── Standings & Relative: Sub-tabs (General / Header / Content)
         if (ov.id === 'standings' || ov.id === 'relative') {
           const columns = ov.id === 'standings' ? STANDINGS_COLUMNS : RELATIVE_COLUMNS;
-          const savedCols = saved.columns || columns.map(c => c.key);
-          const savedColEnabled = saved.columnsEnabled || {};
+          const savedCols = migrateColKeys(saved.columns || columns.map(c => c.key));
+          const savedColEnabled = migrateColEnabled(saved.columnsEnabled || {});
           const savedHeaderItems = saved.headerItems || SESSION_HEADER_ITEMS.map(h => h.key);
           const savedHeaderEnabled = saved.headerEnabled || saved.sessionHeader || {};
 
