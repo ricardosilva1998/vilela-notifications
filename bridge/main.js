@@ -258,8 +258,9 @@ function showControlWindow() {
 }
 
 function createOverlayWindow(overlayId) {
-  const config = OVERLAYS.find(o => o.id === overlayId);
-  if (!config || overlayWindows[overlayId]) return;
+  const baseConfig = OVERLAYS.find(o => o.id === overlayId);
+  if (!baseConfig || overlayWindows[overlayId]) return;
+  let config = { ...baseConfig };
 
   const display = screen.getPrimaryDisplay();
   const { width: screenW } = display.workAreaSize;
@@ -267,8 +268,8 @@ function createOverlayWindow(overlayId) {
   // Trackmap uses user-configured width/height from settings
   if (overlayId === 'trackmap' && settings.overlayCustom && settings.overlayCustom.trackmap) {
     const tc = settings.overlayCustom.trackmap;
-    if (tc.overlayWidth) config = { ...config, width: parseInt(tc.overlayWidth) || config.width };
-    if (tc.overlayHeight) config = { ...config, height: parseInt(tc.overlayHeight) || config.height };
+    if (tc.overlayWidth) config.width = parseInt(tc.overlayWidth) || config.width;
+    if (tc.overlayHeight) config.height = parseInt(tc.overlayHeight) || config.height;
   }
   const savedBounds = settings.overlayBounds && settings.overlayBounds[overlayId];
   const x = savedBounds ? savedBounds.x : screenW - config.width - 20;
