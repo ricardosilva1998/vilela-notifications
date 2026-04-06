@@ -277,10 +277,10 @@
         <span class="sidebar-icon">&#127788;&#65039;</span> Wind
       </div>
       <div class="sidebar-item" data-panel="proximity" onclick="navigateTo('proximity')">
-        <span class="sidebar-icon">&#128663;</span> Proximity
+        <span class="sidebar-icon">&#128663;</span> Proximity <span style="font-size:8px;color:#f79009;margin-left:2px;">Soon</span>
       </div>
       <div class="sidebar-item" data-panel="chat" onclick="navigateTo('chat')">
-        <span class="sidebar-icon">&#128172;</span> Chat
+        <span class="sidebar-icon">&#128172;</span> Stream Chat
       </div>
       <div class="sidebar-item" data-panel="trackmap" onclick="navigateTo('trackmap')">
         <span class="sidebar-icon">&#127758;</span> Track Map
@@ -414,7 +414,7 @@
       { id: 'fuel', icon: '&#9981;', name: 'Fuel Calculator' },
       { id: 'wind', icon: '&#127788;&#65039;', name: 'Wind' },
       { id: 'proximity', icon: '&#128663;', name: 'Proximity' },
-      { id: 'chat', icon: '&#128172;', name: 'Chat' },
+      { id: 'chat', icon: '&#128172;', name: 'Stream Chat' },
       { id: 'trackmap', icon: '&#127758;', name: 'Track Map' },
       { id: 'voicechat', icon: '&#127908;', name: 'Voice Chat' },
       { id: 'inputs', icon: '&#127918;', name: 'Driver Inputs' },
@@ -493,6 +493,11 @@
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       inputs: [
+        { key: 'showGraph', label: 'Telemetry Graph', type: 'checkbox', default: true },
+        { key: 'showPedals', label: 'Pedal Bars', type: 'checkbox', default: true },
+        { key: 'showGear', label: 'Gear Display', type: 'checkbox', default: true },
+        { key: 'showSpeed', label: 'Speed Display', type: 'checkbox', default: true },
+        { key: 'showWheel', label: 'Steering Wheel', type: 'checkbox', default: true },
         { key: 'speedUnit', label: 'Speed Unit', type: 'select', default: 'kmh', options: [
           { value: 'kmh', label: 'km/h' },
           { value: 'mph', label: 'mph' },
@@ -576,13 +581,15 @@
       overlays.forEach(ov => {
         const card = document.createElement('div');
         card.className = 'overview-card';
+        const isProximity = ov.id === 'proximity';
         card.innerHTML = `
           <div class="overview-card-left">
             <span class="overview-card-icon">${ov.icon}</span>
             <span class="overview-card-name">${ov.name}</span>
+            ${isProximity ? '<span style="font-size:9px;color:#f79009;background:rgba(247,144,9,0.15);padding:1px 6px;border-radius:4px;margin-left:4px;font-weight:600;">Coming Soon</span>' : ''}
           </div>
           <label class="toggle">
-            <input type="checkbox" id="toggle-${ov.id}" onchange="toggleOverlay('${ov.id}', this.checked)">
+            <input type="checkbox" id="toggle-${ov.id}" ${isProximity ? 'disabled' : ''} onchange="toggleOverlay('${ov.id}', this.checked)">
             <span class="slider"></span>
           </label>
         `;
@@ -690,6 +697,13 @@
             </div>`;
           });
           html += `</div></div>`;
+        } else if (ov.id === 'proximity') {
+          // ─── Proximity: Coming Soon placeholder
+          html += `<div style="text-align:center;padding:32px 0;color:#5c5b6e;">
+            <div style="font-size:24px;margin-bottom:8px;">&#128663;</div>
+            <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Coming Soon</div>
+            <div style="font-size:11px;">Car proximity detection is in development.</div>
+          </div>`;
         } else {
           // ─── Other overlays: just render CUSTOMIZE_FIELDS
           if (fields.length > 0) {
@@ -721,10 +735,13 @@
           <input type="number" class="field-input" id="field-${overlayId}-${f.key}" value="${val}" min="${f.min}" max="${f.max}">
         </div>`;
       } else if (f.type === 'checkbox') {
-        return `<label class="checkbox-row">
-          <input type="checkbox" class="field-checkbox" id="field-${overlayId}-${f.key}" ${val ? 'checked' : ''} onchange="autoSaveOverlay('${overlayId}')">
-          ${f.label}
-        </label>`;
+        return `<div class="field-row">
+          <span class="field-label">${f.label}</span>
+          <label class="toggle toggle-sm">
+            <input type="checkbox" class="field-checkbox" id="field-${overlayId}-${f.key}" ${val ? 'checked' : ''} onchange="autoSaveOverlay('${overlayId}')">
+            <span class="slider"></span>
+          </label>
+        </div>`;
       } else if (f.type === 'hotkey') {
         const keyName = val && val.name ? val.name : 'Not set';
         return `<div class="field-row">
@@ -1050,6 +1067,31 @@
       `).join('');
     }
     renderReleaseNotes();
+
+    async function fetchGitHubReleases() {
+      try {
+        const resp = await fetch('https://api.github.com/repos/ricardosilva1998/atleta-notifications-helper/releases?per_page=20');
+        if (!resp.ok) return;
+        const releases = await resp.json();
+        if (!Array.isArray(releases) || releases.length === 0) return;
+        const list = document.getElementById('release-notes-list');
+        list.innerHTML = releases.map((r, i) => {
+          const version = (r.tag_name || '').replace(/^v/, '');
+          const date = r.published_at ? new Date(r.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+          const notes = (r.body || 'No release notes').split('\n').filter(l => l.trim()).map(l => l.replace(/^[-*]\s*/, ''));
+          return `<div class="release-card" ${i >= 5 ? 'style="opacity:0.5;"' : ''}>
+            <div class="release-header">
+              <span class="release-version">v${version}</span>
+              <span class="release-date">${date}</span>
+            </div>
+            <div class="release-notes">
+              ${notes.map(n => '<div>&bull; ' + n + '</div>').join('')}
+            </div>
+          </div>`;
+        }).join('');
+      } catch(e) { /* fallback already rendered */ }
+    }
+    fetchGitHubReleases();
 
     let updateState = 'idle';
 

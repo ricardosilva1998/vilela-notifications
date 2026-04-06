@@ -224,11 +224,45 @@
     }
 
     // ─── Settings ──────────────────────────────────────────────────────
-    let speedUnit = 'kmh';
+    let _inputSettings = {};
     try {
-      const saved = JSON.parse(localStorage.getItem('overlay_inputs') || '{}');
-      if (saved.speedUnit) speedUnit = saved.speedUnit;
+      const fs = require('fs');
+      const path = require('path');
+      const os = require('os');
+      const settingsFile = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'settings.json');
+      if (fs.existsSync(settingsFile)) {
+        const all = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+        _inputSettings = (all.overlayCustom && all.overlayCustom.inputs) || {};
+      }
     } catch(e) {}
+    let speedUnit = _inputSettings.speedUnit || 'kmh';
+
+    // Hide/show sections based on settings
+    function applyVisibility() {
+      const graph = document.querySelector('.trace-container');
+      const pedals = document.querySelector('.pedals');
+      const gear = document.querySelector('.gear-display');
+      const speed = document.querySelector('.speed-display');
+      const wheel = document.querySelector('.wheel-container');
+      const dividers = document.querySelectorAll('.divider');
+
+      if (graph) graph.style.display = _inputSettings.showGraph === false ? 'none' : '';
+      if (pedals) pedals.style.display = _inputSettings.showPedals === false ? 'none' : '';
+      if (gear) gear.style.display = _inputSettings.showGear === false ? 'none' : '';
+      if (speed) speed.style.display = _inputSettings.showSpeed === false ? 'none' : '';
+      if (wheel) wheel.style.display = _inputSettings.showWheel === false ? 'none' : '';
+
+      // Hide dividers between hidden sections
+      dividers.forEach(d => d.style.display = '');
+      dividers.forEach(d => {
+        const prev = d.previousElementSibling;
+        const next = d.nextElementSibling;
+        if ((prev && prev.style.display === 'none') || (next && next.style.display === 'none')) {
+          d.style.display = 'none';
+        }
+      });
+    }
+    applyVisibility();
 
     // ─── Trace Graph ───────────────────────────────────────────────────
     // ~300 points = 5 seconds at 60fps, fed from the render loop using smoothed values
