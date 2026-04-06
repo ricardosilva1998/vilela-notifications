@@ -551,13 +551,15 @@ async function startTelemetry(onStatusChange) {
         const userSelectedIdx = getSelectedCarIdx();
         const focusCarIdx = userSelectedIdx !== null ? userSelectedIdx : camCarIdx;
 
-        // Switch iRacing camera when focused driver changes
-        if (focusCarIdx !== lastFocusCarIdx && switchCamera) {
-          lastFocusCarIdx = focusCarIdx;
-          const focusDriver = drivers.find(d => d.CarIdx === focusCarIdx);
+        // Switch iRacing camera only when USER selects a driver (not on camera auto-cycle)
+        if (userSelectedIdx !== null && userSelectedIdx !== lastFocusCarIdx && switchCamera) {
+          lastFocusCarIdx = userSelectedIdx;
+          const focusDriver = drivers.find(d => d.CarIdx === userSelectedIdx);
           if (focusDriver && focusDriver.CarNumberRaw !== undefined) {
             switchCamera(focusDriver.CarNumberRaw, 0);
           }
+        } else if (userSelectedIdx === null) {
+          lastFocusCarIdx = focusCarIdx;
         }
 
         // Use PLAYER_CAR_IDX from telemetry if session info unavailable
