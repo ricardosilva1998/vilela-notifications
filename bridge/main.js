@@ -287,11 +287,10 @@ function createOverlayWindow(overlayId) {
     x,
     y,
     frame: false,
-    transparent: false,
-    backgroundColor: '#0c0d14',
+    transparent: true,
     alwaysOnTop: true,
     skipTaskbar: true,
-    resizable: false,
+    resizable: true,
     minimizable: false,
     maximizable: false,
     hasShadow: false,
@@ -300,14 +299,13 @@ function createOverlayWindow(overlayId) {
     webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
 
-  // Always unlocked — overlays accept mouse events and are draggable
-  win.setIgnoreMouseEvents(false);
-  win.setAlwaysOnTop(true, 'floating');
+  // Use highest z-level to stay on top of fullscreen games like iRacing
+  win.setAlwaysOnTop(true, 'screen-saver');
 
-  // Periodically re-assert always-on-top
+  // Periodically re-assert always-on-top (games can steal focus)
   const topInterval = setInterval(() => {
     if (win.isDestroyed()) { clearInterval(topInterval); return; }
-    try { win.setAlwaysOnTop(true, 'floating'); } catch(e) {}
+    try { win.setAlwaysOnTop(true, 'screen-saver'); } catch(e) {}
   }, 2000);
 
   win.loadFile(path.join(__dirname, 'overlays', `${overlayId}.html`));
