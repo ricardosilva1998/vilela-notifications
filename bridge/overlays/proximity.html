@@ -124,16 +124,21 @@
         if (header) header.style.cursor = locked ? 'default' : 'move';
       });
 
-      // Click-through: only capture mouse on visible panel content
-      const panel = document.querySelector('.overlay-panel');
-      if (panel) {
-        panel.addEventListener('mouseenter', () => {
+      // Click-through: transparent areas pass clicks through, visible panel captures them
+      let _mouseOverPanel = false;
+      document.addEventListener('mousemove', (e) => {
+        const panel = document.querySelector('.overlay-panel');
+        if (!panel) return;
+        const r = panel.getBoundingClientRect();
+        const over = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+        if (over && !_mouseOverPanel) {
+          _mouseOverPanel = true;
           ipcRenderer.send('set-ignore-mouse', false);
-        });
-        panel.addEventListener('mouseleave', () => {
+        } else if (!over && _mouseOverPanel) {
+          _mouseOverPanel = false;
           ipcRenderer.send('set-ignore-mouse', true);
-        });
-      }
+        }
+      });
     } catch(e) {}
   </script>
 </body>
