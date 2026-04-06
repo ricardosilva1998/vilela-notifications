@@ -265,11 +265,11 @@ function createOverlayWindow(overlayId) {
   const display = screen.getPrimaryDisplay();
   const { width: screenW } = display.workAreaSize;
 
-  // Trackmap uses user-configured width/height from settings
+  // Trackmap: square size from settings
   if (overlayId === 'trackmap' && settings.overlayCustom && settings.overlayCustom.trackmap) {
-    const tc = settings.overlayCustom.trackmap;
-    if (tc.overlayWidth) config.width = parseInt(tc.overlayWidth) || config.width;
-    if (tc.overlayHeight) config.height = parseInt(tc.overlayHeight) || config.height;
+    const size = parseInt(settings.overlayCustom.trackmap.overlaySize) || config.width;
+    config.width = size;
+    config.height = size;
   }
   const savedBounds = settings.overlayBounds && settings.overlayBounds[overlayId];
   const x = savedBounds ? savedBounds.x : screenW - config.width - 20;
@@ -295,16 +295,14 @@ function createOverlayWindow(overlayId) {
     webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
 
-  // Lock aspect ratio during resize (skip for trackmap — it handles its own aspect)
-  if (overlayId !== 'trackmap') {
-    const initialAspect = width / height;
-    win.on('will-resize', (event, newBounds) => {
-      event.preventDefault();
-      const newW = newBounds.width;
-      const newH = Math.round(newW / initialAspect);
-      win.setBounds({ x: newBounds.x, y: newBounds.y, width: newW, height: newH });
-    });
-  }
+  // Lock aspect ratio during resize (trackmap forced to square)
+  const initialAspect = overlayId === 'trackmap' ? 1 : (width / height);
+  win.on('will-resize', (event, newBounds) => {
+    event.preventDefault();
+    const newW = newBounds.width;
+    const newH = Math.round(newW / initialAspect);
+    win.setBounds({ x: newBounds.x, y: newBounds.y, width: newW, height: newH });
+  });
 
   // Use highest z-level to stay on top of fullscreen games like iRacing
   win.setAlwaysOnTop(true, 'screen-saver');

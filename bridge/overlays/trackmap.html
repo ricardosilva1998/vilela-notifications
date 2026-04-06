@@ -13,9 +13,9 @@
     .status-dot.connected { background: #3ecf8e; }
     .status-dot.waiting { background: #f79009; }
     .status-dot.demo { background: #f79009; }
-    .map-container { flex: 1; position: relative; padding: 4px; }
+    .map-container { flex: 1; position: relative; }
     canvas { width: 100%; height: 100%; }
-    .map-legend { position: absolute; bottom: 6px; right: 10px; font-size: 8px; color: rgba(255,255,255,0.3); }
+    .map-legend { position: absolute; bottom: 4px; right: 8px; font-size: 8px; color: rgba(255,255,255,0.3); }
     .overlay-disconnected { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(12,13,20,0.9); color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 600; border-radius: 8px; }
   </style>
 </head>
@@ -71,17 +71,23 @@
     // Canvas setup
     const canvas = document.getElementById('track-canvas');
     const ctx = canvas.getContext('2d');
-    let trackPoints = []; // normalized {x, y, pct} points
-    let targetCars = []; // latest car positions from server
-    let displayCars = []; // interpolated positions for smooth rendering
-    let lastUpdateTime = 0;
-    let windDir = 0; // wind direction in radians
+    let trackPoints = [];
+    let targetCars = [];
+    let displayCars = [];
+    let windDir = 0;
     let windSpeed = 0;
 
     function resizeCanvas() {
       const container = canvas.parentElement;
-      canvas.width = container.clientWidth;
-      canvas.height = container.clientHeight;
+      // Use square area based on the smaller dimension
+      const size = Math.min(container.clientWidth, container.clientHeight);
+      canvas.width = size;
+      canvas.height = size;
+      // Center the canvas in the container
+      canvas.style.width = size + 'px';
+      canvas.style.height = size + 'px';
+      canvas.style.display = 'block';
+      canvas.style.margin = 'auto';
     }
     window.addEventListener('resize', resizeCanvas);
     setTimeout(resizeCanvas, 100);
@@ -96,43 +102,41 @@
       return points;
     }
 
-    // Normalize raw path to 0-1 range (simple min-max, no aspect ratio handling here)
-    // Aspect ratio is preserved at draw time using the actual canvas dimensions
+    // Normalize raw path to 0-1 square with padding, preserving aspect ratio
     function normalizeTrackPath(rawPath) {
       if (!rawPath || rawPath.length < 10) return generateCirclePath();
 
       let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
       rawPath.forEach(p => {
-        if (p.x < minX) minX = p.x;
-        if (p.x > maxX) maxX = p.x;
-        if (p.y < minY) minY = p.y;
-        if (p.y > maxY) maxY = p.y;
+        if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
       });
       const xRange = maxX - minX || 1;
       const yRange = maxY - minY || 1;
+      const padding = 0.06; // padding for wind arrow at edges
 
+      // Preserve aspect ratio within the square
+      const aspect = xRange / yRange;
+      let scaleX = 1, scaleY = 1;
+      if (aspect > 1) scaleY = 1 / aspect;
+      else scaleX = aspect;
+
+      const usable = 1 - 2 * padding;
       return rawPath.map(p => ({
-        x: (p.x - minX) / xRange,
-        y: 1 - (p.y - minY) / yRange, // flip Y so north is up
+        x: padding + usable * scaleX * (p.x - minX) / xRange + usable * (1 - scaleX) / 2,
+        y: padding + usable * scaleY * (1 - (p.y - minY) / yRange) + usable * (1 - scaleY) / 2,
         pct: p.pct,
-        _aspect: xRange / yRange, // store track aspect ratio
       }));
     }
 
-    // Find track position for a given lap distance percentage
-    // Uses interpolation between two nearest points for smooth placement
     function getTrackPosition(pct) {
       if (!trackPoints.length) return { x: 0.5, y: 0.5 };
-
-      // Handle wrap-around: find two points that bracket pct
       let bestIdx = 0;
       let minDist = Math.abs(pct - trackPoints[0].pct);
       for (let i = 1; i < trackPoints.length; i++) {
         const d = Math.abs(pct - trackPoints[i].pct);
         if (d < minDist) { minDist = d; bestIdx = i; }
       }
-
-      // Interpolate between bestIdx and neighbor for smoother positioning
       const p1 = trackPoints[bestIdx];
       let p2, t;
       if (pct >= p1.pct && bestIdx < trackPoints.length - 1) {
@@ -143,7 +147,6 @@
         p2 = trackPoints[bestIdx - 1];
         const range = p1.pct - p2.pct;
         t = range > 0 ? (p1.pct - pct) / range : 0;
-        // Swap so we lerp from p2 to p1
         const tmp = p1;
         return { x: p2.x + (tmp.x - p2.x) * (1 - t), y: p2.y + (tmp.y - p2.y) * (1 - t) };
       } else {
@@ -152,115 +155,64 @@
       return { x: p1.x + (p2.x - p1.x) * t, y: p1.y + (p2.y - p1.y) * t };
     }
 
-    // Smooth interpolation: lerp display car pct toward target pct each frame
     function updateDisplayCars() {
-      const now = performance.now();
-      const lerpSpeed = 0.15; // Smooth factor per frame
-
-      // Build map of target positions
+      const lerpSpeed = 0.15;
       const targetMap = new Map();
       targetCars.forEach(c => targetMap.set(c.carIdx, c));
-
-      // Update existing display cars toward targets
       const activeIdxs = new Set();
       displayCars = displayCars.filter(dc => targetMap.has(dc.carIdx));
       displayCars.forEach(dc => {
         const target = targetMap.get(dc.carIdx);
         if (!target) return;
         activeIdxs.add(dc.carIdx);
-        // Lerp pct with wrap-around handling
         let diff = target.pct - dc.pct;
         if (diff > 0.5) diff -= 1;
         if (diff < -0.5) diff += 1;
         dc.pct += diff * lerpSpeed;
-        // Normalize pct to 0-1
         if (dc.pct < 0) dc.pct += 1;
         if (dc.pct >= 1) dc.pct -= 1;
-        // Copy latest metadata
         dc.carNumber = target.carNumber;
         dc.carClassColor = target.carClassColor;
         dc.isPlayer = target.isPlayer;
         dc.inPit = target.inPit;
       });
-
-      // Add new cars not yet in display
       targetCars.forEach(c => {
-        if (!activeIdxs.has(c.carIdx)) {
-          displayCars.push({ ...c });
-        }
+        if (!activeIdxs.has(c.carIdx)) displayCars.push({ ...c });
       });
-    }
-
-    // Convert normalized 0-1 track coords to canvas pixels, preserving aspect ratio
-    // Track fills the canvas with small margin, centered
-    function trackToCanvas(px, py, w, h) {
-      const margin = 16; // px margin for wind arrow
-      const drawW = w - margin * 2;
-      const drawH = h - margin * 2;
-      // Track aspect from first point (stored during normalization)
-      const trackAspect = (trackPoints[0] && trackPoints[0]._aspect) || 1;
-      const canvasAspect = drawW / drawH;
-
-      let scaleW, scaleH, offX, offY;
-      if (trackAspect > canvasAspect) {
-        // Track wider than canvas — fit to width
-        scaleW = drawW;
-        scaleH = drawW / trackAspect;
-        offX = margin;
-        offY = margin + (drawH - scaleH) / 2;
-      } else {
-        // Track taller than canvas — fit to height
-        scaleH = drawH;
-        scaleW = drawH * trackAspect;
-        offX = margin + (drawW - scaleW) / 2;
-        offY = margin;
-      }
-      return { x: offX + px * scaleW, y: offY + py * scaleH };
     }
 
     function draw() {
       if (!ctx) return;
-      const w = canvas.width;
-      const h = canvas.height;
-      if (w === 0 || h === 0) return;
-      ctx.clearRect(0, 0, w, h);
-
+      const s = canvas.width; // square canvas
+      if (s === 0) return;
+      ctx.clearRect(0, 0, s, s);
       if (!trackPoints.length) return;
 
+      // All coordinates are 0-1 normalized, multiply by s for pixels
       // Draw track outline
       ctx.beginPath();
       ctx.strokeStyle = 'rgba(255,255,255,0.15)';
       ctx.lineWidth = 3;
       trackPoints.forEach((p, i) => {
-        const { x, y } = trackToCanvas(p.x, p.y, w, h);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+        const x = p.x * s, y = p.y * s;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       });
       ctx.closePath();
       ctx.stroke();
 
-      // Draw wind chevron arrow at canvas edge (same style as wind overlay)
+      // Draw wind chevron arrow at edge (compass-style)
       if (windSpeed > 0) {
-        const cx = w / 2;
-        const cy = h / 2;
-        const distX = w / 2 - 4;
-        const distY = h / 2 - 4;
-        const sinW = Math.sin(windDir);
-        const cosW = Math.cos(windDir);
-        const edgeDist = Math.min(
-          Math.abs(sinW) > 0.001 ? distX / Math.abs(sinW) : 9999,
-          Math.abs(cosW) > 0.001 ? distY / Math.abs(cosW) : 9999
-        );
+        const cx = s / 2, cy = s / 2;
+        const edgeDist = s * 0.47; // near edge of square
+        const sinW = Math.sin(windDir), cosW = Math.cos(windDir);
+        const arrowX = cx + sinW * (edgeDist - 16);
+        const arrowY = cy - cosW * (edgeDist - 16);
 
         ctx.save();
-        // Translate to arrow position and rotate
-        const arrowX = cx + sinW * (edgeDist - 18);
-        const arrowY = cy - cosW * (edgeDist - 18);
         ctx.translate(arrowX, arrowY);
-        ctx.rotate(windDir); // rotate so arrow points inward from edge
+        ctx.rotate(windDir);
 
-        // Gradient purple matching wind overlay
-        const grad = ctx.createLinearGradient(0, -16, 0, 16);
+        const grad = ctx.createLinearGradient(0, -18, 0, 18);
         grad.addColorStop(0, '#b47aff');
         grad.addColorStop(1, '#7c3aed');
 
@@ -269,19 +221,19 @@
         ctx.lineWidth = 3;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(0, -16);
-        ctx.lineTo(0, 2);
+        ctx.moveTo(0, -18);
+        ctx.lineTo(0, 4);
         ctx.stroke();
 
-        // Chevron arrowhead (points toward center)
+        // Chevron arrowhead
         ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.moveTo(0, 14);    // tip
-        ctx.lineTo(-8, -2);   // left wing
-        ctx.lineTo(-3, 1);
-        ctx.lineTo(0, -3);    // notch
-        ctx.lineTo(3, 1);
-        ctx.lineTo(8, -2);    // right wing
+        ctx.moveTo(0, 16);
+        ctx.lineTo(-9, -2);
+        ctx.lineTo(-3, 2);
+        ctx.lineTo(0, -2);
+        ctx.lineTo(3, 2);
+        ctx.lineTo(9, -2);
         ctx.closePath();
         ctx.fill();
 
@@ -289,31 +241,29 @@
         ctx.strokeStyle = grad;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.moveTo(-4, -16);
-        ctx.lineTo(0, -10);
-        ctx.moveTo(4, -16);
-        ctx.lineTo(0, -10);
+        ctx.moveTo(-4, -18);
+        ctx.lineTo(0, -12);
+        ctx.moveTo(4, -18);
+        ctx.lineTo(0, -12);
         ctx.stroke();
 
-        // Glow effect
+        // Glow
         ctx.shadowColor = '#9146ff';
         ctx.shadowBlur = 6;
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(0, -14);
-        ctx.lineTo(0, 4);
+        ctx.moveTo(0, -16);
+        ctx.lineTo(0, 6);
         ctx.stroke();
         ctx.shadowBlur = 0;
 
         ctx.restore();
       }
 
-      // Draw cars using interpolated positions
+      // Draw cars
       updateDisplayCars();
       displayCars.forEach(car => {
         const pos = getTrackPosition(car.pct);
-        const { x, y } = trackToCanvas(pos.x, pos.y, w, h);
+        const x = pos.x * s, y = pos.y * s;
         const radius = car.isPlayer ? 6 : 4;
         const color = car.isPlayer ? '#9146ff' : (car.carClassColor || '#fff');
 
@@ -335,11 +285,7 @@
       });
     }
 
-    // Animation loop for smooth rendering
-    function animate() {
-      draw();
-      requestAnimationFrame(animate);
-    }
+    function animate() { draw(); requestAnimationFrame(animate); }
     requestAnimationFrame(animate);
 
     onData('trackmap', (data) => {
@@ -351,7 +297,6 @@
         trackPoints = generateCirclePath();
         document.getElementById('map-legend').textContent = 'Mapping track...';
       }
-
       targetCars = data.cars || [];
     });
 
@@ -372,7 +317,9 @@
     ];
     displayCars = targetCars.map(c => ({ ...c }));
 
-    // Lock state support
+    connectBridge(['trackmap', 'wind']);
+
+    // Lock state + click-through support
     try {
       const { ipcRenderer } = require('electron');
       ipcRenderer.on('lock-state', (event, locked) => {
@@ -381,7 +328,6 @@
         if (header) header.style.cursor = locked ? 'default' : 'move';
       });
 
-      // Click-through: transparent areas pass clicks through, visible panel captures them
       let _mouseOverPanel = false;
       document.addEventListener('mousemove', (e) => {
         const panel = document.querySelector('.overlay-panel');
@@ -397,8 +343,6 @@
         }
       });
     } catch(e) {}
-
-    connectBridge(['trackmap', 'wind']);
   </script>
 </body>
 </html>
