@@ -571,8 +571,11 @@ async function startTelemetry(onStatusChange) {
           })
           .sort((a, b) => a.distGap - b.distGap);
 
+        // Find the focused car's data for the center row
+        const focusCar = standings.find(s => s.carIdx === refCarIdx) || null;
+
         if (pollCount % 15 === 0) broadcastToChannel('relative', { type: 'data', channel: 'relative', data: {
-          playerCarIdx, spectatedCarIdx: focusCarIdx, cars: relative,
+          playerCarIdx, spectatedCarIdx: focusCarIdx, cars: relative, focusCar,
         }});
 
         // === Track Map ===

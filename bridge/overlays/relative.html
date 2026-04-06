@@ -254,16 +254,16 @@
     }
 
     function buildRelativeRows(data) {
-      const { cars } = data;
-      const playerCar = cars.find(c => c.isSpectated) || cars.find(c => c.isPlayer);
+      const { cars, focusCar } = data;
+      // Center car: use focusCar from telemetry (the spectated/selected driver), fallback to finding in cars list
+      const centerCar = focusCar || cars.find(c => c.isSpectated) || cars.find(c => c.isPlayer);
       // Positive distGap = car is AHEAD (further along track), negative = BEHIND
-      // Only exclude the center car (spectated/player) — other cars (including player when spectating someone else) show normally
-      const ahead = cars.filter(c => c !== playerCar && c.distGap > 0).slice(0, MAX_AHEAD).reverse();
-      const behind = cars.filter(c => c !== playerCar && c.distGap < 0).slice(-MAX_BEHIND);
+      const ahead = cars.filter(c => c.distGap > 0).slice(0, MAX_AHEAD).reverse();
+      const behind = cars.filter(c => c.distGap < 0).slice(-MAX_BEHIND);
 
       const rows = [];
       for (const d of ahead) rows.push(buildRelativeRow(d, 'ahead', formatRelativeGap(-d.gap), false));
-      rows.push(buildRelativeRow(playerCar || { position: 0, classPosition: 0, carNumber: '', driverName: 'You', country: '', safetyRating: '', iRating: 0, carClassColor: '#fff' }, '', '', true));
+      rows.push(buildRelativeRow(centerCar || { position: 0, classPosition: 0, carNumber: '', driverName: 'You', country: '', safetyRating: '', iRating: 0, carClassColor: '#fff' }, '', '', true));
       for (const d of behind) rows.push(buildRelativeRow(d, 'behind', formatRelativeGap(-d.gap), false));
 
       return rows.join('');
