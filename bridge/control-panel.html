@@ -184,6 +184,14 @@
     .drag-handle:active { cursor: grabbing; }
     .col-label { flex: 1; font-size: 11px; font-weight: 500; color: #c0bfd0; }
 
+    /* ─── Sub-tabs inside overlay panels ──────────────────── */
+    .sub-tabs { display: flex; gap: 0; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 14px; }
+    .sub-tab { padding: 7px 14px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #5c5b6e; cursor: pointer; border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s; }
+    .sub-tab:hover:not(.active) { color: #8b8a9e; }
+    .sub-tab.active { color: #9146ff; border-bottom-color: #9146ff; }
+    .sub-tab-content { display: none; }
+    .sub-tab-content.active { display: block; }
+
     /* ─── Lock bar (bottom of overview) ───────────────────── */
     .lock-section { margin-top: 16px; }
     .lock-main-btn {
@@ -629,25 +637,55 @@
           </label>
         </div>`;
 
-        // ─── Standings & Relative: Session Header + Columns + General
+        // ─── Standings & Relative: Sub-tabs (General / Header / Content)
         if (ov.id === 'standings' || ov.id === 'relative') {
           const columns = ov.id === 'standings' ? STANDINGS_COLUMNS : RELATIVE_COLUMNS;
           const savedCols = saved.columns || columns.map(c => c.key);
           const savedColEnabled = saved.columnsEnabled || {};
-          const savedHeader = saved.sessionHeader || {};
+          const savedHeaderItems = saved.headerItems || SESSION_HEADER_ITEMS.map(h => h.key);
+          const savedHeaderEnabled = saved.headerEnabled || saved.sessionHeader || {};
 
-          // Session Header section
-          html += `<div class="section-header">Session Header</div>`;
-          SESSION_HEADER_ITEMS.forEach(item => {
-            const checked = savedHeader[item.key] !== undefined ? savedHeader[item.key] : item.default;
-            html += `<label class="checkbox-row">
-              <input type="checkbox" class="field-checkbox session-header-check" data-overlay="${ov.id}" data-key="${item.key}" ${checked ? 'checked' : ''} onchange="autoSaveOverlay('${ov.id}')">
-              ${item.label}
-            </label>`;
+          // Sub-tabs bar
+          html += `<div class="sub-tabs">
+            <div class="sub-tab active" onclick="switchSubTab('${ov.id}', 'general')">General</div>
+            <div class="sub-tab" onclick="switchSubTab('${ov.id}', 'header')">Header</div>
+            <div class="sub-tab" onclick="switchSubTab('${ov.id}', 'content')">Content</div>
+          </div>`;
+
+          // ── General sub-tab
+          html += `<div class="sub-tab-content active" id="subtab-${ov.id}-general">`;
+          fields.forEach(f => {
+            html += renderField(f, saved, ov.id);
           });
+          html += `</div>`;
 
-          // Columns section
-          html += `<div class="section-header">Columns</div>`;
+          // ── Header sub-tab
+          html += `<div class="sub-tab-content" id="subtab-${ov.id}-header">`;
+          html += `<div class="column-list" id="header-list-${ov.id}">`;
+          // Build ordered header list
+          const orderedHeaders = [];
+          savedHeaderItems.forEach(key => {
+            const item = SESSION_HEADER_ITEMS.find(h => h.key === key);
+            if (item) orderedHeaders.push(item);
+          });
+          SESSION_HEADER_ITEMS.forEach(item => {
+            if (!orderedHeaders.find(h => h.key === item.key)) orderedHeaders.push(item);
+          });
+          orderedHeaders.forEach(item => {
+            const checked = savedHeaderEnabled[item.key] !== undefined ? savedHeaderEnabled[item.key] : item.default;
+            html += `<div class="column-item" draggable="true" data-key="${item.key}" data-overlay="${ov.id}" data-list="header">
+              <span class="drag-handle">&#10303;</span>
+              <span class="col-label">${item.label}</span>
+              <label class="toggle" style="width:32px;height:18px;">
+                <input type="checkbox" class="header-toggle" data-overlay="${ov.id}" data-key="${item.key}" ${checked ? 'checked' : ''} onchange="autoSaveOverlay('${ov.id}')">
+                <span class="slider" style="border-radius:18px;"><span style="display:none;"></span></span>
+              </label>
+            </div>`;
+          });
+          html += `</div></div>`;
+
+          // ── Content sub-tab
+          html += `<div class="sub-tab-content" id="subtab-${ov.id}-content">`;
           html += `<div class="column-list" id="column-list-${ov.id}">`;
           // Build ordered column list
           const orderedCols = [];
@@ -655,7 +693,6 @@
             const col = columns.find(c => c.key === key);
             if (col) orderedCols.push(col);
           });
-          // Add any missing columns at the end
           columns.forEach(col => {
             if (!orderedCols.find(c => c.key === col.key)) orderedCols.push(col);
           });
@@ -670,13 +707,7 @@
               </label>
             </div>`;
           });
-          html += '</div>';
-
-          // General section
-          html += `<div class="section-header">General</div>`;
-          fields.forEach(f => {
-            html += renderField(f, saved, ov.id);
-          });
+          html += `</div></div>`;
         } else {
           // ─── Other overlays: just render CUSTOMIZE_FIELDS
           if (fields.length > 0) {
@@ -740,11 +771,16 @@
         let dragItem = null;
 
         list.addEventListener('dragstart', (e) => {
+          // Don't start drag from toggle checkbox
+          if (e.target.tagName === 'INPUT' || e.target.closest('.toggle')) {
+            e.preventDefault();
+            return;
+          }
           dragItem = e.target.closest('.column-item');
           if (!dragItem) return;
           dragItem.classList.add('dragging');
           e.dataTransfer.effectAllowed = 'move';
-          e.dataTransfer.setData('text/plain', dragItem.dataset.col);
+          e.dataTransfer.setData('text/plain', '');
         });
 
         list.addEventListener('dragend', (e) => {
@@ -796,6 +832,16 @@
       }, 300);
     }
 
+    // ─── Sub-Tab Switching ─────────────────────────────────────
+    function switchSubTab(overlayId, tabName) {
+      document.querySelectorAll('#panel-' + overlayId + ' .sub-tab').forEach(t => {
+        t.classList.toggle('active', t.textContent.trim().toLowerCase() === tabName);
+      });
+      document.querySelectorAll('#panel-' + overlayId + ' .sub-tab-content').forEach(c => {
+        c.classList.toggle('active', c.id === 'subtab-' + overlayId + '-' + tabName);
+      });
+    }
+
     // ─── Save Overlay Settings ───────────────────────────────
     function saveOverlaySettings(overlayId) {
       const fields = CUSTOMIZE_FIELDS[overlayId] || [];
@@ -814,13 +860,21 @@
         else if (f.type === 'select') settings[f.key] = el.value;
       });
 
-      // Collect session header settings (standings/relative)
+      // Collect header item order and enabled state (standings/relative)
       if (overlayId === 'standings' || overlayId === 'relative') {
-        const sessionHeader = {};
-        document.querySelectorAll('.session-header-check[data-overlay="' + overlayId + '"]').forEach(cb => {
-          sessionHeader[cb.dataset.key] = cb.checked;
-        });
-        settings.sessionHeader = sessionHeader;
+        const headerList = document.getElementById('header-list-' + overlayId);
+        if (headerList) {
+          const headerItems = [];
+          const headerEnabled = {};
+          headerList.querySelectorAll('.column-item').forEach(item => {
+            const key = item.dataset.key;
+            headerItems.push(key);
+            const toggle = item.querySelector('.header-toggle');
+            if (toggle) headerEnabled[key] = toggle.checked;
+          });
+          settings.headerItems = headerItems;
+          settings.headerEnabled = headerEnabled;
+        }
 
         // Collect column order and enabled state
         const colList = document.getElementById('column-list-' + overlayId);

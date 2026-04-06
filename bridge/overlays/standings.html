@@ -89,11 +89,17 @@
       enabledColumns = JSON.parse(getSetting('columns', JSON.stringify(DEFAULT_COLUMNS)));
     } catch(e) { enabledColumns = DEFAULT_COLUMNS; }
 
-    // Session header items
+    // Session header items — filter by enabled state
     const DEFAULT_HEADER_ITEMS = ['trackName', 'airTemp', 'sof', 'timeRemain'];
     let headerItems;
     try {
-      headerItems = JSON.parse(getSetting('headerItems', JSON.stringify(DEFAULT_HEADER_ITEMS)));
+      const allHeaderItems = JSON.parse(getSetting('headerItems', JSON.stringify(DEFAULT_HEADER_ITEMS)));
+      let headerEnabled = {};
+      try { headerEnabled = JSON.parse(getSetting('headerEnabled', '{}')); } catch(e) {}
+      // If headerEnabled exists, filter by it; otherwise use all items (backward compat)
+      headerItems = Object.keys(headerEnabled).length > 0
+        ? allHeaderItems.filter(k => headerEnabled[k])
+        : allHeaderItems;
     } catch(e) { headerItems = DEFAULT_HEADER_ITEMS; }
 
     function buildTableHead() {
