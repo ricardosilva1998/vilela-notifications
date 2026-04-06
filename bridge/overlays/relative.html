@@ -82,11 +82,21 @@
     // Helper: getSetting may return native object (from settings.json) or string
     function parseSetting(val) { return typeof val === 'string' ? JSON.parse(val) : val; }
 
+    // Migrate old column key names to new ones
+    const KEY_MIGRATION = { position: 'pos', carNumber: 'number', driverName: 'name', bestLap: 'best', lastLap: 'last' };
+    function migrateKey(k) { return KEY_MIGRATION[k] || k; }
+    function migrateKeys(arr) { return arr.map(migrateKey); }
+    function migrateEnabled(obj) {
+      const out = {};
+      Object.entries(obj).forEach(([k, v]) => { out[migrateKey(k)] = v; });
+      return out;
+    }
+
     let enabledColumns;
     try {
-      const allColumns = parseSetting(getSetting('columns', DEFAULT_COLUMNS));
+      const allColumns = migrateKeys(parseSetting(getSetting('columns', DEFAULT_COLUMNS)));
       let colEnabled = {};
-      try { colEnabled = parseSetting(getSetting('columnsEnabled', {})); } catch(e) {}
+      try { colEnabled = migrateEnabled(parseSetting(getSetting('columnsEnabled', {}))); } catch(e) {}
       enabledColumns = Object.keys(colEnabled).length > 0
         ? allColumns.filter(k => colEnabled[k])
         : allColumns;
