@@ -309,13 +309,14 @@ function createOverlayWindow(overlayId) {
     win.setIgnoreMouseEvents(false);
   }
 
-  // Stay on top — use 'floating' level (screen-saver blocks input on some Windows)
-  win.setAlwaysOnTop(true, 'floating');
+  // Stay on top — screen-saver for locked (over fullscreen games), floating for unlocked (allows input)
+  const zLevel = overlaysLocked ? 'screen-saver' : 'floating';
+  win.setAlwaysOnTop(true, zLevel);
 
-  // Periodically re-assert always-on-top (games can steal focus)
+  // Periodically re-assert always-on-top
   const topInterval = setInterval(() => {
     if (win.isDestroyed()) { clearInterval(topInterval); return; }
-    try { win.setAlwaysOnTop(true, 'floating'); } catch(e) {}
+    try { win.setAlwaysOnTop(true, overlaysLocked ? 'screen-saver' : 'floating'); } catch(e) {}
   }, 2000);
 
   win.loadFile(path.join(__dirname, 'overlays', `${overlayId}.html`));
@@ -367,6 +368,7 @@ function setOverlaysLocked(locked) {
   Object.values(overlayWindows).forEach(win => {
     if (win && !win.isDestroyed()) {
       win.setIgnoreMouseEvents(locked, { forward: locked });
+      win.setAlwaysOnTop(true, locked ? 'screen-saver' : 'floating');
       win.webContents.send('lock-state', locked);
     }
   });
