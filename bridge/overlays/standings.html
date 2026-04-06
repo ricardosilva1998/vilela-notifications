@@ -434,7 +434,12 @@
         airTemp: data.airTemp ? data.airTemp.toFixed(1) + '°C air' : '',
         trackTemp: data.trackTemp ? data.trackTemp.toFixed(1) + '°C track' : '',
         humidity: data.humidity ? Math.round(data.humidity) + '% hum' : '',
-        sof: data.sof ? 'SOF ' + formatSOF(data.sof) : '',
+        sof: (() => {
+          if (data.sofByClass && Object.keys(data.sofByClass).length > 1) {
+            return 'SOF: ' + Object.entries(data.sofByClass).map(([cls, v]) => cls + ' ' + formatSOF(v)).join(' | ');
+          }
+          return data.sof ? 'SOF ' + formatSOF(data.sof) : '';
+        })(),
         timeRemain: 'Rem ' + formatTime(data.sessionTimeRemain),
         timeOfDay: 'ToD ' + formatTime(data.timeOfDay),
         skies: data.skies || '',

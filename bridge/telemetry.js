@@ -423,11 +423,23 @@ async function startTelemetry(onStatusChange) {
         const iRatings = drivers.filter(d => d.IRating > 0).map(d => d.IRating);
         const sof = iRatings.length > 0 ? Math.round(iRatings.reduce((a, b) => a + b, 0) / iRatings.length) : 0;
 
+        // SOF per class
+        const sofByClass = {};
+        drivers.filter(d => d.IRating > 0).forEach(d => {
+          const cls = d.CarClassShortName || 'Unknown';
+          if (!sofByClass[cls]) sofByClass[cls] = [];
+          sofByClass[cls].push(d.IRating);
+        });
+        Object.keys(sofByClass).forEach(cls => {
+          const arr = sofByClass[cls];
+          sofByClass[cls] = Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
+        });
+
         broadcastToChannel('session', { type: 'data', channel: 'session', data: {
           playerCarIdx,
           trackName,
           airTemp, trackTemp, humidity, trackWetness,
-          sessionTime, sessionTimeRemain, timeOfDay, sof,
+          sessionTime, sessionTimeRemain, timeOfDay, sof, sofByClass,
           drivers: drivers.map(d => ({
             carIdx: d.CarIdx, driverName: d.UserName, carNumber: d.CarNumber,
             carMake: d.CarScreenNameShort || d.CarScreenName || '',

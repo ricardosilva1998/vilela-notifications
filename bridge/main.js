@@ -236,10 +236,12 @@ function showControlWindow() {
   }
 
   controlWindow = new BrowserWindow({
-    width: 540,
-    height: 720,
-    resizable: false,
+    width: 750,
+    height: 600,
+    resizable: true,
     maximizable: false,
+    minWidth: 650,
+    minHeight: 500,
     title: 'Atleta Bridge',
     icon: path.join(process.resourcesPath || __dirname, 'icon.png'),
     backgroundColor: '#0c0d14',

@@ -5,10 +5,90 @@
   <title>Atleta Bridge</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', sans-serif; background: #0c0d14; color: #e8e6f0; padding: 20px; user-select: none; scrollbar-width: none; -ms-overflow-style: none; }
-    ::-webkit-scrollbar { display: none; }
-    h1 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
-    .subtitle { font-size: 12px; color: #5c5b6e; margin-bottom: 20px; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0c0d14; color: #e8e6f0; user-select: none; overflow: hidden; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
+    /* ─── Top Header Bar ─────────────────────────────────── */
+    .header-bar {
+      height: 44px; background: #111220; border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex; align-items: center; justify-content: space-between; padding: 0 14px;
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .hamburger-btn {
+      background: none; border: none; color: #8b8a9e; cursor: pointer; font-size: 18px;
+      padding: 4px 6px; border-radius: 4px; transition: background 0.2s, color 0.2s; line-height: 1;
+    }
+    .hamburger-btn:hover { background: rgba(255,255,255,0.06); color: #e8e6f0; }
+    .header-title { font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #e8e6f0; }
+    .header-version { font-size: 10px; color: #5c5b6e; margin-left: 2px; font-weight: 400; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .lock-toggle-btn {
+      background: none; border: 1px solid rgba(255,255,255,0.1); color: #8b8a9e; cursor: pointer;
+      font-size: 13px; padding: 4px 10px; border-radius: 6px; transition: all 0.2s;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .lock-toggle-btn:hover { border-color: rgba(145,70,255,0.4); color: #e8e6f0; }
+    .lock-toggle-btn.locked { background: rgba(145,70,255,0.15); border-color: rgba(145,70,255,0.4); color: #9146ff; }
+    .header-status-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .header-status-dot.connected { background: #3ecf8e; box-shadow: 0 0 6px rgba(62,207,142,0.5); }
+    .header-status-dot.disconnected { background: #f04438; }
+    .header-status-dot.waiting { background: #f79009; animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    /* ─── Hamburger Dropdown Menu ─────────────────────────── */
+    .hamburger-menu {
+      display: none; position: fixed; top: 44px; left: 8px; z-index: 200;
+      background: #1a1b2e; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+      min-width: 200px; padding: 6px 0; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .hamburger-menu.open { display: block; }
+    .menu-item {
+      display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 12px;
+      color: #8b8a9e; cursor: pointer; transition: background 0.15s, color 0.15s;
+    }
+    .menu-item:hover { background: rgba(255,255,255,0.04); color: #e8e6f0; }
+    .menu-item .menu-icon { font-size: 14px; width: 18px; text-align: center; }
+    .menu-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 4px 0; }
+    .menu-item-toggle {
+      display: flex; align-items: center; justify-content: space-between; padding: 8px 14px;
+      font-size: 12px; color: #8b8a9e;
+    }
+    .menu-item-toggle .toggle { margin-left: auto; }
+
+    /* ─── Layout: Sidebar + Content ─────────────────────── */
+    .layout { display: flex; height: calc(100vh - 44px); margin-top: 44px; }
+
+    /* ─── Sidebar ─────────────────────────────────────────── */
+    .sidebar {
+      width: 140px; min-width: 140px; background: #111220; border-right: 1px solid rgba(255,255,255,0.06);
+      overflow-y: auto; display: flex; flex-direction: column; scrollbar-width: none; -ms-overflow-style: none;
+    }
+    .sidebar::-webkit-scrollbar { display: none; }
+    .sidebar-item {
+      display: flex; align-items: center; gap: 8px; padding: 10px 12px; font-size: 11px;
+      font-weight: 600; color: #8b8a9e; cursor: pointer; border-left: 3px solid transparent;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .sidebar-item:hover { background: rgba(255,255,255,0.03); color: #c0bfd0; }
+    .sidebar-item.active {
+      border-left-color: #9146ff; background: rgba(145,70,255,0.1); color: #e8e6f0;
+    }
+    .sidebar-icon { font-size: 14px; width: 20px; text-align: center; flex-shrink: 0; }
+    .sidebar-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 4px 8px; }
+    .sidebar-spacer { flex: 1; }
+    .sidebar-footer { padding: 10px 12px; font-size: 9px; color: #3a3a4e; text-align: center; }
+    .sidebar-footer a { color: #9146ff; text-decoration: none; }
+
+    /* ─── Content Area ────────────────────────────────────── */
+    .content { flex: 1; overflow-y: auto; padding: 16px; }
+    .content-panel { display: none; }
+    .content-panel.active { display: block; }
+
+    /* ─── Shared Components ───────────────────────────────── */
     .status-card {
       background: #141520; border: 1px solid rgba(255,255,255,0.06); border-radius: 10px;
       padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;
@@ -17,44 +97,104 @@
     .status-dot.connected { background: #3ecf8e; box-shadow: 0 0 6px rgba(62,207,142,0.5); }
     .status-dot.disconnected { background: #f04438; }
     .status-dot.waiting { background: #f79009; animation: pulse 1.5s ease-in-out infinite; }
-    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
     .status-text { font-size: 13px; font-weight: 600; }
     .status-detail { font-size: 11px; color: #5c5b6e; }
 
-    /* Tabs */
-    .tabs { display: flex; gap: 0; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-    .tab { padding: 8px 16px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #5c5b6e; cursor: pointer; border-bottom: 2px solid transparent; transition: color 0.2s, border-color 0.2s; }
-    .tab.active { color: #9146ff; font-weight: 700; border-bottom-color: #9146ff; }
-    .tab:hover:not(.active) { color: #8b8a9e; }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-
-    /* Overlay card grid */
-    .overlay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
-    .overlay-card {
-      background: #141520; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px;
-      padding: 10px 12px; display: flex; align-items: center; justify-content: space-between;
-      transition: border-color 0.2s;
-    }
-    .overlay-card:hover { border-color: rgba(145,70,255,0.3); }
-    .overlay-info { display: flex; align-items: center; gap: 8px; }
-    .overlay-icon { font-size: 16px; }
-    .overlay-name { font-size: 11px; font-weight: 600; }
-    .overlay-actions { display: flex; align-items: center; gap: 4px; }
-    .gear-btn { background: none; border: none; color: #5c5b6e; cursor: pointer; font-size: 12px; padding: 2px 4px; }
-    .gear-btn:hover { color: #9146ff; }
-
-    h2 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #5c5b6e; margin-bottom: 10px; }
-    .toggle { position: relative; width: 36px; height: 20px; cursor: pointer; flex-shrink: 0; }
+    .toggle { position: relative; width: 36px; height: 20px; cursor: pointer; flex-shrink: 0; display: inline-block; }
     .toggle input { opacity: 0; width: 0; height: 0; }
     .toggle .slider { position: absolute; inset: 0; background: #1a1b2e; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); transition: 0.3s; }
     .toggle .slider:before { content: ''; position: absolute; width: 14px; height: 14px; left: 2px; bottom: 2px; background: #fff; border-radius: 50%; transition: 0.3s; }
     .toggle input:checked + .slider { background: #9146ff; border-color: #9146ff; }
     .toggle input:checked + .slider:before { transform: translateX(16px); }
-    .footer { margin-top: 16px; text-align: center; font-size: 10px; color: #3a3a4e; }
-    .footer a { color: #9146ff; text-decoration: none; }
 
-    /* Updates tab */
+    .section-header {
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px;
+      color: #5c5b6e; margin: 18px 0 10px 0; padding-bottom: 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .section-header:first-child { margin-top: 0; }
+
+    /* ─── Overview: Overlay Grid ──────────────────────────── */
+    .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .overview-card {
+      background: #141520; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px;
+      padding: 12px; display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; transition: border-color 0.2s, background 0.2s;
+    }
+    .overview-card:hover { border-color: rgba(145,70,255,0.3); background: rgba(145,70,255,0.03); }
+    .overview-card-left { display: flex; align-items: center; gap: 8px; }
+    .overview-card-icon { font-size: 18px; }
+    .overview-card-name { font-size: 11px; font-weight: 600; }
+
+    /* ─── Settings form fields ────────────────────────────── */
+    .enable-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; background: #141520; border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px; margin-bottom: 14px;
+    }
+    .enable-row-label { font-size: 12px; font-weight: 600; }
+
+    .field-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 0; min-height: 30px;
+    }
+    .field-label { font-size: 11px; color: #8b8a9e; }
+    .field-input {
+      width: 70px; padding: 5px 8px; background: #0c0d14; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px; color: #e8e6f0; font-size: 12px; text-align: center;
+    }
+    .field-input-wide {
+      width: 160px; padding: 5px 8px; background: #0c0d14; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px; color: #e8e6f0; font-size: 11px;
+    }
+    .field-select {
+      padding: 5px 8px; background: #0c0d14; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px; color: #e8e6f0; font-size: 11px;
+    }
+    .field-checkbox { accent-color: #9146ff; cursor: pointer; }
+    .checkbox-row {
+      display: flex; align-items: center; gap: 8px; padding: 4px 0;
+      font-size: 11px; color: #8b8a9e; cursor: pointer;
+    }
+    .hotkey-btn {
+      padding: 5px 12px; background: #0c0d14; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px; color: #e8e6f0; font-size: 11px; cursor: pointer; min-width: 90px; text-align: center;
+    }
+    .hotkey-btn:hover { border-color: rgba(145,70,255,0.4); }
+    .hotkey-btn.capturing { border-color: #9146ff; color: #9146ff; }
+
+    .save-btn {
+      width: 100%; margin-top: 12px; padding: 8px; border-radius: 6px; border: none;
+      background: #9146ff; color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .save-btn:hover { opacity: 0.9; }
+
+    /* ─── Column drag list ────────────────────────────────── */
+    .column-list { display: flex; flex-direction: column; gap: 2px; }
+    .column-item {
+      display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+      background: #141520; border: 1px solid rgba(255,255,255,0.04); border-radius: 6px;
+      transition: border-color 0.15s, background 0.15s; cursor: default;
+    }
+    .column-item:hover { border-color: rgba(255,255,255,0.1); }
+    .column-item.drag-over { border-color: rgba(145,70,255,0.5); background: rgba(145,70,255,0.05); }
+    .column-item.dragging { opacity: 0.4; }
+    .drag-handle { cursor: grab; color: #5c5b6e; font-size: 14px; user-select: none; }
+    .drag-handle:active { cursor: grabbing; }
+    .col-label { flex: 1; font-size: 11px; font-weight: 500; color: #c0bfd0; }
+
+    /* ─── Lock bar (bottom of overview) ───────────────────── */
+    .lock-section { margin-top: 16px; }
+    .lock-main-btn {
+      width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+      background: #141520; color: #e8e6f0; font-size: 13px; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;
+    }
+    .lock-main-btn.locked { background: rgba(145,70,255,0.15); border-color: rgba(145,70,255,0.4); }
+    .lock-hint { font-size: 10px; color: #3a3a4e; text-align: center; margin-top: 6px; }
+
+    /* ─── Updates panel ───────────────────────────────────── */
     .update-banner {
       background: rgba(62,207,142,0.08); border: 1px solid rgba(62,207,142,0.3); border-radius: 8px;
       padding: 12px 14px; margin-bottom: 12px; display: none;
@@ -82,121 +222,220 @@
     .release-notes { font-size: 11px; color: #8b8a9e; line-height: 1.5; }
     .release-notes div { margin-bottom: 3px; }
     .release-notes div:last-child { margin-bottom: 0; }
+
+    /* ─── Logs panel ──────────────────────────────────────── */
+    .logs-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .logs-actions { display: flex; gap: 6px; }
+    .log-action-btn {
+      padding: 4px 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);
+      background: transparent; color: #8b8a9e; font-size: 10px; cursor: pointer;
+    }
+    .log-action-btn:hover { border-color: rgba(255,255,255,0.2); color: #e8e6f0; }
+    #log-container {
+      background: #0a0b10; border: 1px solid rgba(255,255,255,0.06); border-radius: 6px;
+      padding: 8px; height: calc(100vh - 140px); overflow-y: auto; font-family: Consolas, monospace;
+      font-size: 10px; color: #8b8a9e; line-height: 1.5; white-space: pre-wrap; word-break: break-all;
+    }
+
+    /* ─── About panel ─────────────────────────────────────── */
+    .about-card {
+      background: #141520; border: 1px solid rgba(255,255,255,0.06); border-radius: 10px;
+      padding: 24px; text-align: center;
+    }
+    .about-logo { font-size: 48px; margin-bottom: 12px; }
+    .about-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .about-ver { font-size: 12px; color: #5c5b6e; margin-bottom: 16px; }
+    .about-desc { font-size: 11px; color: #8b8a9e; line-height: 1.6; margin-bottom: 16px; }
+    .about-link { color: #9146ff; text-decoration: none; font-size: 11px; }
+
+    /* ─── Toast ────────────────────────────────────────────── */
+    #copy-toast {
+      display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: #3ecf8e; color: #0c0d14; padding: 6px 16px; border-radius: 6px;
+      font-size: 11px; font-weight: 600; z-index: 300;
+    }
+
+    /* ─── Backdrop for hamburger close ────────────────────── */
+    .menu-backdrop { display: none; position: fixed; inset: 0; z-index: 150; }
+    .menu-backdrop.open { display: block; }
   </style>
 </head>
 <body>
-  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
-    <img src="build/icon.png" style="width: 32px; height: 32px; border-radius: 6px;" onerror="this.style.display='none'">
-    <div>
-      <h1 style="margin: 0;">Atleta Bridge</h1>
-      <p class="subtitle" style="margin: 0;" id="version-text">iRacing Overlay Manager</p>
+
+  <!-- ═══ HEADER BAR ═══ -->
+  <div class="header-bar">
+    <div class="header-left">
+      <button class="hamburger-btn" id="hamburger-btn" onclick="toggleHamburger()">&#9776;</button>
+      <span class="header-title">ATLETA BRIDGE <span class="header-version" id="header-version"></span></span>
+    </div>
+    <div class="header-right">
+      <button class="lock-toggle-btn" id="header-lock-btn" onclick="toggleLock()">&#128275; Unlock</button>
+      <div class="header-status-dot waiting" id="header-status-dot" title="Waiting for iRacing..."></div>
     </div>
   </div>
 
-  <div class="status-card">
-    <div class="status-dot waiting" id="status-dot"></div>
-    <div>
-      <div class="status-text" id="status-text">Waiting for iRacing...</div>
-      <div class="status-detail" id="status-detail">Start iRacing to connect</div>
+  <!-- ═══ HAMBURGER DROPDOWN ═══ -->
+  <div class="menu-backdrop" id="menu-backdrop" onclick="closeHamburger()"></div>
+  <div class="hamburger-menu" id="hamburger-menu">
+    <div class="menu-item" onclick="navigateTo('updates'); closeHamburger();">
+      <span class="menu-icon">&#128259;</span> Updates
     </div>
-  </div>
-
-  <!-- Tabs -->
-  <div class="tabs">
-    <div class="tab active" data-tab="overlays" onclick="switchTab('overlays')">Overlays</div>
-    <div class="tab" data-tab="updates" onclick="switchTab('updates')">Updates</div>
-    <div class="tab" data-tab="logs" onclick="switchTab('logs')">Logs</div>
-  </div>
-
-  <!-- Overlays Tab -->
-  <div class="tab-content active" id="tab-overlays">
-    <div class="overlay-grid" id="overlay-grid"></div>
-
-    <!-- Overlay Customization -->
-    <div id="customize-panel" style="display:none; padding:12px; background:#141520; border:1px solid rgba(255,255,255,0.06); border-radius:8px; margin-bottom:12px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <h2 style="margin:0; font-size:12px;">Customize: <span id="customize-title"></span></h2>
-        <button onclick="closeCustomize()" style="background:none; border:none; color:#5c5b6e; cursor:pointer; font-size:14px;">&#10005;</button>
-      </div>
-      <div id="customize-content"></div>
-      <button onclick="saveCustomize()" style="width:100%; margin-top:8px; padding:7px; border-radius:6px; border:none; background:#9146ff; color:#fff; font-size:12px; font-weight:600; cursor:pointer;">Save</button>
+    <div class="menu-item" onclick="navigateTo('logs'); closeHamburger();">
+      <span class="menu-icon">&#128196;</span> Logs
     </div>
-
-    <div>
-      <button id="lock-btn" onclick="toggleLock()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: #141520; color: #e8e6f0; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
-        &#128275; Unlocked — Drag & Resize Overlays
-      </button>
-      <p style="font-size: 10px; color: #3a3a4e; text-align: center; margin-top: 6px;">Lock to make overlays click-through while driving</p>
-      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#8b8a9e;margin-top:10px;cursor:pointer;">
-        <input type="checkbox" id="autohide-check" checked onchange="toggleAutoHide(this.checked)" style="accent-color:#9146ff;">
-        Auto-hide overlays when iRacing closes
+    <div class="menu-item-toggle">
+      <span style="display:flex;align-items:center;gap:8px;">
+        <span class="menu-icon">&#128064;</span> Auto-hide overlays
+      </span>
+      <label class="toggle" style="width:36px;height:20px;">
+        <input type="checkbox" id="autohide-check" checked onchange="toggleAutoHide(this.checked)">
+        <span class="slider"></span>
       </label>
     </div>
+    <div class="menu-divider"></div>
+    <div class="menu-item" onclick="navigateTo('about'); closeHamburger();">
+      <span class="menu-icon">&#9432;</span> About
+    </div>
   </div>
 
-  <!-- Updates Tab -->
-  <div class="tab-content" id="tab-updates">
-    <!-- Update available banner -->
-    <div class="update-banner" id="update-banner">
-      <div class="update-banner-header">
-        <div>
-          <div class="update-banner-title" id="update-banner-title"></div>
-          <div class="update-banner-sub" id="update-banner-sub"></div>
+  <!-- ═══ LAYOUT ═══ -->
+  <div class="layout">
+
+    <!-- ─── Sidebar ─── -->
+    <div class="sidebar">
+      <div class="sidebar-item active" data-panel="overview" onclick="navigateTo('overview')">
+        <span class="sidebar-icon">&#9638;</span> Overview
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-item" data-panel="standings" onclick="navigateTo('standings')">
+        <span class="sidebar-icon">&#127937;</span> Standings
+      </div>
+      <div class="sidebar-item" data-panel="relative" onclick="navigateTo('relative')">
+        <span class="sidebar-icon">&#128202;</span> Relative
+      </div>
+      <div class="sidebar-item" data-panel="fuel" onclick="navigateTo('fuel')">
+        <span class="sidebar-icon">&#9981;</span> Fuel
+      </div>
+      <div class="sidebar-item" data-panel="wind" onclick="navigateTo('wind')">
+        <span class="sidebar-icon">&#127788;&#65039;</span> Wind
+      </div>
+      <div class="sidebar-item" data-panel="proximity" onclick="navigateTo('proximity')">
+        <span class="sidebar-icon">&#128663;</span> Proximity
+      </div>
+      <div class="sidebar-item" data-panel="chat" onclick="navigateTo('chat')">
+        <span class="sidebar-icon">&#128172;</span> Chat
+      </div>
+      <div class="sidebar-item" data-panel="trackmap" onclick="navigateTo('trackmap')">
+        <span class="sidebar-icon">&#127758;</span> Track Map
+      </div>
+      <div class="sidebar-item" data-panel="voicechat" onclick="navigateTo('voicechat')">
+        <span class="sidebar-icon">&#127908;</span> Voice Chat
+      </div>
+      <div class="sidebar-item" data-panel="inputs" onclick="navigateTo('inputs')">
+        <span class="sidebar-icon">&#127918;</span> Inputs
+      </div>
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-footer">
+        <a href="https://atletanotifications.com" target="_blank">atletanotifications.com</a>
+      </div>
+    </div>
+
+    <!-- ─── Content ─── -->
+    <div class="content">
+
+      <!-- ═══ OVERVIEW PANEL ═══ -->
+      <div class="content-panel active" id="panel-overview">
+        <div class="status-card">
+          <div class="status-dot waiting" id="status-dot"></div>
+          <div>
+            <div class="status-text" id="status-text">Waiting for iRacing...</div>
+            <div class="status-detail" id="status-detail">Start iRacing to connect</div>
+          </div>
         </div>
-        <button class="update-btn" id="update-btn" onclick="handleUpdateAction()">Download</button>
+
+        <div class="section-header">Overlays</div>
+        <div class="overview-grid" id="overview-grid"></div>
+
+        <div class="lock-section">
+          <button class="lock-main-btn" id="lock-main-btn" onclick="toggleLock()">
+            &#128275; Unlocked &#8212; Drag &amp; Resize Overlays
+          </button>
+          <div class="lock-hint">Lock to make overlays click-through while driving</div>
+        </div>
       </div>
-      <div class="update-progress" id="update-progress">
-        <div class="update-progress-bar" id="update-progress-bar"></div>
+
+      <!-- ═══ OVERLAY SETTINGS PANELS (generated by JS) ═══ -->
+      <div class="content-panel" id="panel-standings"></div>
+      <div class="content-panel" id="panel-relative"></div>
+      <div class="content-panel" id="panel-fuel"></div>
+      <div class="content-panel" id="panel-wind"></div>
+      <div class="content-panel" id="panel-proximity"></div>
+      <div class="content-panel" id="panel-chat"></div>
+      <div class="content-panel" id="panel-trackmap"></div>
+      <div class="content-panel" id="panel-voicechat"></div>
+      <div class="content-panel" id="panel-inputs"></div>
+
+      <!-- ═══ UPDATES PANEL ═══ -->
+      <div class="content-panel" id="panel-updates">
+        <div class="update-banner" id="update-banner">
+          <div class="update-banner-header">
+            <div>
+              <div class="update-banner-title" id="update-banner-title"></div>
+              <div class="update-banner-sub" id="update-banner-sub"></div>
+            </div>
+            <button class="update-btn" id="update-btn" onclick="handleUpdateAction()">Download</button>
+          </div>
+          <div class="update-progress" id="update-progress">
+            <div class="update-progress-bar" id="update-progress-bar"></div>
+          </div>
+        </div>
+        <div class="version-line">
+          <div class="version-label">Installed: <strong id="installed-version">--</strong></div>
+          <button class="check-btn" onclick="checkForUpdate()">Check for Updates</button>
+        </div>
+        <div class="section-header">Release Notes</div>
+        <div id="release-notes-list"></div>
       </div>
-    </div>
 
-    <!-- Version line -->
-    <div class="version-line">
-      <div class="version-label">Installed: <strong id="installed-version">--</strong></div>
-      <button class="check-btn" onclick="checkForUpdate()">Check for Updates</button>
-    </div>
-
-    <!-- Release notes -->
-    <h2>Release Notes</h2>
-    <div id="release-notes-list"></div>
-  </div>
-
-  <!-- Logs Tab -->
-  <div class="tab-content" id="tab-logs">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-      <h2 style="margin:0;">Live Logs</h2>
-      <div style="display:flex; gap:6px;">
-        <button onclick="copyLogs()" style="padding:4px 10px; border-radius:4px; border:1px solid rgba(255,255,255,0.1); background:transparent; color:#8b8a9e; font-size:10px; cursor:pointer;">Copy All</button>
-        <button onclick="clearLogView()" style="padding:4px 10px; border-radius:4px; border:1px solid rgba(255,255,255,0.1); background:transparent; color:#8b8a9e; font-size:10px; cursor:pointer;">Clear</button>
+      <!-- ═══ LOGS PANEL ═══ -->
+      <div class="content-panel" id="panel-logs">
+        <div class="logs-header">
+          <div class="section-header" style="margin:0;border:none;padding:0;">Live Logs</div>
+          <div class="logs-actions">
+            <button class="log-action-btn" onclick="copyLogs()">Copy All</button>
+            <button class="log-action-btn" onclick="clearLogView()">Clear</button>
+          </div>
+        </div>
+        <div id="log-container">Loading logs...</div>
       </div>
-    </div>
-    <div id="log-container" style="background:#0a0b10; border:1px solid rgba(255,255,255,0.06); border-radius:6px; padding:8px; height:400px; overflow-y:auto; font-family:Consolas,monospace; font-size:10px; color:#8b8a9e; line-height:1.5; white-space:pre-wrap; word-break:break-all;">
-      Loading logs...
-    </div>
-    <div id="copy-toast" style="display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#3ecf8e; color:#0c0d14; padding:6px 16px; border-radius:6px; font-size:11px; font-weight:600;">Copied!</div>
-  </div>
 
-  <div class="footer">
-    <a href="https://atletanotifications.com" target="_blank">atletanotifications.com</a>
-  </div>
+      <!-- ═══ ABOUT PANEL ═══ -->
+      <div class="content-panel" id="panel-about">
+        <div class="about-card">
+          <div class="about-logo">&#127937;</div>
+          <div class="about-name">Atleta Bridge</div>
+          <div class="about-ver" id="about-version">v--</div>
+          <div class="about-desc">
+            iRacing Overlay Manager<br>
+            Real-time telemetry overlays for standings, relative, fuel, wind, proximity, track map, voice chat, and more.
+          </div>
+          <a class="about-link" href="https://atletanotifications.com" target="_blank">atletanotifications.com</a>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /layout -->
+
+  <!-- Toast -->
+  <div id="copy-toast">Copied!</div>
 
   <script>
     const { ipcRenderer } = require('electron');
     let locked = false;
     let appVersion = '--';
+    let currentPanel = 'overview';
 
-    // ─── Tabs ──────────────────────────────────────────────────
-    function switchTab(tabId) {
-      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + tabId));
-      localStorage.setItem('bridge_tab', tabId);
-    }
-
-    // Restore last active tab
-    const savedTab = localStorage.getItem('bridge_tab');
-    if (savedTab) switchTab(savedTab);
-
-    // ─── Overlay Grid ──────────────────────────────────────────
+    // ─── Overlay Definitions ─────────────────────────────────
     const overlays = [
       { id: 'standings', icon: '&#127937;', name: 'Standings' },
       { id: 'relative', icon: '&#128202;', name: 'Relative' },
@@ -207,36 +446,9 @@
       { id: 'trackmap', icon: '&#127758;', name: 'Track Map' },
       { id: 'voicechat', icon: '&#127908;', name: 'Voice Chat' },
       { id: 'inputs', icon: '&#127918;', name: 'Driver Inputs' },
-      // { id: 'discord', icon: '&#127897;', name: 'Discord Voice' }, // DISABLED for now
     ];
 
-    const grid = document.getElementById('overlay-grid');
-    overlays.forEach(ov => {
-      const card = document.createElement('div');
-      card.className = 'overlay-card';
-      card.innerHTML = `
-        <div class="overlay-info">
-          <span class="overlay-icon">${ov.icon}</span>
-          <span class="overlay-name">${ov.name}</span>
-        </div>
-        <div class="overlay-actions">
-          <button class="gear-btn" onclick="openCustomize('${ov.id}','${ov.name}')" title="Settings">&#9881;</button>
-          <label class="toggle">
-            <input type="checkbox" id="toggle-${ov.id}" onchange="toggleOverlay('${ov.id}', this.checked)">
-            <span class="slider"></span>
-          </label>
-        </div>
-      `;
-      grid.appendChild(card);
-    });
-
-    function toggleOverlay(id, enabled) {
-      ipcRenderer.send('toggle-overlay', id, enabled);
-    }
-
-    // ─── Overlay Customization ─────────────────────────────────
-    let currentCustomizeId = null;
-
+    // ─── CUSTOMIZE_FIELDS (all overlay settings) ─────────────
     const CUSTOMIZE_FIELDS = {
       standings: [
         { key: 'maxPerClass', label: 'Max cars per class (0 = all)', type: 'number', default: '0', min: 0, max: 50 },
@@ -297,82 +509,302 @@
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       discord: [
-        { key: 'discordUserId', label: 'Discord User ID', type: 'text', default: '', placeholder: 'Right-click your name → Copy User ID' },
+        { key: 'discordUserId', label: 'Discord User ID', type: 'text', default: '', placeholder: 'Right-click your name > Copy User ID' },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
     };
 
-    function openCustomize(id, name) {
-      currentCustomizeId = id;
-      document.getElementById('customize-title').textContent = name;
-      const content = document.getElementById('customize-content');
-      const fields = CUSTOMIZE_FIELDS[id] || [];
+    // Standings & Relative column definitions
+    const STANDINGS_COLUMNS = [
+      { key: 'position', label: 'Position', default: true },
+      { key: 'flag', label: 'Flag', default: true },
+      { key: 'carNumber', label: 'Car Number', default: true },
+      { key: 'logo', label: 'Logo', default: true },
+      { key: 'driverName', label: 'Driver Name', default: true },
+      { key: 'license', label: 'License', default: true },
+      { key: 'irating', label: 'iRating', default: true },
+      { key: 'bestLap', label: 'Best Lap', default: true },
+      { key: 'lastLap', label: 'Last Lap', default: true },
+      { key: 'gap', label: 'Gap', default: true },
+    ];
 
-      if (fields.length === 0) {
-        content.innerHTML = '<p style="font-size:11px;color:#5c5b6e;">No settings available for this overlay.</p>';
-      } else {
-        const saved = JSON.parse(localStorage.getItem('overlay_' + id) || '{}');
-        content.innerHTML = fields.map(f => {
-          const val = saved[f.key] !== undefined ? saved[f.key] : f.default;
-          if (f.type === 'number') {
-            return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-              <span style="font-size:11px;color:#8b8a9e;">${f.label}</span>
-              <input type="number" id="cust-${f.key}" value="${val}" min="${f.min}" max="${f.max}" style="width:60px;padding:4px;background:#0c0d14;border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#e8e6f0;font-size:12px;text-align:center;">
-            </div>`;
-          } else if (f.type === 'checkbox') {
-            return `<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;color:#8b8a9e;cursor:pointer;">
-              <input type="checkbox" id="cust-${f.key}" ${val ? 'checked' : ''} style="accent-color:#9146ff;">
-              ${f.label}
+    const RELATIVE_COLUMNS = [
+      { key: 'position', label: 'Position', default: true },
+      { key: 'flag', label: 'Flag', default: true },
+      { key: 'carNumber', label: 'Car Number', default: true },
+      { key: 'logo', label: 'Logo', default: true },
+      { key: 'driverName', label: 'Driver Name', default: true },
+      { key: 'license', label: 'License', default: true },
+      { key: 'irating', label: 'iRating', default: true },
+      { key: 'gap', label: 'Gap', default: true },
+    ];
+
+    const SESSION_HEADER_ITEMS = [
+      { key: 'trackName', label: 'Track Name', default: true },
+      { key: 'airTemp', label: 'Air Temp', default: true },
+      { key: 'trackTemp', label: 'Track Temp', default: true },
+      { key: 'humidity', label: 'Humidity', default: true },
+      { key: 'sof', label: 'SOF', default: true },
+      { key: 'timeRemaining', label: 'Time Remaining', default: true },
+      { key: 'timeOfDay', label: 'Time of Day', default: false },
+      { key: 'skies', label: 'Skies', default: false },
+    ];
+
+    // ─── Navigation ──────────────────────────────────────────
+    function navigateTo(panelId) {
+      currentPanel = panelId;
+      // Update sidebar active state
+      document.querySelectorAll('.sidebar-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.panel === panelId);
+      });
+      // Update content panels
+      document.querySelectorAll('.content-panel').forEach(el => {
+        el.classList.toggle('active', el.id === 'panel-' + panelId);
+      });
+      localStorage.setItem('bridge_panel', panelId);
+      // Start/stop log refresh
+      if (panelId === 'logs') startLogRefresh();
+      else stopLogRefresh();
+    }
+
+    // ─── Hamburger Menu ──────────────────────────────────────
+    function toggleHamburger() {
+      const menu = document.getElementById('hamburger-menu');
+      const backdrop = document.getElementById('menu-backdrop');
+      const isOpen = menu.classList.contains('open');
+      menu.classList.toggle('open', !isOpen);
+      backdrop.classList.toggle('open', !isOpen);
+    }
+    function closeHamburger() {
+      document.getElementById('hamburger-menu').classList.remove('open');
+      document.getElementById('menu-backdrop').classList.remove('open');
+    }
+
+    // ─── Overview Grid ───────────────────────────────────────
+    function buildOverviewGrid() {
+      const grid = document.getElementById('overview-grid');
+      grid.innerHTML = '';
+      overlays.forEach(ov => {
+        const card = document.createElement('div');
+        card.className = 'overview-card';
+        card.innerHTML = `
+          <div class="overview-card-left" onclick="navigateTo('${ov.id}')">
+            <span class="overview-card-icon">${ov.icon}</span>
+            <span class="overview-card-name">${ov.name}</span>
+          </div>
+          <label class="toggle" onclick="event.stopPropagation();">
+            <input type="checkbox" id="toggle-${ov.id}" onchange="toggleOverlay('${ov.id}', this.checked)">
+            <span class="slider"></span>
+          </label>
+        `;
+        card.addEventListener('click', (e) => {
+          // Only navigate if not clicking on the toggle
+          if (!e.target.closest('.toggle')) navigateTo(ov.id);
+        });
+        grid.appendChild(card);
+      });
+    }
+    buildOverviewGrid();
+
+    // ─── Toggle Overlay ──────────────────────────────────────
+    function toggleOverlay(id, enabled) {
+      ipcRenderer.send('toggle-overlay', id, enabled);
+    }
+
+    // ─── Build Overlay Settings Panels ───────────────────────
+    function buildSettingsPanels() {
+      overlays.forEach(ov => {
+        const panel = document.getElementById('panel-' + ov.id);
+        if (!panel) return;
+        const saved = JSON.parse(localStorage.getItem('overlay_' + ov.id) || '{}');
+        const fields = CUSTOMIZE_FIELDS[ov.id] || [];
+        let html = '';
+
+        // Enable/disable toggle at top
+        html += `<div class="enable-row">
+          <span class="enable-row-label">${ov.icon} ${ov.name}</span>
+          <label class="toggle">
+            <input type="checkbox" id="settings-toggle-${ov.id}" onchange="toggleOverlay('${ov.id}', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>`;
+
+        // ─── Standings & Relative: Session Header + Columns + General
+        if (ov.id === 'standings' || ov.id === 'relative') {
+          const columns = ov.id === 'standings' ? STANDINGS_COLUMNS : RELATIVE_COLUMNS;
+          const savedCols = saved.columns || columns.map(c => c.key);
+          const savedColEnabled = saved.columnsEnabled || {};
+          const savedHeader = saved.sessionHeader || {};
+
+          // Session Header section
+          html += `<div class="section-header">Session Header</div>`;
+          SESSION_HEADER_ITEMS.forEach(item => {
+            const checked = savedHeader[item.key] !== undefined ? savedHeader[item.key] : item.default;
+            html += `<label class="checkbox-row">
+              <input type="checkbox" class="field-checkbox session-header-check" data-overlay="${ov.id}" data-key="${item.key}" ${checked ? 'checked' : ''} onchange="autoSaveOverlay('${ov.id}')">
+              ${item.label}
             </label>`;
-          } else if (f.type === 'hotkey') {
-            const keyName = val && val.name ? val.name : 'Not set';
-            return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-              <span style="font-size:11px;color:#8b8a9e;">${f.label}</span>
-              <button id="cust-${f.key}" onclick="captureHotkey('${f.key}')" style="padding:4px 10px;background:#0c0d14;border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#e8e6f0;font-size:11px;cursor:pointer;min-width:80px;text-align:center;" data-value='${JSON.stringify(val || null)}'>${keyName}</button>
+          });
+
+          // Columns section
+          html += `<div class="section-header">Columns</div>`;
+          html += `<div class="column-list" id="column-list-${ov.id}">`;
+          // Build ordered column list
+          const orderedCols = [];
+          savedCols.forEach(key => {
+            const col = columns.find(c => c.key === key);
+            if (col) orderedCols.push(col);
+          });
+          // Add any missing columns at the end
+          columns.forEach(col => {
+            if (!orderedCols.find(c => c.key === col.key)) orderedCols.push(col);
+          });
+          orderedCols.forEach(col => {
+            const enabled = savedColEnabled[col.key] !== undefined ? savedColEnabled[col.key] : col.default;
+            html += `<div class="column-item" draggable="true" data-col="${col.key}" data-overlay="${ov.id}">
+              <span class="drag-handle">&#10303;</span>
+              <span class="col-label">${col.label}</span>
+              <label class="toggle" style="width:32px;height:18px;">
+                <input type="checkbox" class="col-toggle" data-overlay="${ov.id}" data-col="${col.key}" ${enabled ? 'checked' : ''} onchange="autoSaveOverlay('${ov.id}')">
+                <span class="slider" style="border-radius:18px;"><span style="display:none;"></span></span>
+              </label>
             </div>`;
-          } else if (f.type === 'text') {
-            return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-              <span style="font-size:11px;color:#8b8a9e;">${f.label}</span>
-              <input type="text" id="cust-${f.key}" value="${val || ''}" placeholder="${f.placeholder || ''}" style="width:140px;padding:4px 6px;background:#0c0d14;border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#e8e6f0;font-size:11px;">
-            </div>`;
-          } else if (f.type === 'select') {
-            return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-              <span style="font-size:11px;color:#8b8a9e;">${f.label}</span>
-              <select id="cust-${f.key}" style="padding:4px;background:#0c0d14;border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#e8e6f0;font-size:11px;">
-                ${f.options.map(o => `<option value="${o.value}" ${val === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}
-              </select>
-            </div>`;
+          });
+          html += '</div>';
+
+          // General section
+          html += `<div class="section-header">General</div>`;
+          fields.forEach(f => {
+            html += renderField(f, saved, ov.id);
+          });
+        } else {
+          // ─── Other overlays: just render CUSTOMIZE_FIELDS
+          if (fields.length > 0) {
+            html += `<div class="section-header">Settings</div>`;
+            fields.forEach(f => {
+              html += renderField(f, saved, ov.id);
+            });
           }
-          return '';
-        }).join('');
+        }
+
+        // Save button for overlays with non-checkbox fields
+        const hasComplexFields = fields.some(f => f.type === 'number' || f.type === 'text' || f.type === 'select' || f.type === 'hotkey');
+        if (hasComplexFields || ov.id === 'standings' || ov.id === 'relative') {
+          html += `<button class="save-btn" onclick="saveOverlaySettings('${ov.id}')">Save Settings</button>`;
+        }
+
+        panel.innerHTML = html;
+      });
+
+      // Initialize column drag-and-drop
+      initColumnDrag();
+    }
+
+    function renderField(f, saved, overlayId) {
+      const val = saved[f.key] !== undefined ? saved[f.key] : f.default;
+      if (f.type === 'number') {
+        return `<div class="field-row">
+          <span class="field-label">${f.label}</span>
+          <input type="number" class="field-input" id="field-${overlayId}-${f.key}" value="${val}" min="${f.min}" max="${f.max}">
+        </div>`;
+      } else if (f.type === 'checkbox') {
+        return `<label class="checkbox-row">
+          <input type="checkbox" class="field-checkbox" id="field-${overlayId}-${f.key}" ${val ? 'checked' : ''} onchange="autoSaveOverlay('${overlayId}')">
+          ${f.label}
+        </label>`;
+      } else if (f.type === 'hotkey') {
+        const keyName = val && val.name ? val.name : 'Not set';
+        return `<div class="field-row">
+          <span class="field-label">${f.label}</span>
+          <button class="hotkey-btn" id="field-${overlayId}-${f.key}" onclick="captureHotkey('${overlayId}', '${f.key}')" data-value='${JSON.stringify(val || null)}'>${keyName}</button>
+        </div>`;
+      } else if (f.type === 'text') {
+        return `<div class="field-row">
+          <span class="field-label">${f.label}</span>
+          <input type="text" class="field-input-wide" id="field-${overlayId}-${f.key}" value="${val || ''}" placeholder="${f.placeholder || ''}">
+        </div>`;
+      } else if (f.type === 'select') {
+        return `<div class="field-row">
+          <span class="field-label">${f.label}</span>
+          <select class="field-select" id="field-${overlayId}-${f.key}">
+            ${f.options.map(o => `<option value="${o.value}" ${val === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}
+          </select>
+        </div>`;
       }
-
-      document.getElementById('customize-panel').style.display = 'block';
+      return '';
     }
 
-    function closeCustomize() {
-      document.getElementById('customize-panel').style.display = 'none';
-      currentCustomizeId = null;
-    }
+    // ─── Column Drag-and-Drop ────────────────────────────────
+    function initColumnDrag() {
+      document.querySelectorAll('.column-list').forEach(list => {
+        let dragItem = null;
 
-    function captureHotkey(key) {
-      const btn = document.getElementById('cust-' + key);
-      btn.textContent = 'Press key, mouse, or wheel button...';
-      btn.style.borderColor = '#9146ff';
-      ipcRenderer.send('voice-capture-key');
-      ipcRenderer.once('voice-key-captured', (event, keyData) => {
-        btn.textContent = keyData.name;
-        btn.dataset.value = JSON.stringify(keyData);
-        btn.style.borderColor = 'rgba(255,255,255,0.1)';
+        list.addEventListener('dragstart', (e) => {
+          dragItem = e.target.closest('.column-item');
+          if (!dragItem) return;
+          dragItem.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', dragItem.dataset.col);
+        });
+
+        list.addEventListener('dragend', (e) => {
+          if (dragItem) dragItem.classList.remove('dragging');
+          list.querySelectorAll('.column-item').forEach(el => el.classList.remove('drag-over'));
+          dragItem = null;
+        });
+
+        list.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          const target = e.target.closest('.column-item');
+          list.querySelectorAll('.column-item').forEach(el => el.classList.remove('drag-over'));
+          if (target && target !== dragItem) target.classList.add('drag-over');
+        });
+
+        list.addEventListener('dragleave', (e) => {
+          const target = e.target.closest('.column-item');
+          if (target) target.classList.remove('drag-over');
+        });
+
+        list.addEventListener('drop', (e) => {
+          e.preventDefault();
+          const target = e.target.closest('.column-item');
+          if (!target || !dragItem || target === dragItem) return;
+          // Determine position
+          const items = [...list.querySelectorAll('.column-item')];
+          const dragIdx = items.indexOf(dragItem);
+          const targetIdx = items.indexOf(target);
+          if (dragIdx < targetIdx) {
+            target.after(dragItem);
+          } else {
+            target.before(dragItem);
+          }
+          list.querySelectorAll('.column-item').forEach(el => el.classList.remove('drag-over'));
+          // Auto-save on drop
+          const overlayId = dragItem.dataset.overlay;
+          autoSaveOverlay(overlayId);
+        });
       });
     }
 
-    function saveCustomize() {
-      if (!currentCustomizeId) return;
-      const fields = CUSTOMIZE_FIELDS[currentCustomizeId] || [];
+    // ─── Auto-Save (for checkboxes and column reorder) ───────
+    function autoSaveOverlay(overlayId) {
+      // Debounce slightly
+      clearTimeout(autoSaveOverlay['_timer_' + overlayId]);
+      autoSaveOverlay['_timer_' + overlayId] = setTimeout(() => {
+        saveOverlaySettings(overlayId);
+      }, 300);
+    }
+
+    // ─── Save Overlay Settings ───────────────────────────────
+    function saveOverlaySettings(overlayId) {
+      const fields = CUSTOMIZE_FIELDS[overlayId] || [];
       const settings = {};
+
+      // Collect standard fields
       fields.forEach(f => {
-        const el = document.getElementById('cust-' + f.key);
+        const el = document.getElementById('field-' + overlayId + '-' + f.key);
+        if (!el) return;
         if (f.type === 'number') settings[f.key] = el.value;
         else if (f.type === 'text') settings[f.key] = el.value.trim();
         else if (f.type === 'checkbox') settings[f.key] = el.checked;
@@ -381,9 +813,36 @@
         }
         else if (f.type === 'select') settings[f.key] = el.value;
       });
-      localStorage.setItem('overlay_' + currentCustomizeId, JSON.stringify(settings));
-      ipcRenderer.send('save-overlay-settings', currentCustomizeId, settings);
-      if (currentCustomizeId === 'voicechat') {
+
+      // Collect session header settings (standings/relative)
+      if (overlayId === 'standings' || overlayId === 'relative') {
+        const sessionHeader = {};
+        document.querySelectorAll('.session-header-check[data-overlay="' + overlayId + '"]').forEach(cb => {
+          sessionHeader[cb.dataset.key] = cb.checked;
+        });
+        settings.sessionHeader = sessionHeader;
+
+        // Collect column order and enabled state
+        const colList = document.getElementById('column-list-' + overlayId);
+        if (colList) {
+          const columns = [];
+          const columnsEnabled = {};
+          colList.querySelectorAll('.column-item').forEach(item => {
+            const colKey = item.dataset.col;
+            columns.push(colKey);
+            const toggle = item.querySelector('.col-toggle');
+            if (toggle) columnsEnabled[colKey] = toggle.checked;
+          });
+          settings.columns = columns;
+          settings.columnsEnabled = columnsEnabled;
+        }
+      }
+
+      localStorage.setItem('overlay_' + overlayId, JSON.stringify(settings));
+      ipcRenderer.send('save-overlay-settings', overlayId, settings);
+
+      // Voice chat special handling
+      if (overlayId === 'voicechat') {
         const voiceUpdate = {};
         if (settings.pushToTalk !== undefined) voiceUpdate.pushToTalkKey = settings.pushToTalk;
         if (settings.wakeWordEnabled !== undefined) voiceUpdate.wakeWordEnabled = settings.wakeWordEnabled;
@@ -392,34 +851,56 @@
         if (settings.openaiKey !== undefined) voiceUpdate.openaiKey = settings.openaiKey;
         ipcRenderer.send('voice-settings-update', voiceUpdate);
       }
-      closeCustomize();
     }
 
-    // ─── Lock & Auto-hide ──────────────────────────────────────
+    // ─── Hotkey Capture ──────────────────────────────────────
+    function captureHotkey(overlayId, key) {
+      const btn = document.getElementById('field-' + overlayId + '-' + key);
+      btn.textContent = 'Press key, mouse, or wheel button...';
+      btn.classList.add('capturing');
+      ipcRenderer.send('voice-capture-key');
+      ipcRenderer.once('voice-key-captured', (event, keyData) => {
+        btn.textContent = keyData.name;
+        btn.dataset.value = JSON.stringify(keyData);
+        btn.classList.remove('capturing');
+      });
+    }
+
+    // ─── Lock & Auto-hide ────────────────────────────────────
     function toggleLock() {
       locked = !locked;
       ipcRenderer.send('toggle-lock', locked);
-      updateLockBtn();
+      updateLockUI();
     }
 
     function toggleAutoHide(enabled) {
       ipcRenderer.send('toggle-autohide', enabled);
     }
 
-    function updateLockBtn() {
-      const btn = document.getElementById('lock-btn');
+    function updateLockUI() {
+      // Header button
+      const headerBtn = document.getElementById('header-lock-btn');
       if (locked) {
-        btn.innerHTML = '&#128274; Locked — Click-Through Mode';
-        btn.style.background = 'rgba(145,70,255,0.15)';
-        btn.style.borderColor = 'rgba(145,70,255,0.4)';
+        headerBtn.innerHTML = '&#128274; Lock';
+        headerBtn.classList.add('locked');
       } else {
-        btn.innerHTML = '&#128275; Unlocked — Drag & Resize Overlays';
-        btn.style.background = '#141520';
-        btn.style.borderColor = 'rgba(255,255,255,0.1)';
+        headerBtn.innerHTML = '&#128275; Unlock';
+        headerBtn.classList.remove('locked');
+      }
+      // Overview button
+      const mainBtn = document.getElementById('lock-main-btn');
+      if (mainBtn) {
+        if (locked) {
+          mainBtn.innerHTML = '&#128274; Locked &#8212; Click-Through Mode';
+          mainBtn.classList.add('locked');
+        } else {
+          mainBtn.innerHTML = '&#128275; Unlocked &#8212; Drag &amp; Resize Overlays';
+          mainBtn.classList.remove('locked');
+        }
       }
     }
 
-    // ─── Updates Tab ───────────────────────────────────────────
+    // ─── Updates ─────────────────────────────────────────────
     const RELEASE_NOTES = [
       {
         version: '1.0.42',
@@ -533,17 +1014,22 @@
       document.getElementById('update-btn').style.display = 'inline-block';
     });
 
-    // ─── IPC Listeners ─────────────────────────────────────────
+    // ─── IPC Listeners ───────────────────────────────────────
     ipcRenderer.on('iracing-status', (event, status) => {
       const dot = document.getElementById('status-dot');
+      const headerDot = document.getElementById('header-status-dot');
       const text = document.getElementById('status-text');
       const detail = document.getElementById('status-detail');
       if (status.iracing) {
         dot.className = 'status-dot connected';
+        headerDot.className = 'header-status-dot connected';
+        headerDot.title = 'Connected to iRacing';
         text.textContent = 'Connected to iRacing';
         detail.textContent = status.track || 'Session active';
       } else {
         dot.className = 'status-dot waiting';
+        headerDot.className = 'header-status-dot waiting';
+        headerDot.title = 'Waiting for iRacing...';
         text.textContent = 'Waiting for iRacing...';
         detail.textContent = 'Start iRacing to connect';
       }
@@ -552,18 +1038,22 @@
     ipcRenderer.on('overlay-closed', (event, id) => {
       const toggle = document.getElementById('toggle-' + id);
       if (toggle) toggle.checked = false;
+      const settingsToggle = document.getElementById('settings-toggle-' + id);
+      if (settingsToggle) settingsToggle.checked = false;
     });
 
     ipcRenderer.on('overlay-states', (event, states) => {
       Object.entries(states).forEach(([id, enabled]) => {
         const toggle = document.getElementById('toggle-' + id);
         if (toggle) toggle.checked = enabled;
+        const settingsToggle = document.getElementById('settings-toggle-' + id);
+        if (settingsToggle) settingsToggle.checked = enabled;
       });
     });
 
     ipcRenderer.on('lock-state', (event, isLocked) => {
       locked = isLocked;
-      updateLockBtn();
+      updateLockUI();
     });
 
     ipcRenderer.on('autohide-state', (event, enabled) => {
@@ -573,7 +1063,7 @@
 
     ipcRenderer.send('get-overlay-states');
 
-    // Show version
+    // ─── Version ─────────────────────────────────────────────
     try {
       const { app } = require('@electron/remote') || {};
       appVersion = app?.getVersion?.() || require('../package.json').version;
@@ -584,10 +1074,11 @@
         appVersion = '--';
       }
     }
-    document.getElementById('version-text').textContent = 'v' + appVersion;
+    document.getElementById('header-version').textContent = 'v' + appVersion;
     document.getElementById('installed-version').textContent = 'v' + appVersion;
+    document.getElementById('about-version').textContent = 'v' + appVersion;
 
-    // ─── Logs Tab ──────────────────────────────────────────────
+    // ─── Logs ────────────────────────────────────────────────
     const logFs = require('fs');
     const logPath = require('path').join(require('os').homedir(), 'atleta-bridge.log');
     let logContent = '';
@@ -599,7 +1090,6 @@
         if (content !== logContent) {
           logContent = content;
           const container = document.getElementById('log-container');
-          // Color-code log lines
           container.innerHTML = content.split('\n').map(line => {
             if (line.includes('[Speech]') || line.includes('[VoiceInput]') || line.includes('[VoiceOverlay]'))
               return '<span style="color:#9146ff">' + escapeLogHtml(line) + '</span>';
@@ -632,18 +1122,16 @@
       logContent = '';
     }
 
-    // Auto-refresh logs every 2 seconds when logs tab is active
     function startLogRefresh() { if (!logInterval) { loadLogs(); logInterval = setInterval(loadLogs, 2000); } }
     function stopLogRefresh() { if (logInterval) { clearInterval(logInterval); logInterval = null; } }
 
-    // Hook into tab switching
-    const origSwitchTab = switchTab;
-    switchTab = function(tabId) {
-      origSwitchTab(tabId);
-      if (tabId === 'logs') startLogRefresh();
-      else stopLogRefresh();
-    };
-    if (savedTab === 'logs') startLogRefresh();
+    // ─── Initialize ──────────────────────────────────────────
+    buildSettingsPanels();
+
+    // Restore last active panel
+    const savedPanel = localStorage.getItem('bridge_panel');
+    if (savedPanel) navigateTo(savedPanel);
+    if (currentPanel === 'logs') startLogRefresh();
   </script>
 </body>
 </html>
