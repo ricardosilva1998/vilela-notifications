@@ -275,11 +275,12 @@ function createOverlayWindow(overlayId) {
     // Clear saved bounds — trackmap size always comes from settings
     if (settings.overlayBounds) delete settings.overlayBounds.trackmap;
   }
+  // Use saved position but always use config size (no free resize)
   const savedBounds = settings.overlayBounds && settings.overlayBounds[overlayId];
   const x = savedBounds ? savedBounds.x : screenW - config.width - 20;
   const y = savedBounds ? savedBounds.y : 20 + Object.keys(overlayWindows).length * 40;
-  const width = savedBounds ? savedBounds.width : config.width;
-  const height = savedBounds ? savedBounds.height : config.height;
+  const width = config.width;
+  const height = config.height;
 
   const win = new BrowserWindow({
     width,
@@ -287,11 +288,10 @@ function createOverlayWindow(overlayId) {
     x,
     y,
     frame: false,
-    transparent: false,
-    backgroundColor: '#00000000',
+    transparent: true,
     alwaysOnTop: true,
     skipTaskbar: true,
-    resizable: true,
+    resizable: false,
     minimizable: false,
     maximizable: false,
     hasShadow: false,
@@ -300,15 +300,7 @@ function createOverlayWindow(overlayId) {
     webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
 
-  // Lock aspect ratio during resize (trackmap forced to square)
-  // Only lock aspect ratio for trackmap (square); other overlays stretch freely
-  if (overlayId === 'trackmap') {
-    win.on('will-resize', (event, newBounds) => {
-      event.preventDefault();
-      const newW = newBounds.width;
-      win.setBounds({ x: newBounds.x, y: newBounds.y, width: newW, height: newW });
-    });
-  }
+  // Resizing disabled — overlays are sized from settings/defaults only
 
   // Use highest z-level to stay on top of fullscreen games like iRacing
   win.setAlwaysOnTop(true, 'screen-saver');
@@ -365,7 +357,6 @@ function setOverlaysLocked(locked) {
   Object.values(overlayWindows).forEach(win => {
     if (win && !win.isDestroyed()) {
       win.setIgnoreMouseEvents(locked, { forward: locked });
-      win.setResizable(!locked);
       win.webContents.send('lock-state', locked);
     }
   });
