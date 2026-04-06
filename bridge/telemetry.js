@@ -524,21 +524,21 @@ async function startTelemetry(onStatusChange) {
         }
 
         // === Relative ===
-        // Relative: use lapDistPct for gap calculation (more reliable than estTime in practice)
-        const playerLapDist = lapDistPct[playerCarIdx] || 0;
-        const playerLaps = lapsCompletedArr[playerCarIdx] || 0;
+        // Use spectated car as reference point (so relative re-centers when spectating another driver)
+        const refCarIdx = camCarIdx ?? playerCarIdx;
+        const refLapDist = lapDistPct[refCarIdx] || 0;
         const relative = standings
-          .filter(s => s.carIdx !== playerCarIdx)
+          .filter(s => s.carIdx !== refCarIdx)
           .map(s => {
             // Gap based on track distance (0-1 for one lap)
-            let distGap = s.lapDistPct - playerLapDist;
+            let distGap = s.lapDistPct - refLapDist;
             // Normalize to -0.5 to 0.5
             if (distGap > 0.5) distGap -= 1;
             if (distGap < -0.5) distGap += 1;
             // Convert to approximate seconds using estTime if available
             let gapSeconds = 0;
-            if (s.estTime > 0 && estTime[playerCarIdx] > 0) {
-              gapSeconds = s.estTime - estTime[playerCarIdx];
+            if (s.estTime > 0 && estTime[refCarIdx] > 0) {
+              gapSeconds = s.estTime - estTime[refCarIdx];
               if (gapSeconds > 50) gapSeconds -= 100;
               if (gapSeconds < -50) gapSeconds += 100;
             } else {

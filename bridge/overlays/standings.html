@@ -18,6 +18,8 @@
     .overlay-table td { padding: 3px 6px; border-bottom: 1px solid rgba(255,255,255,0.03); vertical-align: middle; white-space: nowrap; }
     .overlay-table tr.player-row { background: rgba(145,70,255,0.15); }
     .overlay-table tr.player-row td { color: #fff; font-weight: 600; }
+    .overlay-table tr.spectated-row { background: rgba(62,207,142,0.2); }
+    .overlay-table tr.spectated-row td { color: #fff; font-weight: 600; }
     .overlay-table tr.disconnected { opacity: 0.35; }
     .pit-indicator { color: #f79009; font-weight: 700; font-size: 9px; }
     .mono { font-family: 'JetBrains Mono', 'Consolas', monospace; }
@@ -247,7 +249,8 @@
 
       const irCell = `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">${irStr}</span>`;
 
-      return `<tr class="${(d.isSpectated || d.isPlayer) ? 'player-row' : ''}${disconnCls}">
+      const rowClass = d.isSpectated && !d.isPlayer ? 'spectated-row' : (d.isPlayer ? 'player-row' : '');
+      return `<tr class="${rowClass}${disconnCls}">
         <td class="mono" style="font-weight:700;color:rgba(255,255,255,0.7)">${pos}</td>
         <td class="flag">${flag}</td>
         <td>${numCell}</td>

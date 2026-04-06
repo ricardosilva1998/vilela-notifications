@@ -257,8 +257,9 @@
       const { cars } = data;
       const playerCar = cars.find(c => c.isSpectated) || cars.find(c => c.isPlayer);
       // Positive distGap = car is AHEAD (further along track), negative = BEHIND
-      const ahead = cars.filter(c => !c.isSpectated && !c.isPlayer && c.distGap > 0).slice(0, MAX_AHEAD).reverse();
-      const behind = cars.filter(c => !c.isSpectated && !c.isPlayer && c.distGap < 0).slice(-MAX_BEHIND);
+      // Only exclude the center car (spectated/player) — other cars (including player when spectating someone else) show normally
+      const ahead = cars.filter(c => c !== playerCar && c.distGap > 0).slice(0, MAX_AHEAD).reverse();
+      const behind = cars.filter(c => c !== playerCar && c.distGap < 0).slice(-MAX_BEHIND);
 
       const rows = [];
       for (const d of ahead) rows.push(buildRelativeRow(d, 'ahead', formatRelativeGap(-d.gap), false));
