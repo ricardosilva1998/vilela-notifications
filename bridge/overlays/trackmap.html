@@ -96,7 +96,8 @@
       return points;
     }
 
-    // Normalize raw x/y path from heading+speed integration to 0-1 range
+    // Normalize raw path to 0-1 range (simple min-max, no aspect ratio handling here)
+    // Aspect ratio is preserved at draw time using the actual canvas dimensions
     function normalizeTrackPath(rawPath) {
       if (!rawPath || rawPath.length < 10) return generateCirclePath();
 
@@ -109,18 +110,12 @@
       });
       const xRange = maxX - minX || 1;
       const yRange = maxY - minY || 1;
-      const padding = 0.03;
 
-      // Preserve aspect ratio
-      const aspect = xRange / yRange;
-      let scaleX = 1, scaleY = 1;
-      if (aspect > 1) { scaleY = 1 / aspect; } else { scaleX = aspect; }
-
-      const usable = 1 - 2 * padding;
       return rawPath.map(p => ({
-        x: padding + (usable * scaleX) * (p.x - minX) / xRange + (usable * (1 - scaleX)) / 2,
-        y: padding + (usable * scaleY) * (1 - (p.y - minY) / yRange) + (usable * (1 - scaleY)) / 2,
+        x: (p.x - minX) / xRange,
+        y: 1 - (p.y - minY) / yRange, // flip Y so north is up
         pct: p.pct,
+        _aspect: xRange / yRange, // store track aspect ratio
       }));
     }
 
@@ -196,6 +191,33 @@
       });
     }
 
+    // Convert normalized 0-1 track coords to canvas pixels, preserving aspect ratio
+    // Track fills the canvas with small margin, centered
+    function trackToCanvas(px, py, w, h) {
+      const margin = 16; // px margin for wind arrow
+      const drawW = w - margin * 2;
+      const drawH = h - margin * 2;
+      // Track aspect from first point (stored during normalization)
+      const trackAspect = (trackPoints[0] && trackPoints[0]._aspect) || 1;
+      const canvasAspect = drawW / drawH;
+
+      let scaleW, scaleH, offX, offY;
+      if (trackAspect > canvasAspect) {
+        // Track wider than canvas — fit to width
+        scaleW = drawW;
+        scaleH = drawW / trackAspect;
+        offX = margin;
+        offY = margin + (drawH - scaleH) / 2;
+      } else {
+        // Track taller than canvas — fit to height
+        scaleH = drawH;
+        scaleW = drawH * trackAspect;
+        offX = margin + (drawW - scaleW) / 2;
+        offY = margin;
+      }
+      return { x: offX + px * scaleW, y: offY + py * scaleH };
+    }
+
     function draw() {
       if (!ctx) return;
       const w = canvas.width;
@@ -205,46 +227,46 @@
 
       if (!trackPoints.length) return;
 
-      // Use uniform scale so track aspect ratio is never distorted
-      const scale = Math.min(w, h);
-      const offsetX = (w - scale) / 2;
-      const offsetY = (h - scale) / 2;
-
       // Draw track outline
       ctx.beginPath();
       ctx.strokeStyle = 'rgba(255,255,255,0.15)';
       ctx.lineWidth = 3;
       trackPoints.forEach((p, i) => {
-        const x = offsetX + p.x * scale;
-        const y = offsetY + p.y * scale;
+        const { x, y } = trackToCanvas(p.x, p.y, w, h);
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       });
       ctx.closePath();
       ctx.stroke();
 
-      // Draw wind arrow on canvas edge (compass-style: north=top, south=bottom)
+      // Draw wind arrow at canvas edge (compass-style: north=top)
       if (windSpeed > 0) {
         const cx = w / 2;
         const cy = h / 2;
-        const arrowDist = Math.min(w, h) * 0.48; // at canvas edge
-        const arrowLen = 24;
-        // windDir is radians from north (0=N, PI/2=E, PI=S, 3PI/2=W)
-        const ax = cx + Math.sin(windDir) * arrowDist;
-        const ay = cy - Math.cos(windDir) * arrowDist;
-        const tipX = cx + Math.sin(windDir) * (arrowDist - arrowLen);
-        const tipY = cy - Math.cos(windDir) * (arrowDist - arrowLen);
+        // Use half of the larger dimension so arrow reaches the actual window edge
+        const distX = w / 2 - 6;
+        const distY = h / 2 - 6;
+        // Elliptical distance to match rectangular canvas
+        const sinW = Math.sin(windDir);
+        const cosW = Math.cos(windDir);
+        const edgeDist = Math.min(
+          Math.abs(sinW) > 0.001 ? distX / Math.abs(sinW) : 9999,
+          Math.abs(cosW) > 0.001 ? distY / Math.abs(cosW) : 9999
+        );
+        const arrowLen = 28;
+        const ax = cx + sinW * edgeDist;
+        const ay = cy - cosW * edgeDist;
+        const tipX = cx + sinW * (edgeDist - arrowLen);
+        const tipY = cy - cosW * (edgeDist - arrowLen);
 
         ctx.save();
-        ctx.strokeStyle = 'rgba(145,70,255,0.7)';
-        ctx.fillStyle = 'rgba(145,70,255,0.7)';
+        ctx.strokeStyle = 'rgba(145,70,255,0.8)';
+        ctx.fillStyle = 'rgba(145,70,255,0.8)';
         ctx.lineWidth = 3;
-        // Shaft
         ctx.beginPath();
         ctx.moveTo(ax, ay);
         ctx.lineTo(tipX, tipY);
         ctx.stroke();
-        // Arrowhead
         const angle = Math.atan2(tipY - ay, tipX - ax);
         ctx.beginPath();
         ctx.moveTo(tipX, tipY);
@@ -252,14 +274,6 @@
         ctx.lineTo(tipX - 10 * Math.cos(angle + 0.5), tipY - 10 * Math.sin(angle + 0.5));
         ctx.closePath();
         ctx.fill();
-        // "W" label near arrow start
-        ctx.fillStyle = 'rgba(145,70,255,0.5)';
-        ctx.font = '9px Segoe UI';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        const labelX = cx + Math.sin(windDir) * (arrowDist + 8);
-        const labelY = cy - Math.cos(windDir) * (arrowDist + 8);
-        ctx.fillText('W', labelX, labelY);
         ctx.restore();
       }
 
@@ -267,8 +281,7 @@
       updateDisplayCars();
       displayCars.forEach(car => {
         const pos = getTrackPosition(car.pct);
-        const x = offsetX + pos.x * scale;
-        const y = offsetY + pos.y * scale;
+        const { x, y } = trackToCanvas(pos.x, pos.y, w, h);
         const radius = car.isPlayer ? 6 : 4;
         const color = car.isPlayer ? '#9146ff' : (car.carClassColor || '#fff');
 
@@ -283,7 +296,6 @@
           ctx.stroke();
         }
 
-        // Car number label
         ctx.fillStyle = 'rgba(255,255,255,0.7)';
         ctx.font = '8px Segoe UI';
         ctx.textAlign = 'center';
