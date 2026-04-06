@@ -134,8 +134,9 @@
       if (!carMake) return '';
       const lower = carMake.toLowerCase();
       if (lower.includes('corvette')) return 'chevrolet';
+      if (lower.includes('mx-5') || lower.includes('mx5') || lower.includes('miata')) return 'mazda';
       const first = lower.split(' ')[0];
-      const map = { amr: 'aston martin', 'aston': 'aston martin' };
+      const map = { amr: 'aston martin', 'aston': 'aston martin', 'vw': 'volkswagen' };
       return (map[first] || first);
     }
 

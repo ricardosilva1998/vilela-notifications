@@ -226,9 +226,23 @@ async function startTelemetry(onStatusChange) {
             const weekendInfo = ir.getSessionInfo('WeekendInfo');
 
             if (driverInfo && driverInfo.Drivers) {
+              const newTrackName = weekendInfo?.TrackDisplayName || '';
+
+              // Detect track/session change — reset track map when track changes
+              if (sessionInfoFound && newTrackName && newTrackName !== trackName) {
+                log('[SessionInfo] Track changed: ' + trackName + ' → ' + newTrackName);
+                trackSlots.fill(null);
+                trackPathComplete = false;
+                trackPathOutput = [];
+                lastIntX = 0; lastIntY = 0;
+                lastRecordedPct = -1;
+                filledSlots = 0;
+                sessionInfoFound = false; // re-trigger full init below
+              }
+
               if (!sessionInfoFound) {
                 sessionInfoFound = true;
-                trackName = weekendInfo?.TrackDisplayName || '';
+                trackName = newTrackName;
                 log('[SessionInfo] Found! Drivers: ' + driverInfo.Drivers.length);
                 log('[SessionInfo] Track: ' + trackName);
                 // Dump ALL fields from first driver to discover country data
@@ -282,7 +296,7 @@ async function startTelemetry(onStatusChange) {
               }
               drivers = driverInfo.Drivers;
               playerCarIdx = driverInfo.DriverCarIdx ?? 0;
-              trackName = weekendInfo?.TrackDisplayName || '';
+              trackName = newTrackName;
             } else if (pollCount % 300 === 0) {
               log('[SessionInfo] DriverInfo not available yet (poll ' + pollCount + ')');
             }
