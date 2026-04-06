@@ -107,7 +107,7 @@
     const fontSize = parseInt(getSetting('fontSize', '11')) || 11;
     document.body.style.fontSize = fontSize + 'px';
     const _rstyle = document.createElement('style');
-    _rstyle.textContent = `.overlay-table td { height: ${rowHeight}px; min-height: ${rowHeight}px; }`;
+    _rstyle.textContent = `.overlay-table { font-size: ${fontSize}px; } .overlay-table td { height: ${rowHeight}px; min-height: ${rowHeight}px; }`;
     document.head.appendChild(_rstyle);
 
     // Session header items — filter by enabled state
