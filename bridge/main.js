@@ -34,7 +34,7 @@ try {
 let tray = null;
 let controlWindow = null;
 const overlayWindows = {};
-let overlaysLocked = false;
+// Lock feature removed — overlays are always unlocked and draggable
 let autoHideOverlays = true;
 
 // Persisted settings
@@ -83,8 +83,7 @@ app.on('ready', () => {
   // Load persisted settings
   settings = loadSettings();
   if (settings.autoHideOverlays !== undefined) autoHideOverlays = settings.autoHideOverlays;
-  if (settings.overlaysLocked !== undefined) overlaysLocked = settings.overlaysLocked;
-  try { require('fs').appendFileSync(require('path').join(require('os').homedir(), 'atleta-bridge.log'), '[' + new Date().toISOString() + '] [Startup] overlaysLocked=' + overlaysLocked + '\n'); } catch(e) {}
+  // Lock feature removed
 
   try {
     // Try multiple icon paths (asar, extraResources, build dir)
@@ -208,7 +207,6 @@ app.on('ready', () => {
 
 function persistSettings() {
   settings.autoHideOverlays = autoHideOverlays;
-  settings.overlaysLocked = overlaysLocked;
   settings.enabledOverlays = Object.keys(overlayWindows);
   // Persist overlay positions/sizes
   settings.overlayBounds = settings.overlayBounds || {};
@@ -302,29 +300,18 @@ function createOverlayWindow(overlayId) {
     webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
 
-  // Apply current lock state
-  if (overlaysLocked) {
-    win.setIgnoreMouseEvents(true, { forward: true });
-  } else {
-    win.setIgnoreMouseEvents(false);
-  }
-
-  // Stay on top — screen-saver for locked (over fullscreen games), floating for unlocked (allows input)
-  const zLevel = overlaysLocked ? 'screen-saver' : 'floating';
-  win.setAlwaysOnTop(true, zLevel);
+  // Always unlocked — overlays accept mouse events and are draggable
+  win.setIgnoreMouseEvents(false);
+  win.setAlwaysOnTop(true, 'floating');
 
   // Periodically re-assert always-on-top
   const topInterval = setInterval(() => {
     if (win.isDestroyed()) { clearInterval(topInterval); return; }
-    try { win.setAlwaysOnTop(true, overlaysLocked ? 'screen-saver' : 'floating'); } catch(e) {}
+    try { win.setAlwaysOnTop(true, 'floating'); } catch(e) {}
   }, 2000);
 
   win.loadFile(path.join(__dirname, 'overlays', `${overlayId}.html`));
 
-  if (overlaysLocked) {
-    win.setIgnoreMouseEvents(true, { forward: true });
-    win.setResizable(false);
-  }
 
   // Save position/size when moved or resized
   win.on('moved', () => saveOverlayPosition(overlayId, win));
@@ -360,34 +347,15 @@ function closeOverlayWindow(overlayId) {
   }
 }
 
-function setOverlaysLocked(locked) {
-  overlaysLocked = locked;
-  const msg = '[Lock] Overlays ' + (locked ? 'LOCKED' : 'UNLOCKED') + ' (' + Object.keys(overlayWindows).length + ' windows)';
-  console.log(msg);
-  try { require('fs').appendFileSync(require('path').join(require('os').homedir(), 'atleta-bridge.log'), '[' + new Date().toISOString() + '] ' + msg + '\n'); } catch(e) {}
-  Object.values(overlayWindows).forEach(win => {
-    if (win && !win.isDestroyed()) {
-      win.setIgnoreMouseEvents(locked, { forward: locked });
-      win.setAlwaysOnTop(true, locked ? 'screen-saver' : 'floating');
-      win.webContents.send('lock-state', locked);
-    }
-  });
-  persistSettings();
-}
-
 ipcMain.on('toggle-overlay', (event, overlayId, enabled) => {
   if (enabled) createOverlayWindow(overlayId);
   else closeOverlayWindow(overlayId);
 });
 
-ipcMain.on('toggle-lock', (event, locked) => {
-  setOverlaysLocked(locked);
-});
-
 // Overlays call this when mouse enters/leaves visible content
 ipcMain.on('set-ignore-mouse', (event, ignore) => {
   const win = BrowserWindow.fromWebContents(event.sender);
-  if (win && !win.isDestroyed() && !overlaysLocked) {
+  if (win && !win.isDestroyed()) {
     win.setIgnoreMouseEvents(ignore, { forward: true });
   }
 });
@@ -438,7 +406,6 @@ ipcMain.on('get-overlay-states', (event) => {
   const states = {};
   OVERLAYS.forEach(o => { states[o.id] = !!overlayWindows[o.id]; });
   event.reply('overlay-states', states);
-  event.reply('lock-state', overlaysLocked);
   event.reply('autohide-state', autoHideOverlays);
 });
 

@@ -21,13 +21,6 @@
 .header-title { font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #e8e6f0; }
     .header-version { font-size: 10px; color: #5c5b6e; margin-left: 2px; font-weight: 400; }
     .header-right { display: flex; align-items: center; gap: 10px; }
-    .lock-toggle-btn {
-      background: none; border: 1px solid rgba(255,255,255,0.1); color: #8b8a9e; cursor: pointer;
-      font-size: 13px; padding: 4px 10px; border-radius: 6px; transition: all 0.2s;
-      display: flex; align-items: center; gap: 5px;
-    }
-    .lock-toggle-btn:hover { border-color: rgba(145,70,255,0.4); color: #e8e6f0; }
-    .lock-toggle-btn.locked { background: rgba(145,70,255,0.15); border-color: rgba(145,70,255,0.4); color: #9146ff; }
     .header-status-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
     .header-status-dot.connected { background: #3ecf8e; box-shadow: 0 0 6px rgba(62,207,142,0.5); }
     .header-status-dot.disconnected { background: #f04438; }
@@ -169,16 +162,6 @@
     .sub-tab-content { display: none; }
     .sub-tab-content.active { display: block; }
 
-    /* ─── Lock bar (bottom of overview) ───────────────────── */
-    .lock-section { margin-top: 16px; }
-    .lock-main-btn {
-      width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
-      background: #141520; color: #e8e6f0; font-size: 13px; font-weight: 600; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;
-    }
-    .lock-main-btn.locked { background: rgba(145,70,255,0.15); border-color: rgba(145,70,255,0.4); }
-    .lock-hint { font-size: 10px; color: #3a3a4e; text-align: center; margin-top: 6px; }
-
     /* ─── Updates panel ───────────────────────────────────── */
     .update-banner {
       background: rgba(62,207,142,0.08); border: 1px solid rgba(62,207,142,0.3); border-radius: 8px;
@@ -250,7 +233,6 @@
       <span class="header-title">ATLETA BRIDGE <span class="header-version" id="header-version"></span></span>
     </div>
     <div class="header-right">
-      <button class="lock-toggle-btn" id="header-lock-btn" onclick="toggleLock()">&#128275; Unlock</button>
       <div class="header-status-dot waiting" id="header-status-dot" title="Waiting for iRacing..."></div>
     </div>
   </div>
@@ -322,13 +304,6 @@
 
         <div class="section-header">Overlays</div>
         <div class="overview-grid" id="overview-grid"></div>
-
-        <div class="lock-section">
-          <button class="lock-main-btn" id="lock-main-btn" onclick="toggleLock()">
-            &#128275; Unlocked &#8212; Drag &amp; Resize Overlays
-          </button>
-          <div class="lock-hint">Lock to make overlays click-through while driving</div>
-        </div>
 
         <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#8b8a9e;margin-top:10px;cursor:pointer;">
           <input type="checkbox" id="autohide-check" checked onchange="toggleAutoHide(this.checked)" style="accent-color:#9146ff;">
@@ -403,7 +378,6 @@
 
   <script>
     const { ipcRenderer } = require('electron');
-    let locked = false;
     let appVersion = '--';
     let currentPanel = 'overview';
 
@@ -929,38 +903,9 @@
       });
     }
 
-    // ─── Lock & Auto-hide ────────────────────────────────────
-    function toggleLock() {
-      locked = !locked;
-      ipcRenderer.send('toggle-lock', locked);
-      updateLockUI();
-    }
-
+    // ─── Auto-hide ─────────────────────────────────────────
     function toggleAutoHide(enabled) {
       ipcRenderer.send('toggle-autohide', enabled);
-    }
-
-    function updateLockUI() {
-      // Header button
-      const headerBtn = document.getElementById('header-lock-btn');
-      if (locked) {
-        headerBtn.innerHTML = '&#128274; Lock';
-        headerBtn.classList.add('locked');
-      } else {
-        headerBtn.innerHTML = '&#128275; Unlock';
-        headerBtn.classList.remove('locked');
-      }
-      // Overview button
-      const mainBtn = document.getElementById('lock-main-btn');
-      if (mainBtn) {
-        if (locked) {
-          mainBtn.innerHTML = '&#128274; Locked &#8212; Click-Through Mode';
-          mainBtn.classList.add('locked');
-        } else {
-          mainBtn.innerHTML = '&#128275; Unlocked &#8212; Drag &amp; Resize Overlays';
-          mainBtn.classList.remove('locked');
-        }
-      }
     }
 
     // ─── Updates ─────────────────────────────────────────────
@@ -1197,11 +1142,6 @@
         const settingsToggle = document.getElementById('settings-toggle-' + id);
         if (settingsToggle) settingsToggle.checked = enabled;
       });
-    });
-
-    ipcRenderer.on('lock-state', (event, isLocked) => {
-      locked = isLocked;
-      updateLockUI();
     });
 
     ipcRenderer.on('autohide-state', (event, enabled) => {
