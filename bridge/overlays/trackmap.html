@@ -255,15 +255,16 @@
       displayCars.forEach(car => {
         const pos = getTrackPosition(car.pct);
         const x = pos.x * s, y = pos.y * s;
-        const radius = car.isPlayer ? 6 : 4;
-        const color = car.isPlayer ? '#9146ff' : (car.carClassColor || '#fff');
+        const isFocused = car.isSpectated && !car.isPlayer;
+        const radius = car.isPlayer ? 6 : (isFocused ? 7 : 4);
+        const color = car.isPlayer ? '#9146ff' : (isFocused ? '#3ecf8e' : (car.carClassColor || '#fff'));
 
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
         ctx.fillStyle = car.inPit ? 'rgba(128,128,128,0.5)' : color;
         ctx.fill();
 
-        if (car.isPlayer) {
+        if (car.isPlayer || isFocused) {
           ctx.strokeStyle = '#fff';
           ctx.lineWidth = 2;
           ctx.stroke();

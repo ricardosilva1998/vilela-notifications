@@ -388,12 +388,7 @@ async function startTelemetry(onStatusChange) {
           throttle, brake, clutch, steer, gear, speed,
         }});
 
-        // === Wind ===
-        broadcastToChannel('wind', { type: 'data', channel: 'wind', data: {
-          windDirection: ir.get(VARS.WIND_DIR)?.[0] || 0,
-          windSpeed: ir.get(VARS.WIND_VEL)?.[0] || 0,
-          carHeading: ir.get(VARS.YAW)?.[0] || 0,
-        }});
+        // === Wind === (broadcast moved after focusCarIdx is determined, see below)
 
         // === Proximity ===
         broadcastToChannel('proximity', { type: 'data', channel: 'proximity', data: {
@@ -572,6 +567,14 @@ async function startTelemetry(onStatusChange) {
           broadcastToChannel('standings', { type: 'data', channel: 'standings', data: standings, spectatedCarIdx: focusCarIdx });
         }
 
+        // === Wind === (after focusCarIdx so we can send the right heading)
+        const playerYawVal = ir.get(VARS.YAW)?.[0] || 0;
+        broadcastToChannel('wind', { type: 'data', channel: 'wind', data: {
+          windDirection: ir.get(VARS.WIND_DIR)?.[0] || 0,
+          windSpeed: ir.get(VARS.WIND_VEL)?.[0] || 0,
+          carHeading: focusCarIdx === playerCarIdx ? playerYawVal : null,
+        }});
+
         // === Relative ===
         // Use spectated car as reference point (so relative re-centers when spectating another driver)
         const refCarIdx = focusCarIdx;
@@ -670,6 +673,7 @@ async function startTelemetry(onStatusChange) {
               carClass: s.carClass,
               carClassColor: s.carClassColor,
               isPlayer: s.isPlayer,
+              isSpectated: s.isSpectated,
               inPit: s.inPit,
             });
           }
