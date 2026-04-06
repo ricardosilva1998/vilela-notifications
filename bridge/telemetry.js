@@ -297,6 +297,24 @@ async function startTelemetry(onStatusChange) {
               drivers = driverInfo.Drivers;
               playerCarIdx = driverInfo.DriverCarIdx ?? 0;
               trackName = newTrackName;
+
+              // Retry track map fetch every ~30s if still missing
+              if (sessionInfoFound && !trackPathComplete && trackPathOutput.length === 0 && pollCount % 900 === 0 && pollCount > 0) {
+                const retryGeoKey = geoKeyFromSessionInfo(weekendInfo?.TrackLatitude, weekendInfo?.TrackLongitude);
+                log('[TrackMap] Retrying server fetch (geo=' + (retryGeoKey || 'unknown') + ' name=' + trackName + ')');
+                (async () => {
+                  let data = retryGeoKey ? await fetchTrackFromServer(retryGeoKey) : null;
+                  if (!data) data = await fetchTrackFromServer(trackName);
+                  if (data && !trackPathComplete) {
+                    trackPathOutput = data;
+                    trackPathComplete = true;
+                    filledSlots = TRACK_SLOTS;
+                    if (retryGeoKey) saveCachedTrackByGeo(retryGeoKey, data);
+                    saveCachedTrack(trackName, data);
+                    log('[TrackMap] Loaded from server on retry (' + data.length + ' points)');
+                  }
+                })();
+              }
             } else if (pollCount % 300 === 0) {
               log('[SessionInfo] DriverInfo not available yet (poll ' + pollCount + ')');
             }

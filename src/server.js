@@ -147,13 +147,7 @@ app.get('/api/voice/:discordUserId', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.use('/api', apiRoutes);
-app.use('/admin', adminRoutes);
-app.use('/vtuber', vtuberRoutes);
-app.use('/sync', syncRoutes);
-app.use('/overlay', overlayRoutes);
-
-// Track map API (public)
+// Track map API (public — must be before /api auth middleware)
 app.get('/api/track-map/:trackName', (req, res) => {
   try {
     const row = db.db.prepare('SELECT track_data FROM track_maps WHERE track_name = ?').get(req.params.trackName);
@@ -179,6 +173,12 @@ app.post('/api/track-map', (req, res) => {
     res.json({ status: 'ok', points: trackData.length });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+app.use('/api', apiRoutes);
+app.use('/admin', adminRoutes);
+app.use('/vtuber', vtuberRoutes);
+app.use('/sync', syncRoutes);
+app.use('/overlay', overlayRoutes);
 
 
 // Language switch
