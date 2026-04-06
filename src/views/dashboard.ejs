@@ -657,6 +657,24 @@
 
     <div id="ibt-results" style="margin-top: 16px;"></div>
   </div>
+
+  <!-- Track Database -->
+  <div class="card animate-in" style="margin-top: 16px;">
+    <h3 style="margin-bottom: 4px;">Track Database</h3>
+    <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">Tracks available for the track map overlay. Upload .ibt files above to add more.</p>
+    <div id="track-db-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px;">
+      <div style="color: var(--text-muted); font-size: 12px;">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Missing Tracks -->
+  <div class="card animate-in" style="margin-top: 16px;">
+    <h3 style="margin-bottom: 4px;">Missing Tracks</h3>
+    <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">Popular iRacing tracks not yet in the database. Upload .ibt telemetry files from these tracks to add them.</p>
+    <div id="missing-tracks-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px;">
+      <div style="color: var(--text-muted); font-size: 12px;">Loading...</div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -890,6 +908,88 @@ async function uploadTrack(btn, geoId) {
     btn.disabled = false;
   }
 }
+
+// ─── Track Database Viewer ──────────────────────────────────
+const KNOWN_IRACING_TRACKS = [
+  'Daytona International Speedway', 'Spa-Francorchamps', 'Nürburgring Grand-Prix-Strecke',
+  'Nürburgring Nordschleife', 'Autodromo Nazionale Monza', 'Silverstone Circuit',
+  'Suzuka International Racing Course', 'Autódromo José Carlos Pace', 'Road America',
+  'Watkins Glen International', 'Circuit of the Americas', 'Mount Panorama Circuit',
+  'Hockenheimring Baden-Württemberg', 'Autodromo Enzo e Dino Ferrari', 'Brands Hatch Circuit',
+  'WeatherTech Raceway at Laguna Seca', 'Summit Point Raceway', 'Okayama International Circuit',
+  'Sebring International Raceway', 'Circuit des 24 Heures du Mans', 'Red Bull Ring',
+  'Circuit de Barcelona-Catalunya', 'Hungaroring', 'Fuji Speedway',
+  'Charlotte Motor Speedway', 'Indianapolis Motor Speedway', 'Long Beach Street Circuit',
+  'Belle Isle - Detroit', 'Mid-Ohio Sports Car Course', 'Virginia International Raceway',
+  'Lime Rock Park', 'Snetterton Circuit', 'Donington Park Racing Circuit',
+  'Oulton Park Circuit', 'Phillip Island Circuit', 'Autodromo Internazionale del Mugello',
+  'Autódromo Internacional do Algarve', 'Circuit Zandvoort', 'Twin Ring Motegi',
+  'Tsukuba Circuit', 'Road Atlanta', 'Canadian Tire Motorsport Park', 'Oran Park Raceway',
+  'Barber Motorsports Park', 'Sonoma Raceway', 'Circuit Gilles Villeneuve',
+  'Nürburgring Combined', 'Imola', 'Knockhill Racing Circuit',
+];
+
+async function loadTrackDatabase() {
+  const grid = document.getElementById('track-db-grid');
+  const missingGrid = document.getElementById('missing-tracks-grid');
+  try {
+    const res = await fetch('/api/track-maps');
+    const tracks = await res.json();
+
+    if (!tracks.length) {
+      grid.innerHTML = '<div style="color: var(--text-muted); font-size: 12px;">No tracks in database yet. Upload .ibt files above.</div>';
+    } else {
+      // Filter to only show tracks with display names (not geo IDs like "49.33_8.57")
+      const namedTracks = tracks.filter(t => !t.track_name.match(/^-?\d+\.\d+_-?\d+\.\d+$/));
+      const geoTracks = tracks.filter(t => t.track_name.match(/^-?\d+\.\d+_-?\d+\.\d+$/));
+
+      grid.innerHTML = '';
+      for (const track of namedTracks) {
+        const card = document.createElement('div');
+        card.style.cssText = 'background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px; text-align: center;';
+        card.innerHTML =
+          '<canvas width="140" height="140" style="border-radius: 6px; background: rgba(0,0,0,0.3); margin-bottom: 8px;"></canvas>' +
+          '<div style="font-size: 11px; font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="' + track.track_name.replace(/"/g, '&quot;') + '">' + track.track_name.replace(/</g, '&lt;') + '</div>' +
+          '<div style="font-size: 10px; color: var(--text-muted);">' + track.point_count + ' pts</div>';
+        grid.appendChild(card);
+
+        // Load and draw track preview
+        try {
+          const r = await fetch('/api/track-map/' + encodeURIComponent(track.track_name));
+          const d = await r.json();
+          if (d.trackData) drawTrackPreview(card.querySelector('canvas'), d.trackData);
+        } catch(e) {}
+      }
+
+      // Show geo-only tracks count
+      if (geoTracks.length > 0) {
+        const note = document.createElement('div');
+        note.style.cssText = 'grid-column: 1 / -1; color: var(--text-muted); font-size: 11px; margin-top: 8px;';
+        note.textContent = '+ ' + geoTracks.length + ' tracks stored by GPS coordinates (will match automatically when you race them)';
+        grid.appendChild(note);
+      }
+    }
+
+    // Show missing tracks
+    const dbNames = tracks.map(t => t.track_name.toLowerCase());
+    const missing = KNOWN_IRACING_TRACKS.filter(name => !dbNames.some(db => db.includes(name.toLowerCase()) || name.toLowerCase().includes(db)));
+
+    if (missing.length === 0) {
+      missingGrid.innerHTML = '<div style="color: #3ecf8e; font-size: 12px;">All known tracks are in the database!</div>';
+    } else {
+      missingGrid.innerHTML = missing.map(name =>
+        '<div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px 12px; display: flex; align-items: center; gap: 8px;">' +
+          '<span style="background: rgba(240,68,56,0.15); color: #f04438; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">MISSING</span>' +
+          '<span style="font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + name + '</span>' +
+        '</div>'
+      ).join('');
+    }
+  } catch(e) {
+    grid.innerHTML = '<div style="color: #f04438; font-size: 12px;">Failed to load track database</div>';
+    missingGrid.innerHTML = '';
+  }
+}
+loadTrackDatabase();
 </script>
 
 <div class="tab-content" id="tab-experimental">

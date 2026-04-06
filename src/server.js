@@ -148,6 +148,13 @@ app.get('/api/voice/:discordUserId', async (req, res) => {
 });
 
 // Track map API (public — must be before /api auth middleware)
+app.get('/api/track-maps', (req, res) => {
+  try {
+    const rows = db.db.prepare('SELECT track_name, point_count, created_at, updated_at FROM track_maps ORDER BY track_name').all();
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/track-map/:trackName', (req, res) => {
   try {
     const row = db.db.prepare('SELECT track_data FROM track_maps WHERE track_name = ?').get(req.params.trackName);
