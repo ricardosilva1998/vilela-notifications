@@ -398,13 +398,19 @@ ipcMain.on('save-overlay-settings', (event, overlayId, overlaySettings) => {
   if (!settings.overlayCustom) settings.overlayCustom = {};
   settings.overlayCustom[overlayId] = overlaySettings;
 
-  // For trackmap: close and recreate with new size instead of just reloading
+  // For trackmap: destroy and recreate with new size instead of just reloading
   if (overlayId === 'trackmap' && overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
-    overlayWindows[overlayId].close();
+    const oldWin = overlayWindows[overlayId];
     delete overlayWindows[overlayId];
+    oldWin.removeAllListeners('closed'); // prevent overlay-closed event from unchecking toggle
+    oldWin.destroy();
     if (settings.overlayBounds) delete settings.overlayBounds.trackmap;
     persistSettings();
     createOverlayWindow('trackmap');
+    // Re-sync toggle state since we suppressed the closed event
+    if (controlWindow && !controlWindow.isDestroyed()) {
+      controlWindow.webContents.send('overlay-states', { trackmap: true });
+    }
   } else {
     persistSettings();
     // Reload the overlay window to apply new settings
