@@ -18,12 +18,7 @@
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
     }
     .header-left { display: flex; align-items: center; gap: 10px; }
-    .hamburger-btn {
-      background: none; border: none; color: #8b8a9e; cursor: pointer; font-size: 18px;
-      padding: 4px 6px; border-radius: 4px; transition: background 0.2s, color 0.2s; line-height: 1;
-    }
-    .hamburger-btn:hover { background: rgba(255,255,255,0.06); color: #e8e6f0; }
-    .header-title { font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #e8e6f0; }
+.header-title { font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #e8e6f0; }
     .header-version { font-size: 10px; color: #5c5b6e; margin-left: 2px; font-weight: 400; }
     .header-right { display: flex; align-items: center; gap: 10px; }
     .lock-toggle-btn {
@@ -38,26 +33,6 @@
     .header-status-dot.disconnected { background: #f04438; }
     .header-status-dot.waiting { background: #f79009; animation: pulse 1.5s ease-in-out infinite; }
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
-
-    /* ─── Hamburger Dropdown Menu ─────────────────────────── */
-    .hamburger-menu {
-      display: none; position: fixed; top: 44px; left: 8px; z-index: 200;
-      background: #1a1b2e; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
-      min-width: 200px; padding: 6px 0; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    }
-    .hamburger-menu.open { display: block; }
-    .menu-item {
-      display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 12px;
-      color: #8b8a9e; cursor: pointer; transition: background 0.15s, color 0.15s;
-    }
-    .menu-item:hover { background: rgba(255,255,255,0.04); color: #e8e6f0; }
-    .menu-item .menu-icon { font-size: 14px; width: 18px; text-align: center; }
-    .menu-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 4px 0; }
-    .menu-item-toggle {
-      display: flex; align-items: center; justify-content: space-between; padding: 8px 14px;
-      font-size: 12px; color: #8b8a9e;
-    }
-    .menu-item-toggle .toggle { margin-left: auto; }
 
     /* ─── Layout: Sidebar + Content ─────────────────────── */
     .layout { display: flex; height: calc(100vh - 44px); margin-top: 44px; }
@@ -106,6 +81,9 @@
     .toggle .slider:before { content: ''; position: absolute; width: 14px; height: 14px; left: 2px; bottom: 2px; background: #fff; border-radius: 50%; transition: 0.3s; }
     .toggle input:checked + .slider { background: #9146ff; border-color: #9146ff; }
     .toggle input:checked + .slider:before { transform: translateX(16px); }
+    .toggle-sm { width: 32px; height: 18px; }
+    .toggle-sm .slider:before { width: 12px; height: 12px; left: 2px; bottom: 2px; }
+    .toggle-sm input:checked + .slider:before { transform: translateX(14px); }
 
     .section-header {
       font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px;
@@ -263,9 +241,6 @@
       font-size: 11px; font-weight: 600; z-index: 300;
     }
 
-    /* ─── Backdrop for hamburger close ────────────────────── */
-    .menu-backdrop { display: none; position: fixed; inset: 0; z-index: 150; }
-    .menu-backdrop.open { display: block; }
   </style>
 </head>
 <body>
@@ -273,36 +248,11 @@
   <!-- ═══ HEADER BAR ═══ -->
   <div class="header-bar">
     <div class="header-left">
-      <button class="hamburger-btn" id="hamburger-btn" onclick="toggleHamburger()">&#9776;</button>
       <span class="header-title">ATLETA BRIDGE <span class="header-version" id="header-version"></span></span>
     </div>
     <div class="header-right">
       <button class="lock-toggle-btn" id="header-lock-btn" onclick="toggleLock()">&#128275; Unlock</button>
       <div class="header-status-dot waiting" id="header-status-dot" title="Waiting for iRacing..."></div>
-    </div>
-  </div>
-
-  <!-- ═══ HAMBURGER DROPDOWN ═══ -->
-  <div class="menu-backdrop" id="menu-backdrop" onclick="closeHamburger()"></div>
-  <div class="hamburger-menu" id="hamburger-menu">
-    <div class="menu-item" onclick="navigateTo('updates'); closeHamburger();">
-      <span class="menu-icon">&#128259;</span> Updates
-    </div>
-    <div class="menu-item" onclick="navigateTo('logs'); closeHamburger();">
-      <span class="menu-icon">&#128196;</span> Logs
-    </div>
-    <div class="menu-item-toggle">
-      <span style="display:flex;align-items:center;gap:8px;">
-        <span class="menu-icon">&#128064;</span> Auto-hide overlays
-      </span>
-      <label class="toggle" style="width:36px;height:20px;">
-        <input type="checkbox" id="autohide-check" checked onchange="toggleAutoHide(this.checked)">
-        <span class="slider"></span>
-      </label>
-    </div>
-    <div class="menu-divider"></div>
-    <div class="menu-item" onclick="navigateTo('about'); closeHamburger();">
-      <span class="menu-icon">&#9432;</span> About
     </div>
   </div>
 
@@ -343,6 +293,16 @@
         <span class="sidebar-icon">&#127918;</span> Inputs
       </div>
       <div class="sidebar-spacer"></div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-item" data-panel="updates" onclick="navigateTo('updates')">
+        <span class="sidebar-icon">&#128259;</span> Updates
+      </div>
+      <div class="sidebar-item" data-panel="logs" onclick="navigateTo('logs')">
+        <span class="sidebar-icon">&#128196;</span> Logs
+      </div>
+      <div class="sidebar-item" data-panel="about" onclick="navigateTo('about')">
+        <span class="sidebar-icon">&#9432;</span> About
+      </div>
       <div class="sidebar-footer">
         <a href="https://atletanotifications.com" target="_blank">atletanotifications.com</a>
       </div>
@@ -370,6 +330,11 @@
           </button>
           <div class="lock-hint">Lock to make overlays click-through while driving</div>
         </div>
+
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#8b8a9e;margin-top:10px;cursor:pointer;">
+          <input type="checkbox" id="autohide-check" checked onchange="toggleAutoHide(this.checked)" style="accent-color:#9146ff;">
+          Auto-hide overlays when iRacing closes
+        </label>
       </div>
 
       <!-- ═══ OVERLAY SETTINGS PANELS (generated by JS) ═══ -->
@@ -575,19 +540,6 @@
       else stopLogRefresh();
     }
 
-    // ─── Hamburger Menu ──────────────────────────────────────
-    function toggleHamburger() {
-      const menu = document.getElementById('hamburger-menu');
-      const backdrop = document.getElementById('menu-backdrop');
-      const isOpen = menu.classList.contains('open');
-      menu.classList.toggle('open', !isOpen);
-      backdrop.classList.toggle('open', !isOpen);
-    }
-    function closeHamburger() {
-      document.getElementById('hamburger-menu').classList.remove('open');
-      document.getElementById('menu-backdrop').classList.remove('open');
-    }
-
     // ─── Overview Grid ───────────────────────────────────────
     function buildOverviewGrid() {
       const grid = document.getElementById('overview-grid');
@@ -617,6 +569,11 @@
     // ─── Toggle Overlay ──────────────────────────────────────
     function toggleOverlay(id, enabled) {
       ipcRenderer.send('toggle-overlay', id, enabled);
+      // Sync both toggles immediately
+      const t1 = document.getElementById('toggle-' + id);
+      const t2 = document.getElementById('settings-toggle-' + id);
+      if (t1) t1.checked = enabled;
+      if (t2) t2.checked = enabled;
     }
 
     // ─── Build Overlay Settings Panels ───────────────────────
@@ -676,9 +633,9 @@
             html += `<div class="column-item" draggable="true" data-key="${item.key}" data-overlay="${ov.id}" data-list="header">
               <span class="drag-handle">&#10303;</span>
               <span class="col-label">${item.label}</span>
-              <label class="toggle" style="width:32px;height:18px;">
+              <label class="toggle toggle-sm">
                 <input type="checkbox" class="header-toggle" data-overlay="${ov.id}" data-key="${item.key}" ${checked ? 'checked' : ''} onchange="autoSaveOverlay('${ov.id}')">
-                <span class="slider" style="border-radius:18px;"><span style="display:none;"></span></span>
+                <span class="slider"></span>
               </label>
             </div>`;
           });
@@ -701,9 +658,9 @@
             html += `<div class="column-item" draggable="true" data-col="${col.key}" data-overlay="${ov.id}">
               <span class="drag-handle">&#10303;</span>
               <span class="col-label">${col.label}</span>
-              <label class="toggle" style="width:32px;height:18px;">
+              <label class="toggle toggle-sm">
                 <input type="checkbox" class="col-toggle" data-overlay="${ov.id}" data-col="${col.key}" ${enabled ? 'checked' : ''} onchange="autoSaveOverlay('${ov.id}')">
-                <span class="slider" style="border-radius:18px;"><span style="display:none;"></span></span>
+                <span class="slider"></span>
               </label>
             </div>`;
           });
