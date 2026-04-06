@@ -262,7 +262,8 @@
         ctx.save();
         ctx.strokeStyle = 'rgba(145,70,255,0.8)';
         ctx.fillStyle = 'rgba(145,70,255,0.8)';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.moveTo(ax, ay);
         ctx.lineTo(tipX, tipY);
@@ -270,8 +271,8 @@
         const angle = Math.atan2(tipY - ay, tipX - ax);
         ctx.beginPath();
         ctx.moveTo(tipX, tipY);
-        ctx.lineTo(tipX - 10 * Math.cos(angle - 0.5), tipY - 10 * Math.sin(angle - 0.5));
-        ctx.lineTo(tipX - 10 * Math.cos(angle + 0.5), tipY - 10 * Math.sin(angle + 0.5));
+        ctx.lineTo(tipX - 14 * Math.cos(angle - 0.45), tipY - 14 * Math.sin(angle - 0.45));
+        ctx.lineTo(tipX - 14 * Math.cos(angle + 0.45), tipY - 14 * Math.sin(angle + 0.45));
         ctx.closePath();
         ctx.fill();
         ctx.restore();
