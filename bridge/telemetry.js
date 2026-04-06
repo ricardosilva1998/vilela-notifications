@@ -22,6 +22,7 @@ const { extractTrackFromIBT, geoKeyFromSessionInfo, loadCachedTrackByGeo, saveCa
 
 // Fuel tracking
 let fuelHistory = [];
+let lapTimeHistory = [];
 let lastLap = -1;
 let fuelAtLapStart = null;
 
@@ -171,7 +172,7 @@ function estimateIRatingChanges(driverList) {
   return changes;
 }
 
-function resetFuel() { fuelHistory = []; lastLap = -1; fuelAtLapStart = null; }
+function resetFuel() { fuelHistory = []; lapTimeHistory = []; lastLap = -1; fuelAtLapStart = null; }
 
 async function startTelemetry(onStatusChange) {
   statusCallback = onStatusChange;
@@ -420,11 +421,21 @@ async function startTelemetry(onStatusChange) {
         const currentLap = ir.get(VARS.LAP)?.[0] || 0;
         const lapsCompleted = ir.get(VARS.LAP_COMPLETED)?.[0] || 0;
         const sessionLapsRemain = ir.get(VARS.SESSION_LAPS_REMAIN_EX)?.[0] || 0;
+        const sessionTimeRemainFuel = ir.get(VARS.SESSION_TIME_REMAIN)?.[0] || 0;
+        const lastLapTime = ir.get(VARS.LAP_LAST_LAP_TIME)?.[0] || 0;
 
-        if (currentLap > lastLap && lastLap >= 0 && fuelAtLapStart !== null) {
-          const used = fuelAtLapStart - fuelLevel;
-          if (used > 0.01) { fuelHistory.push(used); if (fuelHistory.length > 20) fuelHistory.shift(); }
+        if (currentLap > lastLap && lastLap >= 0) {
+          // Track fuel used
+          if (fuelAtLapStart !== null) {
+            const used = fuelAtLapStart - fuelLevel;
+            if (used > 0.01) { fuelHistory.push(used); if (fuelHistory.length > 20) fuelHistory.shift(); }
+          }
           fuelAtLapStart = fuelLevel;
+          // Track lap times
+          if (lastLapTime > 0 && lastLapTime < 600) {
+            lapTimeHistory.push(lastLapTime);
+            if (lapTimeHistory.length > 20) lapTimeHistory.shift();
+          }
         }
         if (lastLap < 0 || currentLap > lastLap) { if (fuelAtLapStart === null) fuelAtLapStart = fuelLevel; lastLap = currentLap; }
 
@@ -434,14 +445,28 @@ async function startTelemetry(onStatusChange) {
         const minUsage = fuelHistory.length > 0 ? Math.min(...fuelHistory) : 0;
         const maxUsage = fuelHistory.length > 0 ? Math.max(...fuelHistory) : 0;
         const lapsOfFuel = avgAll > 0 ? fuelLevel / avgAll : 0;
+        const avgLapTime = lapTimeHistory.length > 0 ? lapTimeHistory.reduce((a,b) => a+b, 0) / lapTimeHistory.length : 0;
+
+        // Estimate laps remaining: prefer lap-based, fallback to time-based
         const isUnlimited = sessionLapsRemain >= 32767;
-        const fuelToFinish = (!isUnlimited && avgAll > 0) ? sessionLapsRemain * avgAll : 0;
+        let estLapsRemain = 0;
+        if (!isUnlimited && sessionLapsRemain > 0) {
+          // Lap-based race: use iRacing's laps remaining
+          estLapsRemain = sessionLapsRemain;
+        } else if (sessionTimeRemainFuel > 0 && avgLapTime > 0) {
+          // Timed race: estimate from time remaining + average lap time (+1 for finish lap)
+          estLapsRemain = Math.ceil(sessionTimeRemainFuel / avgLapTime) + 1;
+        }
+
+        const fuelToFinish = (estLapsRemain > 0 && avgAll > 0) ? estLapsRemain * avgAll : 0;
         const fuelToAdd = fuelToFinish > 0 ? Math.max(0, fuelToFinish - fuelLevel) : 0;
 
         broadcastToChannel('fuel', { type: 'data', channel: 'fuel', data: {
           fuelLevel, fuelPct, fuelUsePerHour, avgPerLap: avgAll, avg5Laps: avg5, avg10Laps: avg10,
-          minUsage, maxUsage, lapsOfFuel, lapsRemaining: isUnlimited ? '∞' : sessionLapsRemain,
+          minUsage, maxUsage, lapsOfFuel,
+          lapsRemaining: isUnlimited && estLapsRemain > 0 ? estLapsRemain : (isUnlimited ? '∞' : sessionLapsRemain),
           fuelToFinish, fuelToAdd, lapsCompleted, lapCount: fuelHistory.length,
+          avgLapTime,
         }});
 
         // === Driver Inputs ===
