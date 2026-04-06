@@ -79,15 +79,8 @@
 
     function resizeCanvas() {
       const container = canvas.parentElement;
-      // Use square area based on the smaller dimension
-      const size = Math.min(container.clientWidth, container.clientHeight);
-      canvas.width = size;
-      canvas.height = size;
-      // Center the canvas in the container
-      canvas.style.width = size + 'px';
-      canvas.style.height = size + 'px';
-      canvas.style.display = 'block';
-      canvas.style.margin = 'auto';
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
     }
     window.addEventListener('resize', resizeCanvas);
     setTimeout(resizeCanvas, 100);
@@ -102,9 +95,12 @@
       return points;
     }
 
-    // Normalize raw path to 0-1 square with padding, preserving aspect ratio
+    // Store raw track bounds for aspect-correct drawing at render time
+    let trackAspect = 1; // xRange / yRange
+
+    // Normalize raw path to 0-1 (no aspect adjustment — done at draw time)
     function normalizeTrackPath(rawPath) {
-      if (!rawPath || rawPath.length < 10) return generateCirclePath();
+      if (!rawPath || rawPath.length < 10) { trackAspect = 1; return generateCirclePath(); }
 
       let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
       rawPath.forEach(p => {
@@ -113,18 +109,11 @@
       });
       const xRange = maxX - minX || 1;
       const yRange = maxY - minY || 1;
-      const padding = 0.06; // padding for wind arrow at edges
+      trackAspect = xRange / yRange;
 
-      // Preserve aspect ratio within the square
-      const aspect = xRange / yRange;
-      let scaleX = 1, scaleY = 1;
-      if (aspect > 1) scaleY = 1 / aspect;
-      else scaleX = aspect;
-
-      const usable = 1 - 2 * padding;
       return rawPath.map(p => ({
-        x: padding + usable * scaleX * (p.x - minX) / xRange + usable * (1 - scaleX) / 2,
-        y: padding + usable * scaleY * (1 - (p.y - minY) / yRange) + usable * (1 - scaleY) / 2,
+        x: (p.x - minX) / xRange,
+        y: 1 - (p.y - minY) / yRange,
         pct: p.pct,
       }));
     }
@@ -181,32 +170,52 @@
       });
     }
 
+    // Map normalized 0-1 track coord to canvas pixel, preserving aspect ratio
+    function toPixel(px, py) {
+      const w = canvas.width, h = canvas.height;
+      const pad = 20; // px margin for arrow
+      const drawW = w - pad * 2, drawH = h - pad * 2;
+      const canvasAspect = drawW / drawH;
+      let sw, sh, ox, oy;
+      if (trackAspect > canvasAspect) {
+        sw = drawW; sh = drawW / trackAspect;
+        ox = pad; oy = pad + (drawH - sh) / 2;
+      } else {
+        sh = drawH; sw = drawH * trackAspect;
+        ox = pad + (drawW - sw) / 2; oy = pad;
+      }
+      return { x: ox + px * sw, y: oy + py * sh };
+    }
+
     function draw() {
       if (!ctx) return;
-      const s = canvas.width; // square canvas
-      if (s === 0) return;
-      ctx.clearRect(0, 0, s, s);
+      const w = canvas.width, h = canvas.height;
+      if (w === 0 || h === 0) return;
+      ctx.clearRect(0, 0, w, h);
       if (!trackPoints.length) return;
 
-      // All coordinates are 0-1 normalized, multiply by s for pixels
       // Draw track outline
       ctx.beginPath();
       ctx.strokeStyle = 'rgba(255,255,255,0.15)';
       ctx.lineWidth = 3;
       trackPoints.forEach((p, i) => {
-        const x = p.x * s, y = p.y * s;
+        const { x, y } = toPixel(p.x, p.y);
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       });
       ctx.closePath();
       ctx.stroke();
 
-      // Draw wind chevron arrow at edge (compass-style)
+      // Draw wind chevron arrow at canvas edge (compass-style)
       if (windSpeed > 0) {
-        const cx = s / 2, cy = s / 2;
-        const edgeDist = s * 0.47; // near edge of square
+        const cx = w / 2, cy = h / 2;
+        // Elliptical edge distance for rectangular canvas
         const sinW = Math.sin(windDir), cosW = Math.cos(windDir);
-        const arrowX = cx + sinW * (edgeDist - 16);
-        const arrowY = cy - cosW * (edgeDist - 16);
+        const edgeDist = Math.min(
+          Math.abs(sinW) > 0.001 ? (w / 2 - 8) / Math.abs(sinW) : 9999,
+          Math.abs(cosW) > 0.001 ? (h / 2 - 8) / Math.abs(cosW) : 9999
+        );
+        const arrowX = cx + sinW * (edgeDist - 18);
+        const arrowY = cy - cosW * (edgeDist - 18);
 
         ctx.save();
         ctx.translate(arrowX, arrowY);
@@ -263,7 +272,7 @@
       updateDisplayCars();
       displayCars.forEach(car => {
         const pos = getTrackPosition(car.pct);
-        const x = pos.x * s, y = pos.y * s;
+        const { x, y } = toPixel(pos.x, pos.y);
         const radius = car.isPlayer ? 6 : 4;
         const color = car.isPlayer ? '#9146ff' : (car.carClassColor || '#fff');
 
