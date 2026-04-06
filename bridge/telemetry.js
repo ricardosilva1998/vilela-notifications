@@ -16,6 +16,7 @@ let pollInterval = null;
 let connectInterval = null;
 
 const { broadcastToChannel, getClientInfo, getSelectedCarIdx } = require('./websocket');
+const { switchCamera } = require('./keyboardSim');
 const settings = require('./settings');
 const { extractTrackFromIBT, geoKeyFromSessionInfo, loadCachedTrackByGeo, saveCachedTrackByGeo } = require('./trackExtractor');
 
@@ -158,6 +159,7 @@ async function startTelemetry(onStatusChange) {
   let drivers = [];
   let playerCarIdx = 0;
   let trackName = '';
+  let lastFocusCarIdx = -1;
   let pollCount = 0;
 
   connectInterval = setInterval(async () => {
@@ -453,6 +455,15 @@ async function startTelemetry(onStatusChange) {
         // User-selected driver from overlay UI takes priority over camera
         const userSelectedIdx = getSelectedCarIdx();
         const focusCarIdx = userSelectedIdx !== null ? userSelectedIdx : camCarIdx;
+
+        // Switch iRacing camera when focused driver changes
+        if (focusCarIdx !== lastFocusCarIdx && switchCamera) {
+          lastFocusCarIdx = focusCarIdx;
+          const focusDriver = drivers.find(d => d.CarIdx === focusCarIdx);
+          if (focusDriver && focusDriver.CarNumberRaw !== undefined) {
+            switchCamera(focusDriver.CarNumberRaw, 0);
+          }
+        }
 
         // Use PLAYER_CAR_IDX from telemetry if session info unavailable
         if (!sessionInfoFound) {

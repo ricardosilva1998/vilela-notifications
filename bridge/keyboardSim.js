@@ -63,6 +63,30 @@ if (isWindows) {
     } catch(e2) {
       log('[KeyboardSim] FindWindow not available: ' + (e2.message || e2));
     }
+
+    // iRacing broadcast messages for camera control
+    try {
+      const registerWindowMessageA = user32.func('RegisterWindowMessageA', 'uint32', ['str']);
+      // Use SendMessageA with HWND_BROADCAST (0xFFFF cast as intptr)
+      const sendMessageA = user32.func('SendNotifyMessageA', 'int32', ['intptr', 'uint32', 'uintptr', 'uintptr']);
+      const iracingMsgId = registerWindowMessageA('CYCLESEATCHANGEMSG');
+      if (iracingMsgId) {
+        log('[KeyboardSim] iRacing broadcast msg ID: ' + iracingMsgId);
+        module.exports.switchCamera = function(carNumber, cameraGroup) {
+          const HWND_BROADCAST = 0xFFFF;
+          const wParam = 1; // irsdk_CSCamSwitchNum (switch by car number)
+          const lParam = ((cameraGroup & 0xFFFF) << 16) | (carNumber & 0xFFFF);
+          try {
+            sendMessageA(HWND_BROADCAST, iracingMsgId, wParam, lParam);
+            log('[KeyboardSim] Camera switch: car#' + carNumber + ' group=' + cameraGroup);
+          } catch(e) {
+            log('[KeyboardSim] Camera switch failed: ' + e.message);
+          }
+        };
+      }
+    } catch(e3) {
+      log('[KeyboardSim] iRacing broadcast not available: ' + (e3.message || e3));
+    }
   } catch (e) {
     log('[KeyboardSim] Failed to load: ' + (e.message || e));
   }
