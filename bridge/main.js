@@ -287,6 +287,15 @@ function createOverlayWindow(overlayId) {
     webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
 
+  // Lock aspect ratio during resize
+  const initialAspect = width / height;
+  win.on('will-resize', (event, newBounds) => {
+    event.preventDefault();
+    const newW = newBounds.width;
+    const newH = Math.round(newW / initialAspect);
+    win.setBounds({ x: newBounds.x, y: newBounds.y, width: newW, height: newH });
+  });
+
   // Use highest z-level to stay on top of fullscreen games like iRacing
   win.setAlwaysOnTop(true, 'screen-saver');
 

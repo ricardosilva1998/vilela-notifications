@@ -45,22 +45,10 @@
         <span>STANDINGS</span>
         <span id="connection-status"><span class="status-dot demo"></span> Demo Mode</span>
       </div>
+      <div id="session-header" style="display:none; padding: 4px 8px; background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 9px; color: rgba(255,255,255,0.5); font-family: 'JetBrains Mono', monospace; display: flex; gap: 8px; flex-wrap: wrap;"></div>
       <div class="overlay-body">
         <table class="overlay-table">
-          <thead>
-            <tr>
-              <th style="width:22px">P</th>
-              <th style="width:20px"></th>
-              <th style="width:30px">#</th>
-              <th style="width:24px"></th>
-              <th>Driver</th>
-              <th style="width:46px">Lic</th>
-              <th style="width:38px">iR</th>
-              <th style="width:58px">Best</th>
-              <th style="width:58px">Last</th>
-              <th style="width:54px">Gap</th>
-            </tr>
-          </thead>
+          <thead id="standings-head"></thead>
           <tbody id="standings-body"></tbody>
         </table>
       </div>
@@ -81,6 +69,37 @@
       }
     } catch(e) {}
     function getSetting(k, d) { return _overlaySettings[k] !== undefined ? _overlaySettings[k] : d; }
+
+    // Configurable columns
+    const ALL_COLUMNS = [
+      { id: 'pos',     label: 'P',       width: 'auto' },
+      { id: 'flag',    label: 'Flag',    width: 'auto' },
+      { id: 'number',  label: '#',       width: 'auto' },
+      { id: 'logo',    label: 'Logo',    width: 'auto' },
+      { id: 'name',    label: 'Name',    width: 'auto' },
+      { id: 'license', label: 'Lic',     width: 'auto' },
+      { id: 'irating', label: 'iR',      width: 'auto' },
+      { id: 'best',    label: 'Best',    width: 'auto' },
+      { id: 'last',    label: 'Last',    width: 'auto' },
+      { id: 'gap',     label: 'Gap',     width: 'auto' },
+    ];
+    const DEFAULT_COLUMNS = ['pos', 'flag', 'number', 'logo', 'name', 'license', 'irating', 'best', 'last', 'gap'];
+    let enabledColumns;
+    try {
+      enabledColumns = JSON.parse(getSetting('columns', JSON.stringify(DEFAULT_COLUMNS)));
+    } catch(e) { enabledColumns = DEFAULT_COLUMNS; }
+
+    // Session header items
+    const DEFAULT_HEADER_ITEMS = ['trackName', 'airTemp', 'sof', 'timeRemain'];
+    let headerItems;
+    try {
+      headerItems = JSON.parse(getSetting('headerItems', JSON.stringify(DEFAULT_HEADER_ITEMS)));
+    } catch(e) { headerItems = DEFAULT_HEADER_ITEMS; }
+
+    function buildTableHead() {
+      const labels = { pos: 'P', flag: '', number: '#', logo: '', name: 'Driver', license: 'Lic', irating: 'iR', best: 'Best', last: 'Last', gap: 'Gap' };
+      return '<tr>' + enabledColumns.map(c => `<th>${labels[c] || ''}</th>`).join('') + '</tr>';
+    }
 
     const BRIDGE_URL = 'ws://localhost:9100';
     let ws = null;
@@ -250,17 +269,20 @@
       const irCell = `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">${irStr}</span>`;
 
       const rowClass = d.isSpectated && !d.isPlayer ? 'spectated-row' : (d.isPlayer ? 'player-row' : '');
+      const cells = {
+        pos: `<td class="mono" style="font-weight:700;color:rgba(255,255,255,0.7)">${pos}</td>`,
+        flag: `<td class="flag">${flag}</td>`,
+        number: `<td>${numCell}</td>`,
+        logo: `<td>${logoImg}</td>`,
+        name: `<td>${badgeCell}</td>`,
+        license: `<td>${licCell}</td>`,
+        irating: `<td>${irCell}</td>`,
+        best: `<td class="mono" style="font-size:10px">${bestFormatted}</td>`,
+        last: `<td class="mono" style="font-size:10px;color:rgba(255,255,255,0.55)">${lastFormatted}</td>`,
+        gap: `<td class="mono" style="font-size:10px;color:rgba(255,255,255,0.45)">${gap}</td>`,
+      };
       return `<tr class="${rowClass}${disconnCls}" onclick="selectDriver(${d.carIdx})" style="cursor:pointer">
-        <td class="mono" style="font-weight:700;color:rgba(255,255,255,0.7)">${pos}</td>
-        <td class="flag">${flag}</td>
-        <td>${numCell}</td>
-        <td>${logoImg}</td>
-        <td>${badgeCell}</td>
-        <td>${licCell}</td>
-        <td>${irCell}</td>
-        <td class="mono" style="font-size:10px">${bestFormatted}</td>
-        <td class="mono" style="font-size:10px;color:rgba(255,255,255,0.55)">${lastFormatted}</td>
-        <td class="mono" style="font-size:10px;color:rgba(255,255,255,0.45)">${gap}</td>
+        ${enabledColumns.map(c => cells[c] || '').join('')}
       </tr>`;
     }
 
@@ -321,7 +343,7 @@
         const leaderBest = group.drivers.find(d => d.bestLap > 0)?.bestLap || null;
 
         // Class header row
-        html += `<tr><td colspan="9" style="padding:6px 8px 3px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid ${color};">
+        html += `<tr><td colspan="${enabledColumns.length}" style="padding:6px 8px 3px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid ${color};">
           <span style="color:${color};">${cls}</span>
           <span style="color:rgba(255,255,255,0.3);font-weight:400;margin-left:6px;">${group.drivers.length} cars</span>
         </td></tr>`;
@@ -338,6 +360,7 @@
       document.getElementById('standings-body').innerHTML = buildStandingsHTML(demoStandings);
     }
 
+    document.getElementById('standings-head').innerHTML = buildTableHead();
     renderDemoStandings();
 
     function connectBridge(channels) {
@@ -392,7 +415,37 @@
       document.getElementById('standings-body').innerHTML = buildStandingsHTML(data);
     });
 
-    connectBridge(['standings']);
+    onData('session', data => {
+      if (!data) return;
+      const el = document.getElementById('session-header');
+      if (!el || headerItems.length === 0) { if (el) el.style.display = 'none'; return; }
+
+      const formatTime = (s) => {
+        if (!s || s <= 0 || s > 86400) return '--:--';
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const sec = Math.floor(s % 60);
+        return h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}` : `${m}:${String(sec).padStart(2,'0')}`;
+      };
+      const formatSOF = (v) => v >= 1000 ? (v/1000).toFixed(1) + 'k' : String(v);
+
+      const items = {
+        trackName: data.trackName || '',
+        airTemp: data.airTemp ? data.airTemp.toFixed(1) + '°C air' : '',
+        trackTemp: data.trackTemp ? data.trackTemp.toFixed(1) + '°C track' : '',
+        humidity: data.humidity ? Math.round(data.humidity) + '% hum' : '',
+        sof: data.sof ? 'SOF ' + formatSOF(data.sof) : '',
+        timeRemain: 'Rem ' + formatTime(data.sessionTimeRemain),
+        timeOfDay: 'ToD ' + formatTime(data.timeOfDay),
+        skies: data.skies || '',
+      };
+
+      const parts = headerItems.map(k => items[k]).filter(Boolean);
+      el.innerHTML = parts.map(t => `<span>${t}</span>`).join('<span style="opacity:0.3">|</span>');
+      el.style.display = parts.length > 0 ? 'flex' : 'none';
+    });
+
+    connectBridge(['standings', 'session']);
 
     try {
       const { ipcRenderer } = require('electron');

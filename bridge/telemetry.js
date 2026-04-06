@@ -410,9 +410,24 @@ async function startTelemetry(onStatusChange) {
         const estTime = ir.get(VARS.CAR_IDX_EST_TIME) || [];
         const lapDistPct = ir.get(VARS.CAR_IDX_LAP_DIST_PCT) || [];
 
+        // === Session info (weather, temps, SOF, timing) ===
+        const airTemp = ir.get(VARS.AIR_TEMP)?.[0] || 0;
+        const trackTemp = ir.get(VARS.TRACK_TEMP)?.[0] || 0;
+        const humidity = ir.get(VARS.RELATIVE_HUMIDITY)?.[0] || 0;
+        const trackWetness = ir.get(VARS.TRACK_WETNESS)?.[0] || 0;
+        const sessionTime = ir.get(VARS.SESSION_TIME)?.[0] || 0;
+        const sessionTimeRemain = ir.get(VARS.SESSION_TIME_REMAIN)?.[0] || 0;
+        const timeOfDay = ir.get(VARS.SESSION_TIME_OF_DAY)?.[0] || 0;
+
+        // SOF = average iRating of all drivers with iRating > 0
+        const iRatings = drivers.filter(d => d.IRating > 0).map(d => d.IRating);
+        const sof = iRatings.length > 0 ? Math.round(iRatings.reduce((a, b) => a + b, 0) / iRatings.length) : 0;
+
         broadcastToChannel('session', { type: 'data', channel: 'session', data: {
           playerCarIdx,
           trackName,
+          airTemp, trackTemp, humidity, trackWetness,
+          sessionTime, sessionTimeRemain, timeOfDay, sof,
           drivers: drivers.map(d => ({
             carIdx: d.CarIdx, driverName: d.UserName, carNumber: d.CarNumber,
             carMake: d.CarScreenNameShort || d.CarScreenName || '',
