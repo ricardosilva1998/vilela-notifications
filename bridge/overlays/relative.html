@@ -102,6 +102,14 @@
         : allColumns;
     } catch(e) { enabledColumns = DEFAULT_COLUMNS; }
 
+    // Row height and font size
+    const rowHeight = parseInt(getSetting('rowHeight', '24')) || 24;
+    const fontSize = parseInt(getSetting('fontSize', '11')) || 11;
+    document.body.style.fontSize = fontSize + 'px';
+    const _rstyle = document.createElement('style');
+    _rstyle.textContent = `.overlay-table td { height: ${rowHeight}px; min-height: ${rowHeight}px; }`;
+    document.head.appendChild(_rstyle);
+
     // Session header items — filter by enabled state
     const DEFAULT_HEADER_ITEMS = ['trackName', 'airTemp', 'sof', 'timeRemain'];
     let headerItems;

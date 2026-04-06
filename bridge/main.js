@@ -48,7 +48,7 @@ const OVERLAYS = [
   { id: 'wind', name: 'Wind Direction', width: 150, height: 150 },
   { id: 'proximity', name: 'Car Proximity', width: 160, height: 280 },
   { id: 'chat', name: 'Streaming Chat', width: 340, height: 500 },
-  { id: 'trackmap', name: 'Track Map', width: 400, height: 300 },
+  { id: 'trackmap', name: 'Track Map', width: 500, height: 400 },
   { id: 'voicechat', name: 'Voice Chat', width: 340, height: 400 },
   { id: 'inputs', name: 'Driver Inputs', width: 520, height: 140 },
   // { id: 'discord', name: 'Discord Voice', width: 200, height: 300 }, // DISABLED — Railway doesn't support UDP for voice speaking detection

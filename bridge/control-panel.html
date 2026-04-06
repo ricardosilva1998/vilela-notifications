@@ -97,9 +97,8 @@
     .overview-card {
       background: #141520; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px;
       padding: 12px; display: flex; align-items: center; justify-content: space-between;
-      cursor: pointer; transition: border-color 0.2s, background 0.2s;
+      transition: border-color 0.2s, background 0.2s;
     }
-    .overview-card:hover { border-color: rgba(145,70,255,0.3); background: rgba(145,70,255,0.03); }
     .overview-card-left { display: flex; align-items: center; gap: 8px; }
     .overview-card-icon { font-size: 18px; }
     .overview-card-name { font-size: 11px; font-weight: 600; }
@@ -424,12 +423,20 @@
     // ─── CUSTOMIZE_FIELDS (all overlay settings) ─────────────
     const CUSTOMIZE_FIELDS = {
       standings: [
-        { key: 'maxPerClass', label: 'Max cars per class (0 = all)', type: 'number', default: '0', min: 0, max: 50 },
+        { key: 'maxOtherClasses', label: 'Max cars in other classes (0 = all)', type: 'number', default: '0', min: 0, max: 50 },
+        { key: 'sofDisplay', label: 'SOF display', type: 'select', default: 'header', options: [
+          { value: 'header', label: 'In session header' },
+          { value: 'classHeader', label: 'In class headers' },
+        ]},
+        { key: 'rowHeight', label: 'Row height (px)', type: 'number', default: '24', min: 16, max: 40 },
+        { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       relative: [
         { key: 'carsAhead', label: 'Cars ahead', type: 'number', default: '5', min: 1, max: 15 },
         { key: 'carsBehind', label: 'Cars behind', type: 'number', default: '5', min: 1, max: 15 },
+        { key: 'rowHeight', label: 'Row height (px)', type: 'number', default: '24', min: 16, max: 40 },
+        { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       fuel: [
@@ -438,19 +445,24 @@
         { key: 'showMinMax', label: 'Show Min/Max Usage', type: 'checkbox', default: true },
         { key: 'showToFinish', label: 'Show Fuel to Finish', type: 'checkbox', default: true },
         { key: 'showToAdd', label: 'Show Fuel to Add', type: 'checkbox', default: true },
+        { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       wind: [
+        { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       proximity: [
+        { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       chat: [
         { key: 'twitchChannel', label: 'Twitch Channel', type: 'text', default: '', placeholder: 'your_channel_name' },
+        { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       trackmap: [
+        { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       voicechat: [
@@ -472,6 +484,7 @@
           { value: 'fr-FR', label: 'French' },
           { value: 'de-DE', label: 'German' },
         ]},
+        { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       inputs: [
@@ -479,6 +492,7 @@
           { value: 'kmh', label: 'km/h' },
           { value: 'mph', label: 'mph' },
         ]},
+        { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       discord: [
@@ -558,19 +572,15 @@
         const card = document.createElement('div');
         card.className = 'overview-card';
         card.innerHTML = `
-          <div class="overview-card-left" onclick="navigateTo('${ov.id}')">
+          <div class="overview-card-left">
             <span class="overview-card-icon">${ov.icon}</span>
             <span class="overview-card-name">${ov.name}</span>
           </div>
-          <label class="toggle" onclick="event.stopPropagation();">
+          <label class="toggle">
             <input type="checkbox" id="toggle-${ov.id}" onchange="toggleOverlay('${ov.id}', this.checked)">
             <span class="slider"></span>
           </label>
         `;
-        card.addEventListener('click', (e) => {
-          // Only navigate if not clicking on the toggle
-          if (!e.target.closest('.toggle')) navigateTo(ov.id);
-        });
         grid.appendChild(card);
       });
     }

@@ -107,6 +107,14 @@
         : allColumns;
     } catch(e) { enabledColumns = DEFAULT_COLUMNS; }
 
+    // Fixed row height and font size from settings
+    const rowHeight = parseInt(getSetting('rowHeight', '24')) || 24;
+    const fontSize = parseInt(getSetting('fontSize', '11')) || 11;
+    document.body.style.fontSize = fontSize + 'px';
+    const _dynStyle = document.createElement('style');
+    _dynStyle.textContent = `.overlay-table td { height: ${rowHeight}px; min-height: ${rowHeight}px; }`;
+    document.head.appendChild(_dynStyle);
+
     // Session header items — filter by enabled state
     const DEFAULT_HEADER_ITEMS = ['trackName', 'airTemp', 'sof', 'timeRemain'];
     let headerItems;
@@ -118,6 +126,15 @@
         ? allHeaderItems.filter(k => headerEnabled[k])
         : allHeaderItems;
     } catch(e) { headerItems = DEFAULT_HEADER_ITEMS; }
+
+    // Per-class max: only limits non-player classes
+    const maxOtherClasses = parseInt(getSetting('maxOtherClasses', '0')) || 0;
+
+    // SOF display: 'header' (show in session header) or 'classHeader' (show in class header rows)
+    const sofDisplay = getSetting('sofDisplay', 'header');
+
+    // SOF by class — populated from session data
+    let _sofByClass = {};
 
     function buildTableHead() {
       const labels = { pos: 'P', flag: '', number: '#', logo: '', name: 'Driver', license: 'Lic', irating: 'iR', best: 'Best', last: 'Last', gap: 'Gap' };
@@ -310,8 +327,9 @@
     }
 
     function buildStandingsHTML(data) {
-      // Show ALL drivers — sorted by best lap within each class
-      const maxPerClass = parseInt(getSetting('maxPerClass', '0')) || 0;
+      // Find the player's class to exempt it from the max limit
+      const playerDriver = data.find(d => d.isPlayer);
+      const playerClass = playerDriver ? playerDriver.carClass : '';
 
       // Group by class
       const classes = {};
@@ -336,8 +354,6 @@
           if (aTime === Infinity && bTime === Infinity) return (b.iRating || 0) - (a.iRating || 0);
           return aTime - bTime;
         });
-        // Apply max per class limit
-        if (maxPerClass > 0) cls.drivers = cls.drivers.slice(0, maxPerClass);
       });
 
       // Sort class names: known order first (GTP > LMP2 > GT3), then alphabetical
@@ -351,6 +367,13 @@
         return a.localeCompare(b);
       });
 
+      // Apply maxOtherClasses limit — only to non-player classes
+      classNames.forEach(cls => {
+        if (maxOtherClasses > 0 && cls !== playerClass) {
+          classes[cls].drivers = classes[cls].drivers.slice(0, maxOtherClasses);
+        }
+      });
+
       // If only one class, no headers needed
       if (classNames.length <= 1) {
         const drivers = classNames.length === 1 ? classes[classNames[0]].drivers : data;
@@ -359,15 +382,20 @@
       }
 
       // Multiple classes — add a class header row before each group
+      const formatSOFShort = (v) => v >= 1000 ? (v/1000).toFixed(1) + 'k' : String(v);
       let html = '';
       classNames.forEach(cls => {
         const group = classes[cls];
         const color = group.color;
         const leaderBest = group.drivers.find(d => d.bestLap > 0)?.bestLap || null;
 
+        // SOF in class header (if sofDisplay === 'classHeader')
+        const classSof = _sofByClass[cls] || 0;
+        const sofStr = sofDisplay === 'classHeader' && classSof > 0 ? ` &middot; SOF ${formatSOFShort(classSof)}` : '';
+
         // Class header row
         html += `<tr><td colspan="${enabledColumns.length}" style="padding:6px 8px 3px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid ${color};">
-          <span style="color:${color};">${cls}</span>
+          <span style="color:${color};">${cls}${sofStr}</span>
           <span style="color:rgba(255,255,255,0.3);font-weight:400;margin-left:6px;">${group.drivers.length} cars</span>
         </td></tr>`;
 
@@ -440,6 +468,9 @@
 
     onData('session', data => {
       if (!data) return;
+      // Store sofByClass for use in class headers
+      _sofByClass = data.sofByClass || {};
+
       const el = document.getElementById('session-header');
       if (!el || headerItems.length === 0) { if (el) el.style.display = 'none'; return; }
 
@@ -457,12 +488,12 @@
         airTemp: data.airTemp ? data.airTemp.toFixed(1) + '°C air' : '',
         trackTemp: data.trackTemp ? data.trackTemp.toFixed(1) + '°C track' : '',
         humidity: data.humidity ? Math.round(data.humidity) + '% hum' : '',
-        sof: (() => {
+        sof: sofDisplay === 'header' ? (() => {
           if (data.sofByClass && Object.keys(data.sofByClass).length > 1) {
             return 'SOF: ' + Object.entries(data.sofByClass).map(([cls, v]) => cls + ' ' + formatSOF(v)).join(' | ');
           }
           return data.sof ? 'SOF ' + formatSOF(data.sof) : '';
-        })(),
+        })() : '',
         timeRemain: 'Rem ' + formatTime(data.sessionTimeRemain),
         timeOfDay: 'ToD ' + formatTime(data.timeOfDay),
         skies: data.skies || '',

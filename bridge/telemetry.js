@@ -413,7 +413,7 @@ async function startTelemetry(onStatusChange) {
         // === Session info (weather, temps, SOF, timing) ===
         const airTemp = ir.get(VARS.AIR_TEMP)?.[0] || 0;
         const trackTemp = ir.get(VARS.TRACK_TEMP)?.[0] || 0;
-        const humidity = ir.get(VARS.RELATIVE_HUMIDITY)?.[0] || 0;
+        const humidity = (ir.get(VARS.RELATIVE_HUMIDITY)?.[0] || 0) * 100;
         const trackWetness = ir.get(VARS.TRACK_WETNESS)?.[0] || 0;
         const sessionTime = ir.get(VARS.SESSION_TIME)?.[0] || 0;
         const sessionTimeRemain = ir.get(VARS.SESSION_TIME_REMAIN)?.[0] || 0;
