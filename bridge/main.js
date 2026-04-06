@@ -320,10 +320,8 @@ function createOverlayWindow(overlayId) {
 
   win.loadFile(path.join(__dirname, 'overlays', `${overlayId}.html`));
 
-  // Click-through: always ignore + forward so transparent areas don't block clicks.
-  // Overlays use IPC to temporarily capture events when mouse is over visible content.
-  win.setIgnoreMouseEvents(true, { forward: true });
   if (overlaysLocked) {
+    win.setIgnoreMouseEvents(true, { forward: true });
     win.setResizable(false);
   }
 
@@ -365,7 +363,7 @@ function setOverlaysLocked(locked) {
   overlaysLocked = locked;
   Object.values(overlayWindows).forEach(win => {
     if (win && !win.isDestroyed()) {
-      win.setIgnoreMouseEvents(true, { forward: true });
+      win.setIgnoreMouseEvents(locked, { forward: locked });
       win.setResizable(!locked);
       win.webContents.send('lock-state', locked);
     }
