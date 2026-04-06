@@ -15,7 +15,7 @@ let connected = false;
 let pollInterval = null;
 let connectInterval = null;
 
-const { broadcastToChannel, getClientInfo, getSelectedCarIdx } = require('./websocket');
+const { broadcastToChannel, getClientInfo, getSelectedCarIdx, resetSelectedCar } = require('./websocket');
 const { switchCamera } = require('./keyboardSim');
 const settings = require('./settings');
 const { extractTrackFromIBT, geoKeyFromSessionInfo, loadCachedTrackByGeo, saveCachedTrackByGeo } = require('./trackExtractor');
@@ -172,6 +172,8 @@ async function startTelemetry(onStatusChange) {
         drivers = [];
         playerCarIdx = 0;
         pollCount = 0;
+        lastFocusCarIdx = -1;
+        resetSelectedCar();
         resetFuel();
         trackSlots.fill(null);
         trackPathComplete = false;
@@ -583,7 +585,7 @@ async function startTelemetry(onStatusChange) {
         broadcastToChannel('wind', { type: 'data', channel: 'wind', data: {
           windDirection: ir.get(VARS.WIND_DIR)?.[0] || 0,
           windSpeed: ir.get(VARS.WIND_VEL)?.[0] || 0,
-          carHeading: focusCarIdx === playerCarIdx ? playerYawVal : null,
+          carHeading: playerYawVal,
         }});
 
         // === Relative ===
@@ -591,7 +593,7 @@ async function startTelemetry(onStatusChange) {
         const refCarIdx = focusCarIdx;
         const refLapDist = lapDistPct[refCarIdx] || 0;
         const relative = standings
-          .filter(s => s.carIdx !== refCarIdx)
+          .filter(s => s.carIdx !== refCarIdx && s.carIdx !== playerCarIdx)
           .map(s => {
             // Gap based on track distance (0-1 for one lap)
             let distGap = s.lapDistPct - refLapDist;

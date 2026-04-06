@@ -165,15 +165,9 @@
 
       if (windDirection !== undefined && arrowGroup) {
         const windDeg = windDirection * 180 / Math.PI;
-        if (carHeading !== null && carHeading !== undefined) {
-          // Relative to player car heading
-          const carDeg = carHeading * 180 / Math.PI;
-          const relativeAngle = ((windDeg - carDeg) + 360) % 360;
-          arrowGroup.setAttribute('transform', `rotate(${relativeAngle}, 60, 60)`);
-        } else {
-          // Absolute compass direction (focused on another driver)
-          arrowGroup.setAttribute('transform', `rotate(${windDeg}, 60, 60)`);
-        }
+        const carDeg = (carHeading || 0) * 180 / Math.PI;
+        const relativeAngle = ((windDeg - carDeg) + 360) % 360;
+        arrowGroup.setAttribute('transform', `rotate(${relativeAngle}, 60, 60)`);
         if (dirEl) dirEl.textContent = angleToCompass(windDeg);
       }
       if (windSpeed !== undefined && speedEl) {
