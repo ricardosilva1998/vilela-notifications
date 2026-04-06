@@ -672,6 +672,17 @@ function parseIBT(arrayBuffer) {
   const numBuf = view.getInt32(32, true);
   const bufLen = view.getInt32(36, true);
   const recordCount = view.getInt32(140, true);
+  const sessionInfoLen = view.getInt32(16, true);
+  const sessionInfoOffset = view.getInt32(20, true);
+
+  // Extract track name from session info YAML
+  let trackDisplayName = '';
+  try {
+    const decoder = new TextDecoder();
+    const yaml = decoder.decode(data.slice(sessionInfoOffset, sessionInfoOffset + sessionInfoLen));
+    const match = yaml.match(/TrackDisplayName:\s*(.+)/);
+    if (match) trackDisplayName = match[1].trim();
+  } catch(e) {}
 
   let bestTick = -1, bestBufOffset = 0;
   for (let i = 0; i < numBuf; i++) {
@@ -705,12 +716,13 @@ function parseIBT(arrayBuffer) {
     return 0;
   }
 
-  return { vars, recordCount, readVar };
+  return { vars, recordCount, readVar, trackDisplayName };
 }
 
 function extractTrackFromParsed(ibt) {
   if (!ibt.vars['Lat'] || !ibt.vars['Lon'] || !ibt.vars['LapDistPct']) return null;
   const SLOTS = 500;
+  const RAD_TO_DEG = 180 / Math.PI;
   const slots = new Array(SLOTS).fill(null);
   let filled = 0;
   const sampleRate = Math.max(1, Math.floor(ibt.recordCount / 2000));
@@ -722,7 +734,7 @@ function extractTrackFromParsed(ibt) {
     if (lat && lon && pct >= 0 && pct <= 1 && lat !== 0 && lon !== 0) {
       const idx = Math.floor(pct * SLOTS) % SLOTS;
       if (!slots[idx]) filled++;
-      slots[idx] = { x: lon, y: lat, pct };
+      slots[idx] = { x: lon * RAD_TO_DEG, y: lat * RAD_TO_DEG, pct };
     }
   }
 
@@ -798,7 +810,7 @@ async function handleIBTFiles(fileList) {
       const buf = await files[i].arrayBuffer();
       const ibt = parseIBT(buf);
       const track = extractTrackFromParsed(ibt);
-      if (track) extracted.push({ name: files[i].name, ...track });
+      if (track) extracted.push({ name: files[i].name, trackDisplayName: ibt.trackDisplayName, ...track });
     } catch(e) { console.error('Error parsing ' + files[i].name, e); }
   }
 
@@ -816,33 +828,45 @@ async function handleIBTFiles(fileList) {
   tracks.forEach(track => {
     const card = document.createElement('div');
     card.style.cssText = 'background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 16px; margin-bottom: 12px; display: flex; gap: 16px; align-items: center;';
+    const displayName = track.trackDisplayName || track.name.replace(/</g, '&lt;');
     card.innerHTML = '<canvas width="160" height="160" style="border-radius: 8px; background: rgba(0,0,0,0.3); flex-shrink: 0;"></canvas>' +
       '<div style="flex: 1;">' +
-        '<div style="font-size: 13px; font-weight: 600; margin-bottom: 4px;">Track from: ' + track.name.replace(/</g, '&lt;') + '</div>' +
-        '<div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">' + track.points.length + ' points | geo: ' + track.geoId + '</div>' +
-        '<div style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">' + track.filled + '/500 slots filled</div>' +
+        '<div style="font-size: 14px; font-weight: 700; margin-bottom: 4px;">' + (track.trackDisplayName || 'Unknown Track').replace(/</g, '&lt;') + '</div>' +
+        '<div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">File: ' + track.name.replace(/</g, '&lt;') + '</div>' +
+        '<div style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">' + track.points.length + ' points | ' + track.filled + '/500 slots</div>' +
         '<button class="btn btn-primary" style="font-size: 12px; padding: 6px 16px;" onclick="uploadTrack(this, \'' + track.geoId + '\')">Upload to Database</button>' +
         '<span class="upload-status" style="font-size: 11px; color: var(--text-muted); margin-left: 8px;"></span>' +
       '</div>';
     results.appendChild(card);
     drawTrackPreview(card.querySelector('canvas'), track.points);
     card._trackData = track.points;
+    card._trackDisplayName = track.trackDisplayName || '';
   });
 }
 
 async function uploadTrack(btn, geoId) {
   const card = btn.closest('div').parentElement;
   const points = card._trackData;
+  const trackName = card._trackDisplayName;
   const status = btn.nextElementSibling;
   btn.disabled = true;
   btn.textContent = 'Uploading...';
   status.textContent = '';
   try {
+    // Upload under geoId (primary key for bridge geo-based lookup)
     const res = await fetch('/api/track-map', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ trackName: geoId, trackData: points }),
     });
+    // Also upload under display name (fallback for bridge name-based lookup)
+    if (trackName) {
+      await fetch('/api/track-map', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trackName: trackName, trackData: points }),
+      });
+    }
     const data = await res.json();
     if (data.status === 'ok') {
       btn.textContent = 'Uploaded';

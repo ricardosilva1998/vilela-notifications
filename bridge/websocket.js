@@ -4,6 +4,7 @@ const { WebSocketServer } = require('ws');
 let wss = null;
 const clients = new Map();
 let currentIracingStatus = false; // Track current status to send to new clients
+let selectedCarIdx = null; // User-selected driver from overlay UI
 
 function startServer(port) {
   wss = new WebSocketServer({ port });
@@ -25,6 +26,10 @@ function startServer(port) {
           const subs = clients.get(ws);
           msg.channels.forEach(ch => subs.add(ch));
           console.log('[WebSocket] Client subscribed to:', [...subs]);
+        } else if (msg.type === 'select-driver' && msg.carIdx !== undefined) {
+          selectedCarIdx = msg.carIdx === null ? null : Number(msg.carIdx);
+          // Broadcast selection to all overlay clients
+          broadcastToChannel('_all', { type: 'driver-selected', carIdx: selectedCarIdx });
         }
       } catch (e) {}
     });
@@ -64,4 +69,7 @@ function getClientInfo() {
   return info;
 }
 
-module.exports = { startServer, stopServer, broadcastToChannel, getClientInfo };
+function getSelectedCarIdx() { return selectedCarIdx; }
+function resetSelectedCar() { selectedCarIdx = null; }
+
+module.exports = { startServer, stopServer, broadcastToChannel, getClientInfo, getSelectedCarIdx, resetSelectedCar };

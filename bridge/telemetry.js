@@ -15,7 +15,7 @@ let connected = false;
 let pollInterval = null;
 let connectInterval = null;
 
-const { broadcastToChannel, getClientInfo } = require('./websocket');
+const { broadcastToChannel, getClientInfo, getSelectedCarIdx } = require('./websocket');
 const settings = require('./settings');
 const { extractTrackFromIBT, geoKeyFromSessionInfo, loadCachedTrackByGeo, saveCachedTrackByGeo } = require('./trackExtractor');
 
@@ -410,6 +410,10 @@ async function startTelemetry(onStatusChange) {
           if (cam !== undefined && cam !== null) camCarIdx = Array.isArray(cam) ? cam[0] : cam;
         } catch(e) {}
 
+        // User-selected driver from overlay UI takes priority over camera
+        const userSelectedIdx = getSelectedCarIdx();
+        const focusCarIdx = userSelectedIdx !== null ? userSelectedIdx : camCarIdx;
+
         // Use PLAYER_CAR_IDX from telemetry if session info unavailable
         if (!sessionInfoFound) {
           const pci = ir.get(VARS.PLAYER_CAR_POSITION);
@@ -472,7 +476,7 @@ async function startTelemetry(onStatusChange) {
             estTime: estTime[i] || 0,
             lapDistPct: lapDistPct[i] || 0,
             isPlayer: i === playerCarIdx,
-            isSpectated: i === (camCarIdx ?? playerCarIdx),
+            isSpectated: i === focusCarIdx,
           });
         }
 
@@ -520,12 +524,12 @@ async function startTelemetry(onStatusChange) {
 
         // Only broadcast standings every 1 second (every 10th poll) to prevent flickering
         if (pollCount % 30 === 0) {
-          broadcastToChannel('standings', { type: 'data', channel: 'standings', data: standings, spectatedCarIdx: camCarIdx ?? playerCarIdx });
+          broadcastToChannel('standings', { type: 'data', channel: 'standings', data: standings, spectatedCarIdx: focusCarIdx });
         }
 
         // === Relative ===
         // Use spectated car as reference point (so relative re-centers when spectating another driver)
-        const refCarIdx = camCarIdx ?? playerCarIdx;
+        const refCarIdx = focusCarIdx;
         const refLapDist = lapDistPct[refCarIdx] || 0;
         const relative = standings
           .filter(s => s.carIdx !== refCarIdx)
@@ -550,7 +554,7 @@ async function startTelemetry(onStatusChange) {
           .sort((a, b) => a.distGap - b.distGap);
 
         if (pollCount % 15 === 0) broadcastToChannel('relative', { type: 'data', channel: 'relative', data: {
-          playerCarIdx, spectatedCarIdx: camCarIdx ?? playerCarIdx, cars: relative,
+          playerCarIdx, spectatedCarIdx: focusCarIdx, cars: relative,
         }});
 
         // === Track Map ===

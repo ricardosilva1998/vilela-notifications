@@ -250,7 +250,7 @@
       const irCell = `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">${irStr}</span>`;
 
       const rowClass = d.isSpectated && !d.isPlayer ? 'spectated-row' : (d.isPlayer ? 'player-row' : '');
-      return `<tr class="${rowClass}${disconnCls}">
+      return `<tr class="${rowClass}${disconnCls}" onclick="selectDriver(${d.carIdx})" style="cursor:pointer">
         <td class="mono" style="font-weight:700;color:rgba(255,255,255,0.7)">${pos}</td>
         <td class="flag">${flag}</td>
         <td>${numCell}</td>
@@ -379,6 +379,12 @@
     }
 
     let demoCleared = false;
+
+    function selectDriver(carIdx) {
+      if (ws && ws.readyState === 1) {
+        ws.send(JSON.stringify({ type: 'select-driver', carIdx }));
+      }
+    }
 
     onData('standings', data => {
       if (!data || !data.length) return;
