@@ -79,18 +79,26 @@
       { id: 'gap',     label: 'Gap' },
     ];
     const DEFAULT_COLUMNS = ['pos', 'flag', 'number', 'logo', 'name', 'license', 'irating', 'gap'];
+    // Helper: getSetting may return native object (from settings.json) or string
+    function parseSetting(val) { return typeof val === 'string' ? JSON.parse(val) : val; }
+
     let enabledColumns;
     try {
-      enabledColumns = JSON.parse(getSetting('columns', JSON.stringify(DEFAULT_COLUMNS)));
+      const allColumns = parseSetting(getSetting('columns', DEFAULT_COLUMNS));
+      let colEnabled = {};
+      try { colEnabled = parseSetting(getSetting('columnsEnabled', {})); } catch(e) {}
+      enabledColumns = Object.keys(colEnabled).length > 0
+        ? allColumns.filter(k => colEnabled[k])
+        : allColumns;
     } catch(e) { enabledColumns = DEFAULT_COLUMNS; }
 
     // Session header items — filter by enabled state
     const DEFAULT_HEADER_ITEMS = ['trackName', 'airTemp', 'sof', 'timeRemain'];
     let headerItems;
     try {
-      const allHeaderItems = JSON.parse(getSetting('headerItems', JSON.stringify(DEFAULT_HEADER_ITEMS)));
+      const allHeaderItems = parseSetting(getSetting('headerItems', DEFAULT_HEADER_ITEMS));
       let headerEnabled = {};
-      try { headerEnabled = JSON.parse(getSetting('headerEnabled', '{}')); } catch(e) {}
+      try { headerEnabled = parseSetting(getSetting('headerEnabled', {})); } catch(e) {}
       headerItems = Object.keys(headerEnabled).length > 0
         ? allHeaderItems.filter(k => headerEnabled[k])
         : allHeaderItems;
