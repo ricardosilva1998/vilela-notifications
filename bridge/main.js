@@ -395,16 +395,19 @@ ipcMain.on('toggle-autohide', (event, enabled) => {
 ipcMain.on('save-overlay-settings', (event, overlayId, overlaySettings) => {
   if (!settings.overlayCustom) settings.overlayCustom = {};
   settings.overlayCustom[overlayId] = overlaySettings;
-  persistSettings();
-  // Reload the overlay window to apply new settings
-  if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
-    overlayWindows[overlayId].reload();
-    // Resize trackmap window if width/height changed
-    if (overlayId === 'trackmap' && (overlaySettings.overlayWidth || overlaySettings.overlayHeight)) {
-      const newW = parseInt(overlaySettings.overlayWidth) || 500;
-      const newH = parseInt(overlaySettings.overlayHeight) || 500;
-      const bounds = overlayWindows[overlayId].getBounds();
-      overlayWindows[overlayId].setBounds({ x: bounds.x, y: bounds.y, width: newW, height: newH });
+
+  // For trackmap: close and recreate with new size instead of just reloading
+  if (overlayId === 'trackmap' && overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
+    overlayWindows[overlayId].close();
+    delete overlayWindows[overlayId];
+    if (settings.overlayBounds) delete settings.overlayBounds.trackmap;
+    persistSettings();
+    createOverlayWindow('trackmap');
+  } else {
+    persistSettings();
+    // Reload the overlay window to apply new settings
+    if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
+      overlayWindows[overlayId].reload();
     }
   }
   // Reconnect Twitch chat if channel changed
