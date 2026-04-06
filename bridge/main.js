@@ -289,6 +289,7 @@ function createOverlayWindow(overlayId) {
     y,
     frame: false,
     transparent: true,
+    backgroundColor: '#01000000',
     alwaysOnTop: true,
     skipTaskbar: true,
     resizable: false,
@@ -359,7 +360,9 @@ function closeOverlayWindow(overlayId) {
 
 function setOverlaysLocked(locked) {
   overlaysLocked = locked;
-  console.log('[Lock] Overlays ' + (locked ? 'LOCKED' : 'UNLOCKED') + ' — setIgnoreMouseEvents(' + locked + ')');
+  const msg = '[Lock] Overlays ' + (locked ? 'LOCKED' : 'UNLOCKED') + ' (' + Object.keys(overlayWindows).length + ' windows)';
+  console.log(msg);
+  try { require('fs').appendFileSync(require('path').join(require('os').homedir(), 'atleta-bridge.log'), '[' + new Date().toISOString() + '] ' + msg + '\n'); } catch(e) {}
   Object.values(overlayWindows).forEach(win => {
     if (win && !win.isDestroyed()) {
       win.setIgnoreMouseEvents(locked, { forward: locked });
