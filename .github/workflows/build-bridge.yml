@@ -29,14 +29,12 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Set version from run number
+      - name: Read version from package.json
         working-directory: bridge
         shell: pwsh
         run: |
           $pkg = Get-Content package.json | ConvertFrom-Json
-          $pkg.version = "1.0.${{ github.run_number }}"
-          $pkg | ConvertTo-Json -Depth 10 | Set-Content package.json
-          Write-Host "Version set to 1.0.${{ github.run_number }}"
+          Write-Host "Building version $($pkg.version)"
 
       - name: Install dependencies
         working-directory: bridge
