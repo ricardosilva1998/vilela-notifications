@@ -654,6 +654,11 @@ async function startTelemetry(onStatusChange) {
           return b.lapDistPct - a.lapDistPct;
         });
 
+        // Diagnostic: log standings count
+        if (pollCount === 90 || pollCount === 300) {
+          log('[Diag] Standings: ' + standings.length + ' drivers (active indices: ' + activeIndices.size + ', session drivers: ' + drivers.length + ')');
+        }
+
         // Diagnostic: log lap time sources (first few polls only)
         if (pollCount === 90 || pollCount === 300) {
           log('[Diag] === LAP TIME DIAGNOSTICS ===');
