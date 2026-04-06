@@ -139,6 +139,38 @@ const sessionResults = new Map(); // carIdx -> { bestLap, lastLap, lapsComplete 
 // Starting iRatings — captured once at session start for gain/loss display
 const startingIRatings = new Map(); // carIdx -> starting iRating
 
+/**
+ * Estimate iRating change for each driver based on Elo-like pairwise model.
+ * @param {Array} drivers - [{carIdx, iRating, position}] sorted by position
+ * @returns {Map<number, number>} carIdx -> estimated iRating change
+ */
+function estimateIRatingChanges(driverList) {
+  const changes = new Map();
+  const active = driverList.filter(d => d.iRating > 0 && d.position > 0);
+  if (active.length < 2) return changes;
+
+  for (const driver of active) {
+    let expectedPos = 0;
+    for (const opponent of active) {
+      if (opponent.carIdx === driver.carIdx) continue;
+      // Elo probability: P(driver beats opponent)
+      const prob = 1 / (1 + Math.pow(10, (opponent.iRating - driver.iRating) / 1600));
+      expectedPos += (1 - prob); // add probability of finishing behind
+    }
+    expectedPos += 1; // 1-indexed position
+
+    const actualPos = driver.position;
+    // Scale factor: roughly (SOF / fieldSize) capped to reasonable range
+    const fieldSize = active.length;
+    const avgIR = active.reduce((s, d) => s + d.iRating, 0) / fieldSize;
+    const kFactor = Math.max(0.2, Math.min(1.5, avgIR / 2000));
+    const change = Math.round((expectedPos - actualPos) * kFactor * (200 / fieldSize));
+
+    changes.set(driver.carIdx, change);
+  }
+  return changes;
+}
+
 function resetFuel() { fuelHistory = []; lastLap = -1; fuelAtLapStart = null; }
 
 async function startTelemetry(onStatusChange) {
@@ -584,6 +616,10 @@ async function startTelemetry(onStatusChange) {
           });
           log('[Diag] WithBestLap: ' + standings.filter(s => s.bestLap > 0).length + '/' + standings.length);
         }
+
+        // Compute estimated iRating changes from current positions
+        const irChanges = estimateIRatingChanges(standings);
+        standings.forEach(s => { s.estIRatingChange = irChanges.get(s.carIdx) || 0; });
 
         // Only broadcast standings every 1 second (every 10th poll) to prevent flickering
         if (pollCount % 30 === 0) {

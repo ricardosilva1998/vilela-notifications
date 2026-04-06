@@ -127,7 +127,8 @@
       return '<tr>' + enabledColumns.map(c => `<th>${labels[c] || ''}</th>`).join('') + '</tr>';
     }
 
-    // iRating gain removed — iRacing's IRating is static during session
+    // Estimated iRating gain/loss from position-based Elo calculation
+    const showIRatingGain = parseSetting(getSetting('showIRatingGain', true));
 
     const BRIDGE_URL = 'ws://localhost:9100';
     const MAX_AHEAD = parseInt(getSetting('carsAhead', '5')) || 5;
@@ -274,7 +275,9 @@
       const licCell = licStr
         ? `<span style="background:${licColor};color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">${licStr}</span>`
         : `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">--</span>`;
-      const irCell = `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">${irStr}</span>`;
+      const irChange = d.estIRatingChange || 0;
+      const irChangeStr = showIRatingGain && irChange !== 0 ? `<span style="color:${irChange > 0 ? '#3ecf8e' : '#f04438'};font-size:8px;margin-left:3px;">${irChange > 0 ? '+' : ''}${irChange}</span>` : '';
+      const irCell = `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">${irStr}${irChangeStr}</span>`;
 
       const logoStyle = getBrandLogoStyle(carBrand);
       const logoImg = logoStyle ? `<span class="brand-logo" style="${logoStyle}"></span>` : '';
