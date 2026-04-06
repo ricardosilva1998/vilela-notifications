@@ -404,7 +404,7 @@
       target.throttle = data.throttle;
       target.brake = data.brake;
       target.clutch = data.clutch;
-      target.steer = data.steer * (180 / Math.PI); // radians to degrees
+      target.steer = -data.steer * (180 / Math.PI); // radians to degrees, negated for CSS rotate
       target.speed = data.speed;
 
       // Gear updates instantly (discrete value, no interpolation)
