@@ -505,6 +505,7 @@
         timeRemain: 'Rem ' + formatTime(data.sessionTimeRemain),
         timeOfDay: 'ToD ' + formatTime(data.timeOfDay),
         skies: data.skies || '',
+        incidents: data.incidentCount !== undefined ? 'Inc ' + data.incidentCount + 'x' : '',
       };
 
       const parts = headerItems.map(k => items[k]).filter(Boolean);

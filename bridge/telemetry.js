@@ -194,6 +194,7 @@ async function startTelemetry(onStatusChange) {
   let playerCarIdx = 0;
   let trackName = '';
   let lastFocusCarIdx = -1;
+  let lastSessionNum = -1;
   let pollCount = 0;
 
   connectInterval = setInterval(async () => {
@@ -256,6 +257,29 @@ async function startTelemetry(onStatusChange) {
 
         ir.refreshSharedMemory();
         pollCount++;
+
+        // === Session change detection ===
+        try {
+          const sessionNum = ir.get(VARS.SESSION_NUM)?.[0] ?? -1;
+          if (sessionNum !== lastSessionNum && lastSessionNum >= 0) {
+            const sessionInfo = ir.getSessionInfo('SessionInfo');
+            const prevType = sessionInfo?.Sessions?.[lastSessionNum]?.SessionType || '';
+            const newType = sessionInfo?.Sessions?.[sessionNum]?.SessionType || '';
+            const isQualToRace = prevType.toLowerCase().includes('qualify') && newType.toLowerCase().includes('race');
+            if (!isQualToRace) {
+              cachedBestLaps.clear();
+              cachedLastLaps.clear();
+              cachedLapsCompleted.clear();
+              sessionResults.clear();
+              persistedDrivers.clear();
+              log('[Session] Cleared data: ' + prevType + ' → ' + newType);
+            } else {
+              log('[Session] Kept data: ' + prevType + ' → ' + newType);
+            }
+          }
+          if (lastSessionNum < 0) lastSessionNum = sessionNum;
+          else lastSessionNum = sessionNum;
+        } catch(e) {}
 
         // === Get session info (requires key parameter!) ===
         if (!sessionInfoFound || pollCount % 300 === 0) {
@@ -475,11 +499,14 @@ async function startTelemetry(onStatusChange) {
           sofByClass[cls] = Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
         });
 
+        const incidentCount = ir.get(VARS.PLAYER_CAR_MY_INCIDENT_COUNT)?.[0] || 0;
+
         broadcastToChannel('session', { type: 'data', channel: 'session', data: {
           playerCarIdx,
           trackName,
           airTemp, trackTemp, humidity, trackWetness,
           sessionTime, sessionTimeRemain, timeOfDay, sof, sofByClass,
+          incidentCount,
           drivers: drivers.map(d => ({
             carIdx: d.CarIdx, driverName: d.UserName, carNumber: d.CarNumber,
             carMake: d.CarScreenNameShort || d.CarScreenName || '',
@@ -523,13 +550,14 @@ async function startTelemetry(onStatusChange) {
           }
         }
         // Also include all cars from session info (even if not on track yet)
-        drivers.forEach(d => { if (d.CarIdx !== undefined && d.UserName && d.UserName !== 'Pace Car') activeIndices.add(d.CarIdx); });
+        drivers.forEach(d => { if (d.CarIdx !== undefined && d.UserName && d.UserName !== 'Pace Car' && !d.IsSpectator) activeIndices.add(d.CarIdx); });
 
         for (const i of activeIndices) {
           const driver = drivers.find(d => d.CarIdx === i);
           const name = driver?.UserName || ('Car ' + i);
           const number = driver?.CarNumber || String(i);
           if (name === 'Pace Car') continue;
+          if (driver?.IsSpectator) continue;
 
           // Lap times: real-time telemetry > cache > session results (YAML)
           // Real-time telemetry only has data for nearby cars; session results has all
