@@ -63,10 +63,10 @@
 
             <!-- Wind arrow: points FROM edge TOWARD center (the car) -->
             <g id="wind-arrow-group" transform="rotate(0, 60, 60)" filter="url(#arrowGlow)">
-              <!-- Arrow shaft -->
-              <line x1="60" y1="8" x2="60" y2="40" stroke="url(#arrowGrad)" stroke-width="3" stroke-linecap="round"/>
-              <!-- Arrowhead — larger chevron pointing toward center -->
-              <polygon points="60,58 48,38 56,42 60,38 64,42 72,38" fill="url(#arrowGrad)"/>
+              <!-- Arrow shaft (gap between tip y=48 and center y=60) -->
+              <line x1="60" y1="8" x2="60" y2="30" stroke="url(#arrowGrad)" stroke-width="3" stroke-linecap="round"/>
+              <!-- Arrowhead — chevron with spacing from center -->
+              <polygon points="60,48 48,28 56,32 60,28 64,32 72,28" fill="url(#arrowGrad)"/>
               <!-- Tail fins -->
               <line x1="56" y1="8" x2="60" y2="14" stroke="url(#arrowGrad)" stroke-width="1.5" stroke-linecap="round"/>
               <line x1="64" y1="8" x2="60" y2="14" stroke="url(#arrowGrad)" stroke-width="1.5" stroke-linecap="round"/>
