@@ -8,6 +8,8 @@
     body { background: rgba(0,0,0,0.01); overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; }
     .overlay-panel { background: rgba(12,13,20,0.85); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; backdrop-filter: blur(12px); overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
     .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); cursor: move; -webkit-app-region: drag; flex-shrink: 0; }
+    .overlay-header:hover { background: rgba(145,70,255,0.12); color: rgba(255,255,255,0.7); }
+    .overlay-panel:has(.overlay-header:hover) { border-color: rgba(145,70,255,0.4); box-shadow: 0 0 12px rgba(145,70,255,0.15); }
     .overlay-body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; justify-content: flex-end; padding: 8px; gap: 3px; scrollbar-width: none; -ms-overflow-style: none; }
     .overlay-body::-webkit-scrollbar { display: none; }
     .chat-message { font-size: 12px; line-height: 1.4; word-break: break-word; padding: 2px 0; animation: fadeIn 0.2s ease; }
