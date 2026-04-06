@@ -398,6 +398,13 @@ ipcMain.on('save-overlay-settings', (event, overlayId, overlaySettings) => {
   // Reload the overlay window to apply new settings
   if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
     overlayWindows[overlayId].reload();
+    // Resize trackmap window if width/height changed
+    if (overlayId === 'trackmap' && (overlaySettings.overlayWidth || overlaySettings.overlayHeight)) {
+      const newW = parseInt(overlaySettings.overlayWidth) || 500;
+      const newH = parseInt(overlaySettings.overlayHeight) || 500;
+      const bounds = overlayWindows[overlayId].getBounds();
+      overlayWindows[overlayId].setBounds({ x: bounds.x, y: bounds.y, width: newW, height: newH });
+    }
   }
   // Reconnect Twitch chat if channel changed
   if (overlayId === 'chat' && overlaySettings.twitchChannel !== undefined) {
