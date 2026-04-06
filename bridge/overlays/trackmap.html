@@ -203,13 +203,18 @@
 
       if (!trackPoints.length) return;
 
+      // Use uniform scale so track aspect ratio is never distorted
+      const scale = Math.min(w, h);
+      const offsetX = (w - scale) / 2;
+      const offsetY = (h - scale) / 2;
+
       // Draw track outline
       ctx.beginPath();
       ctx.strokeStyle = 'rgba(255,255,255,0.15)';
       ctx.lineWidth = 3;
       trackPoints.forEach((p, i) => {
-        const x = p.x * w;
-        const y = p.y * h;
+        const x = offsetX + p.x * scale;
+        const y = offsetY + p.y * scale;
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       });
@@ -220,8 +225,8 @@
       updateDisplayCars();
       displayCars.forEach(car => {
         const pos = getTrackPosition(car.pct);
-        const x = pos.x * w;
-        const y = pos.y * h;
+        const x = offsetX + pos.x * scale;
+        const y = offsetY + pos.y * scale;
         const radius = car.isPlayer ? 6 : 4;
         const color = car.isPlayer ? '#9146ff' : (car.carClassColor || '#fff');
 
