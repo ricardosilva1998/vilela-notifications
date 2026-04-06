@@ -84,6 +84,7 @@ app.on('ready', () => {
   settings = loadSettings();
   if (settings.autoHideOverlays !== undefined) autoHideOverlays = settings.autoHideOverlays;
   if (settings.overlaysLocked !== undefined) overlaysLocked = settings.overlaysLocked;
+  try { require('fs').appendFileSync(require('path').join(require('os').homedir(), 'atleta-bridge.log'), '[' + new Date().toISOString() + '] [Startup] overlaysLocked=' + overlaysLocked + '\n'); } catch(e) {}
 
   try {
     // Try multiple icon paths (asar, extraResources, build dir)
@@ -288,8 +289,8 @@ function createOverlayWindow(overlayId) {
     x,
     y,
     frame: false,
-    transparent: true,
-    backgroundColor: '#01000000',
+    transparent: false,
+    backgroundColor: '#0c0d14',
     alwaysOnTop: true,
     skipTaskbar: true,
     resizable: false,
