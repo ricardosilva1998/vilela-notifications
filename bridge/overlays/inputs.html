@@ -264,6 +264,29 @@
     }
     applyVisibility();
 
+    // Auto-resize window to fit visible sections
+    function autoResizeWindow() {
+      const sections = [
+        { el: '.trace-container', w: 160 },
+        { el: '.pedals', w: 80 },
+        { el: '.gear-display', w: 50 },
+        { el: '.speed-display', w: 60 },
+        { el: '.wheel-container', w: 76 },
+      ];
+      let width = 28; // body padding
+      let visCount = 0;
+      sections.forEach(s => {
+        const el = document.querySelector(s.el);
+        if (el && el.style.display !== 'none') { width += s.w; visCount++; }
+      });
+      width += Math.max(0, visCount - 1) * 13; // dividers + gaps
+      try {
+        const { ipcRenderer } = require('electron');
+        ipcRenderer.send('resize-overlay', 'inputs', Math.max(width, 100), 140);
+      } catch(e) {}
+    }
+    autoResizeWindow();
+
     // ─── Trace Graph ───────────────────────────────────────────────────
     // ~300 points = 5 seconds at 60fps, fed from the render loop using smoothed values
     const TRACE_POINTS = 300;

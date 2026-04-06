@@ -389,6 +389,13 @@ ipcMain.on('set-ignore-mouse', (event, ignore) => {
   }
 });
 
+ipcMain.on('resize-overlay', (event, overlayId, width, height) => {
+  if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
+    const bounds = overlayWindows[overlayId].getBounds();
+    overlayWindows[overlayId].setBounds({ x: bounds.x, y: bounds.y, width: Math.round(width), height: Math.round(height) });
+  }
+});
+
 ipcMain.on('toggle-autohide', (event, enabled) => {
   autoHideOverlays = enabled;
   persistSettings();

@@ -127,7 +127,8 @@
         : allHeaderItems;
     } catch(e) { headerItems = DEFAULT_HEADER_ITEMS; }
 
-    // Per-class max: only limits non-player classes
+    // Per-class max
+    const maxMyClass = parseInt(getSetting('maxMyClass', '0')) || 0;
     const maxOtherClasses = parseInt(getSetting('maxOtherClasses', '0')) || 0;
 
     // SOF display: 'header' (show in session header) or 'classHeader' (show in class header rows)
@@ -367,9 +368,11 @@
         return a.localeCompare(b);
       });
 
-      // Apply maxOtherClasses limit — only to non-player classes
+      // Apply per-class limits
       classNames.forEach(cls => {
-        if (maxOtherClasses > 0 && cls !== playerClass) {
+        if (cls === playerClass && maxMyClass > 0) {
+          classes[cls].drivers = classes[cls].drivers.slice(0, maxMyClass);
+        } else if (cls !== playerClass && maxOtherClasses > 0) {
           classes[cls].drivers = classes[cls].drivers.slice(0, maxOtherClasses);
         }
       });

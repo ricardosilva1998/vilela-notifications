@@ -423,6 +423,7 @@
     // ─── CUSTOMIZE_FIELDS (all overlay settings) ─────────────
     const CUSTOMIZE_FIELDS = {
       standings: [
+        { key: 'maxMyClass', label: 'Max cars in my class (0 = all)', type: 'number', default: '0', min: 0, max: 50 },
         { key: 'maxOtherClasses', label: 'Max cars in other classes (0 = all)', type: 'number', default: '0', min: 0, max: 50 },
         { key: 'sofDisplay', label: 'SOF display', type: 'select', default: 'header', options: [
           { value: 'header', label: 'In session header' },
