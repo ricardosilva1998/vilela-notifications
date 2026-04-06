@@ -264,13 +264,10 @@ function createOverlayWindow(overlayId) {
   const display = screen.getPrimaryDisplay();
   const { width: screenW } = display.workAreaSize;
 
-  // One-time reset: clear stale trackmap bounds so new 500x500 default applies
+  // Force trackmap to use default size (clear any saved bounds)
   if (overlayId === 'trackmap' && settings.overlayBounds && settings.overlayBounds.trackmap) {
-    const sb = settings.overlayBounds.trackmap;
-    if (sb.width !== config.width || sb.height !== config.height) {
-      delete settings.overlayBounds.trackmap;
-      persistSettings();
-    }
+    delete settings.overlayBounds.trackmap;
+    persistSettings();
   }
   const savedBounds = settings.overlayBounds && settings.overlayBounds[overlayId];
   const x = savedBounds ? savedBounds.x : screenW - config.width - 20;
@@ -296,14 +293,16 @@ function createOverlayWindow(overlayId) {
     webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
 
-  // Lock aspect ratio during resize
-  const initialAspect = width / height;
-  win.on('will-resize', (event, newBounds) => {
-    event.preventDefault();
-    const newW = newBounds.width;
-    const newH = Math.round(newW / initialAspect);
-    win.setBounds({ x: newBounds.x, y: newBounds.y, width: newW, height: newH });
-  });
+  // Lock aspect ratio during resize (skip for trackmap — it handles its own aspect)
+  if (overlayId !== 'trackmap') {
+    const initialAspect = width / height;
+    win.on('will-resize', (event, newBounds) => {
+      event.preventDefault();
+      const newW = newBounds.width;
+      const newH = Math.round(newW / initialAspect);
+      win.setBounds({ x: newBounds.x, y: newBounds.y, width: newW, height: newH });
+    });
+  }
 
   // Use highest z-level to stay on top of fullscreen games like iRacing
   win.setAlwaysOnTop(true, 'screen-saver');
