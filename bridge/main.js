@@ -309,13 +309,13 @@ function createOverlayWindow(overlayId) {
     win.setIgnoreMouseEvents(false);
   }
 
-  // Use highest z-level to stay on top of fullscreen games like iRacing
-  win.setAlwaysOnTop(true, 'screen-saver');
+  // Stay on top — use 'floating' level (screen-saver blocks input on some Windows)
+  win.setAlwaysOnTop(true, 'floating');
 
   // Periodically re-assert always-on-top (games can steal focus)
   const topInterval = setInterval(() => {
     if (win.isDestroyed()) { clearInterval(topInterval); return; }
-    try { win.setAlwaysOnTop(true, 'screen-saver'); } catch(e) {}
+    try { win.setAlwaysOnTop(true, 'floating'); } catch(e) {}
   }, 2000);
 
   win.loadFile(path.join(__dirname, 'overlays', `${overlayId}.html`));
