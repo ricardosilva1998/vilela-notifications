@@ -275,9 +275,13 @@ function createOverlayWindow(overlayId) {
     if (settings.overlayBounds) delete settings.overlayBounds.trackmap;
   }
   // Use saved position but always use config size (no free resize)
+  // Position: use saved settings posX/posY > saved bounds > default (0,0)
+  const overlaySettings = settings.overlayCustom && settings.overlayCustom[overlayId];
   const savedBounds = settings.overlayBounds && settings.overlayBounds[overlayId];
-  const x = savedBounds ? savedBounds.x : screenW - config.width - 20;
-  const y = savedBounds ? savedBounds.y : 20 + Object.keys(overlayWindows).length * 40;
+  const posX = overlaySettings && overlaySettings.posX !== undefined ? parseInt(overlaySettings.posX) : NaN;
+  const posY = overlaySettings && overlaySettings.posY !== undefined ? parseInt(overlaySettings.posY) : NaN;
+  const x = !isNaN(posX) ? posX : (savedBounds ? savedBounds.x : 0);
+  const y = !isNaN(posY) ? posY : (savedBounds ? savedBounds.y : 0);
   const width = config.width;
   const height = config.height;
 
@@ -355,6 +359,13 @@ ipcMain.on('set-ignore-mouse', (event, ignore) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win && !win.isDestroyed()) {
     win.setIgnoreMouseEvents(ignore, { forward: true });
+  }
+});
+
+ipcMain.on('move-overlay', (event, overlayId, x, y) => {
+  if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
+    const bounds = overlayWindows[overlayId].getBounds();
+    overlayWindows[overlayId].setBounds({ x: Math.round(x), y: Math.round(y), width: bounds.width, height: bounds.height });
   }
 });
 
