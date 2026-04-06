@@ -42,10 +42,10 @@ let settings = {};
 
 
 const OVERLAYS = [
-  { id: 'standings', name: 'Standings', width: 480, height: 600 },
-  { id: 'relative', name: 'Relative', width: 380, height: 450 },
-  { id: 'fuel', name: 'Fuel Calculator', width: 300, height: 240 },
-  { id: 'wind', name: 'Wind Direction', width: 170, height: 180 },
+  { id: 'standings', name: 'Standings', width: 620, height: 800 },
+  { id: 'relative', name: 'Relative', width: 520, height: 500 },
+  { id: 'fuel', name: 'Fuel Calculator', width: 300, height: 320 },
+  { id: 'wind', name: 'Wind Direction', width: 170, height: 210 },
   { id: 'proximity', name: 'Car Proximity', width: 180, height: 280 },
   { id: 'chat', name: 'Streaming Chat', width: 340, height: 500 },
   { id: 'trackmap', name: 'Track Map', width: 500, height: 500 },
@@ -300,7 +300,12 @@ function createOverlayWindow(overlayId) {
     webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
 
-  // Resizing disabled — overlays are sized from settings/defaults only
+  // Apply current lock state
+  if (overlaysLocked) {
+    win.setIgnoreMouseEvents(true, { forward: true });
+  } else {
+    win.setIgnoreMouseEvents(false);
+  }
 
   // Use highest z-level to stay on top of fullscreen games like iRacing
   win.setAlwaysOnTop(true, 'screen-saver');
@@ -354,6 +359,7 @@ function closeOverlayWindow(overlayId) {
 
 function setOverlaysLocked(locked) {
   overlaysLocked = locked;
+  console.log('[Lock] Overlays ' + (locked ? 'LOCKED' : 'UNLOCKED') + ' — setIgnoreMouseEvents(' + locked + ')');
   Object.values(overlayWindows).forEach(win => {
     if (win && !win.isDestroyed()) {
       win.setIgnoreMouseEvents(locked, { forward: locked });
