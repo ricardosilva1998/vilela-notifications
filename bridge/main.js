@@ -264,7 +264,10 @@ function createOverlayWindow(overlayId) {
   const display = screen.getPrimaryDisplay();
   const { width: screenW } = display.workAreaSize;
 
-  // Restore saved bounds if available
+  // Restore saved bounds if available (clear stale trackmap size from old defaults)
+  if (overlayId === 'trackmap' && settings.overlayBounds && settings.overlayBounds.trackmap && settings.overlayBounds.trackmap.height < config.height) {
+    delete settings.overlayBounds.trackmap;
+  }
   const savedBounds = settings.overlayBounds && settings.overlayBounds[overlayId];
   const x = savedBounds ? savedBounds.x : screenW - config.width - 20;
   const y = savedBounds ? savedBounds.y : 20 + Object.keys(overlayWindows).length * 40;
