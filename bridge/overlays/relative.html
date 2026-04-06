@@ -318,7 +318,7 @@
       const centerCar = focusCar || cars.find(c => c.isSpectated) || cars.find(c => c.isPlayer);
       // Positive distGap = car is AHEAD (further along track), negative = BEHIND
       const ahead = cars.filter(c => c.distGap > 0).slice(0, MAX_AHEAD).reverse();
-      const behind = cars.filter(c => c.distGap < 0).slice(-MAX_BEHIND);
+      const behind = cars.filter(c => c.distGap < 0).slice(-MAX_BEHIND).reverse();
 
       const rows = [];
       for (const d of ahead) rows.push(buildRelativeRow(d, 'ahead', formatRelativeGap(-d.gap), false));
