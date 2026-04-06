@@ -13,7 +13,7 @@
     .status-dot.connected { background: #3ecf8e; }
     .status-dot.waiting { background: #f79009; }
     .status-dot.demo { background: #f79009; }
-    .map-container { flex: 1; position: relative; padding: 10px; }
+    .map-container { flex: 1; position: relative; padding: 4px; }
     canvas { width: 100%; height: 100%; }
     .map-legend { position: absolute; bottom: 6px; right: 10px; font-size: 8px; color: rgba(255,255,255,0.3); }
     .overlay-disconnected { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(12,13,20,0.9); color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 600; border-radius: 8px; }
@@ -227,8 +227,8 @@
       if (windSpeed > 0) {
         const cx = w / 2;
         const cy = h / 2;
-        const arrowDist = Math.min(w, h) * 0.44; // near edge of canvas
-        const arrowLen = 14;
+        const arrowDist = Math.min(w, h) * 0.48; // at canvas edge
+        const arrowLen = 24;
         // windDir is radians from north (0=N, PI/2=E, PI=S, 3PI/2=W)
         const ax = cx + Math.sin(windDir) * arrowDist;
         const ay = cy - Math.cos(windDir) * arrowDist;
@@ -236,9 +236,9 @@
         const tipY = cy - Math.cos(windDir) * (arrowDist - arrowLen);
 
         ctx.save();
-        ctx.strokeStyle = 'rgba(145,70,255,0.6)';
-        ctx.fillStyle = 'rgba(145,70,255,0.6)';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(145,70,255,0.7)';
+        ctx.fillStyle = 'rgba(145,70,255,0.7)';
+        ctx.lineWidth = 3;
         // Shaft
         ctx.beginPath();
         ctx.moveTo(ax, ay);
@@ -248,10 +248,18 @@
         const angle = Math.atan2(tipY - ay, tipX - ax);
         ctx.beginPath();
         ctx.moveTo(tipX, tipY);
-        ctx.lineTo(tipX - 6 * Math.cos(angle - 0.5), tipY - 6 * Math.sin(angle - 0.5));
-        ctx.lineTo(tipX - 6 * Math.cos(angle + 0.5), tipY - 6 * Math.sin(angle + 0.5));
+        ctx.lineTo(tipX - 10 * Math.cos(angle - 0.5), tipY - 10 * Math.sin(angle - 0.5));
+        ctx.lineTo(tipX - 10 * Math.cos(angle + 0.5), tipY - 10 * Math.sin(angle + 0.5));
         ctx.closePath();
         ctx.fill();
+        // "W" label near arrow start
+        ctx.fillStyle = 'rgba(145,70,255,0.5)';
+        ctx.font = '9px Segoe UI';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const labelX = cx + Math.sin(windDir) * (arrowDist + 8);
+        const labelY = cy - Math.cos(windDir) * (arrowDist + 8);
+        ctx.fillText('W', labelX, labelY);
         ctx.restore();
       }
 
