@@ -23,7 +23,7 @@
     .overlay-table tr.disconnected { opacity: 0.35; }
     .pit-indicator { background: #f79009; color: #000; font-weight: 700; font-size: 8px; padding: 1px 5px; border-radius: 8px; margin-left: 6px; vertical-align: middle; }
     .mono { font-family: 'JetBrains Mono', 'Consolas', monospace; }
-    .driver-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 96px; display: block; }
+    .driver-name { white-space: nowrap; display: block; }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
     .status-dot.connected { background: #3ecf8e; }
     .status-dot.disconnected { background: #f04438; }
@@ -123,7 +123,6 @@
   .overlay-header { font-size: ${fsMed}px !important; }
   #session-header { font-size: ${fsSmall}px !important; }
   .pit-indicator { font-size: ${fsTiny}px !important; }
-  .driver-name { max-width: ${Math.round(fontSize * 9)}px !important; }
 `;
     document.head.appendChild(_dynStyle);
 
