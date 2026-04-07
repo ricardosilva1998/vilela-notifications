@@ -114,16 +114,17 @@
       document.getElementById('driver-best').textContent = formatLapTime(focused.bestLap);
       document.getElementById('driver-last').textContent = formatLapTime(focused.lastLap);
 
-      // Class badge with color — hide if white/light (single-class races)
+      // Class badge with color — use black text on light backgrounds
       const classEl = document.getElementById('driver-class');
       const classColor = (focused.carClassColor || '').replace(/\s/g, '').toLowerCase();
       const isLight = !classColor || classColor === '#ffffff' || classColor === '#fff' || classColor === 'rgb(255,255,255)';
-      if (isLight || !focused.carClass) {
+      if (!focused.carClass) {
         classEl.style.display = 'none';
       } else {
         classEl.style.display = '';
         classEl.textContent = focused.carClass;
-        classEl.style.background = focused.carClassColor;
+        classEl.style.background = focused.carClassColor || '#fff';
+        classEl.style.color = isLight ? '#111' : '#fff';
       }
 
       // iRating change
