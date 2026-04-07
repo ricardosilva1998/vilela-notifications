@@ -141,34 +141,48 @@ const sessionResults = new Map(); // carIdx -> { bestLap, lastLap, lapsComplete 
 const startingIRatings = new Map(); // carIdx -> starting iRating
 
 /**
- * Estimate iRating change using pairwise Elo model (based on iRating-rs).
- * For each pair: exchange points based on expected vs actual outcome.
- * K is a fixed constant per pair (~8), NOT divided by field size.
+ * Estimate iRating change using pairwise Elo model PER CLASS.
+ * In multiclass races, iRating is calculated within each class independently.
+ * Uses classPosition (not overall position) for pairwise comparison.
  */
 function estimateIRatingChanges(driverList) {
   const changes = new Map();
-  const active = driverList.filter(d => d.iRating > 0 && d.position > 0);
-  if (active.length < 2) return changes;
+
+  // Group drivers by class
+  const classes = {};
+  driverList.forEach(d => {
+    if (d.iRating > 0 && d.classPosition > 0) {
+      const cls = d.carClass || 'Overall';
+      if (!classes[cls]) classes[cls] = [];
+      classes[cls].push(d);
+    }
+  });
 
   // K per pair — calibrated against iOverlay data
   const K = 3;
 
-  for (const driver of active) {
-    let totalChange = 0;
+  // Calculate per-class
+  for (const cls of Object.keys(classes)) {
+    const classDrivers = classes[cls];
+    if (classDrivers.length < 2) continue;
 
-    for (const opp of active) {
-      if (opp.carIdx === driver.carIdx) continue;
+    for (const driver of classDrivers) {
+      let totalChange = 0;
 
-      // Expected score: probability that driver beats opponent
-      const expected = 1 / (1 + Math.pow(10, (opp.iRating - driver.iRating) / 1600));
+      for (const opp of classDrivers) {
+        if (opp.carIdx === driver.carIdx) continue;
 
-      // Actual score: 1 if driver beat opponent, 0 if not
-      const actual = driver.position < opp.position ? 1 : 0;
+        // Expected score: probability that driver beats opponent
+        const expected = 1 / (1 + Math.pow(10, (opp.iRating - driver.iRating) / 1600));
 
-      totalChange += (actual - expected) * K;
+        // Actual score: 1 if driver beat opponent (by class position), 0 if not
+        const actual = driver.classPosition < opp.classPosition ? 1 : 0;
+
+        totalChange += (actual - expected) * K;
+      }
+
+      changes.set(driver.carIdx, Math.round(totalChange));
     }
-
-    changes.set(driver.carIdx, Math.round(totalChange));
   }
   return changes;
 }
@@ -693,22 +707,24 @@ async function startTelemetry(onStatusChange) {
         const irChanges = estimateIRatingChanges(standings);
         standings.forEach(s => { s.estIRatingChange = irChanges.get(s.carIdx) || 0; });
 
-        // Diagnostic: log SOF and iRating change details
-        if (pollCount === 90 || pollCount === 300) {
-          const activeForIR = standings.filter(s => s.iRating > 0 && s.position > 0);
-          const irVals = activeForIR.map(s => s.iRating).sort((a, b) => b - a);
-          const avgIR = irVals.length > 0 ? Math.round(irVals.reduce((a, b) => a + b, 0) / irVals.length) : 0;
-          log('[iRating] Field: ' + activeForIR.length + ' drivers with pos>0, avgIR=' + avgIR + ' (SOF shown=' + sof + ')');
-          log('[iRating] Top iRatings: ' + irVals.slice(0, 5).join(', ') + ' ... Bottom: ' + irVals.slice(-3).join(', '));
-          const top5 = [...activeForIR].sort((a, b) => a.position - b.position).slice(0, 5);
-          top5.forEach(s => {
-            log('[iRating] P' + s.position + ' #' + s.carNumber + ' ' + s.driverName + ' iR=' + s.iRating + ' classPos=' + s.classPosition + ' estChange=' + (irChanges.get(s.carIdx) || 0));
+        // Diagnostic: log per-class iRating details
+        if (pollCount === 90 || pollCount === 600) {
+          // Group by class for logging
+          const classDiag = {};
+          standings.filter(s => s.iRating > 0 && s.classPosition > 0).forEach(s => {
+            const cls = s.carClass || 'Overall';
+            if (!classDiag[cls]) classDiag[cls] = [];
+            classDiag[cls].push(s);
           });
-          // Also log bottom 3
-          const bot3 = [...activeForIR].sort((a, b) => a.position - b.position).slice(-3);
-          bot3.forEach(s => {
-            log('[iRating] P' + s.position + ' #' + s.carNumber + ' ' + s.driverName + ' iR=' + s.iRating + ' classPos=' + s.classPosition + ' estChange=' + (irChanges.get(s.carIdx) || 0));
-          });
+          for (const [cls, drivers] of Object.entries(classDiag)) {
+            drivers.sort((a, b) => a.classPosition - b.classPosition);
+            const classIRs = drivers.map(d => d.iRating);
+            const classSOF = Math.round(classIRs.reduce((a, b) => a + b, 0) / classIRs.length);
+            log('[iRating] ' + cls + ': ' + drivers.length + ' drivers, SOF=' + classSOF + ' (shown=' + (sofByClass[cls] || '?') + ')');
+            drivers.forEach(s => {
+              log('[iRating]   CP' + s.classPosition + ' #' + s.carNumber + ' ' + s.driverName + ' iR=' + s.iRating + ' est=' + (irChanges.get(s.carIdx) || 0));
+            });
+          }
         }
 
         // Only broadcast standings every 1 second (every 10th poll) to prevent flickering
