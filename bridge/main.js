@@ -88,9 +88,10 @@ app.on('ready', () => {
   // Load app icon
   try {
     const iconPaths = [
-      path.join(__dirname, 'build', 'icon.png'),
-      path.join(process.resourcesPath || __dirname, 'icon.png'),
-      path.join(__dirname, '..', 'icon.png'),
+      path.join(process.resourcesPath || __dirname, 'atleta.ico'),
+      path.join(process.resourcesPath || __dirname, 'atleta.png'),
+      path.join(__dirname, 'build', 'atleta.ico'),
+      path.join(__dirname, 'build', 'atleta.png'),
     ];
     let trayIcon = nativeImage.createEmpty();
     for (const p of iconPaths) {
@@ -242,7 +243,7 @@ function showControlWindow() {
     minWidth: 700,
     minHeight: 550,
     title: 'Atleta Bridge',
-    icon: path.join(process.resourcesPath || __dirname, 'icon.png'),
+    icon: path.join(process.resourcesPath || __dirname, 'atleta.ico'),
     backgroundColor: '#0c0d14',
     webPreferences: { nodeIntegration: true, contextIsolation: false },
   });

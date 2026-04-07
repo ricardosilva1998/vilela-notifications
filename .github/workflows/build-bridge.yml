@@ -39,24 +39,6 @@ jobs:
           $pkg = Get-Content package.json | ConvertFrom-Json
           Write-Host "Building version $($pkg.version)"
 
-      - name: Prepare icon (resize to 512x512 for ICO conversion)
-        working-directory: bridge
-        shell: pwsh
-        run: |
-          Add-Type -AssemblyName System.Drawing
-          $src = [System.Drawing.Image]::FromFile((Resolve-Path "build\icon.png").Path)
-          $dst = New-Object System.Drawing.Bitmap(512, 512)
-          $g = [System.Drawing.Graphics]::FromImage($dst)
-          $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-          $g.DrawImage($src, 0, 0, 512, 512)
-          $g.Dispose()
-          $src.Dispose()
-          $dst.Save((Join-Path $PWD "build\icon_resized.png"), [System.Drawing.Imaging.ImageFormat]::Png)
-          $dst.Dispose()
-          Remove-Item "build\icon.png"
-          Rename-Item "build\icon_resized.png" "icon.png"
-          Write-Host "Icon resized to 512x512"
-
       - name: Install dependencies
         working-directory: bridge
         run: npm install

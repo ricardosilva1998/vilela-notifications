@@ -29,8 +29,12 @@
     },
     "extraResources": [
       {
-        "from": "build/icon.png",
-        "to": "icon.png"
+        "from": "build/atleta.png",
+        "to": "atleta.png"
+      },
+      {
+        "from": "build/atleta.ico",
+        "to": "atleta.ico"
       },
       {
         "from": "speechWorker.ps1",
@@ -42,7 +46,8 @@
     ],
     "files": [
       "**/*",
-      "build/icon.png"
+      "build/atleta.png",
+      "build/atleta.ico"
     ],
     "publish": {
       "provider": "github",
@@ -53,7 +58,7 @@
     "win": {
       "target": "nsis",
       "signAndEditExecutable": false,
-      "icon": "build/icon.png"
+      "icon": "build/atleta.ico"
     },
     "nsis": {
       "oneClick": true,
