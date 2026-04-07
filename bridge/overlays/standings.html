@@ -21,6 +21,10 @@
     .overlay-table tr.spectated-row { background: rgba(62,207,142,0.2); }
     .overlay-table tr.spectated-row td { color: #fff; font-weight: 600; }
     .overlay-table tr.disconnected { opacity: 0.35; }
+    .overlay-table tr.pos-up { animation: posUp 0.6s ease-out; }
+    .overlay-table tr.pos-down { animation: posDown 0.6s ease-out; }
+    @keyframes posUp { 0% { background: rgba(62,207,142,0.25); } 100% { background: transparent; } }
+    @keyframes posDown { 0% { background: rgba(240,68,56,0.25); } 100% { background: transparent; } }
     .pit-indicator { background: #f79009; color: #000; font-weight: 700; font-size: 8px; padding: 1px 5px; border-radius: 8px; margin-left: 6px; vertical-align: middle; }
     .mono { font-family: 'JetBrains Mono', 'Consolas', monospace; }
     .driver-name { white-space: nowrap; display: block; }
@@ -338,7 +342,7 @@
         last: `<td class="mono" style="font-size:${fsMed}px;color:rgba(255,255,255,0.55)">${lastFormatted}</td>`,
         gap: `<td class="mono" style="font-size:${fsMed}px;color:rgba(255,255,255,0.45)">${gap}</td>`,
       };
-      return `<tr class="${rowClass}${disconnCls}" onclick="selectDriver(${d.carIdx})" style="cursor:pointer">
+      return `<tr class="${rowClass}${disconnCls}" data-caridx="${d.carIdx}" onclick="selectDriver(${d.carIdx})" style="cursor:pointer">
         ${enabledColumns.map(c => cells[c] || '').join('')}
       </tr>`;
     }
@@ -479,10 +483,33 @@
       }
     }
 
+    // Track previous positions for animation
+    const prevPositions = new Map();
+
     onData('standings', data => {
       if (!data || !data.length) return;
       if (!demoCleared) { demoCleared = true; }
+
+      // Detect position changes
+      const posChanges = new Map();
+      data.forEach(d => {
+        if (d.classPosition > 0 && prevPositions.has(d.carIdx)) {
+          const prev = prevPositions.get(d.carIdx);
+          if (d.classPosition < prev) posChanges.set(d.carIdx, 'pos-up');
+          else if (d.classPosition > prev) posChanges.set(d.carIdx, 'pos-down');
+        }
+        if (d.classPosition > 0) prevPositions.set(d.carIdx, d.classPosition);
+      });
+
       document.getElementById('standings-body').innerHTML = buildStandingsHTML(data);
+
+      // Apply position change animations
+      if (posChanges.size > 0) {
+        document.querySelectorAll('.overlay-table tr[data-caridx]').forEach(tr => {
+          const idx = parseInt(tr.dataset.caridx);
+          if (posChanges.has(idx)) tr.classList.add(posChanges.get(idx));
+        });
+      }
       // Auto-resize height only (width stays fixed to prevent endless growth)
       setTimeout(() => {
         const panel = document.querySelector('.overlay-panel');

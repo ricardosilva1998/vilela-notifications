@@ -801,7 +801,7 @@ async function startTelemetry(onStatusChange) {
         // Find the focused car's data for the center row
         const focusCar = standings.find(s => s.carIdx === refCarIdx) || null;
 
-        if (pollCount % 15 === 0) broadcastToChannel('relative', { type: 'data', channel: 'relative', data: {
+        if (pollCount % 5 === 0) broadcastToChannel('relative', { type: 'data', channel: 'relative', data: {
           playerCarIdx, spectatedCarIdx: focusCarIdx, cars: relative, focusCar,
         }});
 
