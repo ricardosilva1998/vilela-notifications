@@ -30,7 +30,11 @@
     .lap-row:nth-child(odd) { background: rgba(255,255,255,0.02); }
     .lap-row.fastest { background: rgba(145,70,255,0.12); }
     .lap-num { color: rgba(255,255,255,0.4); font-size: 10px; width: 30px; }
-    .lap-time { color: rgba(255,255,255,0.85); font-weight: 600; }
+    .lap-session { font-size: 9px; font-weight: 700; width: 16px; text-align: center; border-radius: 3px; padding: 0 2px; }
+    .lap-session.practice { color: #8b8a9e; background: rgba(139,138,158,0.15); }
+    .lap-session.qualify { color: #f7c948; background: rgba(247,201,72,0.15); }
+    .lap-session.race { color: #3ecf8e; background: rgba(62,207,142,0.15); }
+    .lap-time { color: rgba(255,255,255,0.85); font-weight: 600; flex: 1; }
     .lap-time.fastest { color: #9146ff; font-weight: 700; }
     .lap-delta { font-size: 10px; width: 60px; text-align: right; }
     .lap-delta.faster { color: #3ecf8e; }
@@ -105,10 +109,18 @@
       return m > 0 ? m + ':' + s.padStart(6, '0') : s;
     }
 
-    // Stint tracking — local to overlay
-    let stintLaps = [];
-    let lastStintCount = -1;
+    // Lap tracking — local to overlay
+    let sessionLaps = []; // { time, session }
     let lastFocusLap = -1;
+    let currentSessionType = '';
+
+    function sessionTag(type) {
+      if (!type) return { label: '?', cls: 'practice' };
+      const t = type.toLowerCase();
+      if (t.includes('race')) return { label: 'R', cls: 'race' };
+      if (t.includes('qual') || t.includes('lone')) return { label: 'Q', cls: 'qualify' };
+      return { label: 'P', cls: 'practice' };
+    }
 
     onData('standings', data => {
       if (!data || !data.length) return;
@@ -118,9 +130,8 @@
       // Detect new lap: lastLap changes
       const currentLap = focused.lastLap;
       if (currentLap > 0 && currentLap !== lastFocusLap) {
-        // New lap completed
         if (lastFocusLap > 0) {
-          stintLaps.push(currentLap);
+          sessionLaps.push({ time: currentLap, session: currentSessionType });
         }
         lastFocusLap = currentLap;
       }
@@ -128,14 +139,16 @@
 
     onData('session', data => {
       if (!data) return;
+      currentSessionType = data.eventType || '';
 
       // Update summary
-      document.getElementById('stint-laps').textContent = stintLaps.length || 0;
+      document.getElementById('stint-laps').textContent = sessionLaps.length || 0;
 
-      if (stintLaps.length > 0) {
-        const best = Math.min(...stintLaps);
-        const last = stintLaps[stintLaps.length - 1];
-        const avg = stintLaps.reduce((a, b) => a + b, 0) / stintLaps.length;
+      if (sessionLaps.length > 0) {
+        const times = sessionLaps.map(l => l.time);
+        const best = Math.min(...times);
+        const last = times[times.length - 1];
+        const avg = times.reduce((a, b) => a + b, 0) / times.length;
 
         document.getElementById('stint-best').textContent = formatLapTime(best);
         document.getElementById('stint-last').textContent = formatLapTime(last);
@@ -144,15 +157,17 @@
         // Render lap list (newest on top)
         const listEl = document.getElementById('lap-list');
         let html = '';
-        for (let i = stintLaps.length - 1; i >= 0; i--) {
-          const t = stintLaps[i];
-          const isBest = t === best;
-          const delta = t - best;
+        for (let i = sessionLaps.length - 1; i >= 0; i--) {
+          const lap = sessionLaps[i];
+          const isBest = lap.time === best;
+          const delta = lap.time - best;
           const deltaStr = delta === 0 ? '' : (delta > 0 ? '+' + delta.toFixed(3) : delta.toFixed(3));
           const deltaClass = delta === 0 ? '' : (delta > 0 ? 'slower' : 'faster');
+          const tag = sessionTag(lap.session);
           html += `<div class="lap-row ${isBest ? 'fastest' : ''}">
             <span class="lap-num">L${i + 1}</span>
-            <span class="lap-time ${isBest ? 'fastest' : ''}">${formatLapTime(t)}</span>
+            <span class="lap-session ${tag.cls}">${tag.label}</span>
+            <span class="lap-time ${isBest ? 'fastest' : ''}">${formatLapTime(lap.time)}</span>
             <span class="lap-delta ${deltaClass}">${deltaStr}</span>
           </div>`;
         }

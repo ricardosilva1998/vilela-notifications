@@ -567,12 +567,30 @@ async function startTelemetry(onStatusChange) {
         // Event type + sky conditions from session info
         let eventType = '';
         let skies = '';
+        let weatherType = '';
         try {
           const si = ir.getSessionInfo('SessionInfo');
           const sn = ir.get(VARS.SESSION_NUM)?.[0] ?? 0;
           eventType = si?.Sessions?.[sn]?.SessionType || '';
           const wi = ir.getSessionInfo('WeekendInfo');
           skies = wi?.TrackSkies || '';
+          weatherType = wi?.TrackWeatherType || '';
+          // Log weather data periodically (every 60s = 600 polls at 10Hz)
+          if (pollCount % 600 === 1) {
+            log('[Weather] Skies=' + skies + ' Type=' + weatherType +
+              ' Air=' + airTemp.toFixed(1) + 'C Track=' + trackTemp.toFixed(1) + 'C' +
+              ' Humidity=' + humidity.toFixed(0) + '%' +
+              ' Precip=' + (precipitation * 100).toFixed(1) + '%' +
+              ' Fog=' + (fogLevel * 100).toFixed(1) + '%' +
+              ' Wet=' + weatherWet +
+              ' Wind=' + ((ir.get(VARS.WIND_VEL)?.[0] || 0) * 3.6).toFixed(1) + 'km/h' +
+              ' Wetness=' + trackWetness);
+            // Log all WeekendInfo weather keys for debugging
+            if (wi) {
+              const weatherKeys = Object.keys(wi).filter(k => k.toLowerCase().includes('weather') || k.toLowerCase().includes('sky') || k.toLowerCase().includes('wind') || k.toLowerCase().includes('temp') || k.toLowerCase().includes('fog') || k.toLowerCase().includes('precip'));
+              if (weatherKeys.length) log('[Weather] WeekendInfo keys: ' + weatherKeys.map(k => k + '=' + wi[k]).join(', '));
+            }
+          }
         } catch(e) {}
 
         // Stint tracking (laps + time since last pit)
