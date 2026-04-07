@@ -585,11 +585,32 @@ async function startTelemetry(onStatusChange) {
               ' Wet=' + weatherWet +
               ' Wind=' + ((ir.get(VARS.WIND_VEL)?.[0] || 0) * 3.6).toFixed(1) + 'km/h' +
               ' Wetness=' + trackWetness);
-            // Log all WeekendInfo weather keys for debugging
+            // Log all WeekendInfo keys
             if (wi) {
-              const weatherKeys = Object.keys(wi).filter(k => k.toLowerCase().includes('weather') || k.toLowerCase().includes('sky') || k.toLowerCase().includes('wind') || k.toLowerCase().includes('temp') || k.toLowerCase().includes('fog') || k.toLowerCase().includes('precip'));
-              if (weatherKeys.length) log('[Weather] WeekendInfo keys: ' + weatherKeys.map(k => k + '=' + wi[k]).join(', '));
+              log('[Weather] WeekendInfo ALL keys: ' + Object.keys(wi).join(', '));
             }
+            // Try to find forecast data in all session info sections
+            try {
+              const allSections = ['WeekendInfo', 'WeekendOptions', 'SessionInfo', 'WeatherInfo', 'RadioInfo', 'CameraInfo', 'SplitTimeInfo', 'QualifyResultsInfo'];
+              allSections.forEach(section => {
+                try {
+                  const data = ir.getSessionInfo(section);
+                  if (data && typeof data === 'object') {
+                    const keys = Object.keys(data);
+                    const hasWeather = keys.some(k => k.toLowerCase().includes('weather') || k.toLowerCase().includes('forecast') || k.toLowerCase().includes('skies'));
+                    if (hasWeather || section === 'WeekendOptions') {
+                      log('[Weather] ' + section + ' keys: ' + keys.join(', '));
+                      keys.forEach(k => {
+                        const v = data[k];
+                        if (typeof v === 'object' && v !== null) {
+                          log('[Weather]   ' + section + '.' + k + ' = ' + JSON.stringify(v).substring(0, 500));
+                        }
+                      });
+                    }
+                  }
+                } catch(e) {}
+              });
+            } catch(e) {}
           }
         } catch(e) {}
 
@@ -609,7 +630,7 @@ async function startTelemetry(onStatusChange) {
           trackName,
           airTemp, trackTemp, humidity, trackWetness,
           sessionTime, sessionTimeRemain, timeOfDay, sof, sofByClass,
-          incidentCount, fogLevel, precipitation, weatherWet, skies,
+          incidentCount, fogLevel, precipitation, weatherWet, skies, weatherType,
           windDir: ir.get(VARS.WIND_DIR)?.[0] || 0,
           windSpeed: ir.get(VARS.WIND_VEL)?.[0] || 0,
           fuelLevel: fuelLevelSession, waterTemp, oilTemp,

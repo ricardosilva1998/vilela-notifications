@@ -232,13 +232,17 @@
         condition = 'rain';
       } else if (fogLevel > 0.15) {
         condition = 'fog';
-      } else if (skies) {
+      } else if (skies && !skies.toLowerCase().includes('dynamic')) {
+        // Static weather — use sky string directly
         const s = skies.toLowerCase();
         if (s.includes('overcast') || s.includes('mostly cloudy')) condition = 'clouds';
         else if (s.includes('partly cloudy')) condition = 'partlycloudy';
         else condition = 'sun';
-      } else if (humidity > 85) {
-        condition = 'clouds';
+      } else {
+        // Dynamic weather or unknown — infer from humidity
+        if (humidity > 75) condition = 'clouds';
+        else if (humidity > 45) condition = 'partlycloudy';
+        else condition = 'sun';
       }
 
       if (condition === currentCondition) return;
@@ -270,15 +274,20 @@
       }
     }
 
-    function skyLabel(skies, precipitation) {
+    function skyLabel(skies, precipitation, humidity) {
       if (precipitation > 0.05) return 'Rain';
-      if (!skies) return '--';
-      const s = skies.toLowerCase();
-      if (s.includes('overcast')) return 'Overcast';
-      if (s.includes('mostly cloudy')) return 'Mostly Cloudy';
-      if (s.includes('partly cloudy')) return 'Partly Cloudy';
-      if (s.includes('clear')) return 'Clear';
-      return skies;
+      if (skies && !skies.toLowerCase().includes('dynamic')) {
+        const s = skies.toLowerCase();
+        if (s.includes('overcast')) return 'Overcast';
+        if (s.includes('mostly cloudy')) return 'Mostly Cloudy';
+        if (s.includes('partly cloudy')) return 'Partly Cloudy';
+        if (s.includes('clear')) return 'Clear';
+        return skies;
+      }
+      // Dynamic weather — infer from humidity
+      if (humidity > 75) return 'Cloudy';
+      if (humidity > 45) return 'Partly Cloudy';
+      return 'Clear';
     }
 
     onData('session', data => {
@@ -289,7 +298,7 @@
 
       // Sky condition label
       const precip = data.precipitation || 0;
-      document.getElementById('sky-label').textContent = skyLabel(data.skies, precip);
+      document.getElementById('sky-label').textContent = skyLabel(data.skies, precip, data.humidity || 0);
 
       // Air temp
       const airEl = document.getElementById('air-temp');
