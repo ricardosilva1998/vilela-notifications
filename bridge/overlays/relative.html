@@ -117,6 +117,7 @@
       .overlay-table td { height: ${rowHeight}px; min-height: ${rowHeight}px; }
       .overlay-header { font-size: ${fsMed}px !important; }
       #session-header { font-size: ${fsSmall}px !important; }
+      .driver-name { max-width: ${Math.round(fontSize * 9)}px !important; }
     `;
     document.head.appendChild(_rstyle);
 
@@ -291,7 +292,7 @@
 
       const logoStyle = getBrandLogoStyle(carBrand);
       const logoImg = logoStyle ? `<span class="brand-logo" style="${logoStyle}"></span>` : '';
-      const nameCell = `<div class="driver-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px">${d.driverName || ''}</div>`;
+      const nameCell = `<div class="driver-name">${d.driverName || ''}</div>`;
 
       if (isPlayerRow) {
         const cells = {
