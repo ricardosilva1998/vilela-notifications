@@ -40,7 +40,7 @@
 <body>
   <div class="overlay-panel">
     <div class="overlay-header">
-      <span>STINT</span>
+      <span>SESSION LAPS</span>
       <span id="connection-status"><span class="status-dot demo"></span></span>
     </div>
     <div class="stint-body">
@@ -128,17 +128,9 @@
 
     onData('session', data => {
       if (!data) return;
-      const newStintCount = data.stintLaps || 0;
-
-      // Stint reset (pit stop detected) — clear lap list
-      if (newStintCount < lastStintCount && lastStintCount > 0) {
-        stintLaps = [];
-        lastFocusLap = -1;
-      }
-      lastStintCount = newStintCount;
 
       // Update summary
-      document.getElementById('stint-laps').textContent = stintLaps.length || newStintCount || 0;
+      document.getElementById('stint-laps').textContent = stintLaps.length || 0;
 
       if (stintLaps.length > 0) {
         const best = Math.min(...stintLaps);

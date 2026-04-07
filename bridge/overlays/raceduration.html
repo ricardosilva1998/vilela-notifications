@@ -33,7 +33,7 @@
       <div class="divider"></div>
       <div class="info-block">
         <div class="info-value" id="laps-remain">--</div>
-        <div class="info-label">Laps Left</div>
+        <div class="info-label">Laps Left <span id="focus-class" style="color:rgba(255,255,255,0.5);text-transform:none;letter-spacing:0;"></span></div>
       </div>
     </div>
   </div>
@@ -115,7 +115,11 @@
 
       // Find focused driver's class
       const focused = data.find(d => d.isSpectated) || data.find(d => d.isPlayer);
-      if (focused) _focusClass = focused.carClass || '';
+      if (focused) {
+        _focusClass = focused.carClass || '';
+        const classEl = document.getElementById('focus-class');
+        if (classEl) classEl.textContent = _focusClass ? '(' + _focusClass + ')' : '';
+      }
 
       // Track best lap of class leader (CP1) for each class
       const classLeaders = {};

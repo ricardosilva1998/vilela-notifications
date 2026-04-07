@@ -52,9 +52,9 @@ const OVERLAYS = [
   { id: 'voicechat', name: 'Voice Chat', width: 340, height: 400 },
   { id: 'inputs', name: 'Driver Inputs', width: 540, height: 150 },
   { id: 'raceduration', name: 'Race Duration', width: 280, height: 80 },
-  { id: 'drivercard', name: 'Driver Card', width: 300, height: 140 },
+  { id: 'drivercard', name: 'Driver Card', width: 300, height: 160 },
   { id: 'stintlaps', name: 'Stint Laps', width: 260, height: 300 },
-  { id: 'weather', name: 'Weather', width: 320, height: 140 },
+  { id: 'weather', name: 'Weather', width: 320, height: 180 },
   // { id: 'discord', name: 'Discord Voice', width: 200, height: 300 }, // DISABLED — Railway doesn't support UDP for voice speaking detection
 ];
 

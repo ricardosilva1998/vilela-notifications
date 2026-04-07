@@ -22,8 +22,8 @@
     .sun-container { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.8s; }
     .sun-container.active { opacity: 1; }
     .sun-core { width: 28px; height: 28px; border-radius: 50%; background: radial-gradient(circle, #ffd54f 40%, #ffb300 100%); box-shadow: 0 0 20px rgba(255,213,79,0.6), 0 0 40px rgba(255,179,0,0.3); }
-    .sun-rays { position: absolute; width: 60px; height: 60px; animation: spin-rays 12s linear infinite; }
-    .sun-ray { position: absolute; width: 3px; height: 12px; background: linear-gradient(to top, rgba(255,213,79,0.7), transparent); border-radius: 2px; left: 50%; top: 50%; transform-origin: center 30px; }
+    .sun-rays { position: absolute; width: 60px; height: 60px; left: 50%; top: 50%; margin-left: -30px; margin-top: -30px; animation: spin-rays 12s linear infinite; }
+    .sun-ray { position: absolute; width: 3px; height: 12px; background: linear-gradient(to top, rgba(255,213,79,0.7), transparent); border-radius: 2px; left: calc(50% - 1.5px); top: 0; transform-origin: 1.5px 30px; }
     @keyframes spin-rays { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
     /* Clouds */
@@ -139,7 +139,7 @@
       for (let i = 0; i < 8; i++) {
         const ray = document.createElement('div');
         ray.className = 'sun-ray';
-        ray.style.transform = `rotate(${i * 45}deg) translateY(-18px)`;
+        ray.style.transform = `rotate(${i * 45}deg)`;
         raysEl.appendChild(ray);
       }
     })();
