@@ -141,29 +141,35 @@ const sessionResults = new Map(); // carIdx -> { bestLap, lastLap, lapsComplete 
 const startingIRatings = new Map(); // carIdx -> starting iRating
 
 /**
- * Estimate iRating change using the expected position model.
- * Formula from the iRacing community-accepted calculator:
- *   ExpectedPos = 1 + SUM(1 / (1 + 10^((Ri - Rj) / 1600))) for all j≠i
- *   Change = round((ExpectedPos - ActualPos) * 200 / fieldSize)
+ * Estimate iRating change using pairwise Elo model (based on iRating-rs).
+ * For each pair: exchange points based on expected vs actual outcome.
+ * K is a fixed constant per pair (~8), NOT divided by field size.
  */
 function estimateIRatingChanges(driverList) {
   const changes = new Map();
   const active = driverList.filter(d => d.iRating > 0 && d.position > 0);
   if (active.length < 2) return changes;
 
-  const N = active.length;
+  // K per pair — calibrated to match iOverlay data
+  // In a 29-car SOF 6600 race: P1 should gain ~67, P2 ~40
+  const K = 8;
 
   for (const driver of active) {
-    // Calculate expected finish position
-    let expectedPos = 1;
+    let totalChange = 0;
+
     for (const opp of active) {
       if (opp.carIdx === driver.carIdx) continue;
-      // Probability that driver finishes BEHIND opponent
-      expectedPos += 1 / (1 + Math.pow(10, (driver.iRating - opp.iRating) / 1600));
+
+      // Expected score: probability that driver beats opponent
+      const expected = 1 / (1 + Math.pow(10, (opp.iRating - driver.iRating) / 1600));
+
+      // Actual score: 1 if driver beat opponent, 0 if not
+      const actual = driver.position < opp.position ? 1 : 0;
+
+      totalChange += (actual - expected) * K;
     }
 
-    const change = Math.round((expectedPos - driver.position) * 200 / N);
-    changes.set(driver.carIdx, change);
+    changes.set(driver.carIdx, Math.round(totalChange));
   }
   return changes;
 }
