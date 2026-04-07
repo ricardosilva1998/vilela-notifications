@@ -509,11 +509,15 @@
     let _commonFlags = 0;
 
     onData('standings', data => {
+      try {
       if (!data || !data.length) return;
       if (!demoCleared) { demoCleared = true; }
 
       // Find flags common to ALL drivers (these are session-wide, not per-car)
-      _commonFlags = data.reduce((common, d) => common & (d.sessionFlags || 0), data[0]?.sessionFlags || 0);
+      try {
+        const allFlags = data.map(d => d.sessionFlags || 0).filter(f => f > 0);
+        _commonFlags = allFlags.length > 0 ? allFlags.reduce((a, b) => a & b) : 0;
+      } catch(e) { _commonFlags = 0; }
 
       // Detect position changes
       const posChanges = new Map();
@@ -546,6 +550,7 @@
           } catch(e) {}
         }
       }, 150);
+      } catch(err) { console.error('[Standings] Error:', err); }
     });
 
     onData('session', data => {
