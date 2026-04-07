@@ -259,9 +259,22 @@
       displayCars.forEach(car => {
         const pos = getTrackPosition(car.pct);
         const x = pos.x * s, y = pos.y * s;
-        const isFocused = car.isSpectated && !car.isPlayer;
-        const radius = car.isPlayer ? 7 : (isFocused ? 9 : 4);
+        const isFocused = car.isSpectated;
+        const radius = car.isPlayer ? 7 : (isFocused ? 10 : 4);
         const color = car.isPlayer ? playerColor : (isFocused ? focusColor : (car.carClassColor || '#fff'));
+
+        // Draw outer glow first for focused driver
+        if (isFocused) {
+          ctx.save();
+          const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 300);
+          ctx.beginPath();
+          ctx.arc(x, y, radius + 6 + pulse * 4, 0, Math.PI * 2);
+          ctx.strokeStyle = focusColor;
+          ctx.globalAlpha = 0.4 + pulse * 0.3;
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          ctx.restore();
+        }
 
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -272,18 +285,6 @@
           ctx.strokeStyle = '#fff';
           ctx.lineWidth = 2;
           ctx.stroke();
-        }
-        // Pulsing glow for focused driver
-        if (isFocused) {
-          ctx.save();
-          const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 300);
-          ctx.beginPath();
-          ctx.arc(x, y, radius + 4 + pulse * 3, 0, Math.PI * 2);
-          ctx.strokeStyle = focusColor;
-          ctx.globalAlpha = 0.3 + pulse * 0.2;
-          ctx.lineWidth = 2;
-          ctx.stroke();
-          ctx.restore();
         }
 
         ctx.fillStyle = 'rgba(255,255,255,0.7)';
