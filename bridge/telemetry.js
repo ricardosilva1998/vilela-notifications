@@ -720,6 +720,18 @@ async function startTelemetry(onStatusChange) {
         const irChanges = estimateIRatingChanges(standings);
         standings.forEach(s => { s.estIRatingChange = irChanges.get(s.carIdx) || 0; });
 
+        // Diagnostic: log flag values (first poll only)
+        if (pollCount === 90) {
+          const flagged = standings.filter(s => s.sessionFlags && s.sessionFlags !== 0);
+          if (flagged.length > 0) {
+            log('[Flags] Drivers with flags:');
+            flagged.slice(0, 5).forEach(s => log('[Flags]   ' + s.driverName + ' flags=0x' + s.sessionFlags.toString(16) + ' (' + s.sessionFlags + ')'));
+          } else {
+            // Log first 3 drivers to see what the default flag value is
+            standings.slice(0, 3).forEach(s => log('[Flags]   ' + s.driverName + ' flags=0x' + (s.sessionFlags || 0).toString(16)));
+          }
+        }
+
         // Diagnostic: log per-class iRating details
         if (pollCount === 90 || pollCount === 600) {
           // Group by class for logging

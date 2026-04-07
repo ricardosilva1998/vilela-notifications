@@ -320,16 +320,22 @@
 
       const logoStyle = getBrandLogoStyle(carBrand);
       const logoImg = logoStyle ? `<span class="brand-logo" style="${logoStyle}"></span>` : '';
-      // Per-driver session flags
+      // Per-driver flags — only bits 16+ are per-car penalties (lower bits are session-wide)
       const flags = d.sessionFlags || 0;
+      const pf = flags >> 16; // shift to get per-car flag bits only
       let flagIcons = '';
-      if (flags & 0x00010000) flagIcons += '<span class="flag-icon" title="Black Flag">&#x1F3F4;</span>';
-      if (flags & 0x00040000) flagIcons += '<span class="flag-icon" style="color:#f79009" title="Meatball">&#x1F7E0;</span>';
-      if (flags & 0x00000020) flagIcons += '<span class="flag-icon" style="color:#4a9eff" title="Blue Flag">&#x1F535;</span>';
-      if (flags & 0x00000008) flagIcons += '<span class="flag-icon" style="color:#f7c948" title="Yellow">&#x1F7E1;</span>';
-      if (flags & 0x00100000) flagIcons += '<span class="flag-icon" style="color:#f04438" title="Repair">&#x1F6E0;</span>';
-      if (flags & 0x00080000) flagIcons += '<span class="flag-icon" title="Furled Black">&#x2691;</span>';
-      if (flags & 0x00020000) flagIcons += '<span class="flag-icon" style="color:#f04438" title="Disqualified">DQ</span>';
+      // Black flag (bit 0 of upper word = 0x00010000)
+      if (pf & 0x01) flagIcons += `<svg class="flag-icon" width="12" height="9" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#111"/></svg>`;
+      // Meatball (bit 2 = 0x00040000) — black flag with orange circle
+      if (pf & 0x04) flagIcons += `<svg class="flag-icon" width="12" height="9" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#111"/><circle cx="6" cy="4.5" r="3" fill="#f79009"/></svg>`;
+      // Repair (bit 4 = 0x00100000) — same as meatball
+      if (pf & 0x10) flagIcons += `<svg class="flag-icon" width="12" height="9" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#111"/><circle cx="6" cy="4.5" r="3" fill="#f79009"/></svg>`;
+      // DQ (bit 1 = 0x00020000) — black flag
+      if (pf & 0x02) flagIcons += `<svg class="flag-icon" width="12" height="9" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#111"/></svg>`;
+      // Blue flag (bit 5 of lower word = 0x00000020) — blue flag
+      if (flags & 0x00000020) flagIcons += `<svg class="flag-icon" width="12" height="9" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#2563eb"/></svg>`;
+      // Yellow/caution (bit 14 = 0x00004000) — yellow flag (per-car local yellow)
+      if (flags & 0x00004000) flagIcons += `<svg class="flag-icon" width="12" height="9" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#eab308"/></svg>`;
       const badgeCell = `<div class="driver-name">${d.driverName || ''}${pitMark}${flagIcons}</div>`;
 
       const licCell = d.safetyRating || d.license
