@@ -75,9 +75,11 @@
       return h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}` : `${m}:${String(sec).padStart(2,'0')}`;
     }
 
-    // Track leader lap times per class
+    // Track leader lap times per class + overall leader
     let _focusClass = '';
-    let _leaderBestLap = {};
+    let _leaderBestLap = {};   // best lap per class leader
+    let _overallBestLap = 0;   // fastest class leader's best lap (overall P1 pace)
+    let _focusLapsCompleted = 0;
 
     onData('session', data => {
       if (!data) return;
@@ -101,9 +103,18 @@
         return;
       }
 
-      // Timed race: estimate laps from leader's pace
-      if (_focusClass && _leaderBestLap[_focusClass] > 0 && timeRemain > 0) {
-        const estLaps = Math.ceil(timeRemain / _leaderBestLap[_focusClass]) + 1;
+      // Timed race: estimate laps remaining for focus class
+      const focusPace = _focusClass ? _leaderBestLap[_focusClass] : 0;
+      if (focusPace > 0 && timeRemain > 0) {
+        // Overall leader pace (fastest class) determines when the race ends
+        const overallPace = _overallBestLap > 0 ? _overallBestLap : focusPace;
+
+        // Total time until checkered: time on clock + ~1 lap for leader to finish after clock expires
+        const totalTimeToCheckered = timeRemain + overallPace;
+
+        // How many laps can the focus class do in that total time?
+        const estLaps = Math.floor(totalTimeToCheckered / focusPace);
+
         lapsEl.textContent = '~' + estLaps;
       } else {
         lapsEl.textContent = '--';
@@ -117,6 +128,7 @@
       const focused = data.find(d => d.isSpectated) || data.find(d => d.isPlayer);
       if (focused) {
         _focusClass = focused.carClass || '';
+        _focusLapsCompleted = focused.lapsCompleted || 0;
         const classEl = document.getElementById('focus-class');
         if (classEl) classEl.textContent = _focusClass ? '(' + _focusClass + ')' : '';
       }
@@ -130,9 +142,21 @@
           classLeaders[cls] = d;
         }
       });
+
+      // Find the overall leader (P1 overall, fastest class)
+      let overallLeader = null;
+      data.forEach(d => {
+        if (d.position === 1) overallLeader = d;
+      });
+
       Object.entries(classLeaders).forEach(([cls, leader]) => {
         if (leader.bestLap > 0) _leaderBestLap[cls] = leader.bestLap;
       });
+
+      // Overall leader's pace (fastest car on track)
+      if (overallLeader && overallLeader.bestLap > 0) {
+        _overallBestLap = overallLeader.bestLap;
+      }
     });
 
     connectBridge(['session', 'standings']);
