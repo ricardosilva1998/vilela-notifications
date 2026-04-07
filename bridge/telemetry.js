@@ -140,6 +140,26 @@ const sessionResults = new Map(); // carIdx -> { bestLap, lastLap, lapsComplete 
 // Starting iRatings — captured once at session start for gain/loss display
 const startingIRatings = new Map(); // carIdx -> starting iRating
 
+// Pit time tracking — measure time lost per pit stop per class
+const pitTracking = new Map(); // carIdx -> { wasPitting, bestLapSnapshot, lapsSnapshot, waitingForLap, referenceLap }
+let classPitDeltas = {};       // className -> { avgDelta, samples }
+const PIT_TIMES_FILE = path.join(require('os').homedir(), 'Documents', 'Atleta Bridge', 'pittimes.json');
+
+function loadPitTimes() {
+  try {
+    if (fs.existsSync(PIT_TIMES_FILE)) return JSON.parse(fs.readFileSync(PIT_TIMES_FILE, 'utf8'));
+  } catch(e) { log('[PitTimes] Load error: ' + e.message); }
+  return {};
+}
+function savePitTimes(data) {
+  try {
+    const dir = path.dirname(PIT_TIMES_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(PIT_TIMES_FILE, JSON.stringify(data, null, 2));
+  } catch(e) { log('[PitTimes] Save error: ' + e.message); }
+}
+let pitTimesData = {}; // { trackName: { className: { avgDelta, samples } } }
+
 /**
  * iRating change calculator — exact formula from iRacing spreadsheet.
  * Source: github.com/arrecio/ircalculator (matches iRacing official calc)
@@ -242,6 +262,8 @@ async function startTelemetry(onStatusChange) {
         lastFocusCarIdx = -1;
         resetSelectedCar();
         startingIRatings.clear();
+        pitTracking.clear();
+        classPitDeltas = {};
         resetFuel();
         trackSlots.fill(null);
         trackPathComplete = false;
@@ -338,6 +360,16 @@ async function startTelemetry(onStatusChange) {
               if (!sessionInfoFound) {
                 sessionInfoFound = true;
                 trackName = newTrackName;
+                // Load persisted pit times for this track
+                pitTimesData = loadPitTimes();
+                classPitDeltas = {};
+                pitTracking.clear();
+                if (pitTimesData[trackName]) {
+                  Object.entries(pitTimesData[trackName]).forEach(([cls, d]) => {
+                    classPitDeltas[cls] = { avgDelta: d.avgDelta || 0, samples: d.samples || 0 };
+                  });
+                  log('[PitTimes] Loaded for ' + trackName + ': ' + Object.entries(classPitDeltas).map(([c, d]) => c + '=' + d.avgDelta.toFixed(1) + 's (' + d.samples + ')').join(', '));
+                }
                 // Store starting iRatings for gain/loss tracking
                 driverInfo.Drivers.forEach(d => {
                   if (d.IRating > 0 && !startingIRatings.has(d.CarIdx)) {
@@ -641,6 +673,9 @@ async function startTelemetry(onStatusChange) {
           fuelLevel: fuelLevelSession, waterTemp, oilTemp,
           sessionLapsRemain, eventType, sessionNum: ir.get(VARS.SESSION_NUM)?.[0] ?? 0, stintLaps, stintTime,
           playerIRChange: _lastPlayerIRChange,
+          pitDeltas: classPitDeltas,
+          fuelPerLap: avgAll > 0 ? avgAll : 0,
+          fuelCapacity: fuelPct > 0 ? fuelLevel / fuelPct : 0,
           drivers: drivers.map(d => ({
             carIdx: d.CarIdx, driverName: d.UserName, carNumber: d.CarNumber,
             carMake: d.CarScreenNameShort || d.CarScreenName || '',
@@ -754,6 +789,46 @@ async function startTelemetry(onStatusChange) {
             isSpectated: i === focusCarIdx,
           });
         }
+
+        // === Pit time delta detection ===
+        standings.forEach(s => {
+          let pt = pitTracking.get(s.carIdx);
+          if (!pt) {
+            pt = { wasPitting: false, bestLapSnapshot: 0, lapsSnapshot: 0, waitingForLap: false, referenceLap: 0 };
+            pitTracking.set(s.carIdx, pt);
+          }
+          // Driver just entered pit
+          if (s.inPit && !pt.wasPitting) {
+            pt.wasPitting = true;
+            pt.bestLapSnapshot = s.bestLap;
+            pt.lapsSnapshot = s.lapsCompleted;
+          }
+          // Driver just exited pit — wait for next completed lap
+          if (!s.inPit && pt.wasPitting) {
+            pt.wasPitting = false;
+            pt.waitingForLap = true;
+            pt.referenceLap = pt.bestLapSnapshot;
+          }
+          // Pit lap completed — measure delta
+          if (pt.waitingForLap && s.lapsCompleted > pt.lapsSnapshot) {
+            pt.waitingForLap = false;
+            if (s.lastLap > 0 && pt.referenceLap > 0 && s.carClass) {
+              const delta = s.lastLap - pt.referenceLap;
+              if (delta > 5 && delta < 120) { // sanity: 5-120s pit delta
+                const cls = s.carClass;
+                if (!classPitDeltas[cls]) classPitDeltas[cls] = { avgDelta: 0, samples: 0 };
+                const d = classPitDeltas[cls];
+                d.avgDelta = (d.avgDelta * d.samples + delta) / (d.samples + 1);
+                d.samples++;
+                // Persist to file
+                if (!pitTimesData[trackName]) pitTimesData[trackName] = {};
+                pitTimesData[trackName][cls] = { avgDelta: d.avgDelta, samples: d.samples };
+                if (pollCount % 10 === 0) savePitTimes(pitTimesData); // throttle saves
+                log('[PitTimes] ' + s.driverName + ' (' + cls + ') pit delta=' + delta.toFixed(1) + 's avg=' + d.avgDelta.toFixed(1) + 's (' + d.samples + ' samples)');
+              }
+            }
+          }
+        });
 
         // Update persisted data for active drivers
         standings.forEach(s => persistedDrivers.set(s.carIdx, s));

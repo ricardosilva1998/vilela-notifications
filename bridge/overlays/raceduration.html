@@ -78,7 +78,9 @@
     // Track leader lap times per class + overall leader
     let _focusClass = '';
     let _leaderBestLap = {};   // best lap per class leader
-    let _overallBestLap = 0;   // fastest class leader's best lap (overall P1 pace)
+    let _focusLastLap = {};    // last lap per class leader (race pace)
+    let _overallBestLap = 0;   // fastest class leader's best lap
+    let _overallLastLap = 0;   // fastest class leader's last lap (race pace)
     let _focusLapsCompleted = 0;
 
     onData('session', data => {
@@ -104,18 +106,39 @@
       }
 
       // Timed race: estimate laps remaining for focus class
-      const focusPace = _focusClass ? _leaderBestLap[_focusClass] : 0;
+      const focusPace = _focusClass ? _focusLastLap[_focusClass] || _leaderBestLap[_focusClass] : 0;
       if (focusPace > 0 && timeRemain > 0) {
         // Overall leader pace (fastest class) determines when the race ends
-        const overallPace = _overallBestLap > 0 ? _overallBestLap : focusPace;
+        const overallPace = _overallLastLap > 0 ? _overallLastLap : (_overallBestLap > 0 ? _overallBestLap : focusPace);
 
         // Total time until checkered: time on clock + ~1 lap for leader to finish after clock expires
         const totalTimeToCheckered = timeRemain + overallPace;
 
-        // How many laps can the focus class do in that total time?
-        const estLaps = Math.floor(totalTimeToCheckered / focusPace);
+        // Estimate remaining pit stops from fuel data
+        let remainingPitStops = 0;
+        const fuelPerLap = data.fuelPerLap || 0;
+        const fuelCap = data.fuelCapacity || 0;
+        if (fuelPerLap > 0 && fuelCap > 0) {
+          const lapsPerTank = Math.floor(fuelCap / fuelPerLap);
+          if (lapsPerTank > 0) {
+            const roughLapsLeft = Math.floor(totalTimeToCheckered / focusPace);
+            remainingPitStops = Math.max(0, Math.ceil(roughLapsLeft / lapsPerTank) - 1);
+          }
+        }
 
-        lapsEl.textContent = '~' + estLaps;
+        // Pit time loss: remaining stops * average pit delta for focus class
+        const pitDelta = (data.pitDeltas && data.pitDeltas[_focusClass]) ? data.pitDeltas[_focusClass].avgDelta : 0;
+        const pitTimeLoss = remainingPitStops * pitDelta;
+
+        // Effective racing time minus pit losses
+        const effectiveTime = totalTimeToCheckered - pitTimeLoss;
+        const estLaps = Math.floor(effectiveTime / focusPace);
+
+        if (remainingPitStops > 0 && pitDelta > 0) {
+          lapsEl.textContent = '~' + estLaps + ' (' + remainingPitStops + 'p)';
+        } else {
+          lapsEl.textContent = '~' + estLaps;
+        }
       } else {
         lapsEl.textContent = '--';
       }
@@ -151,11 +174,15 @@
 
       Object.entries(classLeaders).forEach(([cls, leader]) => {
         if (leader.bestLap > 0) _leaderBestLap[cls] = leader.bestLap;
+        if (leader.lastLap > 0) _focusLastLap[cls] = leader.lastLap;
       });
 
       // Overall leader's pace (fastest car on track)
       if (overallLeader && overallLeader.bestLap > 0) {
         _overallBestLap = overallLeader.bestLap;
+      }
+      if (overallLeader && overallLeader.lastLap > 0) {
+        _overallLastLap = overallLeader.lastLap;
       }
     });
 
