@@ -483,18 +483,15 @@
       if (!data || !data.length) return;
       if (!demoCleared) { demoCleared = true; }
       document.getElementById('standings-body').innerHTML = buildStandingsHTML(data);
-      // Auto-resize window to fit content
+      // Auto-resize height only (width stays fixed to prevent endless growth)
       setTimeout(() => {
         const panel = document.querySelector('.overlay-panel');
         if (panel) {
-          const neededH = panel.scrollHeight + 4;
-          const neededW = panel.scrollWidth + 4;
-          if (typeof require !== 'undefined') {
-            try {
-              const { ipcRenderer } = require('electron');
-              ipcRenderer.send('resize-overlay', 'standings', Math.max(neededW, 400), Math.min(neededH, screen.height - 100));
-            } catch(e) {}
-          }
+          try {
+            const { ipcRenderer } = require('electron');
+            const neededH = Math.min(panel.scrollHeight + 4, screen.height - 100);
+            ipcRenderer.send('resize-overlay-height', 'standings', neededH);
+          } catch(e) {}
         }
       }, 150);
     });

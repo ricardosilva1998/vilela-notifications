@@ -377,6 +377,13 @@ ipcMain.on('get-overlay-position', (event, overlayId) => {
   }
 });
 
+ipcMain.on('resize-overlay-height', (event, overlayId, height) => {
+  if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
+    const bounds = overlayWindows[overlayId].getBounds();
+    overlayWindows[overlayId].setBounds({ x: bounds.x, y: bounds.y, width: bounds.width, height: Math.round(height) });
+  }
+});
+
 ipcMain.on('move-overlay', (event, overlayId, x, y) => {
   if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
     const bounds = overlayWindows[overlayId].getBounds();
