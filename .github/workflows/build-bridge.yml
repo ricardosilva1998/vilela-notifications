@@ -47,6 +47,25 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
+      - name: Add release notes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./bridge/package.json').version")
+          # Get the previous tag
+          PREV_TAG=$(gh release list --limit 2 --json tagName -q '.[1].tagName' 2>/dev/null || echo "")
+          # Generate notes from commits since last release
+          if [ -n "$PREV_TAG" ]; then
+            NOTES=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s" -- bridge/ | head -20)
+          else
+            NOTES=$(git log --pretty=format:"- %s" -10 -- bridge/)
+          fi
+          # Update the release with notes
+          if [ -n "$NOTES" ]; then
+            gh release edit "v${VERSION}" --notes "$NOTES" || true
+          fi
+
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
