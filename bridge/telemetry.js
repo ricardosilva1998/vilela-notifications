@@ -141,44 +141,29 @@ const sessionResults = new Map(); // carIdx -> { bestLap, lastLap, lapsComplete 
 const startingIRatings = new Map(); // carIdx -> starting iRating
 
 /**
- * Estimate iRating change using pairwise Elo exchange model.
- * Based on reverse-engineered iRacing formula:
- * - For each pair (winner i, loser j): points transfer based on upset probability
- * - E_i = 1 / (1 + 10^((R_j - R_i) / 1600))
- * - Change = sum of (1 - E_i) for wins, minus sum of E_i for losses
- * - Scaled by 200/(N-1) where N = field size
+ * Estimate iRating change using the expected position model.
+ * Formula from the iRacing community-accepted calculator:
+ *   ExpectedPos = 1 + SUM(1 / (1 + 10^((Ri - Rj) / 1600))) for all j≠i
+ *   Change = round((ExpectedPos - ActualPos) * 200 / fieldSize)
  */
 function estimateIRatingChanges(driverList) {
   const changes = new Map();
   const active = driverList.filter(d => d.iRating > 0 && d.position > 0);
   if (active.length < 2) return changes;
 
-  // Sort by position for pairwise comparison
-  const sorted = [...active].sort((a, b) => a.position - b.position);
-  const N = sorted.length;
-  const scale = 200 / (N - 1);
+  const N = active.length;
 
-  for (let i = 0; i < N; i++) {
-    let totalChange = 0;
-    const driverI = sorted[i];
-
-    for (let j = 0; j < N; j++) {
-      if (i === j) continue;
-      const driverJ = sorted[j];
-
-      // Expected probability that i beats j
-      const E_i = 1 / (1 + Math.pow(10, (driverJ.iRating - driverI.iRating) / 1600));
-
-      if (driverI.position < driverJ.position) {
-        // i finished ahead of j — i gains (1 - E_i) * scale
-        totalChange += (1 - E_i) * scale;
-      } else {
-        // i finished behind j — i loses E_i * scale
-        totalChange -= E_i * scale;
-      }
+  for (const driver of active) {
+    // Calculate expected finish position
+    let expectedPos = 1;
+    for (const opp of active) {
+      if (opp.carIdx === driver.carIdx) continue;
+      // Probability that driver finishes BEHIND opponent
+      expectedPos += 1 / (1 + Math.pow(10, (driver.iRating - opp.iRating) / 1600));
     }
 
-    changes.set(driverI.carIdx, Math.round(totalChange));
+    const change = Math.round((expectedPos - driver.position) * 200 / N);
+    changes.set(driver.carIdx, change);
   }
   return changes;
 }
