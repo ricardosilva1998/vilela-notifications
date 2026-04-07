@@ -60,8 +60,9 @@ jobs:
           PREV_TAG=$(gh release list --limit 2 --json tagName -q '.[1].tagName' 2>/dev/null || echo "")
           # Generate notes from commits since last release
           if [ -n "$PREV_TAG" ]; then
-            NOTES=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s" -- bridge/ | head -20)
-          else
+            NOTES=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s" -- bridge/ 2>/dev/null | head -20 || echo "")
+          fi
+          if [ -z "$NOTES" ]; then
             NOTES=$(git log --pretty=format:"- %s" -10 -- bridge/)
           fi
           # Update the release with notes
