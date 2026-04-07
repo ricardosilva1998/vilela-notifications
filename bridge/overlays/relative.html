@@ -18,6 +18,10 @@
     .overlay-table tr.player-row { background: rgba(145,70,255,0.2); }
     .overlay-table tr.player-row td { color: #fff; font-weight: 700; }
     .overlay-table tr.disconnected { opacity: 0.35; }
+    .overlay-table tr.pos-up { animation: posUp 1.2s ease-out; }
+    .overlay-table tr.pos-down { animation: posDown 1.2s ease-out; }
+    @keyframes posUp { 0% { background: rgba(62,207,142,0.3); } 30% { background: rgba(62,207,142,0.15); } 100% { background: transparent; } }
+    @keyframes posDown { 0% { background: rgba(240,68,56,0.3); } 30% { background: rgba(240,68,56,0.15); } 100% { background: transparent; } }
     .ahead { color: #3ecf8e; }
     .behind { color: #f04438; }
     .mono { font-family: 'JetBrains Mono', 'Consolas', monospace; }
@@ -304,7 +308,7 @@
           irating: `<td>${irCell}</td>`,
           gap: `<td class="mono" style="font-size:${fsMed}px">—</td>`,
         };
-        return `<tr class="player-row">${enabledColumns.map(c => cells[c] || '').join('')}</tr>`;
+        return `<tr class="player-row" data-caridx="${d.carIdx}">${enabledColumns.map(c => cells[c] || '').join('')}</tr>`;
       }
 
       const cells = {
@@ -317,7 +321,7 @@
         irating: `<td>${irCell}</td>`,
         gap: `<td class="mono ${gapClass}" style="font-size:${fsMed}px">${gapStr}</td>`,
       };
-      return `<tr class="${disconnCls}">${enabledColumns.map(c => cells[c] || '').join('')}</tr>`;
+      return `<tr class="${disconnCls}" data-caridx="${d.carIdx}">${enabledColumns.map(c => cells[c] || '').join('')}</tr>`;
     }
 
     function buildRelativeRows(data) {
@@ -383,10 +387,55 @@
 
     let demoCleared = false;
 
+    let _focusClass = '';
+    const _relPrevPos = new Map();
+
     onData('relative', data => {
       if (!data || !data.cars) return;
       if (!demoCleared) { demoCleared = true; }
-      document.getElementById('relative-body').innerHTML = buildRelativeRows(data);
+
+      // Track focused driver's class for SOF display
+      if (data.focusCar && data.focusCar.carClass) _focusClass = data.focusCar.carClass;
+
+      // Detect position changes for animations
+      const posChanges = new Map();
+      data.cars.forEach(c => {
+        if (c.distGap !== undefined && _relPrevPos.has(c.carIdx)) {
+          const prevGap = _relPrevPos.get(c.carIdx);
+          // If gap changed sign or magnitude shifted significantly
+          if (c.distGap > 0 && prevGap <= 0) posChanges.set(c.carIdx, 'pos-down'); // was behind, now ahead of us
+          else if (c.distGap < 0 && prevGap >= 0) posChanges.set(c.carIdx, 'pos-up'); // was ahead, now behind us
+        }
+        _relPrevPos.set(c.carIdx, c.distGap);
+      });
+
+      // FLIP: record old row positions
+      const tbody = document.getElementById('relative-body');
+      const oldPositions = new Map();
+      tbody.querySelectorAll('tr[data-caridx]').forEach(tr => {
+        oldPositions.set(parseInt(tr.dataset.caridx), tr.getBoundingClientRect().top);
+      });
+
+      tbody.innerHTML = buildRelativeRows(data);
+
+      // FLIP: animate rows + color flash
+      tbody.querySelectorAll('tr[data-caridx]').forEach(tr => {
+        const idx = parseInt(tr.dataset.caridx);
+        if (oldPositions.has(idx)) {
+          const delta = oldPositions.get(idx) - tr.getBoundingClientRect().top;
+          if (Math.abs(delta) > 2) {
+            tr.style.transform = `translateY(${delta}px)`;
+            tr.style.transition = 'none';
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                tr.style.transition = 'transform 0.5s ease-out';
+                tr.style.transform = 'translateY(0)';
+              });
+            });
+          }
+        }
+        if (posChanges.has(idx)) tr.classList.add(posChanges.get(idx));
+      });
       setTimeout(() => {
         const panel = document.querySelector('.overlay-panel');
         if (panel) {
@@ -418,7 +467,13 @@
         airTemp: data.airTemp ? data.airTemp.toFixed(1) + '°C air' : '',
         trackTemp: data.trackTemp ? data.trackTemp.toFixed(1) + '°C track' : '',
         humidity: data.humidity ? Math.round(data.humidity) + '% hum' : '',
-        sof: data.sof ? 'SOF ' + formatSOF(data.sof) : '',
+        sof: (() => {
+          // Show focused driver's class SOF, not overall
+          if (_focusClass && data.sofByClass && data.sofByClass[_focusClass]) {
+            return 'SOF ' + formatSOF(data.sofByClass[_focusClass]);
+          }
+          return data.sof ? 'SOF ' + formatSOF(data.sof) : '';
+        })(),
         timeRemain: 'Rem ' + formatTime(data.sessionTimeRemain),
         timeOfDay: 'ToD ' + formatTime(data.timeOfDay),
         skies: data.skies || '',
