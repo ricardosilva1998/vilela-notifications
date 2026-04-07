@@ -70,7 +70,7 @@ src/
     ├── header.ejs        # Global layout — nav, sidebar, CSS design system, JS utilities
     ├── footer.ejs        # Closing tags
     ├── login.ejs         # Landing page with feature cards
-    ├── dashboard.ejs     # Platform-tabbed dashboard (Discord | Twitch | YouTube | Kick | Admin)
+    ├── dashboard.ejs     # Platform-tabbed dashboard (Discord | Twitch | YouTube | Kick | iRacing | Admin)
     ├── account.ejs       # User profile, metrics charts, subscription, language, logout
     ├── guild-config.ejs  # Tabbed UI: Twitch | YouTube | Discord | iRacing (coming soon) | Settings
     ├── overlay-config.ejs # OBS overlay settings — per-event pill toggles, durations, sound upload/trim/preview, alert preview modal
@@ -108,28 +108,30 @@ data/
 ├── sounds/               # Uploaded custom alert sounds (persistent, survives deploys)
 └── sponsors/             # Uploaded sponsor images for rotation (persistent, survives deploys)
 bridge/                     # Atleta Bridge — Electron desktop app for iRacing
-├── main.js               # Electron main process — tray, control panel, overlay windows, IPC
-├── telemetry.js           # iRacing telemetry reader via @emiliosp/node-iracing-sdk (koffi FFI)
-├── websocket.js           # WebSocket server (ws://localhost:9100) — per-client channel subscriptions
+├── main.js               # Electron main process — tray, control panel, overlay windows, IPC, camera switch
+├── telemetry.js           # iRacing telemetry reader — standings, relative, fuel, wind, session info, iRating estimation
+├── websocket.js           # WebSocket server (ws://localhost:9100) — per-client channel subscriptions, driver selection
 ├── settings.js            # Persistent settings in ~/Documents/Atleta Bridge/settings.json
-├── keyboardSim.js         # Windows keyboard simulation via koffi/SendInput — types into iRacing chat
+├── keyboardSim.js         # Windows keyboard sim + iRacing camera switch via broadcast messages
 ├── voiceInput.js          # Global hotkey hooks (uiohook-napi), IPC coordination for voice chat
-├── control-panel.html     # Main settings window — overlay toggles, lock/unlock, customization, voice settings
+├── control-panel.html     # Sidebar-based settings — per-overlay tabs (General/Header/Content), updates, logs
 ├── installer.nsh          # Custom NSIS script to kill running app before install
 ├── package.json           # Electron 28, ws, @emiliosp/node-iracing-sdk, uiohook-napi, electron-updater
 └── overlays/
-    ├── standings.html     # Race standings — grouped by car class (GTP > LMP2 > GT3), sequential positions
-    ├── relative.html      # Relative gaps — cars ahead/behind with configurable count
-    ├── fuel.html          # Fuel calculator — avg/lap, laps of fuel, fuel to finish/add
-    ├── wind.html          # Wind direction compass
-    ├── proximity.html     # Car proximity (left/right)
-    ├── trackmap.html      # Canvas-based track map from GPS coordinates
-    └── voicechat.html     # Voice chat — Web Speech API, driver fuzzy matching, confirmation UI
+    ├── standings.html     # Race standings — class-grouped, configurable columns/header, iRating gain, per-class SOF
+    ├── relative.html      # Relative gaps — configurable columns/header, focusCar centering
+    ├── fuel.html          # Fuel calculator — avg/lap, laps of fuel, fuel to finish (timed + lap races)
+    ├── wind.html          # Wind compass — speed in km/h or mph, configurable colors
+    ├── proximity.html     # Car proximity (coming soon)
+    ├── trackmap.html      # Square track map — canvas with wind arrow, focused driver highlight
+    ├── inputs.html        # Driver inputs — trace graph, pedal bars, gear, speed, steering wheel
+    ├── chat.html          # Streaming chat — Twitch channel overlay
+    └── voicechat.html     # Voice chat — Whisper API transcription, push-to-talk, gamepad support
 ```
 
 ## Key Architecture
 
-- **Dashboard:** Platform-tabbed main page (Discord | Twitch | YouTube | Kick | Admin) with localStorage tab persistence. Discord tab shows guild management. Twitch tab shows 7-day activity stats card (follows/subs/bits/donations/raids/giftsubs) + overlay/chatbot/Spotify/donations/sponsor cards. YouTube tab shows "Coming Soon" (disabled via features flag). Kick is coming soon. Admin tab is admin-only.
+- **Dashboard:** Platform-tabbed main page (Discord | Twitch | YouTube | Kick | iRacing | Admin) with localStorage tab persistence. Discord tab shows guild management. Twitch tab shows 7-day activity stats card (follows/subs/bits/donations/raids/giftsubs) + overlay/chatbot/Spotify/donations/sponsor cards. YouTube tab shows "Coming Soon" (disabled via features flag). Kick is coming soon. iRacing tab has sub-tabs: App Download (Bridge installer), Stream Overlays (overlay URLs + settings), Track Upload (admin-only: .ibt upload, track database, missing tracks). Admin tab is admin-only.
 - **OBS Overlay:** EventSub receives Twitch events → overlayBus EventEmitter → SSE push to OBS browser source. Centered card design with per-event themes and full-screen effects (confetti, gold rain, money rain, robots, tire marks). All event types use the same card structure: top-accent + card-body (with optional side icons) + car-track (always visible for consistent height). Card animations built dynamically by `buildBottomAnimation()` — bottom-track types (car, checkered, equalizer) stay in track; full-card types (flames, sparkles, lightning, neon sweep, pulse) use `.card-anim-overlay` div. YouTube events (Super Chat, Member, Gift) also emit to the same overlay. Custom designs stored in `overlay_designs` table with advanced theme columns (opacity, gradient, border, glow, shadow). Donation alerts show message on separate line below amount. Moderation actions use Twitch Helix API (not tmi.js IRC) for message deletion/timeouts.
 - **Overlay Builder:** Visual editor at `/dashboard/overlay-builder` with left control panel + right live preview. Events grouped by platform tabs (Twitch/YouTube/Kick/General). Customize per-event: colors, fonts (Google Fonts with live preview dropdown), text, animation entrance/screen effects, card size, position (9-cell grid + free drag with pixel coordinates), border radius. Advanced theme editor with 14 presets, gradient direction (7 options + solid), background opacity, border thickness/opacity, glow intensity, shadow blur/spread/opacity. Card animations split into Card Animation tab (entrance + bottom bar) and Canvas Animation tab (screen effects). Bottom bar animations: Car L→R, Car R→L, Checkered Flag, Equalizer (bottom track); Flames, Sparkles, Lightning, Neon Sweep, Pulse (full-card overlays). Preview shows stream screenshot background with draggable alert card. Designs saved to DB and applied at runtime via `applyCustomDesign()`.
 - **Feature Flags:** `config.features.youtube` controls YouTube UI visibility across all pages. When `false`, YouTube tabs show "Coming Soon" placeholder. Set in `src/config.js`.
@@ -150,8 +152,13 @@ bridge/                     # Atleta Bridge — Electron desktop app for iRacing
 - **Admin panel:** Accessible via Admin tab on dashboard (admin-only), tabbed UI with Stats/Users/Issues/Feedback/Discounts/Testing
 - **Custom Overlays (DISABLED):** Template-based scene banners, info bars, and custom alerts controlled via chat commands. Code exists (`customOverlays.js`, `scenes.js`, `bar.js`, `custom-alerts.js`, `custom-overlays.ejs`) but all integrations are commented out in `server.js`, `overlay.js`, `twitchChat.js`, `dashboard.ejs`, `overlay-builder.ejs`, `overlay-config.ejs`, and `overlay.css`. DB table `custom_overlays` exists. Re-enable by uncommenting the marked sections.
 - **Sponsor Overlay (separate source):** Sponsors have their own OBS browser source at `/overlay/sponsors/TOKEN` via `sponsors.js`, independent from the main alert overlay.
-- **iRacing Bridge (Electron Desktop App):** Standalone Windows app (`bridge/`) that reads iRacing telemetry via `@emiliosp/node-iracing-sdk` (koffi FFI to shared memory) and displays transparent always-on-top overlays. WebSocket server on port 9100 with channel-based subscriptions (fuel 10Hz, wind 10Hz, proximity 10Hz, standings 1Hz, relative 2Hz, trackmap 2Hz). Overlays: Standings (class-grouped, sequential positions, license/iRating bubbles), Relative (configurable ahead/behind count), Fuel Calculator (avg/lap, laps of fuel, fuel to finish), Wind Direction, Car Proximity, Track Map (canvas GPS path recording), Voice Chat (voice-to-iRacing-chat via Web Speech API + Windows SendInput). Overlays are frameless, transparent, `alwaysOnTop: 'screen-saver'` with 2-second re-assert interval. Lock mode makes overlays click-through. Settings persisted to `~/Documents/Atleta Bridge/settings.json`. Auto-updater via `electron-updater` checking GitHub Releases. Built with GitHub Actions (`.github/workflows/build-bridge.yml`) producing NSIS Windows installer.
-- **Voice Chat System:** Push-to-talk (global hotkey via `uiohook-napi` with key-down/key-up detection, supports keyboard keys and mouse side buttons) and wake word ("message") always-listening mode. Web Speech API in the overlay renderer process. Voice parsing: "message [all|team|driverName] text" with Levenshtein fuzzy matching against live session driver list. Confirmation UI (Enter to send, Esc to cancel). Sends to iRacing via `keyboardSim.js` — opens chat with T key, types `/p DriverName msg` (or `/all` or `/team`) using `KEYEVENTF_UNICODE` via koffi/Windows SendInput, presses Enter. Only sends when iRacing is connected.
+- **iRacing Bridge (Electron Desktop App):** Standalone Windows app (`bridge/`) that reads iRacing telemetry via `@emiliosp/node-iracing-sdk` (koffi FFI to shared memory) and displays transparent always-on-top overlays. WebSocket server on port 9100 with channel-based subscriptions (fuel 10Hz, wind 10Hz, proximity 10Hz, standings 1Hz, relative 2Hz, trackmap 2Hz). Overlays: Standings (class-grouped, configurable columns/header, estimated iRating gain/loss, per-class SOF, per-class max cars), Relative (configurable columns/header, focusCar centering, behind-closest-first order), Fuel Calculator (avg/lap, laps of fuel, fuel to finish for timed AND lap races, session time estimation), Wind Direction (km/h or mph, configurable colors, follows focused driver heading), Track Map (square canvas, wind chevron arrow, focused driver green highlight), Driver Inputs (toggleable: trace graph, pedal bars, gear, speed, steering wheel), Stream Chat, Voice Chat (Whisper API, push-to-talk, gamepad). Overlays are frameless, transparent, `alwaysOnTop: 'screen-saver'` with 2-second re-assert interval. Draggable via IPC-based mouse handling (mousedown/mousemove on header → `drag-overlay` IPC). Position configurable via X/Y settings with live preview. Settings persisted to `~/Documents/Atleta Bridge/settings.json`. Auto-updater via `electron-updater` with Windows system notifications. Proper semver versioning. Built with GitHub Actions (`.github/workflows/build-bridge.yml`) producing NSIS Windows installer. Version from `package.json` (no auto-increment).
+- **Bridge Control Panel:** Sidebar-based settings window (800x650). Sidebar: Overview + per-overlay tabs + Updates/Logs/About. Each overlay tab has sub-tabs (General/Header/Content for standings/relative). Column drag-to-reorder with toggle switches. Session header items configurable. Font size scales all elements proportionally. Row height configurable. Position X/Y with live move preview. "Settings saved!" toast. Proximity marked "Coming Soon".
+- **Bridge Driver Selection:** Click a driver row in standings → iRacing camera switches to them via broadcast message API (`IRSDK_BROADCASTMSG` / `CamSwitchNum`). Standings/relative highlight follows selection (green for spectated, purple for player). Track map shows focused driver as green dot. Wind overlay uses focused driver's estimated heading. Selection resets when iRacing camera changes (2s grace period) or player enters car.
+- **Bridge Session Management:** Detects session changes via `SESSION_NUM`. Clears cached data on practice→qualify transitions. Keeps data on qualify→race. Excludes spectators (`IsSpectator`) and pace cars from standings.
+- **Bridge iRating Estimation:** Pairwise Elo model: `expected = 1/(1+10^((Rj-Ri)/1600))`, `change = (actual-expected)*K` per pair, K≈3. Shows green +N or red -N next to iRating. SOF calculated as simple average of field iRatings.
+- **Track Map System:** Browser-side .ibt parser extracts Lat/Lon (radians→degrees) + track name from session YAML. Uploads to server under both geoId and display name. Bridge fetches by geoKey then by name. Track database viewer on dashboard shows canvas previews. Missing tracks list compares against ~50 known iRacing tracks.
+- **Voice Chat System:** Push-to-talk (global hotkey via `uiohook-napi` with key-down/key-up detection, supports keyboard keys, mouse side buttons, and gamepad buttons via Gamepad API) and wake word ("message") always-listening mode. OpenAI Whisper API for transcription (via PowerShell script, server-shared API key). Voice parsing: "all [text]", "number [#] [text]", "[name] [text]", "team [text]" with Levenshtein fuzzy matching. Confirmation UI. Sends to iRacing via `keyboardSim.js` — clipboard paste into iRacing chat. Configurable chat open key (T/Y/U/Enter).
 - **iRacing Web Integration (coming soon):** Full integration built but disabled — waiting for iRacing OAuth credentials
 - **DB migrations:** Auto-run on startup in `src/db.js`
 - **No ORM:** All SQL is raw in `db.js`
@@ -191,11 +198,16 @@ Optional:
 - Open Graph meta tags in `header.ejs` for social sharing previews
 - Domain: `atletanotifications.com` (Cloudflare DNS → Railway)
 - Public tip pages at `/tip/:username` are NOT behind auth middleware
-- Bridge overlays follow same visual pattern: dark semi-transparent panel (`rgba(12,13,20,0.85)`), header with drag region and status dot, consistent color scheme
+- Bridge overlays follow same visual pattern: dark semi-transparent panel (`rgba(12,13,20,0.85)`), header with status dot, consistent color scheme
+- Bridge overlays are `transparent: true` + `alwaysOnTop: 'screen-saver'` — dragging via IPC (mousedown/mousemove on header → `drag-overlay` IPC, NOT `-webkit-app-region: drag` which doesn't work on Windows transparent windows)
 - Bridge overlays connect to `ws://localhost:9100` and subscribe to channels for real-time data
 - Bridge uses `nodeIntegration: true` + `contextIsolation: false` in all overlay windows (local files only)
+- Bridge overlay settings: per-overlay font size (scales ALL elements via proportional fsSmall/fsTiny/fsMed), row height, configurable columns (drag-to-reorder), session header items, position X/Y, color customization (wind arrow/compass, track map track/player/focus colors)
 - `koffi` is available as a transitive dependency via `@emiliosp/node-iracing-sdk` — no need to list separately in package.json
-- Bridge GitHub Actions build: `.github/workflows/build-bridge.yml` → produces NSIS installer → publishes to GitHub Releases
+- Bridge GitHub Actions build: `.github/workflows/build-bridge.yml` → produces NSIS installer → publishes to GitHub Releases (version from package.json, proper semver)
+- Bridge control panel fetches release notes from GitHub Releases API (hardcoded array as fallback)
+- `keyboardSim.js` also handles iRacing camera switching via `RegisterWindowMessageA('IRSDK_BROADCASTMSG')` + `SendNotifyMessageA`/`PostMessageA` with `HWND_BROADCAST`
+- Track map API endpoints (`GET /api/track-maps`, `GET /api/track-map/:name`, `POST /api/track-map`) are public — placed BEFORE the `/api` auth middleware in `server.js`
 
 ## Overlay Consistency Rule
 
