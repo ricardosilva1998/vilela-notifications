@@ -370,6 +370,13 @@ ipcMain.on('drag-overlay', (event, dx, dy) => {
   }
 });
 
+ipcMain.on('get-overlay-position', (event, overlayId) => {
+  if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
+    const bounds = overlayWindows[overlayId].getBounds();
+    event.reply('overlay-position', overlayId, bounds.x, bounds.y);
+  }
+});
+
 ipcMain.on('move-overlay', (event, overlayId, x, y) => {
   if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
     const bounds = overlayWindows[overlayId].getBounds();
@@ -413,14 +420,15 @@ ipcMain.on('save-overlay-settings', (event, overlayId, overlaySettings) => {
       overlayWindows[overlayId].reload();
     }
   }
-  // Move overlay window if position changed
+  // Sync position: always save the window's current position after save
+  // (the posX/posY fields move the window via liveMoveOverlay, so by save time
+  // the window is already at the right position — just persist it)
   if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
-    const posX = parseInt(overlaySettings.posX);
-    const posY = parseInt(overlaySettings.posY);
-    if (!isNaN(posX) && !isNaN(posY)) {
-      const bounds = overlayWindows[overlayId].getBounds();
-      overlayWindows[overlayId].setBounds({ x: posX, y: posY, width: bounds.width, height: bounds.height });
-    }
+    const bounds = overlayWindows[overlayId].getBounds();
+    overlaySettings.posX = String(bounds.x);
+    overlaySettings.posY = String(bounds.y);
+    settings.overlayCustom[overlayId] = overlaySettings;
+    persistSettings();
   }
   // Reconnect Twitch chat if channel changed
   if (overlayId === 'chat' && overlaySettings.twitchChannel !== undefined) {

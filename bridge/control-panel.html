@@ -577,6 +577,10 @@
       // Start/stop log refresh
       if (panelId === 'logs') startLogRefresh();
       else stopLogRefresh();
+      // Update posX/posY fields with current window position
+      if (overlays.find(o => o.id === panelId)) {
+        ipcRenderer.send('get-overlay-position', panelId);
+      }
     }
 
     // ─── Overview Grid ───────────────────────────────────────
@@ -1180,6 +1184,13 @@
         const settingsToggle = document.getElementById('settings-toggle-' + id);
         if (settingsToggle) settingsToggle.checked = enabled;
       });
+    });
+
+    ipcRenderer.on('overlay-position', (event, overlayId, x, y) => {
+      const xEl = document.getElementById('field-' + overlayId + '-posX');
+      const yEl = document.getElementById('field-' + overlayId + '-posY');
+      if (xEl) xEl.value = x;
+      if (yEl) yEl.value = y;
     });
 
     ipcRenderer.on('autohide-state', (event, enabled) => {
