@@ -113,6 +113,7 @@
     let sessionLaps = []; // { time, session }
     let lastFocusLap = -1;
     let currentSessionType = '';
+    let currentSessionNum = -1;
 
     function sessionTag(type) {
       if (!type) return { label: '?', cls: 'practice' };
@@ -140,6 +141,14 @@
     onData('session', data => {
       if (!data) return;
       currentSessionType = data.eventType || '';
+
+      // Detect session change (practice → qualify → race) — clear laps
+      const sn = data.sessionNum ?? -1;
+      if (sn >= 0 && currentSessionNum >= 0 && sn !== currentSessionNum) {
+        sessionLaps = [];
+        lastFocusLap = -1;
+      }
+      currentSessionNum = sn;
 
       // Update summary
       document.getElementById('stint-laps').textContent = sessionLaps.length || 0;

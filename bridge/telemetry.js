@@ -639,7 +639,7 @@ async function startTelemetry(onStatusChange) {
           windDir: ir.get(VARS.WIND_DIR)?.[0] || 0,
           windSpeed: ir.get(VARS.WIND_VEL)?.[0] || 0,
           fuelLevel: fuelLevelSession, waterTemp, oilTemp,
-          sessionLapsRemain, eventType, stintLaps, stintTime,
+          sessionLapsRemain, eventType, sessionNum: ir.get(VARS.SESSION_NUM)?.[0] ?? 0, stintLaps, stintTime,
           playerIRChange: _lastPlayerIRChange,
           drivers: drivers.map(d => ({
             carIdx: d.CarIdx, driverName: d.UserName, carNumber: d.CarNumber,
