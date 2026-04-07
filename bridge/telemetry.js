@@ -632,6 +632,11 @@ async function startTelemetry(onStatusChange) {
 
         lastFocusCarIdx = focusCarIdx;
 
+        // Log focus state periodically
+        if (pollCount === 90 || pollCount === 600) {
+          log('[Focus] camCarIdx=' + camCarIdx + ' userSelected=' + userSelectedIdx + ' focusCarIdx=' + focusCarIdx + ' playerCarIdx=' + playerCarIdx);
+        }
+
         // Use PLAYER_CAR_IDX from telemetry if session info unavailable
         if (!sessionInfoFound) {
           const pci = ir.get(VARS.PLAYER_CAR_POSITION);
