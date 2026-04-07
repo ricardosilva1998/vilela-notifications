@@ -179,18 +179,35 @@
       return dirs[Math.round(((deg % 360) + 360) % 360 / 45) % 8];
     }
 
+    // Smooth arrow rotation
+    let currentAngle = 0;
+    let targetAngle = 0;
+    let lastWindDeg = 0;
+    const arrowGroup = document.getElementById('wind-arrow-group');
+
+    function animateArrow() {
+      // Lerp with shortest path (handle 359→1 wrap)
+      let diff = targetAngle - currentAngle;
+      if (diff > 180) diff -= 360;
+      if (diff < -180) diff += 360;
+      currentAngle += diff * 0.12;
+      currentAngle = ((currentAngle % 360) + 360) % 360;
+      if (arrowGroup) arrowGroup.setAttribute('transform', `rotate(${currentAngle}, 60, 60)`);
+      requestAnimationFrame(animateArrow);
+    }
+    requestAnimationFrame(animateArrow);
+
     onData('wind', data => {
       if (!data) return;
       const { windDirection, windSpeed, carHeading } = data;
-      const arrowGroup = document.getElementById('wind-arrow-group');
       const speedEl = document.getElementById('wind-speed');
       const dirEl = document.getElementById('wind-dir');
 
-      if (windDirection !== undefined && arrowGroup) {
+      if (windDirection !== undefined) {
         const windDeg = windDirection * 180 / Math.PI;
         const carDeg = (carHeading || 0) * 180 / Math.PI;
-        const relativeAngle = ((windDeg - carDeg) + 360) % 360;
-        arrowGroup.setAttribute('transform', `rotate(${relativeAngle}, 60, 60)`);
+        targetAngle = ((windDeg - carDeg) + 360) % 360;
+        lastWindDeg = windDeg;
         if (dirEl) dirEl.textContent = angleToCompass(windDeg);
       }
       if (windSpeed !== undefined && speedEl) {
