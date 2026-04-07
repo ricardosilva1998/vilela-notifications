@@ -21,10 +21,11 @@
     .overlay-table tr.spectated-row { background: rgba(62,207,142,0.2); }
     .overlay-table tr.spectated-row td { color: #fff; font-weight: 600; }
     .overlay-table tr.disconnected { opacity: 0.35; }
-    .overlay-table tr.pos-up { animation: posUp 0.6s ease-out; }
-    .overlay-table tr.pos-down { animation: posDown 0.6s ease-out; }
-    @keyframes posUp { 0% { background: rgba(62,207,142,0.25); } 100% { background: transparent; } }
-    @keyframes posDown { 0% { background: rgba(240,68,56,0.25); } 100% { background: transparent; } }
+    .overlay-table tr.pos-up { animation: posUp 2s ease-out; }
+    .overlay-table tr.pos-down { animation: posDown 2s ease-out; }
+    @keyframes posUp { 0%,30% { background: rgba(62,207,142,0.2); } 100% { background: transparent; } }
+    @keyframes posDown { 0%,30% { background: rgba(240,68,56,0.2); } 100% { background: transparent; } }
+    .flag-icon { font-size: 10px; margin-left: 4px; vertical-align: middle; }
     .pit-indicator { background: #f79009; color: #000; font-weight: 700; font-size: 8px; padding: 1px 5px; border-radius: 8px; margin-left: 6px; vertical-align: middle; }
     .mono { font-family: 'JetBrains Mono', 'Consolas', monospace; }
     .driver-name { white-space: nowrap; display: block; }
@@ -319,7 +320,17 @@
 
       const logoStyle = getBrandLogoStyle(carBrand);
       const logoImg = logoStyle ? `<span class="brand-logo" style="${logoStyle}"></span>` : '';
-      const badgeCell = `<div class="driver-name">${d.driverName || ''}${pitMark}</div>`;
+      // Per-driver session flags
+      const flags = d.sessionFlags || 0;
+      let flagIcons = '';
+      if (flags & 0x00010000) flagIcons += '<span class="flag-icon" title="Black Flag">&#x1F3F4;</span>';
+      if (flags & 0x00040000) flagIcons += '<span class="flag-icon" style="color:#f79009" title="Meatball">&#x1F7E0;</span>';
+      if (flags & 0x00000020) flagIcons += '<span class="flag-icon" style="color:#4a9eff" title="Blue Flag">&#x1F535;</span>';
+      if (flags & 0x00000008) flagIcons += '<span class="flag-icon" style="color:#f7c948" title="Yellow">&#x1F7E1;</span>';
+      if (flags & 0x00100000) flagIcons += '<span class="flag-icon" style="color:#f04438" title="Repair">&#x1F6E0;</span>';
+      if (flags & 0x00080000) flagIcons += '<span class="flag-icon" title="Furled Black">&#x2691;</span>';
+      if (flags & 0x00020000) flagIcons += '<span class="flag-icon" style="color:#f04438" title="Disqualified">DQ</span>';
+      const badgeCell = `<div class="driver-name">${d.driverName || ''}${pitMark}${flagIcons}</div>`;
 
       const licCell = d.safetyRating || d.license
         ? `<span style="background:${licColor};color:#fff;padding:1px 5px;border-radius:4px;font-size:${fsSmall}px;font-weight:600;font-family:'JetBrains Mono',monospace;">${d.safetyRating || d.license}</span>`

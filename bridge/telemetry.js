@@ -523,6 +523,7 @@ async function startTelemetry(onStatusChange) {
         const bestLaps = ir.get(VARS.CAR_IDX_BEST_LAP_TIME) || [];
         const lastLaps = ir.get(VARS.CAR_IDX_LAST_LAP_TIME) || [];
         const onPitRoad = ir.get(VARS.CAR_IDX_ON_PIT_ROAD) || [];
+        const carIdxFlags = ir.get(VARS.CAR_IDX_SESSION_FLAGS) || [];
         const estTime = ir.get(VARS.CAR_IDX_EST_TIME) || [];
         const lapDistPct = ir.get(VARS.CAR_IDX_LAP_DIST_PCT) || [];
 
@@ -659,6 +660,7 @@ async function startTelemetry(onStatusChange) {
             bestLap,
             lastLap: lastLapVal,
             inPit: !!onPitRoad[i],
+            sessionFlags: carIdxFlags[i] || 0,
             lapsCompleted: lapsComp,
             estTime: estTime[i] || 0,
             lapDistPct: lapDistPct[i] || 0,
