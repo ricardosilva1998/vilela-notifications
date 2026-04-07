@@ -69,7 +69,10 @@ if (isWindows) {
     try {
       const registerWindowMessageA = user32.func('RegisterWindowMessageA', 'uint32', ['str']);
       const sendMessageA = user32.func('SendNotifyMessageA', 'int32', ['intptr', 'uint32', 'uintptr', 'uintptr']);
-      const iracingMsgId = registerWindowMessageA('CYCLESEATCHANGEMSG');
+      const postMessageA = user32.func('PostMessageA', 'int32', ['intptr', 'uint32', 'uintptr', 'uintptr']);
+      // Try both message names — newer SDK uses IRSDK_BROADCASTMSG
+      let iracingMsgId = registerWindowMessageA('IRSDK_BROADCASTMSG');
+      if (!iracingMsgId) iracingMsgId = registerWindowMessageA('CYCLESEATCHANGEMSG');
       if (iracingMsgId) {
         log('[KeyboardSim] iRacing broadcast msg ID: ' + iracingMsgId);
         _switchCamera = function(carNumber, cameraGroup) {
@@ -79,8 +82,10 @@ if (isWindows) {
           const wParam = (1 & 0xFFFF) | ((carNumber & 0xFFFF) << 16);
           const lParam = (cameraGroup & 0xFFFF);
           try {
-            sendMessageA(HWND_BROADCAST, iracingMsgId, wParam, lParam);
-            log('[KeyboardSim] Camera switch: car#' + carNumber + ' group=' + cameraGroup + ' wParam=' + wParam + ' lParam=' + lParam);
+            // Use both SendNotifyMessage and PostMessage for maximum compatibility
+            const r1 = sendMessageA(HWND_BROADCAST, iracingMsgId, wParam, lParam);
+            const r2 = postMessageA(HWND_BROADCAST, iracingMsgId, wParam, lParam);
+            log('[KeyboardSim] Camera switch: car#' + carNumber + ' msgId=' + iracingMsgId + ' wParam=' + wParam + ' lParam=' + lParam + ' results=' + r1 + '/' + r2);
           } catch(e) {
             log('[KeyboardSim] Camera switch failed: ' + e.message);
           }
