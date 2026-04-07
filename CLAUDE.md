@@ -156,7 +156,17 @@ bridge/                     # Atleta Bridge — Electron desktop app for iRacing
 - **Bridge Control Panel:** Sidebar-based settings window (800x650). Sidebar: Overview + per-overlay tabs + Updates/Logs/About. Each overlay tab has sub-tabs (General/Header/Content for standings/relative). Column drag-to-reorder with toggle switches. Session header items configurable. Font size scales all elements proportionally. Row height configurable. Position X/Y with live move preview. "Settings saved!" toast. Proximity marked "Coming Soon".
 - **Bridge Driver Selection:** Click a driver row in standings → iRacing camera switches to them via broadcast message API (`IRSDK_BROADCASTMSG` / `CamSwitchNum`). Standings/relative highlight follows selection (green for spectated, purple for player). Track map shows focused driver as green dot. Wind overlay uses focused driver's estimated heading. Selection resets when iRacing camera changes (2s grace period) or player enters car.
 - **Bridge Session Management:** Detects session changes via `SESSION_NUM`. Clears cached data on practice→qualify transitions. Keeps data on qualify→race. Excludes spectators (`IsSpectator`) and pace cars from standings.
-- **Bridge iRating Estimation:** Pairwise Elo model: `expected = 1/(1+10^((Rj-Ri)/1600))`, `change = (actual-expected)*K` per pair, K≈3. Shows green +N or red -N next to iRating. SOF calculated as simple average of field iRatings.
+- **Bridge iRating Estimation:** Exact iRacing formula from official spreadsheet (source: `github.com/arrecio/ircalculator`). Calculated **per-class** in multiclass races. Formula:
+  ```
+  BR = 1600 / ln(2)  ≈ 2308.31
+  chance(a, b) = Qa / (Qa + Qb)
+    where Qa = (1 - exp(-a/BR)) * exp(-b/BR)
+          Qb = (1 - exp(-b/BR)) * exp(-a/BR)
+  expected[i] = -0.5 + SUM(chance(iR[i], iR[j])) for all j in class
+  factor = ((N - nNonStarters/2) / 2 - pos) / 100
+  change = round((N - pos - expected[i] - factor) * 200 / nStarters)
+  ```
+  Key: uses `exp()` not `pow(10)`, divisor is `1600/ln(2)` not `1600`. The `-0.5` offset accounts for self-pairing. The `factor` is a position-based correction. Shows green +N or red -N next to iRating on standings/relative. SOF calculated as simple average of class iRatings. Matches iOverlay within ±1-2 points for most drivers.
 - **Track Map System:** Browser-side .ibt parser extracts Lat/Lon (radians→degrees) + track name from session YAML. Uploads to server under both geoId and display name. Bridge fetches by geoKey then by name. Track database viewer on dashboard shows canvas previews. Missing tracks list compares against ~50 known iRacing tracks.
 - **Voice Chat System:** Push-to-talk (global hotkey via `uiohook-napi` with key-down/key-up detection, supports keyboard keys, mouse side buttons, and gamepad buttons via Gamepad API) and wake word ("message") always-listening mode. OpenAI Whisper API for transcription (via PowerShell script, server-shared API key). Voice parsing: "all [text]", "number [#] [text]", "[name] [text]", "team [text]" with Levenshtein fuzzy matching. Confirmation UI. Sends to iRacing via `keyboardSim.js` — clipboard paste into iRacing chat. Configurable chat open key (T/Y/U/Enter).
 - **iRacing Web Integration (coming soon):** Full integration built but disabled — waiting for iRacing OAuth credentials
