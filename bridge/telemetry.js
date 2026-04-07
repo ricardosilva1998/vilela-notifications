@@ -724,20 +724,15 @@ async function startTelemetry(onStatusChange) {
           }
         });
 
-        // Sort by live running order: laps completed + track position (real-time, not just at finish line)
+        // Sort: use iRacing positions when available, fallback to laps+distance
         standings.sort((a, b) => {
+          // Both have iRacing positions — use those (stable, updated at finish line)
+          if (a.position > 0 && b.position > 0) return a.position - b.position;
+          if (a.position > 0) return -1;
+          if (b.position > 0) return 1;
+          // Fallback: laps completed then track distance
           if (a.lapsCompleted !== b.lapsCompleted) return b.lapsCompleted - a.lapsCompleted;
           return b.lapDistPct - a.lapDistPct;
-        });
-
-        // Assign live positions (overall and per-class)
-        const classCounters = {};
-        standings.forEach((s, i) => {
-          s.position = i + 1;
-          const cls = s.carClass || 'Overall';
-          if (!classCounters[cls]) classCounters[cls] = 0;
-          classCounters[cls]++;
-          s.classPosition = classCounters[cls];
         });
 
         // Diagnostic: log standings count
