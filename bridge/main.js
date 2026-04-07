@@ -85,23 +85,21 @@ app.on('ready', () => {
   if (settings.autoHideOverlays !== undefined) autoHideOverlays = settings.autoHideOverlays;
   // Lock feature removed
 
-  // Find app icon — try multiple paths and formats
-  let appIcon = null;
-  const iconPaths = [
-    path.join(process.resourcesPath || __dirname, 'icon.png'),
-    path.join(__dirname, 'build', 'icon.png'),
-    path.join(__dirname, '..', 'icon.png'),
-    path.join(__dirname, 'build', 'icon.ico'),
-    path.join(process.resourcesPath || __dirname, 'icon.ico'),
-  ];
-  for (const p of iconPaths) {
-    try {
-      const img = nativeImage.createFromPath(p);
-      if (!img.isEmpty()) { appIcon = img; break; }
-    } catch(e) {}
-  }
+  // Load app icon
   try {
-    tray = new Tray(appIcon ? appIcon.resize({ width: 16, height: 16 }) : nativeImage.createEmpty());
+    const iconPaths = [
+      path.join(__dirname, 'build', 'icon.png'),
+      path.join(process.resourcesPath || __dirname, 'icon.png'),
+      path.join(__dirname, '..', 'icon.png'),
+    ];
+    let trayIcon = nativeImage.createEmpty();
+    for (const p of iconPaths) {
+      try {
+        const img = nativeImage.createFromPath(p);
+        if (!img.isEmpty()) { trayIcon = img.resize({ width: 16, height: 16 }); break; }
+      } catch(e) {}
+    }
+    tray = new Tray(trayIcon);
   } catch (e) {
     tray = new Tray(nativeImage.createEmpty());
   }
@@ -244,7 +242,7 @@ function showControlWindow() {
     minWidth: 700,
     minHeight: 550,
     title: 'Atleta Bridge',
-    icon: appIcon || path.join(process.resourcesPath || __dirname, 'icon.png'),
+    icon: path.join(process.resourcesPath || __dirname, 'icon.png'),
     backgroundColor: '#0c0d14',
     webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
