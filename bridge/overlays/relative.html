@@ -106,8 +106,18 @@
     const rowHeight = parseInt(getSetting('rowHeight', '24')) || 24;
     const fontSize = parseInt(getSetting('fontSize', '11')) || 11;
     document.body.style.fontSize = fontSize + 'px';
+    const fsSmall = Math.round(fontSize * 0.82);
+    const fsTiny = Math.round(fontSize * 0.73);
+    const fsMed = Math.round(fontSize * 0.91);
     const _rstyle = document.createElement('style');
-    _rstyle.textContent = `.overlay-table { font-size: ${fontSize}px; } .overlay-table td { height: ${rowHeight}px; min-height: ${rowHeight}px; }`;
+    _rstyle.textContent = `
+      :root { --base-font: ${fontSize}px; }
+      .overlay-table { font-size: ${fontSize}px; }
+      .overlay-table th { font-size: ${fsSmall}px !important; }
+      .overlay-table td { height: ${rowHeight}px; min-height: ${rowHeight}px; }
+      .overlay-header { font-size: ${fsMed}px !important; }
+      #session-header { font-size: ${fsSmall}px !important; }
+    `;
     document.head.appendChild(_rstyle);
 
     // Session header items — filter by enabled state
@@ -271,13 +281,13 @@
       const carBrand = d.carMake || '';
       const disconnCls = d.disconnected ? ' disconnected' : '';
 
-      const numCell = `<span style="background:${classColor};color:#000;padding:1px 4px;border-radius:3px;font-size:9px;font-weight:800;font-family:'JetBrains Mono',monospace;">${d.carNumber || ''}</span>`;
+      const numCell = `<span style="background:${classColor};color:#000;padding:1px 4px;border-radius:3px;font-size:${fsSmall}px;font-weight:800;font-family:'JetBrains Mono',monospace;">${d.carNumber || ''}</span>`;
       const licCell = licStr
-        ? `<span style="background:${licColor};color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">${licStr}</span>`
-        : `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">--</span>`;
+        ? `<span style="background:${licColor};color:#fff;padding:1px 5px;border-radius:4px;font-size:${fsSmall}px;font-weight:600;font-family:'JetBrains Mono',monospace;">${licStr}</span>`
+        : `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:${fsSmall}px;font-weight:600;font-family:'JetBrains Mono',monospace;">--</span>`;
       const irChange = d.estIRatingChange || 0;
-      const irChangeStr = showIRatingGain && irChange !== 0 ? `<span style="color:${irChange > 0 ? '#3ecf8e' : '#f04438'};font-size:8px;margin-left:3px;">${irChange > 0 ? '+' : ''}${irChange}</span>` : '';
-      const irCell = `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">${irStr}${irChangeStr}</span>`;
+      const irChangeStr = showIRatingGain && irChange !== 0 ? `<span style="color:${irChange > 0 ? '#3ecf8e' : '#f04438'};font-size:${fsTiny}px;margin-left:3px;">${irChange > 0 ? '+' : ''}${irChange}</span>` : '';
+      const irCell = `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:${fsSmall}px;font-weight:600;font-family:'JetBrains Mono',monospace;">${irStr}${irChangeStr}</span>`;
 
       const logoStyle = getBrandLogoStyle(carBrand);
       const logoImg = logoStyle ? `<span class="brand-logo" style="${logoStyle}"></span>` : '';
@@ -292,7 +302,7 @@
           name: `<td>${nameCell}</td>`,
           license: `<td>${licCell}</td>`,
           irating: `<td>${irCell}</td>`,
-          gap: `<td class="mono" style="font-size:10px">—</td>`,
+          gap: `<td class="mono" style="font-size:${fsMed}px">—</td>`,
         };
         return `<tr class="player-row">${enabledColumns.map(c => cells[c] || '').join('')}</tr>`;
       }
@@ -305,7 +315,7 @@
         name: `<td>${nameCell}</td>`,
         license: `<td>${licCell}</td>`,
         irating: `<td>${irCell}</td>`,
-        gap: `<td class="mono ${gapClass}" style="font-size:10px">${gapStr}</td>`,
+        gap: `<td class="mono ${gapClass}" style="font-size:${fsMed}px">${gapStr}</td>`,
       };
       return `<tr class="${disconnCls}">${enabledColumns.map(c => cells[c] || '').join('')}</tr>`;
     }
@@ -377,6 +387,19 @@
       if (!data || !data.cars) return;
       if (!demoCleared) { demoCleared = true; }
       document.getElementById('relative-body').innerHTML = buildRelativeRows(data);
+      setTimeout(() => {
+        const panel = document.querySelector('.overlay-panel');
+        if (panel) {
+          const neededH = panel.scrollHeight + 4;
+          const neededW = panel.scrollWidth + 4;
+          if (typeof require !== 'undefined') {
+            try {
+              const { ipcRenderer } = require('electron');
+              ipcRenderer.send('resize-overlay', 'relative', Math.max(neededW, 350), Math.min(neededH, screen.height - 100));
+            } catch(e) {}
+          }
+        }
+      }, 150);
     });
 
     onData('session', data => {

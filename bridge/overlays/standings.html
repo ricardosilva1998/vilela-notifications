@@ -110,9 +110,20 @@
     // Fixed row height and font size from settings
     const rowHeight = parseInt(getSetting('rowHeight', '24')) || 24;
     const fontSize = parseInt(getSetting('fontSize', '11')) || 11;
+    const fsSmall = Math.round(fontSize * 0.82);
+    const fsTiny = Math.round(fontSize * 0.73);
+    const fsMed = Math.round(fontSize * 0.91);
     document.body.style.fontSize = fontSize + 'px';
     const _dynStyle = document.createElement('style');
-    _dynStyle.textContent = `.overlay-table { font-size: ${fontSize}px; } .overlay-table td { height: ${rowHeight}px; min-height: ${rowHeight}px; }`;
+    _dynStyle.textContent = `
+  :root { --base-font: ${fontSize}px; --fs-small: ${fsSmall}px; --fs-tiny: ${fsTiny}px; --fs-med: ${fsMed}px; }
+  .overlay-table { font-size: ${fontSize}px; }
+  .overlay-table th { font-size: ${fsSmall}px !important; }
+  .overlay-table td { height: ${rowHeight}px; min-height: ${rowHeight}px; }
+  .overlay-header { font-size: ${fsMed}px !important; }
+  #session-header { font-size: ${fsSmall}px !important; }
+  .pit-indicator { font-size: ${fsTiny}px !important; }
+`;
     document.head.appendChild(_dynStyle);
 
     // Session header items — filter by enabled state
@@ -300,19 +311,19 @@
       const pitMark = d.inPit ? ' <span class="pit-indicator">PIT</span>' : '';
       const disconnCls = d.disconnected ? ' disconnected' : '';
 
-      const numCell = `<span style="background:${classColor};color:#000;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:800;font-family:'JetBrains Mono',monospace;">${d.carNumber || ''}</span>`;
+      const numCell = `<span style="background:${classColor};color:#000;padding:1px 5px;border-radius:3px;font-size:${fsSmall}px;font-weight:800;font-family:'JetBrains Mono',monospace;">${d.carNumber || ''}</span>`;
 
       const logoStyle = getBrandLogoStyle(carBrand);
       const logoImg = logoStyle ? `<span class="brand-logo" style="${logoStyle}"></span>` : '';
       const badgeCell = `<div class="driver-name">${d.driverName || ''}${pitMark}</div>`;
 
       const licCell = d.safetyRating || d.license
-        ? `<span style="background:${licColor};color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">${d.safetyRating || d.license}</span>`
-        : `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">--</span>`;
+        ? `<span style="background:${licColor};color:#fff;padding:1px 5px;border-radius:4px;font-size:${fsSmall}px;font-weight:600;font-family:'JetBrains Mono',monospace;">${d.safetyRating || d.license}</span>`
+        : `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:${fsSmall}px;font-weight:600;font-family:'JetBrains Mono',monospace;">--</span>`;
 
       const irChange = d.estIRatingChange || 0;
-      const irChangeStr = showIRatingGain && irChange !== 0 ? `<span style="color:${irChange > 0 ? '#3ecf8e' : '#f04438'};font-size:8px;margin-left:3px;">${irChange > 0 ? '+' : ''}${irChange}</span>` : '';
-      const irCell = `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace;">${irStr}${irChangeStr}</span>`;
+      const irChangeStr = showIRatingGain && irChange !== 0 ? `<span style="color:${irChange > 0 ? '#3ecf8e' : '#f04438'};font-size:${fsTiny}px;margin-left:3px;">${irChange > 0 ? '+' : ''}${irChange}</span>` : '';
+      const irCell = `<span style="background:rgba(255,255,255,0.1);color:#fff;padding:1px 5px;border-radius:4px;font-size:${fsSmall}px;font-weight:600;font-family:'JetBrains Mono',monospace;">${irStr}${irChangeStr}</span>`;
 
       const rowClass = d.isSpectated && !d.isPlayer ? 'spectated-row' : (d.isPlayer ? 'player-row' : '');
       const cells = {
@@ -323,9 +334,9 @@
         name: `<td>${badgeCell}</td>`,
         license: `<td>${licCell}</td>`,
         irating: `<td>${irCell}</td>`,
-        best: `<td class="mono" style="font-size:10px">${bestFormatted}</td>`,
-        last: `<td class="mono" style="font-size:10px;color:rgba(255,255,255,0.55)">${lastFormatted}</td>`,
-        gap: `<td class="mono" style="font-size:10px;color:rgba(255,255,255,0.45)">${gap}</td>`,
+        best: `<td class="mono" style="font-size:${fsMed}px">${bestFormatted}</td>`,
+        last: `<td class="mono" style="font-size:${fsMed}px;color:rgba(255,255,255,0.55)">${lastFormatted}</td>`,
+        gap: `<td class="mono" style="font-size:${fsMed}px;color:rgba(255,255,255,0.45)">${gap}</td>`,
       };
       return `<tr class="${rowClass}${disconnCls}" onclick="selectDriver(${d.carIdx})" style="cursor:pointer">
         ${enabledColumns.map(c => cells[c] || '').join('')}
@@ -402,7 +413,7 @@
         const sofStr = sofDisplay === 'classHeader' && classSof > 0 ? ` &middot; SOF ${formatSOFShort(classSof)}` : '';
 
         // Class header row
-        html += `<tr><td colspan="${enabledColumns.length}" style="padding:6px 8px 3px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid ${color};">
+        html += `<tr><td colspan="${enabledColumns.length}" style="padding:6px 8px 3px;font-size:${fsMed}px;font-weight:700;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid ${color};">
           <span style="color:${color};">${cls}${sofStr}</span>
           <span style="color:rgba(255,255,255,0.3);font-weight:400;margin-left:6px;">${group.drivers.length} cars</span>
         </td></tr>`;
@@ -472,6 +483,20 @@
       if (!data || !data.length) return;
       if (!demoCleared) { demoCleared = true; }
       document.getElementById('standings-body').innerHTML = buildStandingsHTML(data);
+      // Auto-resize window to fit content
+      setTimeout(() => {
+        const panel = document.querySelector('.overlay-panel');
+        if (panel) {
+          const neededH = panel.scrollHeight + 4;
+          const neededW = panel.scrollWidth + 4;
+          if (typeof require !== 'undefined') {
+            try {
+              const { ipcRenderer } = require('electron');
+              ipcRenderer.send('resize-overlay', 'standings', Math.max(neededW, 400), Math.min(neededH, screen.height - 100));
+            } catch(e) {}
+          }
+        }
+      }, 150);
     });
 
     onData('session', data => {
