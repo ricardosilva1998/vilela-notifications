@@ -511,9 +511,15 @@ async function startTelemetry(onStatusChange) {
         const sessionTimeRemain = ir.get(VARS.SESSION_TIME_REMAIN)?.[0] || 0;
         const timeOfDay = ir.get(VARS.SESSION_TIME_OF_DAY)?.[0] || 0;
 
-        // SOF = average iRating of all drivers with iRating > 0
+        // SOF: iRacing uses a log-sum-exp formula, not simple average
+        // SOF = (1600/ln(10)) * ln(sum(10^(Ri/1600)) / N)
         const iRatings = drivers.filter(d => d.IRating > 0).map(d => d.IRating);
-        const sof = iRatings.length > 0 ? Math.round(iRatings.reduce((a, b) => a + b, 0) / iRatings.length) : 0;
+        let sof = 0;
+        if (iRatings.length > 0) {
+          const D = 1600 / Math.LN10; // ~694.7
+          const sumExp = iRatings.reduce((s, r) => s + Math.pow(10, r / 1600), 0);
+          sof = Math.round(D * Math.log(sumExp / iRatings.length));
+        }
 
         // SOF per class
         const sofByClass = {};
@@ -693,6 +699,24 @@ async function startTelemetry(onStatusChange) {
         // Compute estimated iRating changes from current positions
         const irChanges = estimateIRatingChanges(standings);
         standings.forEach(s => { s.estIRatingChange = irChanges.get(s.carIdx) || 0; });
+
+        // Diagnostic: log SOF and iRating change details
+        if (pollCount === 90 || pollCount === 300) {
+          const activeForIR = standings.filter(s => s.iRating > 0 && s.position > 0);
+          const irVals = activeForIR.map(s => s.iRating).sort((a, b) => b - a);
+          const avgIR = irVals.length > 0 ? Math.round(irVals.reduce((a, b) => a + b, 0) / irVals.length) : 0;
+          log('[iRating] Field: ' + activeForIR.length + ' drivers with pos>0, avgIR=' + avgIR + ' (SOF shown=' + sof + ')');
+          log('[iRating] Top iRatings: ' + irVals.slice(0, 5).join(', ') + ' ... Bottom: ' + irVals.slice(-3).join(', '));
+          const top5 = [...activeForIR].sort((a, b) => a.position - b.position).slice(0, 5);
+          top5.forEach(s => {
+            log('[iRating] P' + s.position + ' ' + s.driverName + ' iR=' + s.iRating + ' estChange=' + (irChanges.get(s.carIdx) || 0));
+          });
+          // Also log bottom 3
+          const bot3 = [...activeForIR].sort((a, b) => a.position - b.position).slice(-3);
+          bot3.forEach(s => {
+            log('[iRating] P' + s.position + ' ' + s.driverName + ' iR=' + s.iRating + ' estChange=' + (irChanges.get(s.carIdx) || 0));
+          });
+        }
 
         // Only broadcast standings every 1 second (every 10th poll) to prevent flickering
         if (pollCount % 30 === 0) {
