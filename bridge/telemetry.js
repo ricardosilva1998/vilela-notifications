@@ -141,10 +141,20 @@ const sessionResults = new Map(); // carIdx -> { bestLap, lastLap, lapsComplete 
 const startingIRatings = new Map(); // carIdx -> starting iRating
 
 /**
- * Estimate iRating change PER CLASS using expected position model.
- * ExpectedPos = 1 + SUM(P(lose to j)) for each opponent j in same class
- * Change = (ExpectedPos - ActualClassPos) * 200 / N
+ * iRating change calculator — exact formula from iRacing spreadsheet.
+ * Source: github.com/arrecio/ircalculator (matches iRacing official calc)
+ * Calculates per-class in multiclass races.
  */
+const IR_BR = 1600 / Math.LN2; // ~2308.31 — iRacing's Elo-like base constant
+
+function irChance(a, b) {
+  const ea = Math.exp(-a / IR_BR);
+  const eb = Math.exp(-b / IR_BR);
+  const Qa = (1 - ea) * eb;
+  const Qb = (1 - eb) * ea;
+  return Qa / (Qb + Qa);
+}
+
 function estimateIRatingChanges(driverList) {
   const changes = new Map();
 
@@ -160,19 +170,29 @@ function estimateIRatingChanges(driverList) {
 
   for (const cls of Object.keys(classes)) {
     const classDrivers = classes[cls];
+    // Sort by class position for calculation
+    classDrivers.sort((a, b) => a.classPosition - b.classPosition);
     const N = classDrivers.length;
     if (N < 2) continue;
 
-    for (const driver of classDrivers) {
-      let expectedPos = 1;
-      for (const opp of classDrivers) {
-        if (opp.carIdx === driver.carIdx) continue;
-        // Probability of finishing BEHIND this opponent
-        expectedPos += 1 / (1 + Math.pow(10, (driver.iRating - opp.iRating) / 1600));
-      }
+    const nStarters = N; // assume all started (we filter out non-starters earlier)
 
-      const change = Math.round((expectedPos - driver.classPosition) * 200 / N);
-      changes.set(driver.carIdx, change);
+    // Calculate expected for each driver
+    const expecteds = [];
+    for (let i = 0; i < N; i++) {
+      let c = -0.5;
+      for (let j = 0; j < N; j++) {
+        c += irChance(classDrivers[i].iRating, classDrivers[j].iRating);
+      }
+      expecteds.push(c);
+    }
+
+    // Calculate changes
+    for (let i = 0; i < N; i++) {
+      const pos = i + 1;
+      const factor = ((N) / 2 - pos) / 100;
+      const change = Math.round((N - pos - expecteds[i] - factor) * 200 / nStarters);
+      changes.set(classDrivers[i].carIdx, change);
     }
   }
   return changes;
