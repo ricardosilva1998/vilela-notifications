@@ -535,9 +535,9 @@ async function startTelemetry(onStatusChange) {
         const sessionTimeRemain = ir.get(VARS.SESSION_TIME_REMAIN)?.[0] || 0;
         const timeOfDay = ir.get(VARS.SESSION_TIME_OF_DAY)?.[0] || 0;
 
-        // SOF = simple average of iRatings (matches iOverlay's display)
+        // SOF = harmonic mean of iRatings (closest match to iRacing's official SOF)
         const iRatings = drivers.filter(d => d.IRating > 0 && !d.IsSpectator && d.UserName !== 'Pace Car').map(d => d.IRating);
-        const sof = iRatings.length > 0 ? Math.round(iRatings.reduce((a, b) => a + b, 0) / iRatings.length) : 0;
+        const sof = iRatings.length > 0 ? Math.round(iRatings.length / iRatings.reduce((s, r) => s + 1 / r, 0)) : 0;
 
         // SOF per class
         const sofByClass = {};
@@ -548,7 +548,7 @@ async function startTelemetry(onStatusChange) {
         });
         Object.keys(sofByClass).forEach(cls => {
           const arr = sofByClass[cls];
-          sofByClass[cls] = Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
+          sofByClass[cls] = Math.round(arr.length / arr.reduce((s, r) => s + 1 / r, 0));
         });
 
         const incidentCount = ir.get(VARS.PLAYER_CAR_MY_INCIDENT_COUNT)?.[0] || 0;
