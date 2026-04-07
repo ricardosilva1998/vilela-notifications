@@ -141,9 +141,9 @@ const sessionResults = new Map(); // carIdx -> { bestLap, lastLap, lapsComplete 
 const startingIRatings = new Map(); // carIdx -> starting iRating
 
 /**
- * Estimate iRating change using pairwise Elo model PER CLASS.
- * In multiclass races, iRating is calculated within each class independently.
- * Uses classPosition (not overall position) for pairwise comparison.
+ * Estimate iRating change PER CLASS using expected position model.
+ * ExpectedPos = 1 + SUM(P(lose to j)) for each opponent j in same class
+ * Change = (ExpectedPos - ActualClassPos) * 200 / N
  */
 function estimateIRatingChanges(driverList) {
   const changes = new Map();
@@ -158,31 +158,21 @@ function estimateIRatingChanges(driverList) {
     }
   });
 
-  // K per pair — calibrated against iOverlay data
-  // K calibrated per-class: CP1 in 12-car GTP (iR 5970, SOF 5066) should gain ~69
-  const K = 16;
-
-  // Calculate per-class
   for (const cls of Object.keys(classes)) {
     const classDrivers = classes[cls];
-    if (classDrivers.length < 2) continue;
+    const N = classDrivers.length;
+    if (N < 2) continue;
 
     for (const driver of classDrivers) {
-      let totalChange = 0;
-
+      let expectedPos = 1;
       for (const opp of classDrivers) {
         if (opp.carIdx === driver.carIdx) continue;
-
-        // Expected score: probability that driver beats opponent
-        const expected = 1 / (1 + Math.pow(10, (opp.iRating - driver.iRating) / 1600));
-
-        // Actual score: 1 if driver beat opponent (by class position), 0 if not
-        const actual = driver.classPosition < opp.classPosition ? 1 : 0;
-
-        totalChange += (actual - expected) * K;
+        // Probability of finishing BEHIND this opponent
+        expectedPos += 1 / (1 + Math.pow(10, (driver.iRating - opp.iRating) / 1600));
       }
 
-      changes.set(driver.carIdx, Math.round(totalChange));
+      const change = Math.round((expectedPos - driver.classPosition) * 200 / N);
+      changes.set(driver.carIdx, change);
     }
   }
   return changes;
