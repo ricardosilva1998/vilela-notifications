@@ -25,7 +25,6 @@
     .overlay-table tr.pos-down { animation: posDown 2s ease-out; }
     @keyframes posUp { 0%,30% { background: rgba(62,207,142,0.2); } 100% { background: transparent; } }
     @keyframes posDown { 0%,30% { background: rgba(240,68,56,0.2); } 100% { background: transparent; } }
-    .flag-icon { font-size: 10px; margin-left: 4px; vertical-align: middle; }
     .pit-indicator { background: #f79009; color: #000; font-weight: 700; font-size: 8px; padding: 1px 5px; border-radius: 8px; margin-left: 6px; vertical-align: middle; }
     .mono { font-family: 'JetBrains Mono', 'Consolas', monospace; }
     .driver-name { white-space: nowrap; display: block; }
@@ -320,26 +319,7 @@
 
       const logoStyle = getBrandLogoStyle(carBrand);
       const logoImg = logoStyle ? `<span class="brand-logo" style="${logoStyle}"></span>` : '';
-      // Per-driver flags — compare against common flags to filter session-wide ones
-      const flags = d.sessionFlags || 0;
-      const uniqueFlags = flags & ~(_commonFlags || 0); // only flags unique to this driver
-      const fw = Math.round(fontSize * 1.1); // flag width scales with font
-      const fh = Math.round(fontSize * 0.82);
-      const fr = Math.round(fh * 0.35);
-      let flagIcons = '';
-      // Black flag
-      if (uniqueFlags & 0x00010000) flagIcons += `<svg class="flag-icon" width="${fw}" height="${fh}" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#111"/></svg>`;
-      // Meatball — black flag with orange circle
-      if (uniqueFlags & 0x00040000) flagIcons += `<svg class="flag-icon" width="${fw}" height="${fh}" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#111"/><circle cx="6" cy="4.5" r="3" fill="#f79009"/></svg>`;
-      // Repair — same as meatball
-      if (uniqueFlags & 0x00100000) flagIcons += `<svg class="flag-icon" width="${fw}" height="${fh}" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#111"/><circle cx="6" cy="4.5" r="3" fill="#f79009"/></svg>`;
-      // DQ — black flag
-      if (uniqueFlags & 0x00020000) flagIcons += `<svg class="flag-icon" width="${fw}" height="${fh}" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#111"/></svg>`;
-      // Blue flag
-      if (uniqueFlags & 0x00000020) flagIcons += `<svg class="flag-icon" width="${fw}" height="${fh}" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#2563eb"/></svg>`;
-      // Yellow/caution per car
-      if (uniqueFlags & 0x00004000) flagIcons += `<svg class="flag-icon" width="${fw}" height="${fh}" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#eab308"/></svg>`;
-      const badgeCell = `<div class="driver-name">${d.driverName || ''}${pitMark}${flagIcons}</div>`;
+      const badgeCell = `<div class="driver-name">${d.driverName || ''}${pitMark}</div>`;
 
       const licCell = d.safetyRating || d.license
         ? `<span style="background:${licColor};color:#fff;padding:1px 5px;border-radius:4px;font-size:${fsSmall}px;font-weight:600;font-family:'JetBrains Mono',monospace;">${d.safetyRating || d.license}</span>`
@@ -506,18 +486,10 @@
 
     // Track previous positions for animation
     const prevPositions = new Map();
-    let _commonFlags = 0;
-
     onData('standings', data => {
       try {
       if (!data || !data.length) return;
       if (!demoCleared) { demoCleared = true; }
-
-      // Find flags common to ALL drivers (these are session-wide, not per-car)
-      try {
-        const allFlags = data.map(d => d.sessionFlags || 0).filter(f => f > 0);
-        _commonFlags = allFlags.length > 0 ? allFlags.reduce((a, b) => a & b) : 0;
-      } catch(e) { _commonFlags = 0; }
 
       // Detect position changes
       const posChanges = new Map();
