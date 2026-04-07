@@ -273,6 +273,9 @@
       <div class="sidebar-item" data-panel="inputs" onclick="navigateTo('inputs')">
         <span class="sidebar-icon">&#127918;</span> Inputs
       </div>
+      <div class="sidebar-item" data-panel="raceduration" onclick="navigateTo('raceduration')">
+        <span class="sidebar-icon">&#9201;</span> Race Duration
+      </div>
       <div class="sidebar-spacer"></div>
       <div class="sidebar-divider"></div>
       <div class="sidebar-item" data-panel="updates" onclick="navigateTo('updates')">
@@ -321,6 +324,7 @@
       <div class="content-panel" id="panel-trackmap"></div>
       <div class="content-panel" id="panel-voicechat"></div>
       <div class="content-panel" id="panel-inputs"></div>
+      <div class="content-panel" id="panel-raceduration"></div>
 
       <!-- ═══ UPDATES PANEL ═══ -->
       <div class="content-panel" id="panel-updates">
@@ -393,6 +397,7 @@
       { id: 'trackmap', icon: '&#127758;', name: 'Track Map' },
       { id: 'voicechat', icon: '&#127908;', name: 'Voice Chat' },
       { id: 'inputs', icon: '&#127918;', name: 'Driver Inputs' },
+      { id: 'raceduration', icon: '&#9201;', name: 'Race Duration' },
     ];
 
     // ─── CUSTOMIZE_FIELDS (all overlay settings) ─────────────
@@ -503,6 +508,11 @@
           { value: 'mph', label: 'mph' },
         ]},
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
+        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
+      ],
+      raceduration: [
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
