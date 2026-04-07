@@ -580,6 +580,23 @@
 
 <div class="tab-content" id="tab-iracing">
 
+  <style>
+    .iracing-subtab { padding:8px 16px; font-size:12px; font-weight:600; color:var(--text-muted); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; transition:all 0.2s; }
+    .iracing-subtab:hover { color:var(--text-secondary); }
+    .iracing-subtab.active { color:var(--primary); border-bottom-color:var(--primary); }
+    .iracing-subtab-content { display:none; }
+    .iracing-subtab-content.active { display:block; }
+  </style>
+
+  <div style="display:flex; gap:0; margin-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.08);">
+    <button class="iracing-subtab active" data-irtab="app" onclick="switchIRacingTab('app')">App Download</button>
+    <button class="iracing-subtab" data-irtab="overlays" onclick="switchIRacingTab('overlays')">Stream Overlays</button>
+    <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+    <button class="iracing-subtab" data-irtab="tracks" onclick="switchIRacingTab('tracks')">Track Upload</button>
+    <% } %>
+  </div>
+
+  <div class="iracing-subtab-content active" id="irtab-app">
   <!-- Bridge Download Card -->
   <div class="card animate-in" style="margin-bottom: 16px; padding: 20px 24px;">
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
@@ -599,7 +616,9 @@
       Download for Windows
     </a>
   </div>
+  </div><!-- /irtab-app -->
 
+  <div class="iracing-subtab-content" id="irtab-overlays">
   <!-- Overlay Cards Grid -->
   <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
     <% const iracingOverlays = [
@@ -635,7 +654,10 @@
     </div>
     <% }) %>
   </div>
+  </div><!-- /irtab-overlays -->
 
+  <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+  <div class="iracing-subtab-content" id="irtab-tracks">
   <!-- Track Map Upload -->
   <div class="card animate-in" style="margin-top: 16px;">
     <h3 style="margin-bottom: 4px;">Track Map Upload</h3>
@@ -675,9 +697,20 @@
       <div style="color: var(--text-muted); font-size: 12px;">Loading...</div>
     </div>
   </div>
+  </div><!-- /irtab-tracks -->
+  <% } %>
 </div>
 
 <script>
+// ─── iRacing Sub-Tab Switching ──────────────────────────────
+function switchIRacingTab(tab) {
+  document.querySelectorAll('.iracing-subtab').forEach(t => t.classList.toggle('active', t.dataset.irtab === tab));
+  document.querySelectorAll('.iracing-subtab-content').forEach(p => p.classList.toggle('active', p.id === 'irtab-' + tab));
+  localStorage.setItem('iracing_subtab', tab);
+}
+const savedIRTab = localStorage.getItem('iracing_subtab');
+if (savedIRTab && document.querySelector('[data-irtab="' + savedIRTab + '"]')) switchIRacingTab(savedIRTab);
+
 // ─── IBT Parser (browser-side) ─────────────────────────────
 const VAR_TYPE_MAP = ['c', '?', 'i', 'I', 'f', 'd'];
 function getTypeSize(t) { return { i: 4, I: 4, f: 4, d: 8, '?': 1, c: 1 }[t] || 0; }
