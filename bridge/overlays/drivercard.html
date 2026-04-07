@@ -26,7 +26,7 @@
     .lap-block { }
     .lap-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.35); }
     .lap-value { font-size: 15px; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.85); }
-    .country-flag { width: 16px; height: 12px; border-radius: 2px; vertical-align: middle; }
+    .country-flag { width: 18px; height: 13px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
   </style>
 </head>
 <body>
@@ -40,7 +40,7 @@
         <img class="helmet-icon" id="helmet-icon" src="helmets/helmet.png" alt="">
       </div>
       <div class="driver-info">
-        <div class="driver-name" id="driver-name">--</div>
+        <div class="driver-name"><img class="country-flag" id="driver-flag" style="display:none" alt=""><span id="driver-name">--</span></div>
         <div class="driver-meta">
           <span class="badge badge-pos" id="driver-pos">P-</span>
           <span class="badge badge-ir" id="driver-ir">--</span>
@@ -104,6 +104,33 @@
       else { if (el) el.innerHTML = '<span class="status-dot connected"></span>'; }
     }
 
+    const COUNTRY_TO_ISO = {
+      'Afghanistan':'af','Albania':'al','Algeria':'dz','Andorra':'ad','Angola':'ao','Argentina':'ar',
+      'Armenia':'am','Australia':'au','Austria':'at','Azerbaijan':'az','Bahamas':'bs','Bahrain':'bh',
+      'Bangladesh':'bd','Barbados':'bb','Belarus':'by','Belgium':'be','Belize':'bz','Benin':'bj',
+      'Bermuda':'bm','Bolivia':'bo','Bosnia and Herzegovina':'ba','Botswana':'bw','Brazil':'br',
+      'Brunei':'bn','Bulgaria':'bg','Cambodia':'kh','Cameroon':'cm','Canada':'ca','Chile':'cl',
+      'China':'cn','Colombia':'co','Costa Rica':'cr','Croatia':'hr','Cuba':'cu','Cyprus':'cy',
+      'Czech Republic':'cz','Czechia':'cz','Denmark':'dk','Dominican Republic':'do','Ecuador':'ec',
+      'Egypt':'eg','El Salvador':'sv','Estonia':'ee','Ethiopia':'et','Fiji':'fj','Finland':'fi',
+      'France':'fr','Georgia':'ge','Germany':'de','Ghana':'gh','Greece':'gr','Guatemala':'gt',
+      'Guernsey':'gg','Honduras':'hn','Hong Kong':'hk','Hungary':'hu','Iceland':'is','India':'in',
+      'Indonesia':'id','Iran':'ir','Iraq':'iq','Ireland':'ie','Israel':'il','Italy':'it',
+      'Jamaica':'jm','Japan':'jp','Jersey':'je','Jordan':'jo','Kazakhstan':'kz','Kenya':'ke',
+      'Kuwait':'kw','Latvia':'lv','Lebanon':'lb','Libya':'ly','Lithuania':'lt','Luxembourg':'lu',
+      'Macao':'mo','Macau':'mo','Malaysia':'my','Malta':'mt','Mauritius':'mu','Mexico':'mx',
+      'Moldova':'md','Monaco':'mc','Mongolia':'mn','Montenegro':'me','Morocco':'ma','Mozambique':'mz',
+      'Myanmar':'mm','Namibia':'na','Nepal':'np','Netherlands':'nl','New Zealand':'nz','Nicaragua':'ni',
+      'Nigeria':'ng','North Macedonia':'mk','Norway':'no','Oman':'om','Pakistan':'pk','Panama':'pa',
+      'Paraguay':'py','Peru':'pe','Philippines':'ph','Poland':'pl','Portugal':'pt','Puerto Rico':'pr',
+      'Qatar':'qa','Romania':'ro','Russia':'ru','Saudi Arabia':'sa','Scotland':'gb-sct','Senegal':'sn',
+      'Serbia':'rs','Singapore':'sg','Slovakia':'sk','Slovenia':'si','South Africa':'za',
+      'South Korea':'kr','Spain':'es','Sri Lanka':'lk','Sweden':'se','Switzerland':'ch',
+      'Taiwan':'tw','Thailand':'th','Trinidad and Tobago':'tt','Tunisia':'tn','Turkey':'tr',
+      'Ukraine':'ua','United Arab Emirates':'ae','United Kingdom':'gb','United States':'us',
+      'Uruguay':'uy','Uzbekistan':'uz','Venezuela':'ve','Vietnam':'vn','Wales':'gb-wls','Zimbabwe':'zw',
+    };
+
     function formatLapTime(t) {
       if (!t || t <= 0) return '--';
       const m = Math.floor(t / 60);
@@ -128,6 +155,16 @@
       document.getElementById('driver-ir').textContent = formatIR(focused.iRating);
       document.getElementById('driver-best').textContent = formatLapTime(focused.bestLap);
       document.getElementById('driver-last').textContent = formatLapTime(focused.lastLap);
+
+      // Country flag
+      const flagEl = document.getElementById('driver-flag');
+      const iso = COUNTRY_TO_ISO[focused.country];
+      if (iso) {
+        flagEl.src = 'flags/' + iso + '.svg';
+        flagEl.style.display = '';
+      } else {
+        flagEl.style.display = 'none';
+      }
 
       // Class badge with color — use black text on light backgrounds
       const classEl = document.getElementById('driver-class');
