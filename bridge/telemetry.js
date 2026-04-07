@@ -574,10 +574,12 @@ async function startTelemetry(onStatusChange) {
         } catch(e) {}
 
         // Stint tracking (laps + time since last pit)
-        const playerOnPit = !!onPitRoad[playerCarIdx];
-        if (playerOnPit && !_wasInPit) { _stintStartLap = lapsCompleted; _stintStartTime = sessionTime; }
+        const _pitRoad = ir.get(VARS.CAR_IDX_ON_PIT_ROAD) || [];
+        const _lapsDone = ir.get(VARS.LAP_COMPLETED)?.[0] || 0;
+        const playerOnPit = !!_pitRoad[playerCarIdx];
+        if (playerOnPit && !_wasInPit) { _stintStartLap = _lapsDone; _stintStartTime = sessionTime; }
         _wasInPit = playerOnPit;
-        const stintLaps = lapsCompleted - (_stintStartLap || 0);
+        const stintLaps = _lapsDone - (_stintStartLap || 0);
         const stintTime = sessionTime - (_stintStartTime || 0);
 
         // Player's estimated iRating change (from previous poll's calculation)
