@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Weather</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; }
+    .overlay-panel { background: rgba(12,13,20,0.88); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; backdrop-filter: blur(12px); overflow: hidden; position: relative; }
+    .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 5px 10px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+    .status-dot.connected { background: #3ecf8e; }
+    .status-dot.waiting { background: #f79009; }
+    .status-dot.demo { background: #f79009; }
+
+    .weather-body { display: flex; gap: 12px; padding: 12px 14px; align-items: center; }
+
+    /* --- Weather animation area --- */
+    .weather-anim { width: 80px; height: 80px; position: relative; flex-shrink: 0; overflow: hidden; border-radius: 8px; }
+
+    /* Sun */
+    .sun-container { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.8s; }
+    .sun-container.active { opacity: 1; }
+    .sun-core { width: 28px; height: 28px; border-radius: 50%; background: radial-gradient(circle, #ffd54f 40%, #ffb300 100%); box-shadow: 0 0 20px rgba(255,213,79,0.6), 0 0 40px rgba(255,179,0,0.3); }
+    .sun-rays { position: absolute; width: 60px; height: 60px; animation: spin-rays 12s linear infinite; }
+    .sun-ray { position: absolute; width: 3px; height: 12px; background: linear-gradient(to top, rgba(255,213,79,0.7), transparent); border-radius: 2px; left: 50%; top: 50%; transform-origin: center 30px; }
+    @keyframes spin-rays { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    /* Clouds */
+    .clouds-container { position: absolute; inset: 0; opacity: 0; transition: opacity 0.8s; overflow: hidden; }
+    .clouds-container.active { opacity: 1; }
+    .cloud { position: absolute; background: rgba(200,210,220,0.7); border-radius: 20px; }
+    .cloud-1 { width: 40px; height: 16px; top: 18px; left: -40px; animation: drift-cloud 8s linear infinite; }
+    .cloud-2 { width: 32px; height: 12px; top: 36px; left: -32px; animation: drift-cloud 11s linear infinite 3s; opacity: 0.6; }
+    .cloud-3 { width: 36px; height: 14px; top: 50px; left: -36px; animation: drift-cloud 9s linear infinite 6s; opacity: 0.5; }
+    .cloud::before { content: ''; position: absolute; background: inherit; border-radius: 50%; }
+    .cloud-1::before { width: 18px; height: 18px; top: -10px; left: 8px; }
+    .cloud-1::after { content: ''; position: absolute; width: 14px; height: 14px; background: inherit; border-radius: 50%; top: -7px; left: 20px; }
+    .cloud-2::before { width: 14px; height: 14px; top: -8px; left: 6px; }
+    .cloud-3::before { width: 16px; height: 16px; top: -9px; left: 10px; }
+    @keyframes drift-cloud { 0% { transform: translateX(0); } 100% { transform: translateX(120px); } }
+
+    /* Rain */
+    .rain-container { position: absolute; inset: 0; opacity: 0; transition: opacity 0.8s; overflow: hidden; }
+    .rain-container.active { opacity: 1; }
+    .raindrop { position: absolute; width: 2px; background: linear-gradient(to bottom, transparent, rgba(100,180,255,0.8)); border-radius: 0 0 2px 2px; animation: fall-rain linear infinite; }
+    @keyframes fall-rain { 0% { transform: translateY(-10px); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(90px); opacity: 0; } }
+
+    /* Fog */
+    .fog-container { position: absolute; inset: 0; opacity: 0; transition: opacity 0.8s; overflow: hidden; }
+    .fog-container.active { opacity: 1; }
+    .fog-layer { position: absolute; width: 160px; height: 20px; border-radius: 10px; }
+    .fog-1 { background: rgba(180,190,200,0.25); top: 20px; left: -40px; animation: drift-fog 7s ease-in-out infinite alternate; }
+    .fog-2 { background: rgba(180,190,200,0.18); top: 38px; left: -20px; animation: drift-fog 9s ease-in-out infinite alternate-reverse; }
+    .fog-3 { background: rgba(180,190,200,0.15); top: 54px; left: -30px; animation: drift-fog 6s ease-in-out infinite alternate 2s; }
+    @keyframes drift-fog { 0% { transform: translateX(0); } 100% { transform: translateX(30px); } }
+
+    /* --- Weather data grid --- */
+    .weather-data { flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+    .weather-item { }
+    .weather-label { font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.35); }
+    .weather-value { font-size: 13px; font-weight: 600; font-family: 'JetBrains Mono', 'Consolas', monospace; color: rgba(255,255,255,0.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .weather-value.warm { color: #f7c948; }
+    .weather-value.hot { color: #f04438; }
+    .weather-value.cool { color: #38bdf8; }
+    .weather-value.rain { color: #60a5fa; }
+    .weather-value.wet { color: #3ecf8e; }
+
+    /* Track time row spans full width */
+    .weather-time-row { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; padding-bottom: 4px; margin-bottom: 2px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .track-time { font-size: 15px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #fff; }
+    .sky-label { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.5px; }
+  </style>
+</head>
+<body>
+  <div class="overlay-panel">
+    <div class="overlay-header">
+      <span>WEATHER</span>
+      <span id="connection-status"><span class="status-dot demo"></span></span>
+    </div>
+    <div class="weather-body">
+      <!-- Animated weather icon area -->
+      <div class="weather-anim" id="weather-anim">
+        <div class="sun-container" id="anim-sun">
+          <div class="sun-rays" id="sun-rays"></div>
+          <div class="sun-core"></div>
+        </div>
+        <div class="clouds-container" id="anim-clouds">
+          <div class="cloud cloud-1"></div>
+          <div class="cloud cloud-2"></div>
+          <div class="cloud cloud-3"></div>
+        </div>
+        <div class="rain-container" id="anim-rain"></div>
+        <div class="fog-container" id="anim-fog">
+          <div class="fog-layer fog-1"></div>
+          <div class="fog-layer fog-2"></div>
+          <div class="fog-layer fog-3"></div>
+        </div>
+      </div>
+
+      <!-- Weather data -->
+      <div class="weather-data">
+        <div class="weather-time-row">
+          <span class="track-time" id="track-time">--:--</span>
+          <span class="sky-label" id="sky-label">--</span>
+        </div>
+        <div class="weather-item">
+          <div class="weather-label">Air Temp</div>
+          <div class="weather-value" id="air-temp">--</div>
+        </div>
+        <div class="weather-item">
+          <div class="weather-label">Track Temp</div>
+          <div class="weather-value" id="track-temp">--</div>
+        </div>
+        <div class="weather-item">
+          <div class="weather-label">Humidity</div>
+          <div class="weather-value" id="humidity">--</div>
+        </div>
+        <div class="weather-item">
+          <div class="weather-label">Rain</div>
+          <div class="weather-value" id="precipitation">--</div>
+        </div>
+        <div class="weather-item">
+          <div class="weather-label">Wind Dir</div>
+          <div class="weather-value" id="wind-dir">--</div>
+        </div>
+        <div class="weather-item">
+          <div class="weather-label">Wind Speed</div>
+          <div class="weather-value" id="wind-speed">--</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Build sun rays
+    (function() {
+      const raysEl = document.getElementById('sun-rays');
+      for (let i = 0; i < 8; i++) {
+        const ray = document.createElement('div');
+        ray.className = 'sun-ray';
+        ray.style.transform = `rotate(${i * 45}deg) translateY(-18px)`;
+        raysEl.appendChild(ray);
+      }
+    })();
+
+    // Build raindrops
+    (function() {
+      const rainEl = document.getElementById('anim-rain');
+      for (let i = 0; i < 20; i++) {
+        const drop = document.createElement('div');
+        drop.className = 'raindrop';
+        drop.style.left = (Math.random() * 76 + 2) + 'px';
+        drop.style.height = (6 + Math.random() * 10) + 'px';
+        drop.style.animationDuration = (0.4 + Math.random() * 0.4) + 's';
+        drop.style.animationDelay = (Math.random() * 0.8) + 's';
+        rainEl.appendChild(drop);
+      }
+    })();
+
+    // Load settings
+    let _weatherSettings = {};
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const os = require('os');
+      const settingsFile = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'settings.json');
+      if (fs.existsSync(settingsFile)) {
+        const all = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+        _weatherSettings = (all.overlayCustom && all.overlayCustom.weather) || {};
+      }
+    } catch(e) {}
+    function getSetting(k, d) { return _weatherSettings[k] !== undefined ? _weatherSettings[k] : d; }
+    const speedUnit = getSetting('speedUnit', 'kmh');
+
+    const BRIDGE_URL = 'ws://localhost:9100';
+    let ws = null;
+    let bridgeConnected = false;
+    let iracingConnected = false;
+    const dataHandlers = {};
+
+    function connectBridge(channels) {
+      try { ws = new WebSocket(BRIDGE_URL); } catch(e) { setTimeout(() => connectBridge(channels), 3000); return; }
+      ws.onopen = () => { bridgeConnected = true; updateStatus(); ws.send(JSON.stringify({ type: 'subscribe', channels })); };
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'bridge-connected') { bridgeConnected = true; updateStatus(); }
+          else if (msg.type === 'status') { iracingConnected = msg.iracing; updateStatus(); }
+          else if (msg.type === 'data' && dataHandlers[msg.channel]) { dataHandlers[msg.channel](msg.data); }
+        } catch(e) {}
+      };
+      ws.onclose = () => { bridgeConnected = false; iracingConnected = false; updateStatus(); setTimeout(() => connectBridge(channels), 3000); };
+      ws.onerror = () => { ws.close(); };
+    }
+    function onData(ch, fn) { dataHandlers[ch] = fn; }
+    function updateStatus() {
+      const el = document.getElementById('connection-status');
+      if (!bridgeConnected) { if (el) el.innerHTML = '<span class="status-dot demo"></span>'; }
+      else if (!iracingConnected) { if (el) el.innerHTML = '<span class="status-dot waiting"></span>'; }
+      else { if (el) el.innerHTML = '<span class="status-dot connected"></span>'; }
+    }
+
+    function angleToCompass(rad) {
+      const deg = ((rad * 180 / Math.PI) + 360) % 360;
+      const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+      return dirs[Math.round(deg / 45) % 8];
+    }
+
+    function formatTimeOfDay(seconds) {
+      if (!seconds || seconds <= 0) return '--:--';
+      const h = Math.floor(seconds / 3600) % 24;
+      const m = Math.floor((seconds % 3600) / 60);
+      return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    }
+
+    function tempClass(c) {
+      if (c >= 35) return 'hot';
+      if (c >= 25) return 'warm';
+      if (c <= 10) return 'cool';
+      return '';
+    }
+
+    // Determine which weather animation to show
+    let currentCondition = '';
+    function setWeatherCondition(skies, precipitation, fogLevel, humidity) {
+      let condition = 'sun'; // default
+
+      if (precipitation > 0.05) {
+        condition = 'rain';
+      } else if (fogLevel > 0.15) {
+        condition = 'fog';
+      } else if (skies) {
+        const s = skies.toLowerCase();
+        if (s.includes('overcast') || s.includes('mostly cloudy')) condition = 'clouds';
+        else if (s.includes('partly cloudy')) condition = 'partlycloudy';
+        else condition = 'sun';
+      } else if (humidity > 85) {
+        condition = 'clouds';
+      }
+
+      if (condition === currentCondition) return;
+      currentCondition = condition;
+
+      const sunEl = document.getElementById('anim-sun');
+      const cloudsEl = document.getElementById('anim-clouds');
+      const rainEl = document.getElementById('anim-rain');
+      const fogEl = document.getElementById('anim-fog');
+
+      sunEl.classList.remove('active');
+      cloudsEl.classList.remove('active');
+      rainEl.classList.remove('active');
+      fogEl.classList.remove('active');
+
+      if (condition === 'sun') {
+        sunEl.classList.add('active');
+      } else if (condition === 'partlycloudy') {
+        sunEl.classList.add('active');
+        cloudsEl.classList.add('active');
+      } else if (condition === 'clouds') {
+        cloudsEl.classList.add('active');
+      } else if (condition === 'rain') {
+        cloudsEl.classList.add('active');
+        rainEl.classList.add('active');
+      } else if (condition === 'fog') {
+        cloudsEl.classList.add('active');
+        fogEl.classList.add('active');
+      }
+    }
+
+    function skyLabel(skies, precipitation) {
+      if (precipitation > 0.05) return 'Rain';
+      if (!skies) return '--';
+      const s = skies.toLowerCase();
+      if (s.includes('overcast')) return 'Overcast';
+      if (s.includes('mostly cloudy')) return 'Mostly Cloudy';
+      if (s.includes('partly cloudy')) return 'Partly Cloudy';
+      if (s.includes('clear')) return 'Clear';
+      return skies;
+    }
+
+    onData('session', data => {
+      if (!data) return;
+
+      // Track time
+      document.getElementById('track-time').textContent = formatTimeOfDay(data.timeOfDay);
+
+      // Sky condition label
+      const precip = data.precipitation || 0;
+      document.getElementById('sky-label').textContent = skyLabel(data.skies, precip);
+
+      // Air temp
+      const airEl = document.getElementById('air-temp');
+      const airC = data.airTemp || 0;
+      airEl.textContent = airC.toFixed(1) + '\u00B0C';
+      airEl.className = 'weather-value ' + tempClass(airC);
+
+      // Track temp
+      const trackEl = document.getElementById('track-temp');
+      const trackC = data.trackTemp || 0;
+      trackEl.textContent = trackC.toFixed(1) + '\u00B0C';
+      trackEl.className = 'weather-value ' + tempClass(trackC);
+
+      // Humidity
+      const humEl = document.getElementById('humidity');
+      humEl.textContent = Math.round(data.humidity || 0) + '%';
+
+      // Precipitation/rain chance
+      const rainEl = document.getElementById('precipitation');
+      if (precip > 0) {
+        rainEl.textContent = (precip * 100).toFixed(0) + '%';
+        rainEl.className = 'weather-value rain';
+      } else {
+        rainEl.textContent = 'None';
+        rainEl.className = 'weather-value';
+      }
+
+      // Wind direction
+      const windDirRad = data.windDir || 0;
+      document.getElementById('wind-dir').textContent = angleToCompass(windDirRad);
+
+      // Wind speed
+      const windMs = data.windSpeed || 0;
+      const windEl = document.getElementById('wind-speed');
+      if (speedUnit === 'mph') {
+        windEl.textContent = (windMs * 2.23694).toFixed(1) + ' mph';
+      } else {
+        windEl.textContent = (windMs * 3.6).toFixed(1) + ' km/h';
+      }
+
+      // Update weather animation
+      setWeatherCondition(data.skies, precip, data.fogLevel || 0, data.humidity || 0);
+    });
+
+    connectBridge(['session']);
+
+    // Drag support
+    try {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.on('lock-state', () => {});
+      let _dragging = false, _dragStartX = 0, _dragStartY = 0;
+      const dragHeader = document.querySelector('.overlay-header');
+      if (dragHeader) {
+        dragHeader.style.cursor = 'move';
+        dragHeader.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return;
+          _dragging = true;
+          _dragStartX = e.screenX;
+          _dragStartY = e.screenY;
+          e.preventDefault();
+        });
+      }
+      document.addEventListener('mousemove', (e) => {
+        if (!_dragging) return;
+        ipcRenderer.send('drag-overlay', e.screenX - _dragStartX, e.screenY - _dragStartY);
+        _dragStartX = e.screenX;
+        _dragStartY = e.screenY;
+      });
+      document.addEventListener('mouseup', () => { _dragging = false; });
+      document.addEventListener('mouseleave', () => { _dragging = false; });
+    } catch(e) {}
+  </script>
+</body>
+</html>

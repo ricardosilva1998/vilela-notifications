@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Stint Laps</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; }
+    .overlay-panel { background: rgba(12,13,20,0.88); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; backdrop-filter: blur(12px); overflow: hidden; }
+    .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 5px 10px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+    .status-dot.connected { background: #3ecf8e; }
+    .status-dot.waiting { background: #f79009; }
+    .status-dot.demo { background: #f79009; }
+    .stint-body { padding: 10px 14px; }
+    .stint-summary { display: flex; gap: 14px; align-items: center; margin-bottom: 8px; }
+    .stint-big { text-align: center; }
+    .stint-big-value { font-size: 28px; font-weight: 800; font-family: 'JetBrains Mono', 'Consolas', monospace; color: #fff; line-height: 1; }
+    .stint-big-label { font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.35); margin-top: 2px; }
+    .stint-stats { display: flex; gap: 12px; flex: 1; }
+    .stint-stat { }
+    .stint-stat-label { font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.35); }
+    .stint-stat-value { font-size: 13px; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.85); }
+    .stint-stat-value.fastest { color: #9146ff; }
+    .divider-v { width: 1px; height: 36px; background: rgba(255,255,255,0.08); flex-shrink: 0; }
+    .lap-list { max-height: 200px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }
+    .lap-list::-webkit-scrollbar { width: 3px; }
+    .lap-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+    .lap-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 4px; font-size: 11px; font-family: 'JetBrains Mono', monospace; border-radius: 4px; }
+    .lap-row:nth-child(odd) { background: rgba(255,255,255,0.02); }
+    .lap-row.fastest { background: rgba(145,70,255,0.12); }
+    .lap-num { color: rgba(255,255,255,0.4); font-size: 10px; width: 30px; }
+    .lap-time { color: rgba(255,255,255,0.85); font-weight: 600; }
+    .lap-time.fastest { color: #9146ff; font-weight: 700; }
+    .lap-delta { font-size: 10px; width: 60px; text-align: right; }
+    .lap-delta.faster { color: #3ecf8e; }
+    .lap-delta.slower { color: #f04438; }
+  </style>
+</head>
+<body>
+  <div class="overlay-panel">
+    <div class="overlay-header">
+      <span>STINT</span>
+      <span id="connection-status"><span class="status-dot demo"></span></span>
+    </div>
+    <div class="stint-body">
+      <div class="stint-summary">
+        <div class="stint-big">
+          <div class="stint-big-value" id="stint-laps">0</div>
+          <div class="stint-big-label">Laps</div>
+        </div>
+        <div class="divider-v"></div>
+        <div class="stint-stats">
+          <div class="stint-stat">
+            <div class="stint-stat-label">Best</div>
+            <div class="stint-stat-value fastest" id="stint-best">--</div>
+          </div>
+          <div class="stint-stat">
+            <div class="stint-stat-label">Last</div>
+            <div class="stint-stat-value" id="stint-last">--</div>
+          </div>
+          <div class="stint-stat">
+            <div class="stint-stat-label">Avg</div>
+            <div class="stint-stat-value" id="stint-avg">--</div>
+          </div>
+        </div>
+      </div>
+      <div class="lap-list" id="lap-list"></div>
+    </div>
+  </div>
+
+  <script>
+    const BRIDGE_URL = 'ws://localhost:9100';
+    let ws = null;
+    let bridgeConnected = false;
+    let iracingConnected = false;
+    const dataHandlers = {};
+
+    function connectBridge(channels) {
+      try { ws = new WebSocket(BRIDGE_URL); } catch(e) { setTimeout(() => connectBridge(channels), 3000); return; }
+      ws.onopen = () => { bridgeConnected = true; updateStatus(); ws.send(JSON.stringify({ type: 'subscribe', channels })); };
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'bridge-connected') { bridgeConnected = true; updateStatus(); }
+          else if (msg.type === 'status') { iracingConnected = msg.iracing; updateStatus(); }
+          else if (msg.type === 'data' && dataHandlers[msg.channel]) { dataHandlers[msg.channel](msg.data); }
+        } catch(e) {}
+      };
+      ws.onclose = () => { bridgeConnected = false; iracingConnected = false; updateStatus(); setTimeout(() => connectBridge(channels), 3000); };
+      ws.onerror = () => { ws.close(); };
+    }
+    function onData(ch, fn) { dataHandlers[ch] = fn; }
+    function updateStatus() {
+      const el = document.getElementById('connection-status');
+      if (!bridgeConnected) { if (el) el.innerHTML = '<span class="status-dot demo"></span>'; }
+      else if (!iracingConnected) { if (el) el.innerHTML = '<span class="status-dot waiting"></span>'; }
+      else { if (el) el.innerHTML = '<span class="status-dot connected"></span>'; }
+    }
+
+    function formatLapTime(t) {
+      if (!t || t <= 0) return '--';
+      const m = Math.floor(t / 60);
+      const s = (t % 60).toFixed(3);
+      return m > 0 ? m + ':' + s.padStart(6, '0') : s;
+    }
+
+    // Stint tracking — local to overlay
+    let stintLaps = [];
+    let lastStintCount = -1;
+    let lastFocusLap = -1;
+
+    onData('standings', data => {
+      if (!data || !data.length) return;
+      const focused = data.find(d => d.isSpectated) || data.find(d => d.isPlayer);
+      if (!focused) return;
+
+      // Detect new lap: lastLap changes
+      const currentLap = focused.lastLap;
+      if (currentLap > 0 && currentLap !== lastFocusLap) {
+        // New lap completed
+        if (lastFocusLap > 0) {
+          stintLaps.push(currentLap);
+        }
+        lastFocusLap = currentLap;
+      }
+    });
+
+    onData('session', data => {
+      if (!data) return;
+      const newStintCount = data.stintLaps || 0;
+
+      // Stint reset (pit stop detected) — clear lap list
+      if (newStintCount < lastStintCount && lastStintCount > 0) {
+        stintLaps = [];
+        lastFocusLap = -1;
+      }
+      lastStintCount = newStintCount;
+
+      // Update summary
+      document.getElementById('stint-laps').textContent = stintLaps.length || newStintCount || 0;
+
+      if (stintLaps.length > 0) {
+        const best = Math.min(...stintLaps);
+        const last = stintLaps[stintLaps.length - 1];
+        const avg = stintLaps.reduce((a, b) => a + b, 0) / stintLaps.length;
+
+        document.getElementById('stint-best').textContent = formatLapTime(best);
+        document.getElementById('stint-last').textContent = formatLapTime(last);
+        document.getElementById('stint-avg').textContent = formatLapTime(avg);
+
+        // Render lap list (newest on top)
+        const listEl = document.getElementById('lap-list');
+        let html = '';
+        for (let i = stintLaps.length - 1; i >= 0; i--) {
+          const t = stintLaps[i];
+          const isBest = t === best;
+          const delta = t - best;
+          const deltaStr = delta === 0 ? '' : (delta > 0 ? '+' + delta.toFixed(3) : delta.toFixed(3));
+          const deltaClass = delta === 0 ? '' : (delta > 0 ? 'slower' : 'faster');
+          html += `<div class="lap-row ${isBest ? 'fastest' : ''}">
+            <span class="lap-num">L${i + 1}</span>
+            <span class="lap-time ${isBest ? 'fastest' : ''}">${formatLapTime(t)}</span>
+            <span class="lap-delta ${deltaClass}">${deltaStr}</span>
+          </div>`;
+        }
+        listEl.innerHTML = html;
+      }
+    });
+
+    connectBridge(['standings', 'session']);
+
+    // Drag support
+    try {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.on('lock-state', () => {});
+      let _dragging = false, _dragStartX = 0, _dragStartY = 0;
+      const dragHeader = document.querySelector('.overlay-header');
+      if (dragHeader) {
+        dragHeader.style.cursor = 'move';
+        dragHeader.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return;
+          _dragging = true;
+          _dragStartX = e.screenX;
+          _dragStartY = e.screenY;
+          e.preventDefault();
+        });
+      }
+      document.addEventListener('mousemove', (e) => {
+        if (!_dragging) return;
+        ipcRenderer.send('drag-overlay', e.screenX - _dragStartX, e.screenY - _dragStartY);
+        _dragStartX = e.screenX;
+        _dragStartY = e.screenY;
+      });
+      document.addEventListener('mouseup', () => { _dragging = false; });
+      document.addEventListener('mouseleave', () => { _dragging = false; });
+    } catch(e) {}
+  </script>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Driver Card</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; }
+    .overlay-panel { background: rgba(12,13,20,0.88); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; backdrop-filter: blur(12px); overflow: hidden; }
+    .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 5px 10px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+    .status-dot.connected { background: #3ecf8e; }
+    .status-dot.waiting { background: #f79009; }
+    .status-dot.demo { background: #f79009; }
+    .card-body { display: flex; gap: 12px; padding: 10px 14px; }
+    .helmet-area { display: flex; align-items: center; justify-content: center; width: 50px; flex-shrink: 0; }
+    .helmet-icon { font-size: 36px; }
+    .driver-info { flex: 1; min-width: 0; }
+    .driver-name { font-size: 15px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+    .driver-meta { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+    .badge { padding: 1px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .badge-pos { background: #9146ff; color: #fff; }
+    .badge-ir { background: rgba(255,255,255,0.1); color: #fff; }
+    .badge-class { color: #fff; font-size: 8px; padding: 1px 5px; }
+    .lap-times { display: flex; gap: 12px; }
+    .lap-block { }
+    .lap-label { font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.35); }
+    .lap-value { font-size: 13px; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.85); }
+    .country-flag { width: 16px; height: 12px; border-radius: 2px; vertical-align: middle; }
+  </style>
+</head>
+<body>
+  <div class="overlay-panel">
+    <div class="overlay-header">
+      <span>DRIVER CARD</span>
+      <span id="connection-status"><span class="status-dot demo"></span></span>
+    </div>
+    <div class="card-body">
+      <div class="helmet-area">
+        <span class="helmet-icon" id="helmet-icon">🪖</span>
+      </div>
+      <div class="driver-info">
+        <div class="driver-name" id="driver-name">--</div>
+        <div class="driver-meta">
+          <span class="badge badge-pos" id="driver-pos">P-</span>
+          <span class="badge badge-ir" id="driver-ir">--</span>
+          <span class="badge badge-class" id="driver-class">--</span>
+        </div>
+        <div class="lap-times">
+          <div class="lap-block">
+            <div class="lap-label">Best</div>
+            <div class="lap-value" id="driver-best">--</div>
+          </div>
+          <div class="lap-block">
+            <div class="lap-label">Last</div>
+            <div class="lap-value" id="driver-last">--</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BRIDGE_URL = 'ws://localhost:9100';
+    let ws = null;
+    let bridgeConnected = false;
+    let iracingConnected = false;
+    const dataHandlers = {};
+
+    function connectBridge(channels) {
+      try { ws = new WebSocket(BRIDGE_URL); } catch(e) { setTimeout(() => connectBridge(channels), 3000); return; }
+      ws.onopen = () => { bridgeConnected = true; updateStatus(); ws.send(JSON.stringify({ type: 'subscribe', channels })); };
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'bridge-connected') { bridgeConnected = true; updateStatus(); }
+          else if (msg.type === 'status') { iracingConnected = msg.iracing; updateStatus(); }
+          else if (msg.type === 'data' && dataHandlers[msg.channel]) { dataHandlers[msg.channel](msg.data); }
+        } catch(e) {}
+      };
+      ws.onclose = () => { bridgeConnected = false; iracingConnected = false; updateStatus(); setTimeout(() => connectBridge(channels), 3000); };
+      ws.onerror = () => { ws.close(); };
+    }
+    function onData(ch, fn) { dataHandlers[ch] = fn; }
+    function updateStatus() {
+      const el = document.getElementById('connection-status');
+      if (!bridgeConnected) { if (el) el.innerHTML = '<span class="status-dot demo"></span>'; }
+      else if (!iracingConnected) { if (el) el.innerHTML = '<span class="status-dot waiting"></span>'; }
+      else { if (el) el.innerHTML = '<span class="status-dot connected"></span>'; }
+    }
+
+    function formatLapTime(t) {
+      if (!t || t <= 0) return '--';
+      const m = Math.floor(t / 60);
+      const s = (t % 60).toFixed(3);
+      return m > 0 ? m + ':' + s.padStart(6, '0') : s;
+    }
+
+    function formatIR(ir) {
+      if (!ir || ir <= 0) return '--';
+      return ir >= 1000 ? (ir / 1000).toFixed(1) + 'k' : String(ir);
+    }
+
+    onData('standings', data => {
+      if (!data || !data.length) return;
+
+      // Find focused driver
+      const focused = data.find(d => d.isSpectated) || data.find(d => d.isPlayer);
+      if (!focused) return;
+
+      document.getElementById('driver-name').textContent = focused.driverName || '--';
+      document.getElementById('driver-pos').textContent = 'P' + (focused.classPosition || focused.position || '-');
+      document.getElementById('driver-ir').textContent = formatIR(focused.iRating);
+      document.getElementById('driver-best').textContent = formatLapTime(focused.bestLap);
+      document.getElementById('driver-last').textContent = formatLapTime(focused.lastLap);
+
+      // Class badge with color
+      const classEl = document.getElementById('driver-class');
+      classEl.textContent = focused.carClass || '';
+      classEl.style.background = focused.carClassColor || 'rgba(255,255,255,0.1)';
+
+      // iRating change
+      const irEl = document.getElementById('driver-ir');
+      const change = focused.estIRatingChange || 0;
+      if (change > 0) {
+        irEl.textContent = formatIR(focused.iRating) + ' +' + change;
+        irEl.style.color = '#3ecf8e';
+      } else if (change < 0) {
+        irEl.textContent = formatIR(focused.iRating) + ' ' + change;
+        irEl.style.color = '#f04438';
+      } else {
+        irEl.textContent = formatIR(focused.iRating);
+        irEl.style.color = '#fff';
+      }
+    });
+
+    connectBridge(['standings']);
+
+    // Drag support
+    try {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.on('lock-state', () => {});
+      let _dragging = false, _dragStartX = 0, _dragStartY = 0;
+      const dragHeader = document.querySelector('.overlay-header');
+      if (dragHeader) {
+        dragHeader.style.cursor = 'move';
+        dragHeader.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return;
+          _dragging = true;
+          _dragStartX = e.screenX;
+          _dragStartY = e.screenY;
+          e.preventDefault();
+        });
+      }
+      document.addEventListener('mousemove', (e) => {
+        if (!_dragging) return;
+        ipcRenderer.send('drag-overlay', e.screenX - _dragStartX, e.screenY - _dragStartY);
+        _dragStartX = e.screenX;
+        _dragStartY = e.screenY;
+      });
+      document.addEventListener('mouseup', () => { _dragging = false; });
+      document.addEventListener('mouseleave', () => { _dragging = false; });
+    } catch(e) {}
+  </script>
+</body>
+</html>

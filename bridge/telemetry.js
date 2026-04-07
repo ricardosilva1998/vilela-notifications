@@ -564,12 +564,15 @@ async function startTelemetry(onStatusChange) {
         const waterTemp = ir.get(VARS.WATER_TEMP)?.[0] || 0;
         const oilTemp = ir.get(VARS.OIL_TEMP)?.[0] || 0;
 
-        // Event type from session info
+        // Event type + sky conditions from session info
         let eventType = '';
+        let skies = '';
         try {
           const si = ir.getSessionInfo('SessionInfo');
           const sn = ir.get(VARS.SESSION_NUM)?.[0] ?? 0;
           eventType = si?.Sessions?.[sn]?.SessionType || '';
+          const wi = ir.getSessionInfo('WeekendInfo');
+          skies = wi?.TrackSkies || '';
         } catch(e) {}
 
         // Stint tracking (laps + time since last pit)
@@ -588,7 +591,9 @@ async function startTelemetry(onStatusChange) {
           trackName,
           airTemp, trackTemp, humidity, trackWetness,
           sessionTime, sessionTimeRemain, timeOfDay, sof, sofByClass,
-          incidentCount, fogLevel, precipitation, weatherWet,
+          incidentCount, fogLevel, precipitation, weatherWet, skies,
+          windDir: ir.get(VARS.WIND_DIR)?.[0] || 0,
+          windSpeed: ir.get(VARS.WIND_VEL)?.[0] || 0,
           fuelLevel: fuelLevelSession, waterTemp, oilTemp,
           sessionLapsRemain, eventType, stintLaps, stintTime,
           playerIRChange: _lastPlayerIRChange,

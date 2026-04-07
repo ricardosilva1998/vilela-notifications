@@ -276,6 +276,15 @@
       <div class="sidebar-item" data-panel="raceduration" onclick="navigateTo('raceduration')">
         <span class="sidebar-icon">&#9201;</span> Race Duration
       </div>
+      <div class="sidebar-item" data-panel="drivercard" onclick="navigateTo('drivercard')">
+        <span class="sidebar-icon">&#127183;</span> Driver Card
+      </div>
+      <div class="sidebar-item" data-panel="stintlaps" onclick="navigateTo('stintlaps')">
+        <span class="sidebar-icon">&#128203;</span> Stint Laps
+      </div>
+      <div class="sidebar-item" data-panel="weather" onclick="navigateTo('weather')">
+        <span class="sidebar-icon">&#9925;</span> Weather
+      </div>
       <div class="sidebar-spacer"></div>
       <div class="sidebar-divider"></div>
       <div class="sidebar-item" data-panel="updates" onclick="navigateTo('updates')">
@@ -325,6 +334,9 @@
       <div class="content-panel" id="panel-voicechat"></div>
       <div class="content-panel" id="panel-inputs"></div>
       <div class="content-panel" id="panel-raceduration"></div>
+      <div class="content-panel" id="panel-drivercard"></div>
+      <div class="content-panel" id="panel-stintlaps"></div>
+      <div class="content-panel" id="panel-weather"></div>
 
       <!-- ═══ UPDATES PANEL ═══ -->
       <div class="content-panel" id="panel-updates">
@@ -398,6 +410,9 @@
       { id: 'voicechat', icon: '&#127908;', name: 'Voice Chat' },
       { id: 'inputs', icon: '&#127918;', name: 'Driver Inputs' },
       { id: 'raceduration', icon: '&#9201;', name: 'Race Duration' },
+      { id: 'drivercard', icon: '&#127183;', name: 'Driver Card' },
+      { id: 'stintlaps', icon: '&#128203;', name: 'Stint Laps' },
+      { id: 'weather', icon: '&#9925;', name: 'Weather' },
     ];
 
     // ─── CUSTOMIZE_FIELDS (all overlay settings) ─────────────
@@ -508,6 +523,25 @@
           { value: 'mph', label: 'mph' },
         ]},
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
+        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
+      ],
+      drivercard: [
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
+        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
+      ],
+      stintlaps: [
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
+        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
+      ],
+      weather: [
+        { key: 'speedUnit', label: 'Wind Speed Unit', type: 'select', default: 'kmh', options: [
+          { value: 'kmh', label: 'km/h' },
+          { value: 'mph', label: 'mph' },
+        ]},
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
