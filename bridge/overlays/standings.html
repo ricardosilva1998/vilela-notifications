@@ -11,7 +11,7 @@
     body::-webkit-scrollbar { display: none; }
     ::-webkit-scrollbar { display: none; }
     .overlay-panel { background: rgba(12,13,20,0.88); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; backdrop-filter: blur(12px); overflow: hidden; }
-    .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); cursor: move; -webkit-app-region: drag; }
+    .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); }
     .overlay-body { padding: 4px 0; }
     .overlay-table { width: 100%; border-collapse: collapse; font-size: 11px; }
     .overlay-table th { padding: 3px 6px; text-align: left; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.3); border-bottom: 1px solid rgba(255,255,255,0.06); white-space: nowrap; }
@@ -522,6 +522,30 @@
         const header = document.querySelector('.overlay-header');
         if (header) header.style.cursor = locked ? 'default' : 'move';
       });
+
+      // Custom window dragging via IPC (bypasses transparent window limitations)
+      let _dragging = false;
+      let _dragStartX = 0, _dragStartY = 0;
+      const dragHeader = document.querySelector('.overlay-header');
+      if (dragHeader) {
+        dragHeader.style.cursor = 'move';
+        dragHeader.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return;
+          _dragging = true;
+          _dragStartX = e.screenX;
+          _dragStartY = e.screenY;
+          e.preventDefault();
+        });
+      }
+      document.addEventListener('mousemove', (e) => {
+        if (!_dragging) return;
+        const dx = e.screenX - _dragStartX;
+        const dy = e.screenY - _dragStartY;
+        _dragStartX = e.screenX;
+        _dragStartY = e.screenY;
+        ipcRenderer.send('drag-overlay', dx, dy);
+      });
+      document.addEventListener('mouseup', () => { _dragging = false; });
 
       // Click-through: transparent areas pass clicks through, visible panel captures them
       let _mouseOverPanel = false;

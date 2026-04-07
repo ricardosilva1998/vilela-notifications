@@ -362,6 +362,14 @@ ipcMain.on('set-ignore-mouse', (event, ignore) => {
   }
 });
 
+ipcMain.on('drag-overlay', (event, dx, dy) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win && !win.isDestroyed()) {
+    const bounds = win.getBounds();
+    win.setBounds({ x: bounds.x + dx, y: bounds.y + dy, width: bounds.width, height: bounds.height });
+  }
+});
+
 ipcMain.on('move-overlay', (event, overlayId, x, y) => {
   if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
     const bounds = overlayWindows[overlayId].getBounds();
