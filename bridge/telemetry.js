@@ -563,7 +563,6 @@ async function startTelemetry(onStatusChange) {
         const fuelLevelSession = ir.get(VARS.FUEL_LEVEL)?.[0] || 0;
         const waterTemp = ir.get(VARS.WATER_TEMP)?.[0] || 0;
         const oilTemp = ir.get(VARS.OIL_TEMP)?.[0] || 0;
-        const sessionLapsRemain = ir.get(VARS.SESSION_LAPS_REMAIN_EX)?.[0] || 0;
 
         // Event type from session info
         let eventType = '';
