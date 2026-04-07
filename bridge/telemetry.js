@@ -159,7 +159,8 @@ function estimateIRatingChanges(driverList) {
   });
 
   // K per pair — calibrated against iOverlay data
-  const K = 3;
+  // K calibrated per-class: CP1 in 12-car GTP (iR 5970, SOF 5066) should gain ~69
+  const K = 16;
 
   // Calculate per-class
   for (const cls of Object.keys(classes)) {
