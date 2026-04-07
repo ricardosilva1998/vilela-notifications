@@ -699,10 +699,31 @@ async function startTelemetry(onStatusChange) {
 
         // === Wind === (after focusCarIdx so we can send the right heading)
         const playerYawVal = ir.get(VARS.YAW)?.[0] || 0;
+        let windHeading = playerYawVal;
+
+        // When focused on another driver, estimate their heading from track position
+        if (focusCarIdx !== playerCarIdx && trackPathOutput.length > 10) {
+          const focusPct = lapDistPct[focusCarIdx] || 0;
+          if (focusPct > 0) {
+            // Find two nearby track path points to get direction
+            const SLOTS = trackPathOutput.length;
+            const idx = Math.floor(focusPct * SLOTS) % SLOTS;
+            const nextIdx = (idx + 1) % SLOTS;
+            const p1 = trackPathOutput[idx];
+            const p2 = trackPathOutput[nextIdx];
+            if (p1 && p2) {
+              // Track path is in GPS coords (x=lon, y=lat) — heading from p1 to p2
+              const dx = p2.x - p1.x;
+              const dy = p2.y - p1.y;
+              windHeading = Math.atan2(dx, dy); // radians, 0=north
+            }
+          }
+        }
+
         broadcastToChannel('wind', { type: 'data', channel: 'wind', data: {
           windDirection: ir.get(VARS.WIND_DIR)?.[0] || 0,
           windSpeed: ir.get(VARS.WIND_VEL)?.[0] || 0,
-          carHeading: playerYawVal,
+          carHeading: windHeading,
         }});
 
         // === Relative ===
