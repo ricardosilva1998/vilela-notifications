@@ -74,11 +74,13 @@ if (isWindows) {
         log('[KeyboardSim] iRacing broadcast msg ID: ' + iracingMsgId);
         _switchCamera = function(carNumber, cameraGroup) {
           const HWND_BROADCAST = 0xFFFF;
-          const wParam = 1; // irsdk_CSCamSwitchNum (switch by car number)
-          const lParam = ((cameraGroup & 0xFFFF) << 16) | (carNumber & 0xFFFF);
+          // iRacing broadcast: wParam = command(low16) | param1(high16), lParam = param2(low16) | param3(high16)
+          // Command 1 = CamSwitchNum: param1=carNumber, param2=cameraGroup, param3=cameraNum(0=current)
+          const wParam = (1 & 0xFFFF) | ((carNumber & 0xFFFF) << 16);
+          const lParam = (cameraGroup & 0xFFFF);
           try {
             sendMessageA(HWND_BROADCAST, iracingMsgId, wParam, lParam);
-            log('[KeyboardSim] Camera switch: car#' + carNumber + ' group=' + cameraGroup);
+            log('[KeyboardSim] Camera switch: car#' + carNumber + ' group=' + cameraGroup + ' wParam=' + wParam + ' lParam=' + lParam);
           } catch(e) {
             log('[KeyboardSim] Camera switch failed: ' + e.message);
           }
