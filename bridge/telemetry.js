@@ -195,6 +195,7 @@ async function startTelemetry(onStatusChange) {
   let playerCarIdx = 0;
   let trackName = '';
   let lastFocusCarIdx = -1;
+  let lastCameraSwitchPoll = -999;
   let lastSessionNum = -1;
   let pollCount = 0;
 
@@ -547,23 +548,8 @@ async function startTelemetry(onStatusChange) {
           if (cam !== undefined && cam !== null) camCarIdx = Array.isArray(cam) ? cam[0] : cam;
         } catch(e) {}
 
-        // Detect when iRacing camera changes (user pressed F3 or entered car)
-        // Reset overlay selection so iRacing camera takes priority
         const userSelectedIdx = getSelectedCarIdx();
-        if (camCarIdx !== lastFocusCarIdx && userSelectedIdx !== null && camCarIdx !== userSelectedIdx) {
-          // iRacing camera changed to a different driver than our selection — follow iRacing
-          if (pollCount % 30 === 0) log('[Focus] iRacing camera changed to idx=' + camCarIdx + ', clearing overlay selection (was ' + userSelectedIdx + ')');
-          resetSelectedCar();
-        }
-
-        // If user is back in their car (on track), reset selection
-        const playerOnTrack = lapDistPct[playerCarIdx] > 0;
-        if (playerOnTrack && userSelectedIdx !== null && userSelectedIdx !== playerCarIdx) {
-          log('[Focus] Player back on track, resetting selection to self');
-          resetSelectedCar();
-        }
-
-        const currentSelection = getSelectedCarIdx();
+        const currentSelection = userSelectedIdx;
         const focusCarIdx = currentSelection !== null ? currentSelection : camCarIdx;
 
         // Switch iRacing camera when USER selects a driver from overlay
@@ -572,8 +558,19 @@ async function startTelemetry(onStatusChange) {
           if (focusDriver && focusDriver.CarNumberRaw !== undefined) {
             log('[Focus] Overlay click → camera switch to car#' + focusDriver.CarNumberRaw + ' (idx=' + currentSelection + ')');
             switchCamera(focusDriver.CarNumberRaw, 0);
+            lastCameraSwitchPoll = pollCount; // grace period before checking iRacing camera
           }
         }
+
+        // Detect when iRacing camera changes (user pressed F3 or entered car)
+        // Only check after grace period (60 polls = ~2s) to let our camera switch take effect
+        if (currentSelection !== null && (pollCount - lastCameraSwitchPoll) > 60) {
+          if (camCarIdx !== currentSelection && camCarIdx !== lastFocusCarIdx) {
+            log('[Focus] iRacing camera changed to idx=' + camCarIdx + ', clearing overlay selection (was ' + currentSelection + ')');
+            resetSelectedCar();
+          }
+        }
+
         lastFocusCarIdx = focusCarIdx;
 
         // Use PLAYER_CAR_IDX from telemetry if session info unavailable
