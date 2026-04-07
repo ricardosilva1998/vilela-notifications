@@ -21,10 +21,10 @@
     .overlay-table tr.spectated-row { background: rgba(62,207,142,0.2); }
     .overlay-table tr.spectated-row td { color: #fff; font-weight: 600; }
     .overlay-table tr.disconnected { opacity: 0.35; }
-    .overlay-table tr.pos-up { animation: posUp 2s ease-out; }
-    .overlay-table tr.pos-down { animation: posDown 2s ease-out; }
-    @keyframes posUp { 0%,30% { background: rgba(62,207,142,0.2); } 100% { background: transparent; } }
-    @keyframes posDown { 0%,30% { background: rgba(240,68,56,0.2); } 100% { background: transparent; } }
+    .overlay-table tr.pos-up { animation: posUp 1.2s ease-out; }
+    .overlay-table tr.pos-down { animation: posDown 1.2s ease-out; }
+    @keyframes posUp { 0% { background: rgba(62,207,142,0.3); } 30% { background: rgba(62,207,142,0.15); } 100% { background: transparent; } }
+    @keyframes posDown { 0% { background: rgba(240,68,56,0.3); } 30% { background: rgba(240,68,56,0.15); } 100% { background: transparent; } }
     .pit-indicator { background: #f79009; color: #000; font-weight: 700; font-size: 8px; padding: 1px 5px; border-radius: 8px; margin-left: 6px; vertical-align: middle; }
     .mono { font-family: 'JetBrains Mono', 'Consolas', monospace; }
     .driver-name { white-space: nowrap; display: block; }
@@ -520,15 +520,39 @@
         if (d.classPosition > 0) prevPositions.set(d.carIdx, d.classPosition);
       });
 
-      document.getElementById('standings-body').innerHTML = buildStandingsHTML(data);
+      // FLIP animation: record old row positions before rebuild
+      const tbody = document.getElementById('standings-body');
+      const oldRowPositions = new Map();
+      tbody.querySelectorAll('tr[data-caridx]').forEach(tr => {
+        oldRowPositions.set(parseInt(tr.dataset.caridx), tr.getBoundingClientRect().top);
+      });
 
-      // Apply position change animations
-      if (posChanges.size > 0) {
-        document.querySelectorAll('.overlay-table tr[data-caridx]').forEach(tr => {
-          const idx = parseInt(tr.dataset.caridx);
-          if (posChanges.has(idx)) tr.classList.add(posChanges.get(idx));
-        });
-      }
+      tbody.innerHTML = buildStandingsHTML(data);
+
+      // FLIP: animate rows from old to new position + color flash
+      tbody.querySelectorAll('tr[data-caridx]').forEach(tr => {
+        const idx = parseInt(tr.dataset.caridx);
+
+        // Slide animation (FLIP)
+        if (oldRowPositions.has(idx)) {
+          const oldTop = oldRowPositions.get(idx);
+          const newTop = tr.getBoundingClientRect().top;
+          const delta = oldTop - newTop;
+          if (Math.abs(delta) > 2) {
+            tr.style.transform = `translateY(${delta}px)`;
+            tr.style.transition = 'none';
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                tr.style.transition = 'transform 0.5s ease-out';
+                tr.style.transform = 'translateY(0)';
+              });
+            });
+          }
+        }
+
+        // Color flash
+        if (posChanges.has(idx)) tr.classList.add(posChanges.get(idx));
+      });
       // Auto-resize height only (width stays fixed to prevent endless growth)
       setTimeout(() => {
         const panel = document.querySelector('.overlay-panel');
