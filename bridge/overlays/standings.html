@@ -320,22 +320,25 @@
 
       const logoStyle = getBrandLogoStyle(carBrand);
       const logoImg = logoStyle ? `<span class="brand-logo" style="${logoStyle}"></span>` : '';
-      // Per-driver flags — only bits 16+ are per-car penalties (lower bits are session-wide)
+      // Per-driver flags — compare against common flags to filter session-wide ones
       const flags = d.sessionFlags || 0;
-      const pf = flags >> 16; // shift to get per-car flag bits only
+      const uniqueFlags = flags & ~(_commonFlags || 0); // only flags unique to this driver
+      const fw = Math.round(fontSize * 1.1); // flag width scales with font
+      const fh = Math.round(fontSize * 0.82);
+      const fr = Math.round(fh * 0.35);
       let flagIcons = '';
-      // Black flag (bit 0 of upper word = 0x00010000)
-      if (pf & 0x01) flagIcons += `<svg class="flag-icon" width="12" height="9" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#111"/></svg>`;
-      // Meatball (bit 2 = 0x00040000) — black flag with orange circle
-      if (pf & 0x04) flagIcons += `<svg class="flag-icon" width="12" height="9" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#111"/><circle cx="6" cy="4.5" r="3" fill="#f79009"/></svg>`;
-      // Repair (bit 4 = 0x00100000) — same as meatball
-      if (pf & 0x10) flagIcons += `<svg class="flag-icon" width="12" height="9" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#111"/><circle cx="6" cy="4.5" r="3" fill="#f79009"/></svg>`;
-      // DQ (bit 1 = 0x00020000) — black flag
-      if (pf & 0x02) flagIcons += `<svg class="flag-icon" width="12" height="9" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#111"/></svg>`;
-      // Blue flag (bit 5 of lower word = 0x00000020) — blue flag
-      if (flags & 0x00000020) flagIcons += `<svg class="flag-icon" width="12" height="9" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#2563eb"/></svg>`;
-      // Yellow/caution (bit 14 = 0x00004000) — yellow flag (per-car local yellow)
-      if (flags & 0x00004000) flagIcons += `<svg class="flag-icon" width="12" height="9" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#eab308"/></svg>`;
+      // Black flag
+      if (uniqueFlags & 0x00010000) flagIcons += `<svg class="flag-icon" width="${fw}" height="${fh}" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#111"/></svg>`;
+      // Meatball — black flag with orange circle
+      if (uniqueFlags & 0x00040000) flagIcons += `<svg class="flag-icon" width="${fw}" height="${fh}" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#111"/><circle cx="6" cy="4.5" r="3" fill="#f79009"/></svg>`;
+      // Repair — same as meatball
+      if (uniqueFlags & 0x00100000) flagIcons += `<svg class="flag-icon" width="${fw}" height="${fh}" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#111"/><circle cx="6" cy="4.5" r="3" fill="#f79009"/></svg>`;
+      // DQ — black flag
+      if (uniqueFlags & 0x00020000) flagIcons += `<svg class="flag-icon" width="${fw}" height="${fh}" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#111"/></svg>`;
+      // Blue flag
+      if (uniqueFlags & 0x00000020) flagIcons += `<svg class="flag-icon" width="${fw}" height="${fh}" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#2563eb"/></svg>`;
+      // Yellow/caution per car
+      if (uniqueFlags & 0x00004000) flagIcons += `<svg class="flag-icon" width="${fw}" height="${fh}" viewBox="0 0 12 9"><rect width="12" height="9" rx="1" fill="#eab308"/></svg>`;
       const badgeCell = `<div class="driver-name">${d.driverName || ''}${pitMark}${flagIcons}</div>`;
 
       const licCell = d.safetyRating || d.license
@@ -422,7 +425,8 @@
       }
 
       // Multiple classes — add a class header row before each group
-      const formatSOFShort = (v) => v >= 1000 ? (v/1000).toFixed(1) + 'k' : String(v);
+      const roundSOF = (v) => Math.round(v / 100) * 100; // ≤50 rounds down, >50 rounds up
+      const formatSOFShort = (v) => { const r = roundSOF(v); return r >= 1000 ? (r/1000).toFixed(1) + 'k' : String(r); };
       let html = '';
       classNames.forEach(cls => {
         const group = classes[cls];
@@ -502,10 +506,14 @@
 
     // Track previous positions for animation
     const prevPositions = new Map();
+    let _commonFlags = 0;
 
     onData('standings', data => {
       if (!data || !data.length) return;
       if (!demoCleared) { demoCleared = true; }
+
+      // Find flags common to ALL drivers (these are session-wide, not per-car)
+      _commonFlags = data.reduce((common, d) => common & (d.sessionFlags || 0), data[0]?.sessionFlags || 0);
 
       // Detect position changes
       const posChanges = new Map();
@@ -555,7 +563,8 @@
         const sec = Math.floor(s % 60);
         return h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}` : `${m}:${String(sec).padStart(2,'0')}`;
       };
-      const formatSOF = (v) => v >= 1000 ? (v/1000).toFixed(1) + 'k' : String(v);
+      const roundSOF2 = (v) => Math.round(v / 100) * 100;
+      const formatSOF = (v) => { const r = roundSOF2(v); return r >= 1000 ? (r/1000).toFixed(1) + 'k' : String(r); };
 
       const items = {
         trackName: data.trackName || '',
