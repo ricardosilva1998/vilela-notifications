@@ -69,6 +69,9 @@ app.on('second-instance', () => {
   }
 });
 
+// Set app ID for Windows taskbar icon grouping
+app.setAppUserModelId('com.atleta.bridge');
+
 app.on('ready', () => {
   // Grant microphone permission for Web Speech API in overlays
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
