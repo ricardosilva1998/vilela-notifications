@@ -260,7 +260,7 @@
         const pos = getTrackPosition(car.pct);
         const x = pos.x * s, y = pos.y * s;
         const isFocused = car.isSpectated && !car.isPlayer;
-        const radius = car.isPlayer ? 6 : (isFocused ? 7 : 4);
+        const radius = car.isPlayer ? 7 : (isFocused ? 9 : 4);
         const color = car.isPlayer ? playerColor : (isFocused ? focusColor : (car.carClassColor || '#fff'));
 
         ctx.beginPath();

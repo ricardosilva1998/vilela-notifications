@@ -130,17 +130,36 @@
 `;
     document.head.appendChild(_dynStyle);
 
+    // Migrate old header keys to new ones
+    const HEADER_KEY_MIGRATION = { timeRemaining: 'timeRemain' };
+    function migrateHeaderKey(k) { return HEADER_KEY_MIGRATION[k] || k; }
+    function migrateHeaderKeys(arr) { return arr.map(migrateHeaderKey); }
+    function migrateHeaderEnabled(obj) {
+      const out = {};
+      Object.entries(obj).forEach(([k, v]) => { out[migrateHeaderKey(k)] = v; });
+      return out;
+    }
+
     // Session header items — filter by enabled state
-    const DEFAULT_HEADER_ITEMS = ['trackName', 'airTemp', 'sof', 'timeRemain'];
+    const DEFAULT_HEADER_ITEMS = ['eventType', 'trackName', 'timeRemain', 'sof', 'airTemp', 'trackTemp', 'incidents'];
     let headerItems;
     try {
-      const allHeaderItems = parseSetting(getSetting('headerItems', DEFAULT_HEADER_ITEMS));
+      const allHeaderItems = migrateHeaderKeys(parseSetting(getSetting('headerItems', DEFAULT_HEADER_ITEMS)));
       let headerEnabled = {};
-      try { headerEnabled = parseSetting(getSetting('headerEnabled', {})); } catch(e) {}
+      try { headerEnabled = migrateHeaderEnabled(parseSetting(getSetting('headerEnabled', {}))); } catch(e) {}
       headerItems = Object.keys(headerEnabled).length > 0
         ? allHeaderItems.filter(k => headerEnabled[k])
         : allHeaderItems;
     } catch(e) { headerItems = DEFAULT_HEADER_ITEMS; }
+
+    // Class header items — configurable per-item toggles
+    let classHeaderEnabled;
+    try {
+      classHeaderEnabled = parseSetting(getSetting('classHeaderEnabled', {}));
+    } catch(e) { classHeaderEnabled = {}; }
+    function isClassHeaderOn(key) {
+      return classHeaderEnabled[key] !== undefined ? classHeaderEnabled[key] : true; // default all on
+    }
 
     // Per-class max
     const maxMyClass = parseInt(getSetting('maxMyClass', '0')) || 0;
@@ -413,14 +432,13 @@
         const color = group.color;
         const leaderBest = group.drivers.find(d => d.bestLap > 0)?.bestLap || null;
 
-        // SOF in class header (if sofDisplay === 'classHeader')
+        // Class header row — respect classHeaderEnabled toggles
         const classSof = _sofByClass[cls] || 0;
-        const sofStr = sofDisplay === 'classHeader' && classSof > 0 ? ` &middot; SOF ${formatSOFShort(classSof)}` : '';
-
-        // Class header row
+        const classNamePart = isClassHeaderOn('className') ? `<span style="color:${color};">${cls}</span>` : '';
+        const carCountPart = isClassHeaderOn('carCount') ? `<span style="color:rgba(255,255,255,0.3);font-weight:400;margin-left:6px;">${group.drivers.length} cars</span>` : '';
+        const classSofPart = isClassHeaderOn('classSof') && classSof > 0 ? `<span style="color:rgba(255,255,255,0.4);font-weight:400;margin-left:4px;">&middot; SOF ${formatSOFShort(classSof)}</span>` : (sofDisplay === 'classHeader' && classSof > 0 ? `<span style="color:rgba(255,255,255,0.4);font-weight:400;margin-left:4px;">&middot; SOF ${formatSOFShort(classSof)}</span>` : '');
         html += `<tr><td colspan="${enabledColumns.length}" style="padding:6px 8px 3px;font-size:${fsMed}px;font-weight:700;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid ${color};">
-          <span style="color:${color};">${cls}${sofStr}</span>
-          <span style="color:rgba(255,255,255,0.3);font-weight:400;margin-left:6px;">${group.drivers.length} cars</span>
+          ${classNamePart}${classSofPart}${carCountPart}
         </td></tr>`;
 
         group.drivers.forEach((d, i) => {
@@ -544,20 +562,33 @@
       const formatSOF = (v) => { const r = roundSOF2(v); return r >= 1000 ? (r/1000).toFixed(1) + 'k' : String(r); };
 
       const items = {
+        eventType: data.eventType || '',
         trackName: data.trackName || '',
-        airTemp: data.airTemp ? data.airTemp.toFixed(1) + '°C air' : '',
-        trackTemp: data.trackTemp ? data.trackTemp.toFixed(1) + '°C track' : '',
-        humidity: data.humidity ? Math.round(data.humidity) + '% hum' : '',
+        lapsRemain: data.sessionLapsRemain > 0 && data.sessionLapsRemain < 32767 ? data.sessionLapsRemain + ' laps' : '',
+        timeRemain: 'Rem ' + formatTime(data.sessionTimeRemain),
+        timeOfDay: 'ToD ' + formatTime(data.timeOfDay),
+        irlTime: new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),
         sof: sofDisplay === 'header' ? (() => {
           if (data.sofByClass && Object.keys(data.sofByClass).length > 1) {
             return 'SOF: ' + Object.entries(data.sofByClass).map(([cls, v]) => cls + ' ' + formatSOF(v)).join(' | ');
           }
           return data.sof ? 'SOF ' + formatSOF(data.sof) : '';
         })() : '',
-        timeRemain: 'Rem ' + formatTime(data.sessionTimeRemain),
-        timeOfDay: 'ToD ' + formatTime(data.timeOfDay),
-        skies: data.skies || '',
         incidents: data.incidentCount !== undefined ? 'Inc ' + data.incidentCount + 'x' : '',
+        iRatingGain: data.playerIRChange ? (data.playerIRChange >= 0 ? '+' : '') + data.playerIRChange + ' iR' : '',
+        stintLaps: data.stintLaps > 0 ? 'Stint ' + data.stintLaps + 'L' : '',
+        stintTime: data.stintTime > 0 ? 'Stint ' + formatTime(data.stintTime) : '',
+        fuelLevel: data.fuelLevel > 0 ? data.fuelLevel.toFixed(1) + 'L' : '',
+        waterTemp: data.waterTemp > 0 ? data.waterTemp.toFixed(0) + '°C H₂O' : '',
+        oilTemp: data.oilTemp > 0 ? data.oilTemp.toFixed(0) + '°C oil' : '',
+        airTemp: data.airTemp ? data.airTemp.toFixed(1) + '°C air' : '',
+        trackTemp: data.trackTemp ? data.trackTemp.toFixed(1) + '°C track' : '',
+        humidity: data.humidity ? Math.round(data.humidity) + '% hum' : '',
+        fogLevel: data.fogLevel > 0 ? Math.round(data.fogLevel * 100) + '% fog' : '',
+        precipitation: data.precipitation > 0 ? Math.round(data.precipitation * 100) + '% rain' : '',
+        trackWetness: data.trackWetness > 0 ? 'Wet ' + data.trackWetness : '',
+        weatherWet: data.weatherWet ? 'WET' : '',
+        skies: data.skies || '',
       };
 
       const parts = headerItems.map(k => items[k]).filter(Boolean);

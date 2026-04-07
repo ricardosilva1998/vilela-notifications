@@ -525,6 +525,16 @@
       return out;
     }
 
+    // Migrate old header keys to new ones
+    const HEADER_KEY_MIGRATION = { timeRemaining: 'timeRemain' };
+    function migrateHeaderKey(k) { return HEADER_KEY_MIGRATION[k] || k; }
+    function migrateHeaderKeys(arr) { return arr.map(migrateHeaderKey); }
+    function migrateHeaderEnabled(obj) {
+      const out = {};
+      Object.entries(obj).forEach(([k, v]) => { out[migrateHeaderKey(k)] = v; });
+      return out;
+    }
+
     // Standings & Relative column definitions
     const STANDINGS_COLUMNS = [
       { key: 'pos',     label: 'Position', default: true },
@@ -551,15 +561,37 @@
     ];
 
     const SESSION_HEADER_ITEMS = [
-      { key: 'trackName', label: 'Track Name', default: true },
-      { key: 'airTemp', label: 'Air Temp', default: true },
-      { key: 'trackTemp', label: 'Track Temp', default: true },
-      { key: 'humidity', label: 'Humidity', default: true },
-      { key: 'sof', label: 'SOF', default: true },
-      { key: 'timeRemaining', label: 'Time Remaining', default: true },
-      { key: 'timeOfDay', label: 'Time of Day', default: false },
-      { key: 'skies', label: 'Skies', default: false },
-      { key: 'incidents', label: 'Incidents', default: true },
+      // Session
+      { key: 'eventType', label: 'Event Type', category: 'Session', default: true },
+      { key: 'trackName', label: 'Track Name', category: 'Session', default: true },
+      { key: 'lapsRemain', label: 'Laps Remaining', category: 'Session', default: false },
+      { key: 'timeRemain', label: 'Time Remaining', category: 'Session', default: true },
+      { key: 'timeOfDay', label: 'Track Time', category: 'Session', default: false },
+      { key: 'irlTime', label: 'Real Time', category: 'Session', default: false },
+      // Performance
+      { key: 'sof', label: 'SOF', category: 'Performance', default: true },
+      { key: 'incidents', label: 'Incidents', category: 'Performance', default: true },
+      { key: 'iRatingGain', label: 'iRating Gain', category: 'Performance', default: false },
+      { key: 'stintLaps', label: 'Stint Laps', category: 'Performance', default: false },
+      { key: 'stintTime', label: 'Stint Time', category: 'Performance', default: false },
+      // Car
+      { key: 'fuelLevel', label: 'Fuel Level', category: 'Car', default: false },
+      { key: 'waterTemp', label: 'Water Temp', category: 'Car', default: false },
+      { key: 'oilTemp', label: 'Oil Temp', category: 'Car', default: false },
+      // Weather
+      { key: 'airTemp', label: 'Air Temp', category: 'Weather', default: true },
+      { key: 'trackTemp', label: 'Track Temp', category: 'Weather', default: true },
+      { key: 'humidity', label: 'Humidity', category: 'Weather', default: false },
+      { key: 'fogLevel', label: 'Fog Level', category: 'Weather', default: false },
+      { key: 'precipitation', label: 'Precipitation', category: 'Weather', default: false },
+      { key: 'trackWetness', label: 'Track Wetness', category: 'Weather', default: false },
+      { key: 'weatherWet', label: 'Declared Wet', category: 'Weather', default: false },
+    ];
+
+    const CLASS_HEADER_ITEMS = [
+      { key: 'className', label: 'Class Name', default: true },
+      { key: 'carCount', label: 'Car Count', default: true },
+      { key: 'classSof', label: 'Class SOF', default: true },
     ];
 
     // ─── Navigation ──────────────────────────────────────────
@@ -640,8 +672,9 @@
           const columns = ov.id === 'standings' ? STANDINGS_COLUMNS : RELATIVE_COLUMNS;
           const savedCols = migrateColKeys(saved.columns || columns.map(c => c.key));
           const savedColEnabled = migrateColEnabled(saved.columnsEnabled || {});
-          const savedHeaderItems = saved.headerItems || SESSION_HEADER_ITEMS.map(h => h.key);
-          const savedHeaderEnabled = saved.headerEnabled || saved.sessionHeader || {};
+          const savedHeaderItems = migrateHeaderKeys(saved.headerItems || SESSION_HEADER_ITEMS.map(h => h.key));
+          const savedHeaderEnabled = migrateHeaderEnabled(saved.headerEnabled || saved.sessionHeader || {});
+          const savedClassHeaderEnabled = saved.classHeaderEnabled || {};
 
           // Sub-tabs bar
           html += `<div class="sub-tabs">
@@ -659,6 +692,7 @@
 
           // ── Header sub-tab
           html += `<div class="sub-tab-content" id="subtab-${ov.id}-header">`;
+          html += `<div style="font-size:10px;font-weight:600;color:#a09fb1;padding:8px 10px 4px;letter-spacing:0.5px;">Session Header</div>`;
           html += `<div class="column-list" id="header-list-${ov.id}">`;
           // Build ordered header list
           const orderedHeaders = [];
@@ -669,13 +703,34 @@
           SESSION_HEADER_ITEMS.forEach(item => {
             if (!orderedHeaders.find(h => h.key === item.key)) orderedHeaders.push(item);
           });
+          let lastCat = '';
           orderedHeaders.forEach(item => {
+            if (item.category && item.category !== lastCat) {
+              lastCat = item.category;
+              html += `<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#5c5b6e;padding:8px 10px 4px;${lastCat === orderedHeaders[0]?.category ? '' : 'margin-top:6px;'}">${item.category}</div>`;
+            }
             const checked = savedHeaderEnabled[item.key] !== undefined ? savedHeaderEnabled[item.key] : item.default;
             html += `<div class="column-item" draggable="true" data-key="${item.key}" data-overlay="${ov.id}" data-list="header">
               <span class="drag-handle">&#10303;</span>
               <span class="col-label">${item.label}</span>
               <label class="toggle toggle-sm">
                 <input type="checkbox" class="header-toggle" data-overlay="${ov.id}" data-key="${item.key}" ${checked ? 'checked' : ''} onchange="autoSaveOverlay('${ov.id}')">
+                <span class="slider"></span>
+              </label>
+            </div>`;
+          });
+          html += `</div>`;
+
+          // ── Class Header section
+          html += `<div style="font-size:10px;font-weight:600;color:#a09fb1;padding:12px 10px 4px;letter-spacing:0.5px;border-top:1px solid rgba(255,255,255,0.06);margin-top:8px;">Class Header</div>`;
+          html += `<div class="column-list" id="class-header-list-${ov.id}">`;
+          CLASS_HEADER_ITEMS.forEach(item => {
+            const checked = savedClassHeaderEnabled[item.key] !== undefined ? savedClassHeaderEnabled[item.key] : item.default;
+            html += `<div class="column-item" draggable="true" data-key="${item.key}" data-overlay="${ov.id}" data-list="classHeader">
+              <span class="drag-handle">&#10303;</span>
+              <span class="col-label">${item.label}</span>
+              <label class="toggle toggle-sm">
+                <input type="checkbox" class="class-header-toggle" data-overlay="${ov.id}" data-key="${item.key}" ${checked ? 'checked' : ''} onchange="autoSaveOverlay('${ov.id}')">
                 <span class="slider"></span>
               </label>
             </div>`;
@@ -896,6 +951,18 @@
           });
           settings.headerItems = headerItems;
           settings.headerEnabled = headerEnabled;
+        }
+
+        // Collect class header enabled state
+        const classHeaderList = document.getElementById('class-header-list-' + overlayId);
+        if (classHeaderList) {
+          const classHeaderEnabled = {};
+          classHeaderList.querySelectorAll('.column-item').forEach(item => {
+            const key = item.dataset.key;
+            const toggle = item.querySelector('.class-header-toggle');
+            if (toggle) classHeaderEnabled[key] = toggle.checked;
+          });
+          settings.classHeaderEnabled = classHeaderEnabled;
         }
 
         // Collect column order and enabled state

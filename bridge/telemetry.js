@@ -221,6 +221,10 @@ async function startTelemetry(onStatusChange) {
   let playerCarIdx = 0;
   let trackName = '';
   let lastFocusCarIdx = -1;
+  let _wasInPit = false;
+  let _stintStartLap = 0;
+  let _stintStartTime = 0;
+  let _lastPlayerIRChange = 0;
   let lastCameraSwitchPoll = -999;
   let lastSessionNum = -1;
   let pollCount = 0;
@@ -553,13 +557,40 @@ async function startTelemetry(onStatusChange) {
         });
 
         const incidentCount = ir.get(VARS.PLAYER_CAR_MY_INCIDENT_COUNT)?.[0] || 0;
+        const fogLevel = ir.get(VARS.FOG_LEVEL)?.[0] || 0;
+        const precipitation = ir.get(VARS.PRECIPITATION)?.[0] || 0;
+        const weatherWet = ir.get(VARS.WEATHER_DECLARED_WET)?.[0] || 0;
+        const fuelLevelSession = ir.get(VARS.FUEL_LEVEL)?.[0] || 0;
+        const waterTemp = ir.get(VARS.WATER_TEMP)?.[0] || 0;
+        const oilTemp = ir.get(VARS.OIL_TEMP)?.[0] || 0;
+        const sessionLapsRemain = ir.get(VARS.SESSION_LAPS_REMAIN_EX)?.[0] || 0;
+
+        // Event type from session info
+        let eventType = '';
+        try {
+          const si = ir.getSessionInfo('SessionInfo');
+          const sn = ir.get(VARS.SESSION_NUM)?.[0] ?? 0;
+          eventType = si?.Sessions?.[sn]?.SessionType || '';
+        } catch(e) {}
+
+        // Stint tracking (laps + time since last pit)
+        const playerOnPit = !!onPitRoad[playerCarIdx];
+        if (playerOnPit && !_wasInPit) { _stintStartLap = lapsCompleted; _stintStartTime = sessionTime; }
+        _wasInPit = playerOnPit;
+        const stintLaps = lapsCompleted - (_stintStartLap || 0);
+        const stintTime = sessionTime - (_stintStartTime || 0);
+
+        // Player's estimated iRating change (from previous poll's calculation)
 
         broadcastToChannel('session', { type: 'data', channel: 'session', data: {
           playerCarIdx,
           trackName,
           airTemp, trackTemp, humidity, trackWetness,
           sessionTime, sessionTimeRemain, timeOfDay, sof, sofByClass,
-          incidentCount,
+          incidentCount, fogLevel, precipitation, weatherWet,
+          fuelLevel: fuelLevelSession, waterTemp, oilTemp,
+          sessionLapsRemain, eventType, stintLaps, stintTime,
+          playerIRChange: _lastPlayerIRChange,
           drivers: drivers.map(d => ({
             carIdx: d.CarIdx, driverName: d.UserName, carNumber: d.CarNumber,
             carMake: d.CarScreenNameShort || d.CarScreenName || '',
@@ -719,6 +750,7 @@ async function startTelemetry(onStatusChange) {
         // Compute estimated iRating changes from current positions
         const irChanges = estimateIRatingChanges(standings);
         standings.forEach(s => { s.estIRatingChange = irChanges.get(s.carIdx) || 0; });
+        _lastPlayerIRChange = irChanges.get(playerCarIdx) || 0;
 
         // Diagnostic: log flag values (first poll only)
         if (pollCount === 90) {
