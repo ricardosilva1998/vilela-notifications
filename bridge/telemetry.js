@@ -572,6 +572,11 @@ async function startTelemetry(onStatusChange) {
           const si = ir.getSessionInfo('SessionInfo');
           const sn = ir.get(VARS.SESSION_NUM)?.[0] ?? 0;
           eventType = si?.Sessions?.[sn]?.SessionType || '';
+          // Log session type changes
+          if (pollCount % 600 === 5) {
+            const allSessions = si?.Sessions || [];
+            log('[Session] SessionNum=' + sn + ' Type=' + eventType + ' AllSessions: ' + allSessions.map((s, i) => i + '=' + (s.SessionType || '?')).join(', '));
+          }
           const wi = ir.getSessionInfo('WeekendInfo');
           skies = wi?.TrackSkies || '';
           weatherType = wi?.TrackWeatherType || '';
