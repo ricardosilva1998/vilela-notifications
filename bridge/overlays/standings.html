@@ -340,13 +340,14 @@
       const classColor = d.carClassColor || '#fff';
       const carBrand = d.carMake || '';
       const pitMark = d.inPit ? ' <span class="pit-indicator">PIT</span>' : '';
+      const stoppedMark = d.isStopped ? ' <span style="background:#f04438;color:#fff;font-weight:700;font-size:' + fsTiny + 'px;padding:1px 5px;border-radius:8px;margin-left:4px;vertical-align:middle;">OUT</span>' : '';
       const disconnCls = d.disconnected ? ' disconnected' : '';
 
       const numCell = `<span style="background:${classColor};color:#000;padding:1px 5px;border-radius:3px;font-size:${fsSmall}px;font-weight:800;font-family:'JetBrains Mono',monospace;">${d.carNumber || ''}</span>`;
 
       const logoStyle = getBrandLogoStyle(carBrand);
       const logoImg = logoStyle ? `<span class="brand-logo" style="${logoStyle}"></span>` : '';
-      const badgeCell = `<div class="driver-name">${d.driverName || ''}${pitMark}</div>`;
+      const badgeCell = `<div class="driver-name">${d.driverName || ''}${pitMark}${stoppedMark}</div>`;
 
       const licCell = d.safetyRating || d.license
         ? `<span style="background:${licColor};color:#fff;padding:1px 5px;border-radius:4px;font-size:${fsSmall}px;font-weight:600;font-family:'JetBrains Mono',monospace;">${d.safetyRating || d.license}</span>`
@@ -370,7 +371,7 @@
         gap: `<td class="mono" style="font-size:${fsMed}px;color:rgba(255,255,255,0.45)">${gap}</td>`,
         tire: '<td>' + tireLabel(d.tireCompound) + '</td>',
         pits: '<td class="mono" style="font-size:' + fsSmall + 'px;color:' + (d.pitStops > 0 ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.25)') + '">' + (d.pitStops || 0) + '</td>',
-        pitTime: '<td class="mono" style="font-size:' + fsSmall + 'px;color:' + (d.lastPitDelta > 0 ? '#f7c948' : 'rgba(255,255,255,0.25)') + '">' + (d.lastPitDelta > 0 ? d.lastPitDelta.toFixed(1) + 's' : '--') + '</td>',
+        pitTime: '<td class="mono" style="font-size:' + fsSmall + 'px;color:' + (d.inPit && d.pitTimeLive > 0 ? '#3ecf8e' : (d.lastPitDelta > 0 ? '#f7c948' : 'rgba(255,255,255,0.25)')) + '">' + (d.inPit && d.pitTimeLive > 0 ? d.pitTimeLive.toFixed(1) + 's' : (d.lastPitDelta > 0 ? d.lastPitDelta.toFixed(1) + 's' : '--')) + '</td>',
         gapLdr: '<td class="mono" style="font-size:' + fsMed + 'px;color:rgba(255,255,255,0.45)">' + (d.gapToLeader > 0 ? '+' + d.gapToLeader.toFixed(1) + 's' : (d.classPosition === 1 ? 'Leader' : '--')) + '</td>',
       };
       return `<tr class="${rowClass}${disconnCls}" data-caridx="${d.carIdx}" onclick="selectDriver(${d.carIdx})" style="cursor:pointer">

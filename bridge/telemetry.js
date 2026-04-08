@@ -169,6 +169,8 @@ function savePitTimes(data) {
 let pitTimesData = {}; // { trackName: { className: { avgDelta, samples } } }
 const pitStopCounts = new Map(); // carIdx -> number of pit stops
 const driverPitDeltas = new Map(); // carIdx -> last pit delta in seconds
+const pitEntryTimes = new Map(); // carIdx -> Date.now() when entered pit
+const driverLastMovePoll = new Map(); // carIdx -> last poll count when lapDistPct changed
 
 // Canonical class mapping for track stats
 const CLASS_MAP = {
@@ -377,6 +379,8 @@ async function startTelemetry(onStatusChange) {
         pitTracking.clear();
         pitStopCounts.clear();
         driverPitDeltas.clear();
+        pitEntryTimes.clear();
+        driverLastMovePoll.clear();
         classPitDeltas = {};
         resetFuel();
         trackSlots.fill(null);
@@ -455,6 +459,8 @@ async function startTelemetry(onStatusChange) {
               persistedDrivers.clear();
               pitStopCounts.clear();
         driverPitDeltas.clear();
+        pitEntryTimes.clear();
+        driverLastMovePoll.clear();
               qualifyBestByClass = {};
               raceSessionTotalTime = 0;
               log('[Session] Cleared data: ' + prevType + ' → ' + newType);
@@ -928,6 +934,8 @@ async function startTelemetry(onStatusChange) {
             tireCompound: tireCompounds[i] ?? -1,
             pitStops: pitStopCounts.get(i) || 0,
             lastPitDelta: driverPitDeltas.get(i) || 0,
+            pitTimeLive: 0, // filled by pit detection below
+            isStopped: false, // filled below
             gapToLeader: 0,
           });
         }
@@ -948,15 +956,26 @@ async function startTelemetry(onStatusChange) {
             pt.lapsSnapshot = s.lapsCompleted;
             pt.measured = false;
             pitStopCounts.set(s.carIdx, (pitStopCounts.get(s.carIdx) || 0) + 1);
+            pitEntryTimes.set(s.carIdx, Date.now());
+          }
+          // Track live pit time
+          if (s.inPit) {
+            const entryTime = pitEntryTimes.get(s.carIdx);
+            if (entryTime) s.pitTimeLive = (Date.now() - entryTime) / 1000;
+          } else {
+            pitEntryTimes.delete(s.carIdx);
           }
           // IN lap completed: driver is STILL in pit but lapsCompleted incremented
-          // This lap's lastLap includes the full pit entry + stop time
           if (s.inPit && pt.wasPitting && !pt.measured && s.lapsCompleted > pt.lapsSnapshot) {
             pt.measured = true;
             if (s.lastLap > 0 && pt.bestLapSnapshot > 0 && s.carClass) {
               const delta = s.lastLap - pt.bestLapSnapshot;
-              driverPitDeltas.set(s.carIdx, delta); // store per-driver regardless of sanity
-              if (delta > 10 && delta < 120) { // sanity: 10-120s for class average
+              driverPitDeltas.set(s.carIdx, delta);
+              // Smart filtering: only count to class avg if within ±15s of current avg (or first sample)
+              const cls = s.carClass;
+              const currentAvg = classPitDeltas[cls] ? classPitDeltas[cls].avgDelta : 0;
+              const isReasonable = currentAvg === 0 ? (delta > 10 && delta < 120) : (delta > currentAvg - 15 && delta < currentAvg + 15);
+              if (isReasonable) { // smart filter for class average
                 const cls = s.carClass;
                 if (!classPitDeltas[cls]) classPitDeltas[cls] = { avgDelta: 0, samples: 0 };
                 const d = classPitDeltas[cls];
@@ -973,6 +992,20 @@ async function startTelemetry(onStatusChange) {
           if (!s.inPit && pt.wasPitting) {
             pt.wasPitting = false;
           }
+        });
+
+        // Detect stopped drivers (lapDistPct hasn't changed for ~30s = 300 polls at 10Hz)
+        standings.forEach(s => {
+          const prevPoll = driverLastMovePoll.get(s.carIdx);
+          const prevPct = driverLastMovePoll.get('pct_' + s.carIdx);
+          if (prevPct !== undefined && Math.abs((s.lapDistPct || 0) - prevPct) > 0.001) {
+            driverLastMovePoll.set(s.carIdx, pollCount);
+          }
+          driverLastMovePoll.set('pct_' + s.carIdx, s.lapDistPct || 0);
+          if (!driverLastMovePoll.has(s.carIdx)) driverLastMovePoll.set(s.carIdx, pollCount);
+          const stalePollCount = pollCount - (driverLastMovePoll.get(s.carIdx) || pollCount);
+          // Mark as stopped if no movement for 30s (300 polls) and not in pit
+          if (stalePollCount > 300 && !s.inPit) s.isStopped = true;
         });
 
         // Update persisted data for active drivers
@@ -1004,17 +1037,24 @@ async function startTelemetry(onStatusChange) {
           return b.lapDistPct - a.lapDistPct;
         });
 
-        // Calculate gap to class leader in seconds (using estTime)
-        const classLeaderEstTime = {};
+        // Calculate gap to class leader in seconds (using estTime, fallback to lap-based)
+        const classLeaderData = {};
         standings.forEach(s => {
-          if (!classLeaderEstTime[s.carClass] && s.estTime > 0) {
-            classLeaderEstTime[s.carClass] = s.estTime;
+          if (!classLeaderData[s.carClass] && s.classPosition === 1) {
+            classLeaderData[s.carClass] = { estTime: s.estTime || 0, laps: s.lapsCompleted || 0, bestLap: s.bestLap || 0 };
           }
         });
         standings.forEach(s => {
-          const leaderTime = classLeaderEstTime[s.carClass];
-          if (leaderTime && s.estTime > 0) {
-            s.gapToLeader = s.estTime - leaderTime;
+          const leader = classLeaderData[s.carClass];
+          if (!leader) return;
+          if (leader.estTime > 0 && s.estTime > 0) {
+            s.gapToLeader = s.estTime - leader.estTime;
+          } else if (leader.laps > 0 && s.lapsCompleted >= 0 && leader.bestLap > 0) {
+            // Fallback: laps behind * leader best lap + track position difference
+            const lapsBehind = leader.laps - (s.lapsCompleted || 0);
+            if (lapsBehind > 0) {
+              s.gapToLeader = lapsBehind * leader.bestLap;
+            }
           }
         });
 
