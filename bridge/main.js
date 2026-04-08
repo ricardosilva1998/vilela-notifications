@@ -463,6 +463,22 @@ ipcMain.on('save-overlay-settings', (event, overlayId, overlaySettings) => {
   }
 });
 
+ipcMain.on('reset-overlay', (event, overlayId) => {
+  const ov = OVERLAYS.find(o => o.id === overlayId);
+  if (!ov) return;
+  // Reset saved bounds
+  if (settings.overlayBounds) delete settings.overlayBounds[overlayId];
+  // Reset custom settings
+  if (settings.overlayCustom) delete settings.overlayCustom[overlayId];
+  saveSettings(settings);
+  // Reset window size to default and center it
+  const win = overlayWindows[overlayId];
+  if (win && !win.isDestroyed()) {
+    win.setSize(ov.width, ov.height);
+    win.center();
+  }
+});
+
 ipcMain.on('get-overlay-states', (event) => {
   const states = {};
   OVERLAYS.forEach(o => { states[o.id] = !!overlayWindows[o.id]; });

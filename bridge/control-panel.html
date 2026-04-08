@@ -861,6 +861,13 @@
           html += `<button class="save-btn" onclick="saveOverlaySettings('${ov.id}')">Save Settings</button>`;
         }
 
+        // Reset to Defaults button
+        if (ov.id !== 'proximity') {
+          html += '<div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06);">';
+          html += '<button onclick="resetOverlay(\'' + ov.id + '\')" style="width:100%;padding:8px;background:rgba(240,68,56,0.15);border:1px solid rgba(240,68,56,0.3);border-radius:6px;color:#f04438;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;">Reset to Defaults</button>';
+          html += '</div>';
+        }
+
         panel.innerHTML = html;
       });
 
@@ -1072,8 +1079,31 @@
         ipcRenderer.send('voice-settings-update', voiceUpdate);
       }
 
+      showToast('Settings saved!');
+    }
+
+    function showToast(msg) {
       const toast = document.getElementById('save-toast');
-      if (toast) { toast.style.display = 'block'; setTimeout(() => { toast.style.display = 'none'; }, 1500); }
+      if (toast) {
+        toast.textContent = msg;
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 1500);
+      }
+    }
+
+    function resetOverlay(id) {
+      const ov = overlays.find(o => o.id === id);
+      if (!confirm('Reset ' + (ov ? ov.name : id) + ' to default settings? This will clear all customization.')) return;
+      // Clear saved settings
+      localStorage.removeItem('overlay_' + id);
+      // Reset window position and size via IPC
+      ipcRenderer.send('reset-overlay', id);
+      // Show confirmation toast
+      showToast('Settings reset!');
+      // Rebuild the settings panel to reflect defaults
+      buildSettingsPanels();
+      // Re-navigate to the same panel
+      navigateTo(id);
     }
 
     // ─── Hotkey Capture ──────────────────────────────────────
