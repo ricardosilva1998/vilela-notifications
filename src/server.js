@@ -223,6 +223,99 @@ app.post('/api/track-stats', express.json(), (req, res) => {
   }
 });
 
+// Screenshot import — analyze Garage61 screenshot via GPT-4o vision
+app.post('/api/track-stats/import-screenshot', express.json({ limit: '10mb' }), async (req, res) => {
+  try {
+    if (!req.streamer) return res.status(401).json({ error: 'Login required' });
+
+    const { image, trackName, carClass, raceType } = req.body;
+    if (!image || !trackName) return res.status(400).json({ error: 'image and trackName required' });
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'OpenAI API key not configured' });
+
+    // Strip data URL prefix if present
+    const base64 = image.replace(/^data:image\/\w+;base64,/, '');
+
+    const https = require('https');
+    const postData = JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: 'You are analyzing a screenshot from Garage61, a racing data website for iRacing. Extract the following race statistics from the image. Return ONLY valid JSON, no markdown, no code fences, no other text.\n\n{\n  "carClass": "the car class (e.g. GT3, GTP, LMP2, GT4, LMP3, GTE, TCR, Porsche Cup, BMW M2, Toyota, Mazda) or null if not visible",\n  "raceType": "the race/series type (e.g. VRS Sprint, VRS Open, IMSA Sprint, IMSA Open, IMSA Endurance, Global Endurance, Sprint, Open, Endurance, Regionals, LMP2 Sprint, Proto Sprint) or null if not visible",\n  "avgLapTime": "average race lap time in seconds (e.g. 92.456 for 1:32.456) or null",\n  "avgQualifyTime": "average qualifying lap time in seconds or null",\n  "avgPitTime": "average pit stop time in seconds or null",\n  "avgSOF": "strength of field as a number or null",\n  "driverCount": "number of drivers in the session or null",\n  "estLaps": "total number of race laps completed or null"\n}\n\nParse lap times from formats like "1:32.456" to total seconds (92.456). If a value is not visible in the screenshot, set it to null.'
+          },
+          {
+            type: 'image_url',
+            image_url: { url: 'data:image/png;base64,' + base64 }
+          }
+        ]
+      }],
+      max_tokens: 500,
+    });
+
+    const result = await new Promise((resolve, reject) => {
+      const apiReq = https.request({
+        hostname: 'api.openai.com',
+        path: '/v1/chat/completions',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + apiKey,
+        },
+        timeout: 30000,
+      }, (resp) => {
+        let body = '';
+        resp.on('data', chunk => body += chunk);
+        resp.on('end', () => {
+          try { resolve(JSON.parse(body)); } catch(e) { reject(new Error('Invalid OpenAI response')); }
+        });
+      });
+      apiReq.on('error', reject);
+      apiReq.on('timeout', () => { apiReq.destroy(); reject(new Error('OpenAI request timed out')); });
+      apiReq.write(postData);
+      apiReq.end();
+    });
+
+    if (result.error) {
+      console.error('[ScreenshotImport] OpenAI error:', result.error.message);
+      return res.status(500).json({ error: 'OpenAI error: ' + result.error.message });
+    }
+
+    const content = result.choices?.[0]?.message?.content;
+    if (!content) return res.status(500).json({ error: 'No response from OpenAI' });
+
+    let parsed;
+    try {
+      // Strip markdown code fences if present
+      const clean = content.replace(/```json?\s*/g, '').replace(/```\s*/g, '').trim();
+      parsed = JSON.parse(clean);
+    } catch(e) {
+      console.error('[ScreenshotImport] Failed to parse:', content);
+      return res.status(500).json({ error: 'Could not parse AI response' });
+    }
+
+    // Override with user selections if not "auto"
+    const data = {
+      carClass: (carClass && carClass !== 'auto') ? carClass : (parsed.carClass || null),
+      raceType: (raceType && raceType !== 'auto') ? raceType : (parsed.raceType || null),
+      avgLapTime: parsed.avgLapTime ? Number(parsed.avgLapTime) : null,
+      avgQualifyTime: parsed.avgQualifyTime ? Number(parsed.avgQualifyTime) : null,
+      avgPitTime: parsed.avgPitTime ? Number(parsed.avgPitTime) : null,
+      avgSOF: parsed.avgSOF ? Number(parsed.avgSOF) : null,
+      driverCount: parsed.driverCount ? Number(parsed.driverCount) : null,
+      estLaps: parsed.estLaps ? Number(parsed.estLaps) : null,
+    };
+
+    res.json({ ok: true, data });
+  } catch(e) {
+    console.error('[ScreenshotImport] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/track-stats', (req, res) => {
   try {
     const rows = db.db.prepare('SELECT track_name, car_class, race_type, avg_lap_time, avg_pit_time, avg_qualify_time, avg_sof, est_laps, avg_drivers, race_count, updated_at FROM track_stats ORDER BY track_name, car_class, race_type').all();
