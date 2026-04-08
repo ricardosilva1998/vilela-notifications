@@ -59,6 +59,7 @@
     <div class="tab-bar">
       <div class="tab-btn active" id="tab-chart" onclick="setView('chart')">Chart</div>
       <div class="tab-btn" id="tab-gap" onclick="setView('gap')">Gap</div>
+      <div class="tab-btn" id="tab-battle" onclick="setView('battle')">Battle</div>
       <div class="tab-btn" id="tab-laps" onclick="setView('laps')">Laps</div>
     </div>
     <div class="chart-body" id="chart-view">
@@ -68,6 +69,10 @@
     <div class="chart-body" id="gap-view" style="display:none">
       <canvas id="gap-per-lap-canvas"></canvas>
       <div class="no-data" id="gap-no-data">No lap data yet</div>
+    </div>
+    <div class="chart-body" id="battle-view" style="display:none">
+      <canvas id="battle-canvas"></canvas>
+      <div class="no-data" id="battle-no-data">Need 3+ laps to predict</div>
     </div>
     <div class="laps-view" id="laps-view" style="display:none">
       <table class="laps-table">
@@ -139,9 +144,11 @@
       viewMode = mode;
       document.getElementById('chart-view').style.display = mode === 'chart' ? '' : 'none';
       document.getElementById('gap-view').style.display = mode === 'gap' ? '' : 'none';
+      document.getElementById('battle-view').style.display = mode === 'battle' ? '' : 'none';
       document.getElementById('laps-view').style.display = mode === 'laps' ? '' : 'none';
       document.getElementById('tab-chart').classList.toggle('active', mode === 'chart');
       document.getElementById('tab-gap').classList.toggle('active', mode === 'gap');
+      document.getElementById('tab-battle').classList.toggle('active', mode === 'battle');
       document.getElementById('tab-laps').classList.toggle('active', mode === 'laps');
       scheduleDraw();
     }
@@ -235,6 +242,155 @@
       ctx.fillStyle = lastDelta >= 0 ? '#3ecf8e' : '#f04438';
       ctx.textAlign = 'right'; ctx.textBaseline = 'top';
       ctx.fillText((lastDelta >= 0 ? '+' : '') + lastDelta.toFixed(3) + 's', W - padRight, padTop);
+    }
+
+    function drawBattleChart() {
+      const canvas = document.getElementById('battle-canvas');
+      const noDataEl = document.getElementById('battle-no-data');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.parentElement.clientWidth || 340;
+      const H = canvas.parentElement.clientHeight || 180;
+      canvas.width = W; canvas.height = H;
+
+      const focusLaps = (driverLapHistory[lastFocusIdx] || {}).laps || [];
+      const compareLaps = (driverLapHistory[lastCompareIdx] || {}).laps || [];
+      const minLen = Math.min(focusLaps.length, compareLaps.length);
+
+      if (minLen < 3) {
+        ctx.clearRect(0, 0, W, H);
+        noDataEl.style.display = '';
+        noDataEl.textContent = 'Need 3+ laps to predict';
+        return;
+      }
+      noDataEl.style.display = 'none';
+
+      // Calculate cumulative gaps (positive = focus gaining)
+      const cumulativeGaps = [];
+      let cumGap = 0;
+      for (let i = 0; i < minLen; i++) {
+        cumGap += compareLaps[i] - focusLaps[i];
+        cumulativeGaps.push(cumGap);
+      }
+
+      // Pace delta: average of last 3 laps
+      const recentCount = Math.min(3, minLen);
+      let paceDelta = 0;
+      for (let i = minLen - recentCount; i < minLen; i++) {
+        paceDelta += compareLaps[i] - focusLaps[i];
+      }
+      paceDelta /= recentCount; // positive = focus is faster per lap
+
+      // Current gap (from standings data — use gapToLeader difference or cumulative)
+      const currentGap = cumulativeGaps[cumulativeGaps.length - 1];
+
+      // Project future laps
+      const projectedLaps = 15; // project 15 laps ahead
+      const allGaps = [...cumulativeGaps];
+      for (let i = 0; i < projectedLaps; i++) {
+        allGaps.push(allGaps[allGaps.length - 1] + paceDelta);
+      }
+
+      // Find crossing point (where gap changes sign = overtake)
+      let overtakeLap = -1;
+      if (paceDelta !== 0) {
+        // Laps until gap reaches 0 from current position
+        const lapsToClose = -currentGap / paceDelta;
+        if (lapsToClose > 0 && lapsToClose < 50) {
+          overtakeLap = minLen + Math.ceil(lapsToClose);
+        }
+      }
+
+      // Chart
+      const padLeft = 38, padRight = 12, padTop = 20, padBottom = 20;
+      const chartW = W - padLeft - padRight;
+      const chartH = H - padTop - padBottom;
+      if (chartW <= 0 || chartH <= 0) return;
+
+      let minVal = Math.min(0, ...allGaps);
+      let maxVal = Math.max(0, ...allGaps);
+      const range = maxVal - minVal;
+      const yPad = range > 0 ? range * 0.15 : 1;
+      minVal -= yPad; maxVal += yPad;
+
+      function xPos(i) { return padLeft + (i / (allGaps.length - 1 || 1)) * chartW; }
+      function yPos(v) { return padTop + (1 - (v - minVal) / (maxVal - minVal)) * chartH; }
+
+      ctx.clearRect(0, 0, W, H);
+
+      // Grid
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+      ctx.font = '8px Segoe UI'; ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20];
+      let gridStep = 1;
+      for (const s of niceSteps) { if ((maxVal - minVal) / s <= 6) { gridStep = s; break; } }
+      for (let v = Math.ceil(minVal / gridStep) * gridStep; v <= maxVal; v += gridStep) {
+        const y = yPos(v);
+        ctx.beginPath(); ctx.moveTo(padLeft, y); ctx.lineTo(W - padRight, y); ctx.stroke();
+        ctx.fillText((v >= 0 ? '+' : '') + v.toFixed(gridStep < 1 ? 1 : 0) + 's', padLeft - 4, y);
+      }
+
+      // Zero line
+      const zeroY = yPos(0);
+      ctx.save(); ctx.setLineDash([4, 3]); ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(padLeft, zeroY); ctx.lineTo(W - padRight, zeroY); ctx.stroke(); ctx.restore();
+
+      // Divider between real and projected data
+      const dividerX = xPos(minLen - 1);
+      ctx.save(); ctx.setLineDash([2, 4]); ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(dividerX, padTop); ctx.lineTo(dividerX, H - padBottom); ctx.stroke(); ctx.restore();
+      ctx.font = '7px Segoe UI'; ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.textAlign = 'center';
+      ctx.fillText('now', dividerX, padTop - 4);
+
+      // Draw actual gap line (solid)
+      ctx.beginPath(); ctx.strokeStyle = '#e8e6f0'; ctx.lineWidth = 2;
+      for (let i = 0; i < minLen; i++) {
+        const x = xPos(i), y = yPos(cumulativeGaps[i]);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Draw projected line (dashed)
+      ctx.save(); ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.strokeStyle = paceDelta > 0 ? '#3ecf8e' : '#f04438'; ctx.lineWidth = 2;
+      ctx.moveTo(xPos(minLen - 1), yPos(cumulativeGaps[minLen - 1]));
+      for (let i = minLen; i < allGaps.length; i++) {
+        ctx.lineTo(xPos(i), yPos(allGaps[i]));
+      }
+      ctx.stroke(); ctx.restore();
+
+      // Overtake marker
+      if (overtakeLap > 0) {
+        const ox = xPos(overtakeLap - 1);
+        ctx.fillStyle = '#f7c948';
+        ctx.beginPath(); ctx.arc(ox, zeroY, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.font = 'bold 9px Segoe UI'; ctx.fillStyle = '#f7c948'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText('L' + overtakeLap, ox, zeroY - 8);
+      }
+
+      // X labels
+      ctx.font = '8px Segoe UI'; ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      const maxXLabels = Math.floor(chartW / 25);
+      const xStep = Math.max(1, Math.ceil(allGaps.length / maxXLabels));
+      for (let i = 0; i < allGaps.length; i += xStep) {
+        ctx.fillText('L' + (i + 1), xPos(i), H - padBottom + 4);
+      }
+
+      // Info text top-right
+      ctx.font = 'bold 9px Segoe UI'; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+      ctx.fillStyle = paceDelta > 0 ? '#3ecf8e' : '#f04438';
+      const paceStr = (paceDelta >= 0 ? '+' : '') + paceDelta.toFixed(3) + 's/lap';
+      ctx.fillText(paceStr, W - padRight, padTop);
+      ctx.font = '8px Segoe UI'; ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      if (overtakeLap > 0) {
+        ctx.fillText('Overtake ~L' + overtakeLap, W - padRight, padTop + 12);
+      } else if (paceDelta > 0) {
+        ctx.fillText('Pulling away', W - padRight, padTop + 12);
+      } else {
+        ctx.fillText('Losing ground', W - padRight, padTop + 12);
+      }
     }
 
     function updateLapsTable() {
@@ -341,6 +497,7 @@
         drawScheduled = false;
         if (viewMode === 'chart') drawGapChart();
         else if (viewMode === 'gap') drawGapPerLapChart();
+        else if (viewMode === 'battle') drawBattleChart();
         else updateLapsTable();
       });
     }
