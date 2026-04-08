@@ -175,7 +175,7 @@
     const showIRatingGain = parseSetting(getSetting('showIRatingGain', true));
 
     function buildTableHead() {
-      const labels = { pos: 'P', flag: '', number: '#', logo: '', name: 'Driver', license: 'Lic', irating: 'iR', best: 'Best', last: 'Last', gap: 'Gap', tire: 'T', pits: 'Pit', gapLdr: 'Ldr' };
+      const labels = { pos: 'P', flag: '', number: '#', logo: '', name: 'Driver', license: 'Lic', irating: 'iR', best: 'Best', last: 'Last', gap: 'Gap', tire: 'T', pits: 'Pit', pitTime: 'Pit T', gapLdr: 'Ldr' };
       return '<tr>' + enabledColumns.map(c => `<th>${labels[c] || ''}</th>`).join('') + '</tr>';
     }
 
@@ -370,6 +370,7 @@
         gap: `<td class="mono" style="font-size:${fsMed}px;color:rgba(255,255,255,0.45)">${gap}</td>`,
         tire: '<td>' + tireLabel(d.tireCompound) + '</td>',
         pits: '<td class="mono" style="font-size:' + fsSmall + 'px;color:' + (d.pitStops > 0 ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.25)') + '">' + (d.pitStops || 0) + '</td>',
+        pitTime: '<td class="mono" style="font-size:' + fsSmall + 'px;color:' + (d.lastPitDelta > 0 ? '#f7c948' : 'rgba(255,255,255,0.25)') + '">' + (d.lastPitDelta > 0 ? d.lastPitDelta.toFixed(1) + 's' : '--') + '</td>',
         gapLdr: '<td class="mono" style="font-size:' + fsMed + 'px;color:rgba(255,255,255,0.45)">' + (d.gapToLeader > 0 ? '+' + d.gapToLeader.toFixed(1) + 's' : (d.classPosition === 1 ? 'Leader' : '--')) + '</td>',
       };
       return `<tr class="${rowClass}${disconnCls}" data-caridx="${d.carIdx}" onclick="selectDriver(${d.carIdx})" style="cursor:pointer">

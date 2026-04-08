@@ -168,6 +168,7 @@ function savePitTimes(data) {
 }
 let pitTimesData = {}; // { trackName: { className: { avgDelta, samples } } }
 const pitStopCounts = new Map(); // carIdx -> number of pit stops
+const driverPitDeltas = new Map(); // carIdx -> last pit delta in seconds
 
 // Canonical class mapping for track stats
 const CLASS_MAP = {
@@ -375,6 +376,7 @@ async function startTelemetry(onStatusChange) {
         startingIRatings.clear();
         pitTracking.clear();
         pitStopCounts.clear();
+        driverPitDeltas.clear();
         classPitDeltas = {};
         resetFuel();
         trackSlots.fill(null);
@@ -452,6 +454,7 @@ async function startTelemetry(onStatusChange) {
               sessionResults.clear();
               persistedDrivers.clear();
               pitStopCounts.clear();
+        driverPitDeltas.clear();
               qualifyBestByClass = {};
               raceSessionTotalTime = 0;
               log('[Session] Cleared data: ' + prevType + ' → ' + newType);
@@ -924,6 +927,7 @@ async function startTelemetry(onStatusChange) {
             isSpectated: i === focusCarIdx,
             tireCompound: tireCompounds[i] ?? -1,
             pitStops: pitStopCounts.get(i) || 0,
+            lastPitDelta: driverPitDeltas.get(i) || 0,
             gapToLeader: 0,
           });
         }
@@ -951,7 +955,8 @@ async function startTelemetry(onStatusChange) {
             pt.measured = true;
             if (s.lastLap > 0 && pt.bestLapSnapshot > 0 && s.carClass) {
               const delta = s.lastLap - pt.bestLapSnapshot;
-              if (delta > 10 && delta < 120) { // sanity: 10-120s pit delta
+              driverPitDeltas.set(s.carIdx, delta); // store per-driver regardless of sanity
+              if (delta > 10 && delta < 120) { // sanity: 10-120s for class average
                 const cls = s.carClass;
                 if (!classPitDeltas[cls]) classPitDeltas[cls] = { avgDelta: 0, samples: 0 };
                 const d = classPitDeltas[cls];
