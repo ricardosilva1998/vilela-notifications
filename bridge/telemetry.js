@@ -147,9 +147,17 @@ const PIT_TIMES_FILE = path.join(require('os').homedir(), 'Documents', 'Atleta B
 
 function loadPitTimes() {
   try {
-    if (fs.existsSync(PIT_TIMES_FILE)) return JSON.parse(fs.readFileSync(PIT_TIMES_FILE, 'utf8'));
+    if (fs.existsSync(PIT_TIMES_FILE)) {
+      const data = JSON.parse(fs.readFileSync(PIT_TIMES_FILE, 'utf8'));
+      // v3.5.9: pit formula changed from OUT lap to IN lap — clear old bad data
+      if (!data._version || data._version < 2) {
+        log('[PitTimes] Clearing old pit data (formula changed to IN lap measurement)');
+        return { _version: 2 };
+      }
+      return data;
+    }
   } catch(e) { log('[PitTimes] Load error: ' + e.message); }
-  return {};
+  return { _version: 2 };
 }
 function savePitTimes(data) {
   try {
@@ -921,10 +929,12 @@ async function startTelemetry(onStatusChange) {
         }
 
         // === Pit time delta detection ===
+        // Captures the IN lap (lap completed while driver is on pit road).
+        // The IN lap includes pit entry + stop + partial pit exit = the real pit time loss.
         standings.forEach(s => {
           let pt = pitTracking.get(s.carIdx);
           if (!pt) {
-            pt = { wasPitting: false, bestLapSnapshot: 0, lapsSnapshot: 0, waitingForLap: false, referenceLap: 0 };
+            pt = { wasPitting: false, bestLapSnapshot: 0, lapsSnapshot: 0, measured: false };
             pitTracking.set(s.carIdx, pt);
           }
           // Driver just entered pit
@@ -932,32 +942,31 @@ async function startTelemetry(onStatusChange) {
             pt.wasPitting = true;
             pt.bestLapSnapshot = s.bestLap;
             pt.lapsSnapshot = s.lapsCompleted;
+            pt.measured = false;
             pitStopCounts.set(s.carIdx, (pitStopCounts.get(s.carIdx) || 0) + 1);
           }
-          // Driver just exited pit — wait for next completed lap
-          if (!s.inPit && pt.wasPitting) {
-            pt.wasPitting = false;
-            pt.waitingForLap = true;
-            pt.referenceLap = pt.bestLapSnapshot;
-          }
-          // Pit lap completed — measure delta
-          if (pt.waitingForLap && s.lapsCompleted > pt.lapsSnapshot) {
-            pt.waitingForLap = false;
-            if (s.lastLap > 0 && pt.referenceLap > 0 && s.carClass) {
-              const delta = s.lastLap - pt.referenceLap;
-              if (delta > 5 && delta < 120) { // sanity: 5-120s pit delta
+          // IN lap completed: driver is STILL in pit but lapsCompleted incremented
+          // This lap's lastLap includes the full pit entry + stop time
+          if (s.inPit && pt.wasPitting && !pt.measured && s.lapsCompleted > pt.lapsSnapshot) {
+            pt.measured = true;
+            if (s.lastLap > 0 && pt.bestLapSnapshot > 0 && s.carClass) {
+              const delta = s.lastLap - pt.bestLapSnapshot;
+              if (delta > 10 && delta < 120) { // sanity: 10-120s pit delta
                 const cls = s.carClass;
                 if (!classPitDeltas[cls]) classPitDeltas[cls] = { avgDelta: 0, samples: 0 };
                 const d = classPitDeltas[cls];
                 d.avgDelta = (d.avgDelta * d.samples + delta) / (d.samples + 1);
                 d.samples++;
-                // Persist to file
                 if (!pitTimesData[trackName]) pitTimesData[trackName] = {};
                 pitTimesData[trackName][cls] = { avgDelta: d.avgDelta, samples: d.samples };
                 savePitTimes(pitTimesData);
-                log('[PitTimes] ' + s.driverName + ' (' + cls + ') pit delta=' + delta.toFixed(1) + 's avg=' + d.avgDelta.toFixed(1) + 's (' + d.samples + ' samples)');
+                log('[PitTimes] ' + s.driverName + ' (' + cls + ') IN lap delta=' + delta.toFixed(1) + 's avg=' + d.avgDelta.toFixed(1) + 's (' + d.samples + ' samples)');
               }
             }
+          }
+          // Driver exited pit — reset
+          if (!s.inPit && pt.wasPitting) {
+            pt.wasPitting = false;
           }
         });
 
