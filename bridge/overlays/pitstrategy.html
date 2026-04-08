@@ -60,6 +60,19 @@
     let iracingConnected = false;
     const dataHandlers = {};
 
+    let maxDriversToShow = 5;
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const os = require('os');
+      const settingsFile = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'settings.json');
+      if (fs.existsSync(settingsFile)) {
+        const all = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+        const s = (all.overlayCustom && all.overlayCustom.pitstrategy) || {};
+        if (s.maxDrivers) maxDriversToShow = parseInt(s.maxDrivers) || 5;
+      }
+    } catch(e) {}
+
     function connectBridge(channels) {
       try { ws = new WebSocket(BRIDGE_URL); } catch(e) { setTimeout(() => connectBridge(channels), 3000); return; }
       ws.onopen = () => { bridgeConnected = true; updateStatus(); ws.send(JSON.stringify({ type: 'subscribe', channels })); };
@@ -171,15 +184,23 @@
 
       pitLossEl.textContent = pitDelta.toFixed(1) + 's pit loss';
 
-      // Build pass list
+      // Build pass list (limited to maxDriversToShow)
       passListEl.innerHTML = '';
-      for (const car of carsWouldPass) {
+      const visibleCars = carsWouldPass.slice(0, maxDriversToShow);
+      const hiddenCount = carsWouldPass.length - visibleCars.length;
+      for (const car of visibleCars) {
         const item = document.createElement('div');
         item.className = 'pass-item';
         item.innerHTML =
           '<span class="pass-name">' + escapeHtml(car.name) + '</span>' +
           '<span class="pass-gap">' + car.gap.toFixed(1) + 's</span>';
         passListEl.appendChild(item);
+      }
+      if (hiddenCount > 0) {
+        const more = document.createElement('div');
+        more.className = 'pass-item';
+        more.innerHTML = '<span class="pass-name" style="color:rgba(255,255,255,0.35);font-style:italic;">+' + hiddenCount + ' more</span>';
+        passListEl.appendChild(more);
       }
     }
 
