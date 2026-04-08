@@ -183,14 +183,20 @@
     let currentAngle = 0;
     let targetAngle = 0;
     let lastWindDeg = 0;
+    let lastFrameTime = 0;
     const arrowGroup = document.getElementById('wind-arrow-group');
 
-    function animateArrow() {
-      // Lerp with shortest path (handle 359→1 wrap)
+    function animateArrow(timestamp) {
+      if (!lastFrameTime) lastFrameTime = timestamp;
+      const dt = Math.min((timestamp - lastFrameTime) / 1000, 0.1); // cap at 100ms
+      lastFrameTime = timestamp;
+
       let diff = targetAngle - currentAngle;
       if (diff > 180) diff -= 360;
       if (diff < -180) diff += 360;
-      currentAngle += diff * 0.12;
+      // Frame-rate independent smoothing: same result at 30fps and 144fps
+      const factor = 1 - Math.pow(0.001, dt);
+      currentAngle += diff * factor;
       currentAngle = ((currentAngle % 360) + 360) % 360;
       if (arrowGroup) arrowGroup.setAttribute('transform', `rotate(${currentAngle}, 60, 60)`);
       requestAnimationFrame(animateArrow);
