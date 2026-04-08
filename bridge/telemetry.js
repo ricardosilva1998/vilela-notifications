@@ -175,17 +175,17 @@ const driverLastLapPoll = new Map(); // carIdx -> { laps, poll } — last time l
 
 // Canonical class mapping for track stats
 const CLASS_MAP = {
-  'GTP': 'GTP', 'Hypercar': 'GTP',
-  'LMP2': 'LMP2', 'Dallara P217': 'LMP2',
-  'GT3': 'GT3', 'GT3 2025': 'GT3', 'GT3 Class': 'GT3',
-  'GT4': 'GT4', 'GT4 Class': 'GT4',
-  'LMP3': 'LMP3',
-  'MX5': 'Mazda', 'Mazda MX-5': 'Mazda', 'MX-5': 'Mazda',
-  'TCR': 'TCR',
+  'GTP': 'GTP', 'Hypercar': 'GTP', 'GTP 2025': 'GTP',
+  'LMP2': 'LMP2', 'Dallara P217': 'LMP2', 'LMP2 2025': 'LMP2',
+  'GT3': 'GT3', 'GT3 2025': 'GT3', 'GT3 Class': 'GT3', 'IMSA23': 'GT3', 'IMSA GT3': 'GT3',
+  'GT4': 'GT4', 'GT4 Class': 'GT4', 'GT4 2025': 'GT4',
+  'LMP3': 'LMP3', 'LMP3 2025': 'LMP3',
+  'MX5': 'Mazda', 'Mazda MX-5': 'Mazda', 'MX-5': 'Mazda', 'Global Mazda MX-5': 'Mazda',
+  'TCR': 'TCR', 'TCR 2025': 'TCR',
   'PCCR': 'Porsche Cup', 'Porsche 992': 'Porsche Cup', 'Porsche Cup': 'Porsche Cup', 'Porsche 911 GT3 Cup': 'Porsche Cup',
   'BMW M2 CS': 'BMW M2', 'BMW M2': 'BMW M2',
   'Toyota GR86': 'Toyota', 'GR86': 'Toyota',
-  'GTE': 'GTE',
+  'GTE': 'GTE', 'GTE 2025': 'GTE',
 };
 function canonicalClass(shortName) {
   if (!shortName) return null;
