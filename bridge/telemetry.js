@@ -832,7 +832,7 @@ async function startTelemetry(onStatusChange) {
                 // Persist to file
                 if (!pitTimesData[trackName]) pitTimesData[trackName] = {};
                 pitTimesData[trackName][cls] = { avgDelta: d.avgDelta, samples: d.samples };
-                if (pollCount % 10 === 0) savePitTimes(pitTimesData); // throttle saves
+                savePitTimes(pitTimesData);
                 log('[PitTimes] ' + s.driverName + ' (' + cls + ') pit delta=' + delta.toFixed(1) + 's avg=' + d.avgDelta.toFixed(1) + 's (' + d.samples + ' samples)');
               }
             }

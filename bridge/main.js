@@ -427,6 +427,14 @@ ipcMain.on('save-overlay-settings', (event, overlayId, overlaySettings) => {
   if (!settings.overlayCustom) settings.overlayCustom = {};
   settings.overlayCustom[overlayId] = overlaySettings;
 
+  // Sync position FIRST: capture current window position before reload
+  if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
+    const bounds = overlayWindows[overlayId].getBounds();
+    overlaySettings.posX = String(bounds.x);
+    overlaySettings.posY = String(bounds.y);
+    settings.overlayCustom[overlayId] = overlaySettings;
+  }
+
   // For trackmap: destroy and recreate with new size instead of just reloading
   if (overlayId === 'trackmap' && overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
     const oldWin = overlayWindows[overlayId];
@@ -446,16 +454,6 @@ ipcMain.on('save-overlay-settings', (event, overlayId, overlaySettings) => {
     if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
       overlayWindows[overlayId].reload();
     }
-  }
-  // Sync position: always save the window's current position after save
-  // (the posX/posY fields move the window via liveMoveOverlay, so by save time
-  // the window is already at the right position — just persist it)
-  if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
-    const bounds = overlayWindows[overlayId].getBounds();
-    overlaySettings.posX = String(bounds.x);
-    overlaySettings.posY = String(bounds.y);
-    settings.overlayCustom[overlayId] = overlaySettings;
-    persistSettings();
   }
   // Reconnect Twitch chat if channel changed
   if (overlayId === 'chat' && overlaySettings.twitchChannel !== undefined) {
