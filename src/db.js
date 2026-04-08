@@ -3150,8 +3150,8 @@ function getBridgeBugReports(bridgeId, status) {
   return db.prepare('SELECT * FROM bridge_bug_reports WHERE bridge_id = ? ORDER BY created_at DESC').all(bridgeId);
 }
 
-function updateBridgeBugReportStatus(id, status) {
-  db.prepare('UPDATE bridge_bug_reports SET status = ? WHERE id = ?').run(status, id);
+function updateBridgeBugReportStatus(id, bridgeId, status) {
+  db.prepare('UPDATE bridge_bug_reports SET status = ? WHERE id = ? AND bridge_id = ?').run(status, id, bridgeId);
 }
 
 function cleanupOldBridgeBugReports() {

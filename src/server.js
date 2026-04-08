@@ -312,11 +312,12 @@ app.get('/api/bridge-bug-reports', (req, res) => {
 
 app.patch('/api/bridge-bug-reports/:id', (req, res) => {
   try {
-    const { status } = req.body;
+    const { bridgeId, status } = req.body;
+    if (!bridgeId) return res.status(400).json({ error: 'bridgeId required' });
     if (!['approved', 'dismissed'].includes(status)) {
       return res.status(400).json({ error: 'Status must be approved or dismissed' });
     }
-    db.updateBridgeBugReportStatus(req.params.id, status);
+    db.updateBridgeBugReportStatus(req.params.id, bridgeId, status);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });

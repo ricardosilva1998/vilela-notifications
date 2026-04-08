@@ -1302,7 +1302,7 @@ function updateBugReport(id, status) {
   fetch('/api/bridge-bug-reports/' + id, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status: status }),
+    body: JSON.stringify({ bridgeId: localStorage.getItem('bridgeId'), status: status }),
   }).then(() => fetchBugReports());
 }
 </script>
