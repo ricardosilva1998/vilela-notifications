@@ -988,7 +988,26 @@ async function showTrackStatsPage(trackName) {
 
     // All tracked classes — always show all, even without data
     const ALL_CLASSES = ['GTP', 'LMP2', 'GT3', 'GT4', 'LMP3', 'Mazda', 'TCR', 'Porsche Cup', 'BMW M2', 'Toyota', 'GTE'];
-    const typeColors = { sprint: '#f7c948', open: '#9146ff', endurance: '#3ecf8e' };
+    const typeColors = {
+      sprint: '#f7c948', open: '#9146ff', endurance: '#3ecf8e',
+      imsa_sprint: '#f7c948', imsa_open: '#9146ff', imsa_endurance: '#3ecf8e',
+      vrs_sprint: '#f7c948', vrs_open: '#9146ff', vrs_endurance: '#3ecf8e',
+    };
+
+    function formatRaceType(rt) {
+      const labels = {
+        sprint: 'Sprint', open: 'Open', endurance: 'Endurance',
+        imsa_sprint: 'IMSA Sprint', imsa_open: 'IMSA Open', imsa_endurance: 'IMSA Endurance',
+        vrs_sprint: 'VRS Sprint', vrs_open: 'VRS Open', vrs_endurance: 'VRS Endurance',
+      };
+      return labels[rt] || rt;
+    }
+
+    // Race types per class: GT3 gets IMSA + VRS variants, others get standard
+    function getRaceTypes(cls) {
+      if (cls === 'GT3') return ['imsa_sprint', 'imsa_open', 'imsa_endurance', 'vrs_sprint', 'vrs_open', 'vrs_endurance'];
+      return ['sprint', 'open', 'endurance'];
+    }
 
     // Group existing data by class
     const data = {};
@@ -1008,6 +1027,7 @@ async function showTrackStatsPage(trackName) {
     ALL_CLASSES.forEach(cls => {
       const types = data[cls] || {};
       const hasData = Object.keys(types).length > 0;
+      const expectedTypes = getRaceTypes(cls);
 
       html += '<div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,' + (hasData ? '0.06' : '0.03') + ');border-radius:10px;padding:14px;margin-bottom:10px;' + (!hasData ? 'opacity:0.5;' : '') + '">';
       html += '<h4 style="font-size:13px;font-weight:700;margin:0 0 10px;">' + cls + (!hasData ? ' <span style="font-size:10px;font-weight:400;color:#5c5b6e;">No data yet</span>' : '') + '</h4>';
@@ -1019,20 +1039,25 @@ async function showTrackStatsPage(trackName) {
       html += '<th style="text-align:right;padding:6px 6px;">Avg Quali</th>';
       html += '<th style="text-align:right;padding:6px 6px;">Est. Laps</th>';
       html += '<th style="text-align:right;padding:6px 6px;">Avg SOF</th>';
-      html += '<th style="text-align:right;padding:6px 8px;">Drivers</th>';
+      html += '<th style="text-align:right;padding:6px 6px;">Races</th>';
+      html += '<th style="text-align:right;padding:6px 8px;">Avg Drivers</th>';
       html += '</tr></thead><tbody>';
 
-      ['sprint', 'open', 'endurance'].forEach(rt => {
+      // Show expected types + any extra types that exist in data
+      const allTypes = [...new Set([...expectedTypes, ...Object.keys(types)])];
+      allTypes.forEach(rt => {
         const r = types[rt];
         const noData = !r;
+        const color = typeColors[rt] || '#aaa';
         html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">';
-        html += '<td style="padding:8px;"><span style="color:' + typeColors[rt] + ';font-weight:700;font-size:11px;text-transform:uppercase;">' + rt + '</span></td>';
+        html += '<td style="padding:8px;"><span style="color:' + color + ';font-weight:700;font-size:11px;text-transform:uppercase;">' + formatRaceType(rt) + '</span></td>';
         html += '<td style="text-align:right;padding:8px 6px;font-family:monospace;color:' + (noData ? '#3a3a4e' : '#e8e6f0') + ';">' + (noData ? '--' : fmtLap(r.avg_lap_time)) + '</td>';
         html += '<td style="text-align:right;padding:8px 6px;font-family:monospace;color:' + (noData ? '#3a3a4e' : '#e8e6f0') + ';">' + (noData ? '--' : (r.avg_pit_time > 0 ? r.avg_pit_time.toFixed(1) + 's' : '--')) + '</td>';
         html += '<td style="text-align:right;padding:8px 6px;font-family:monospace;color:' + (noData ? '#3a3a4e' : '#e8e6f0') + ';">' + (noData ? '--' : fmtLap(r.avg_qualify_time)) + '</td>';
         html += '<td style="text-align:right;padding:8px 6px;font-family:monospace;color:' + (noData ? '#3a3a4e' : '#f7c948') + ';">' + (noData ? '--' : (r.est_laps > 0 ? r.est_laps.toFixed(2) : '--')) + '</td>';
         html += '<td style="text-align:right;padding:8px 6px;font-family:monospace;color:' + (noData ? '#3a3a4e' : '#e8e6f0') + ';">' + (noData ? '--' : (r.avg_sof > 0 ? Math.round(r.avg_sof).toLocaleString() : '--')) + '</td>';
-        html += '<td style="text-align:right;padding:8px;color:' + (noData ? '#3a3a4e' : 'var(--text-muted)') + ';">' + (noData ? '0' : r.samples) + '</td>';
+        html += '<td style="text-align:right;padding:8px 6px;font-family:monospace;color:' + (noData ? '#3a3a4e' : 'var(--text-muted)') + ';">' + (noData ? '--' : r.race_count) + '</td>';
+        html += '<td style="text-align:right;padding:8px;font-family:monospace;color:' + (noData ? '#3a3a4e' : 'var(--text-muted)') + ';">' + (noData ? '--' : Math.round(r.avg_drivers)) + '</td>';
         html += '</tr>';
       });
 

@@ -768,13 +768,14 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     track_name TEXT NOT NULL,
     car_class TEXT NOT NULL,
-    race_type TEXT NOT NULL CHECK(race_type IN ('sprint', 'open', 'endurance')),
+    race_type TEXT NOT NULL,
     avg_lap_time REAL DEFAULT 0,
     avg_pit_time REAL DEFAULT 0,
     avg_qualify_time REAL DEFAULT 0,
     avg_sof REAL DEFAULT 0,
     est_laps REAL DEFAULT 0,
-    samples INTEGER DEFAULT 0,
+    avg_drivers REAL DEFAULT 0,
+    race_count INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
     UNIQUE(track_name, car_class, race_type)
@@ -783,6 +784,32 @@ db.exec(`
 
 // Migration: add est_laps column to track_stats
 try { db.exec('ALTER TABLE track_stats ADD COLUMN est_laps REAL DEFAULT 0'); } catch(e) {}
+
+// Migration: recreate track_stats with flexible race_type and race_count
+try {
+  const _hasRaceCount = db.prepare("SELECT race_count FROM track_stats LIMIT 1").get();
+} catch(e) {
+  // Column doesn't exist or table has CHECK constraint — recreate
+  try {
+    db.exec('DROP TABLE IF EXISTS track_stats');
+    db.exec(`CREATE TABLE IF NOT EXISTS track_stats (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      track_name TEXT NOT NULL,
+      car_class TEXT NOT NULL,
+      race_type TEXT NOT NULL,
+      avg_lap_time REAL DEFAULT 0,
+      avg_pit_time REAL DEFAULT 0,
+      avg_qualify_time REAL DEFAULT 0,
+      avg_sof REAL DEFAULT 0,
+      est_laps REAL DEFAULT 0,
+      avg_drivers REAL DEFAULT 0,
+      race_count INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(track_name, car_class, race_type)
+    )`);
+  } catch(e2) {}
+}
 
 // --- Seed: ensure enterprise subscriptions for specific users ---
 const _enterpriseUsers = ['Ricardo Apple', 'andre_vilela'];

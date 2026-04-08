@@ -200,11 +200,11 @@ let lastStandings = [];
 function collectAndUploadTrackStats(track, standingsData, pitDeltas, sofByClassData, qualifyBest, totalRaceTime) {
   if (!track || !standingsData || standingsData.length === 0) return;
 
-  // Determine race type from total session duration
+  // Determine base race type from total session duration
   const totalMinutes = totalRaceTime / 60;
-  let raceType = 'sprint';
-  if (totalMinutes > 60) raceType = 'endurance';
-  else if (totalMinutes >= 30) raceType = 'open';
+  let baseRaceType = 'sprint';
+  if (totalMinutes > 60) baseRaceType = 'endurance';
+  else if (totalMinutes >= 30) baseRaceType = 'open';
 
   // Group drivers by canonical class
   const classSummary = {};
@@ -216,6 +216,19 @@ function collectAndUploadTrackStats(track, standingsData, pitDeltas, sofByClassD
     if (s.bestLap > 0) classSummary[cls].bestLaps.push(s.bestLap);
   });
 
+  // Detect series: multiclass (2+ classes) = IMSA, single GT3 class = VRS
+  const classCount = Object.keys(classSummary).length;
+  const hasMulticlass = classCount >= 2;
+
+  // For each class, determine the race type with series prefix for GT3
+  function getRaceType(cls) {
+    if (cls === 'GT3') {
+      const series = hasMulticlass ? 'imsa' : 'vrs';
+      return series + '_' + baseRaceType;
+    }
+    return baseRaceType;
+  }
+
   // Find overall leader pace (fastest class)
   let overallLeaderBest = Infinity;
   Object.values(classSummary).forEach(data => {
@@ -224,7 +237,8 @@ function collectAndUploadTrackStats(track, standingsData, pitDeltas, sofByClassD
   });
   if (overallLeaderBest === Infinity) overallLeaderBest = 0;
 
-  const stats = {};
+  // Build stats per class — each class may have its own raceType
+  const statsByRaceType = {};
   Object.entries(classSummary).forEach(([cls, data]) => {
     if (data.bestLaps.length === 0) return;
     const leaderBest = Math.min(...data.bestLaps);
@@ -237,7 +251,9 @@ function collectAndUploadTrackStats(track, standingsData, pitDeltas, sofByClassD
       const effectiveTime = totalTime - (estStops * pitDelta);
       estLaps = parseFloat((effectiveTime / leaderBest).toFixed(2));
     }
-    stats[cls] = {
+    const raceType = getRaceType(cls);
+    if (!statsByRaceType[raceType]) statsByRaceType[raceType] = {};
+    statsByRaceType[raceType][cls] = {
       avgLapTime: leaderBest,
       avgPitTime: pitDelta,
       avgQualifyTime: qualifyBest[cls] || 0,
@@ -247,29 +263,32 @@ function collectAndUploadTrackStats(track, standingsData, pitDeltas, sofByClassD
     };
   });
 
-  if (Object.keys(stats).length === 0) return;
+  if (Object.keys(statsByRaceType).length === 0) return;
 
-  const payload = JSON.stringify({ trackName: track, raceType, stats });
-  log('[TrackStats] Uploading: ' + track + ' (' + raceType + ') classes=' + Object.keys(stats).join(','));
+  // Upload one request per raceType (all classes sharing that type together)
+  Object.entries(statsByRaceType).forEach(([raceType, stats]) => {
+    const payload = JSON.stringify({ trackName: track, raceType, stats });
+    log('[TrackStats] Uploading: ' + track + ' (' + raceType + ') classes=' + Object.keys(stats).join(','));
 
-  // POST to server (same pattern as uploadTrackToServer)
-  try {
-    const https = require('https');
-    const url = new URL(TRACK_STATS_URL);
-    const req = https.request({
-      hostname: url.hostname, port: 443, path: url.pathname, method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
-      timeout: 10000,
-    }, (res) => {
-      let body = '';
-      res.on('data', chunk => body += chunk);
-      res.on('end', () => log('[TrackStats] Upload response: ' + res.statusCode + ' ' + body));
-    });
-    req.on('error', (e) => log('[TrackStats] Upload error: ' + e.message));
-    req.on('timeout', () => { req.destroy(); });
-    req.write(payload);
-    req.end();
-  } catch(e) { log('[TrackStats] Upload error: ' + e.message); }
+    // POST to server (same pattern as uploadTrackToServer)
+    try {
+      const https = require('https');
+      const url = new URL(TRACK_STATS_URL);
+      const req = https.request({
+        hostname: url.hostname, port: 443, path: url.pathname, method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+        timeout: 10000,
+      }, (res) => {
+        let body = '';
+        res.on('data', chunk => body += chunk);
+        res.on('end', () => log('[TrackStats] Upload response: ' + res.statusCode + ' ' + body));
+      });
+      req.on('error', (e) => log('[TrackStats] Upload error: ' + e.message));
+      req.on('timeout', () => { req.destroy(); });
+      req.write(payload);
+      req.end();
+    } catch(e) { log('[TrackStats] Upload error: ' + e.message); }
+  });
 }
 
 /**
