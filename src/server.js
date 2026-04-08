@@ -270,6 +270,57 @@ app.delete('/api/track-stats/:trackName/:carClass/:raceType', (req, res) => {
   }
 });
 
+// Bridge remote logs (public — must be before /api auth middleware)
+app.post('/api/bridge-logs', (req, res) => {
+  try {
+    const { bridgeId, lines } = req.body;
+    if (!bridgeId || typeof bridgeId !== 'string') return res.status(400).json({ error: 'bridgeId required' });
+    if (!lines || typeof lines !== 'string') return res.status(400).json({ error: 'lines required' });
+    if (lines.length > 1024 * 1024) return res.status(400).json({ error: 'Payload too large (max 1MB)' });
+    db.insertBridgeLogs(bridgeId, lines);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/bridge-logs/:bridgeId', (req, res) => {
+  try {
+    const hours = parseInt(req.query.hours) || 24;
+    const logs = db.getBridgeLogs(req.params.bridgeId, hours);
+    res.json({ logs });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/bridge-bug-reports', (req, res) => {
+  try {
+    const { bridgeId, errorPattern, explanation, suggestedFix } = req.body;
+    if (!bridgeId || !errorPattern || !explanation || !suggestedFix) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    const id = db.insertBridgeBugReport(bridgeId, errorPattern, explanation, suggestedFix);
+    res.json({ ok: true, id });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/bridge-bug-reports', (req, res) => {
+  try {
+    const { bridgeId, status } = req.query;
+    if (!bridgeId) return res.status(400).json({ error: 'bridgeId required' });
+    const reports = db.getBridgeBugReports(bridgeId, status);
+    res.json({ reports });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch('/api/bridge-bug-reports/:id', (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!['approved', 'dismissed'].includes(status)) {
+      return res.status(400).json({ error: 'Status must be approved or dismissed' });
+    }
+    db.updateBridgeBugReportStatus(req.params.id, status);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // Track Database page (admin only)
 app.get('/tracks', (req, res) => {
   if (!req.streamer || !db.isAdmin(req.streamer.id)) return res.redirect('/');

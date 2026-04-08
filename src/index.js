@@ -53,6 +53,12 @@ client.once('ready', async () => {
     setInterval(() => { try { db.cleanupOldOverlayEvents(); } catch (e) {} }, 6 * 60 * 60 * 1000);
     db.cleanupOldOverlayEvents();
 
+    // Clean up old bridge logs (every 6 hours)
+    setInterval(() => { try { db.cleanupOldBridgeLogs(); } catch (e) {} }, 6 * 60 * 60 * 1000);
+    db.cleanupOldBridgeLogs();
+    setInterval(() => { try { db.cleanupOldBridgeBugReports(); } catch (e) {} }, 6 * 60 * 60 * 1000);
+    db.cleanupOldBridgeBugReports();
+
     console.log('All systems running');
   } catch (error) {
     console.error(`Startup error: ${error.message}`);
