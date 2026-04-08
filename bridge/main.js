@@ -142,12 +142,14 @@ app.on('ready', () => {
     }
   });
 
-  // Start voice input system
-  try {
-    const { getStatus } = require('./telemetry');
-    startVoiceInput({ settings, getStatus });
-  } catch(e) {
-    console.log('[Bridge] Voice input failed to start:', e.message);
+  // Start voice input system only if voice chat overlay is enabled
+  if (settings.enabledOverlays && settings.enabledOverlays.includes('voicechat')) {
+    try {
+      const { getStatus } = require('./telemetry');
+      startVoiceInput({ settings, getStatus });
+    } catch(e) {
+      console.log('[Bridge] Voice input failed to start:', e.message);
+    }
   }
 
   // Connect Twitch chat if channel is configured
@@ -371,6 +373,17 @@ ipcMain.on('toggle-overlay', (event, overlayId, enabled) => {
   if (enabled && !settings.enabledOverlays.includes(overlayId)) settings.enabledOverlays.push(overlayId);
   if (!enabled) settings.enabledOverlays = settings.enabledOverlays.filter(id => id !== overlayId);
   saveSettings(settings);
+  // Start/stop voice input with voicechat overlay
+  if (overlayId === 'voicechat') {
+    if (enabled) {
+      try {
+        const { getStatus } = require('./telemetry');
+        startVoiceInput({ settings, getStatus });
+      } catch(e) {}
+    } else {
+      try { stopVoiceInput(); } catch(e) {}
+    }
+  }
 });
 
 // Overlays call this when mouse enters/leaves visible content
