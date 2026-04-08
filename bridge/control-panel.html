@@ -420,6 +420,13 @@
             Real-time telemetry overlays for standings, relative, fuel, wind, proximity, track map, voice chat, and more.
           </div>
           <a class="about-link" href="https://atletanotifications.com" target="_blank">atletanotifications.com</a>
+          <div style="margin-top:12px; padding:10px 12px; background:rgba(255,255,255,0.03); border-radius:8px; display:flex; align-items:center; justify-content:space-between;">
+            <div>
+              <div style="font-size:11px; color:#888; margin-bottom:2px;">Bridge ID</div>
+              <div id="bridge-id-display" style="font-size:11px; font-family:monospace; color:#ccc; user-select:all;"></div>
+            </div>
+            <button onclick="navigator.clipboard.writeText(document.getElementById('bridge-id-display').textContent); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy', 1500);" style="background:rgba(145,70,255,0.15); color:#9146ff; border:none; padding:4px 10px; border-radius:6px; font-size:11px; cursor:pointer;">Copy</button>
+          </div>
         </div>
       </div>
 
@@ -1459,6 +1466,15 @@
     document.getElementById('header-version').textContent = 'v' + appVersion;
     document.getElementById('installed-version').textContent = 'v' + appVersion;
     document.getElementById('about-version').textContent = 'v' + appVersion;
+
+    // ─── Load and display Bridge ID ──────────────────────────
+    try {
+      const settings = require('./settings').load();
+      document.getElementById('bridge-id-display').textContent = settings.bridgeId || 'Not generated';
+    } catch(e) {
+      console.error('[Control Panel] Failed to load settings:', e.message);
+      document.getElementById('bridge-id-display').textContent = 'Error loading ID';
+    }
 
     // ─── Logs ────────────────────────────────────────────────
     const logFs = require('fs');
