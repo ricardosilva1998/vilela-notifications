@@ -488,6 +488,7 @@
       // Click-through: transparent areas pass clicks through, visible panel captures them
       let _mouseOverPanel = false;
       document.addEventListener('mousemove', (e) => {
+        if (_dragging) return; // don't change ignore-mouse while dragging
         const panel = document.querySelector('.overlay-panel');
         if (!panel) return;
         const r = panel.getBoundingClientRect();
@@ -502,6 +503,7 @@
       });
       // Fallback: reset when mouse leaves the window entirely
       document.addEventListener('mouseleave', () => {
+        if (_dragging) return;
         if (_mouseOverPanel) {
           _mouseOverPanel = false;
           ipcRenderer.send('set-ignore-mouse', true);
