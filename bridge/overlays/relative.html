@@ -81,6 +81,7 @@
       { id: 'license', label: 'Lic' },
       { id: 'irating', label: 'iR' },
       { id: 'gap',     label: 'Gap' },
+      { id: 'posGain', label: '+/-' },
     ];
     const DEFAULT_COLUMNS = ['pos', 'flag', 'number', 'logo', 'name', 'license', 'irating', 'gap'];
     // Helper: getSetting may return native object (from settings.json) or string
@@ -137,7 +138,7 @@
     } catch(e) { headerItems = DEFAULT_HEADER_ITEMS; }
 
     function buildTableHead() {
-      const labels = { pos: 'P', flag: '', number: '#', logo: '', name: 'Driver', license: 'Lic', irating: 'iR', gap: 'Gap', tire: 'T' };
+      const labels = { pos: 'P', flag: '', number: '#', logo: '', name: 'Driver', license: 'Lic', irating: 'iR', gap: 'Gap', tire: 'T', posGain: '+/-' };
       return '<tr>' + enabledColumns.map(c => `<th>${labels[c] || ''}</th>`).join('') + '</tr>';
     }
 
@@ -265,13 +266,13 @@
     const demoRelative = {
       playerCarIdx: 4,
       cars: [
-        { carIdx: 0, carNumber: '1',  driverName: 'M. Verstappen', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'A 4.99', country: 'NL', iRating: 7200, gap: -8.120, distGap: -0.09, position: 1, classPosition: 1, inPit: false, isPlayer: false },
-        { carIdx: 1, carNumber: '44', driverName: 'L. Hamilton',   carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'A 3.50', country: 'GB', iRating: 6850, gap: -5.430, distGap: -0.06, position: 2, classPosition: 2, inPit: false, isPlayer: false },
-        { carIdx: 2, carNumber: '16', driverName: 'C. Leclerc',    carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'A 2.10', country: 'MC', iRating: 6450, gap: -3.567, distGap: -0.04, position: 3, classPosition: 3, inPit: false, isPlayer: false },
-        { carIdx: 3, carNumber: '44', driverName: 'L. Hamilton',   carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'B 3.21', country: 'GB', iRating: 6000, gap: -1.234, distGap: -0.014, position: 3, classPosition: 3, inPit: false, isPlayer: false },
-        { carIdx: 4, carNumber: '99', driverName: 'You',           carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'B 1.80', country: 'PT', iRating: 3210, gap: 0,      distGap: 0,      position: 4, classPosition: 4, inPit: false, isPlayer: true  },
-        { carIdx: 5, carNumber: '55', driverName: 'C. Sainz',      carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'C 4.00', country: 'ES', iRating: 5900, gap: 2.233,  distGap: 0.025,  position: 5, classPosition: 5, inPit: false, isPlayer: false },
-        { carIdx: 6, carNumber: '4',  driverName: 'L. Norris',     carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'C 2.90', country: 'GB', iRating: 5600, gap: 4.566,  distGap: 0.051,  position: 6, classPosition: 6, inPit: true,  isPlayer: false },
+        { carIdx: 0, carNumber: '1',  driverName: 'M. Verstappen', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'A 4.99', country: 'NL', iRating: 7200, gap: -8.120, distGap: -0.09, position: 1, classPosition: 1, inPit: false, isPlayer: false, positionGain: 2 },
+        { carIdx: 1, carNumber: '44', driverName: 'L. Hamilton',   carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'A 3.50', country: 'GB', iRating: 6850, gap: -5.430, distGap: -0.06, position: 2, classPosition: 2, inPit: false, isPlayer: false, positionGain: -1 },
+        { carIdx: 2, carNumber: '16', driverName: 'C. Leclerc',    carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'A 2.10', country: 'MC', iRating: 6450, gap: -3.567, distGap: -0.04, position: 3, classPosition: 3, inPit: false, isPlayer: false, positionGain: 0 },
+        { carIdx: 3, carNumber: '44', driverName: 'L. Hamilton',   carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'B 3.21', country: 'GB', iRating: 6000, gap: -1.234, distGap: -0.014, position: 3, classPosition: 3, inPit: false, isPlayer: false, positionGain: 1 },
+        { carIdx: 4, carNumber: '99', driverName: 'You',           carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'B 1.80', country: 'PT', iRating: 3210, gap: 0,      distGap: 0,      position: 4, classPosition: 4, inPit: false, isPlayer: true,  positionGain: 3 },
+        { carIdx: 5, carNumber: '55', driverName: 'C. Sainz',      carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'C 4.00', country: 'ES', iRating: 5900, gap: 2.233,  distGap: 0.025,  position: 5, classPosition: 5, inPit: false, isPlayer: false, positionGain: -2 },
+        { carIdx: 6, carNumber: '4',  driverName: 'L. Norris',     carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'C 2.90', country: 'GB', iRating: 5600, gap: 4.566,  distGap: 0.051,  position: 6, classPosition: 6, inPit: true,  isPlayer: false, positionGain: -3 },
       ]
     };
 
@@ -316,6 +317,7 @@
           irating: `<td>${irCell}</td>`,
           gap: `<td class="mono" style="font-size:${fsMed}px">—</td>`,
           tire: '<td>' + tireLabel(d.tireCompound) + '</td>',
+          posGain: '<td class="mono" style="font-size:' + fsMed + 'px;font-weight:700;color:' + (d.positionGain > 0 ? '#3ecf8e' : (d.positionGain < 0 ? '#f04438' : 'rgba(255,255,255,0.25)')) + '">' + (d.positionGain > 0 ? '\u25B2' + d.positionGain : (d.positionGain < 0 ? '\u25BC' + Math.abs(d.positionGain) : '--')) + '</td>',
         };
         return `<tr class="player-row" data-caridx="${d.carIdx}">${enabledColumns.map(c => cells[c] || '').join('')}</tr>`;
       }
@@ -330,6 +332,7 @@
         irating: `<td>${irCell}</td>`,
         gap: `<td class="mono ${gapClass}" style="font-size:${fsMed}px">${gapStr}</td>`,
         tire: '<td>' + tireLabel(d.tireCompound) + '</td>',
+        posGain: '<td class="mono" style="font-size:' + fsMed + 'px;font-weight:700;color:' + (d.positionGain > 0 ? '#3ecf8e' : (d.positionGain < 0 ? '#f04438' : 'rgba(255,255,255,0.25)')) + '">' + (d.positionGain > 0 ? '\u25B2' + d.positionGain : (d.positionGain < 0 ? '\u25BC' + Math.abs(d.positionGain) : '--')) + '</td>',
       };
       return `<tr class="${disconnCls}" data-caridx="${d.carIdx}">${enabledColumns.map(c => cells[c] || '').join('')}</tr>`;
     }

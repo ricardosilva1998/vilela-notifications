@@ -148,7 +148,7 @@
       });
 
       let html = '<table class="stats-table"><thead><tr>';
-      html += '<th>Class</th><th>Avg Lap</th><th>Best Lap</th><th>Est. Laps</th><th>Pit Time</th><th>SOF</th><th>#</th>';
+      html += '<th>Class</th><th>Avg Lap</th><th>Best Lap</th><th>Est. Laps</th><th>Pit Time</th><th>SOF</th><th>OT</th><th>#</th>';
       html += '</tr></thead><tbody>';
 
       classNames.forEach(cls => {
@@ -207,6 +207,8 @@
         html += `<td style="color:#f7c948;">${estLaps}</td>`;
         html += `<td>${pitTime}</td>`;
         html += `<td>${sof}</td>`;
+        const ot = (_session.overtakesByClass && _session.overtakesByClass[cls]) || 0;
+        html += `<td style="color:#b18cff;">${ot}</td>`;
         html += `<td>${count}</td>`;
         html += '</tr>';
       });
@@ -272,6 +274,30 @@
       });
       document.addEventListener('mouseup', () => { _dragging = false; });
       document.addEventListener('mouseleave', () => { _dragging = false; });
+
+      // Click-through: transparent areas pass clicks through, visible panel captures them
+      let _mouseOverPanel = false;
+      document.addEventListener('mousemove', (e) => {
+        if (_dragging) return;
+        const panel = document.querySelector('.overlay-panel');
+        if (!panel) return;
+        const r = panel.getBoundingClientRect();
+        const over = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+        if (over && !_mouseOverPanel) {
+          _mouseOverPanel = true;
+          ipcRenderer.send('set-ignore-mouse', false);
+        } else if (!over && _mouseOverPanel) {
+          _mouseOverPanel = false;
+          ipcRenderer.send('set-ignore-mouse', true);
+        }
+      });
+      document.addEventListener('mouseleave', () => {
+        if (_dragging) return;
+        if (_mouseOverPanel) {
+          _mouseOverPanel = false;
+          ipcRenderer.send('set-ignore-mouse', true);
+        }
+      });
     } catch(e) {}
   </script>
 </body>

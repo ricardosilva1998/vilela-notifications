@@ -17,11 +17,11 @@
     .helmet-icon { width: 40px; height: 40px; filter: brightness(0) invert(0.9); }
     .driver-info { flex: 1; min-width: 0; }
     .driver-name { font-size: 15px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 5px; }
-    .driver-meta { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
-    .badge { padding: 2px 7px; border-radius: 4px; font-size: 12px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .driver-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+    .badge { padding: 4px 10px; border-radius: 5px; font-size: 12px; font-weight: 700; font-family: 'JetBrains Mono', monospace; white-space: nowrap; line-height: 1.3; }
     .badge-pos { background: #9146ff; color: #fff; }
     .badge-ir { background: rgba(255,255,255,0.1); color: #fff; }
-    .badge-class { color: #fff; font-size: 11px; padding: 2px 6px; }
+    .badge-class { color: #fff; }
     .lap-times { display: flex; gap: 16px; }
     .lap-block { }
     .lap-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.35); }
@@ -43,6 +43,7 @@
         <div class="driver-name"><img class="country-flag" id="driver-flag" style="display:none" alt=""><span id="driver-name">--</span></div>
         <div class="driver-meta">
           <span class="badge badge-pos" id="driver-pos">P-</span>
+          <span class="badge badge-pos-gain" id="driver-pos-gain" style="display:none;font-weight:700;font-size:11px;margin-left:2px"></span>
           <span class="badge badge-ir" id="driver-ir">--</span>
           <span class="badge badge-class" id="driver-class">--</span>
         </div>
@@ -151,7 +152,26 @@
       if (!focused) return;
 
       document.getElementById('driver-name').textContent = focused.driverName || '--';
-      document.getElementById('driver-pos').textContent = 'P' + (focused.classPosition || focused.position || '-');
+      const posEl = document.getElementById('driver-pos');
+      posEl.textContent = 'P' + (focused.classPosition || focused.position || '-');
+
+      // Position gain/loss
+      const posGainEl = document.getElementById('driver-pos-gain');
+      if (posGainEl) {
+        const gain = focused.positionGain || 0;
+        if (gain > 0) {
+          posGainEl.textContent = '\u25B2' + gain;
+          posGainEl.style.color = '#3ecf8e';
+          posGainEl.style.display = '';
+        } else if (gain < 0) {
+          posGainEl.textContent = '\u25BC' + Math.abs(gain);
+          posGainEl.style.color = '#f04438';
+          posGainEl.style.display = '';
+        } else {
+          posGainEl.style.display = 'none';
+        }
+      }
+
       document.getElementById('driver-ir').textContent = formatIR(focused.iRating);
       document.getElementById('driver-best').textContent = formatLapTime(focused.bestLap);
       document.getElementById('driver-last').textContent = formatLapTime(focused.lastLap);
@@ -220,6 +240,30 @@
       });
       document.addEventListener('mouseup', () => { _dragging = false; });
       document.addEventListener('mouseleave', () => { _dragging = false; });
+
+      // Click-through: transparent areas pass clicks through, visible panel captures them
+      let _mouseOverPanel = false;
+      document.addEventListener('mousemove', (e) => {
+        if (_dragging) return;
+        const panel = document.querySelector('.overlay-panel');
+        if (!panel) return;
+        const r = panel.getBoundingClientRect();
+        const over = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+        if (over && !_mouseOverPanel) {
+          _mouseOverPanel = true;
+          ipcRenderer.send('set-ignore-mouse', false);
+        } else if (!over && _mouseOverPanel) {
+          _mouseOverPanel = false;
+          ipcRenderer.send('set-ignore-mouse', true);
+        }
+      });
+      document.addEventListener('mouseleave', () => {
+        if (_dragging) return;
+        if (_mouseOverPanel) {
+          _mouseOverPanel = false;
+          ipcRenderer.send('set-ignore-mouse', true);
+        }
+      });
     } catch(e) {}
   </script>
 </body>

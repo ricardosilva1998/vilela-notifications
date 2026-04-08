@@ -77,7 +77,6 @@
     // Configurable columns
     const ALL_COLUMNS = [
       { id: 'pos',     label: 'P',       width: 'auto' },
-      { id: 'flag',    label: 'Flag',    width: 'auto' },
       { id: 'number',  label: '#',       width: 'auto' },
       { id: 'logo',    label: 'Logo',    width: 'auto' },
       { id: 'name',    label: 'Name',    width: 'auto' },
@@ -86,8 +85,10 @@
       { id: 'best',    label: 'Best',    width: 'auto' },
       { id: 'last',    label: 'Last',    width: 'auto' },
       { id: 'gap',     label: 'Gap',     width: 'auto' },
+      { id: 'flag',    label: 'Flag',    width: 'auto' },
+      { id: 'posGain', label: '+/-',    width: 'auto' },
     ];
-    const DEFAULT_COLUMNS = ['pos', 'flag', 'number', 'logo', 'name', 'license', 'irating', 'best', 'last', 'gap'];
+    const DEFAULT_COLUMNS = ['pos', 'number', 'logo', 'name', 'license', 'irating', 'best', 'last', 'gap', 'flag'];
     // Helper: getSetting may return native object (from settings.json) or string
     function parseSetting(val) { return typeof val === 'string' ? JSON.parse(val) : val; }
 
@@ -175,7 +176,7 @@
     const showIRatingGain = parseSetting(getSetting('showIRatingGain', true));
 
     function buildTableHead() {
-      const labels = { pos: 'P', flag: '', number: '#', logo: '', name: 'Driver', license: 'Lic', irating: 'iR', best: 'Best', last: 'Last', gap: 'Gap', tire: 'T', pits: 'Pit', pitLap: 'P Lap', pitTime: 'Pit T', gapLdr: 'Ldr' };
+      const labels = { pos: 'P', flag: '', number: '#', logo: '', name: 'Driver', license: 'Lic', irating: 'iR', best: 'Best', last: 'Last', gap: 'Gap', tire: 'T', pits: 'Pit', pitLap: 'P Lap', pitTime: 'Pit T', gapLdr: 'Ldr', posGain: '+/-' };
       return '<tr>' + enabledColumns.map(c => `<th>${labels[c] || ''}</th>`).join('') + '</tr>';
     }
 
@@ -304,14 +305,14 @@
 
     // Demo data
     const demoStandings = [
-      { position: 1, classPosition: 1, carNumber: '1',  driverName: 'M. Verstappen', carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'A 4.99', country: 'NL', iRating: 7200, bestLap: 92.456, lastLap: 92.891, inPit: false, isPlayer: false },
-      { position: 2, classPosition: 2, carNumber: '44', driverName: 'L. Hamilton',   carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'A 3.50', country: 'GB', iRating: 6850, bestLap: 92.690, lastLap: 92.990, inPit: false, isPlayer: false },
-      { position: 3, classPosition: 3, carNumber: '16', driverName: 'C. Leclerc',    carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'A 2.10', country: 'MC', iRating: 6450, bestLap: 93.012, lastLap: 93.456, inPit: false, isPlayer: false },
-      { position: 4, classPosition: 4, carNumber: '99', driverName: 'You',           carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'B 3.21', country: 'PT', iRating: 3210, bestLap: 93.456, lastLap: 93.789, inPit: false, isPlayer: true  },
-      { position: 5, classPosition: 5, carNumber: '55', driverName: 'C. Sainz',      carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'B 1.80', country: 'ES', iRating: 5900, bestLap: 93.890, lastLap: 94.012, inPit: false, isPlayer: false },
-      { position: 6, classPosition: 6, carNumber: '4',  driverName: 'L. Norris',     carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'C 4.00', country: 'GB', iRating: 5600, bestLap: 94.123, lastLap: 94.567, inPit: true,  isPlayer: false },
-      { position: 7, classPosition: 7, carNumber: '81', driverName: 'O. Piastri',    carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'C 2.90', country: 'AU', iRating: 5300, bestLap: 94.678, lastLap: 95.001, inPit: false, isPlayer: false },
-      { position: 8, classPosition: 8, carNumber: '63', driverName: 'G. Russell',    carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'D 1.50', country: 'GB', iRating: 5100, bestLap: 95.012, lastLap: 95.234, inPit: false, isPlayer: false },
+      { position: 1, classPosition: 1, carNumber: '1',  driverName: 'M. Verstappen', carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'A 4.99', country: 'NL', iRating: 7200, bestLap: 92.456, lastLap: 92.891, inPit: false, isPlayer: false, positionGain: 2 },
+      { position: 2, classPosition: 2, carNumber: '44', driverName: 'L. Hamilton',   carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'A 3.50', country: 'GB', iRating: 6850, bestLap: 92.690, lastLap: 92.990, inPit: false, isPlayer: false, positionGain: -1 },
+      { position: 3, classPosition: 3, carNumber: '16', driverName: 'C. Leclerc',    carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'A 2.10', country: 'MC', iRating: 6450, bestLap: 93.012, lastLap: 93.456, inPit: false, isPlayer: false, positionGain: 0 },
+      { position: 4, classPosition: 4, carNumber: '99', driverName: 'You',           carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'B 3.21', country: 'PT', iRating: 3210, bestLap: 93.456, lastLap: 93.789, inPit: false, isPlayer: true,  positionGain: 3 },
+      { position: 5, classPosition: 5, carNumber: '55', driverName: 'C. Sainz',      carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'B 1.80', country: 'ES', iRating: 5900, bestLap: 93.890, lastLap: 94.012, inPit: false, isPlayer: false, positionGain: -2 },
+      { position: 6, classPosition: 6, carNumber: '4',  driverName: 'L. Norris',     carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'C 4.00', country: 'GB', iRating: 5600, bestLap: 94.123, lastLap: 94.567, inPit: true,  isPlayer: false, positionGain: 1 },
+      { position: 7, classPosition: 7, carNumber: '81', driverName: 'O. Piastri',    carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'C 2.90', country: 'AU', iRating: 5300, bestLap: 94.678, lastLap: 95.001, inPit: false, isPlayer: false, positionGain: -3 },
+      { position: 8, classPosition: 8, carNumber: '63', driverName: 'G. Russell',    carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'D 1.50', country: 'GB', iRating: 5100, bestLap: 95.012, lastLap: 95.234, inPit: false, isPlayer: false, positionGain: 0 },
     ];
 
     function tireLabel(compound) {
@@ -328,9 +329,13 @@
       const lastFormatted = formatLapTime(d.lastLap);
 
       let gap = 'Leader';
-      if (rank > 1 && classLeaderBest && d.bestLap > 0) {
+      if (rank === 1) {
+        gap = 'Leader';
+      } else if (d.gapToLeader > 0) {
+        gap = '+' + d.gapToLeader.toFixed(1) + 's';
+      } else if (classLeaderBest && d.bestLap > 0) {
         gap = '+' + (d.bestLap - classLeaderBest).toFixed(3);
-      } else if (!d.bestLap || d.bestLap <= 0) {
+      } else {
         gap = '--';
       }
 
@@ -375,6 +380,7 @@
         pitLap: '<td class="mono" style="font-size:' + fsSmall + 'px;color:' + (d.pitLap > 0 ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.25)') + '">' + (d.pitLap > 0 ? 'L' + d.pitLap : '--') + '</td>',
         pitTime: '<td class="mono" style="font-size:' + fsSmall + 'px;color:' + (d.inPit && d.pitTimeLive > 0 ? '#3ecf8e' : (d.lastPitDelta > 0 ? '#f7c948' : 'rgba(255,255,255,0.25)')) + '">' + (d.inPit && d.pitTimeLive > 0 ? d.pitTimeLive.toFixed(1) + 's' : (d.lastPitDelta > 0 ? d.lastPitDelta.toFixed(1) + 's' : '--')) + '</td>',
         gapLdr: '<td class="mono" style="font-size:' + fsMed + 'px;color:rgba(255,255,255,0.45)">' + (d.gapToLeader > 0 ? '+' + d.gapToLeader.toFixed(1) + 's' : (d.classPosition === 1 ? 'Leader' : '--')) + '</td>',
+        posGain: '<td class="mono" style="font-size:' + fsMed + 'px;font-weight:700;color:' + (d.positionGain > 0 ? '#3ecf8e' : (d.positionGain < 0 ? '#f04438' : 'rgba(255,255,255,0.25)')) + '">' + (d.positionGain > 0 ? '\u25B2' + d.positionGain : (d.positionGain < 0 ? '\u25BC' + Math.abs(d.positionGain) : '--')) + '</td>',
       };
       return `<tr class="${rowClass}${disconnCls}" data-caridx="${d.carIdx}" onclick="selectDriver(${d.carIdx})" style="cursor:pointer">
         ${enabledColumns.map(c => cells[c] || '').join('')}

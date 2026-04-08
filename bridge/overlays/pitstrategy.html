@@ -297,6 +297,30 @@
       });
       document.addEventListener('mouseup', () => { _dragging = false; });
       document.addEventListener('mouseleave', () => { _dragging = false; });
+
+      // Click-through: transparent areas pass clicks through, visible panel captures them
+      let _mouseOverPanel = false;
+      document.addEventListener('mousemove', (e) => {
+        if (_dragging) return;
+        const panel = document.querySelector('.overlay-panel');
+        if (!panel) return;
+        const r = panel.getBoundingClientRect();
+        const over = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+        if (over && !_mouseOverPanel) {
+          _mouseOverPanel = true;
+          ipcRenderer.send('set-ignore-mouse', false);
+        } else if (!over && _mouseOverPanel) {
+          _mouseOverPanel = false;
+          ipcRenderer.send('set-ignore-mouse', true);
+        }
+      });
+      document.addEventListener('mouseleave', () => {
+        if (_dragging) return;
+        if (_mouseOverPanel) {
+          _mouseOverPanel = false;
+          ipcRenderer.send('set-ignore-mouse', true);
+        }
+      });
     } catch(e) {}
   </script>
 </body>
