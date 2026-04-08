@@ -492,22 +492,25 @@ async function startTelemetry(onStatusChange) {
             if (prevType.toLowerCase().includes('race') && lastStandings.length > 0) {
               collectAndUploadTrackStats(trackName, lastStandings, classPitDeltas, lastSofByClass, qualifyBestByClass, raceSessionTotalTime);
             }
+            // Always clear pit data on session change (qualify pit lane doesn't count as race pit)
+            pitStopCounts.clear();
+            driverPitDeltas.clear();
+            pitEntryTimes.clear();
+            pitLapMap.clear();
+            pitTracking.clear();
+            driverLastLapPoll.clear();
+
             if (!isQualToRace) {
               cachedBestLaps.clear();
               cachedLastLaps.clear();
               cachedLapsCompleted.clear();
               sessionResults.clear();
               persistedDrivers.clear();
-              pitStopCounts.clear();
-        driverPitDeltas.clear();
-        pitEntryTimes.clear();
-        pitLapMap.clear();
-        driverLastLapPoll.clear();
               qualifyBestByClass = {};
               raceSessionTotalTime = 0;
-              log('[Session] Cleared data: ' + prevType + ' → ' + newType);
+              log('[Session] Cleared all data: ' + prevType + ' → ' + newType);
             } else {
-              log('[Session] Kept data: ' + prevType + ' → ' + newType);
+              log('[Session] Kept lap data, cleared pit data: ' + prevType + ' → ' + newType);
             }
           }
           if (lastSessionNum < 0) lastSessionNum = sessionNum;
