@@ -149,10 +149,10 @@ function loadPitTimes() {
   try {
     if (fs.existsSync(PIT_TIMES_FILE)) {
       const data = JSON.parse(fs.readFileSync(PIT_TIMES_FILE, 'utf8'));
-      // v3.6.4: pit formula fixed — require 3+ polls in pit, clear old bad data
-      if (!data._version || data._version < 3) {
+      // v3.6.7: switched to wall-clock pit timing — clear all old data
+      if (!data._version || data._version < 4) {
         log('[PitTimes] Clearing old pit data (formula changed to IN lap measurement)');
-        return { _version: 3 };
+        return { _version: 4 };
       }
       return data;
     }
@@ -903,61 +903,55 @@ async function startTelemetry(onStatusChange) {
           });
         }
 
-        // === Pit time delta detection ===
-        // Captures the IN lap (lap completed while driver is on pit road).
-        // The IN lap includes pit entry + stop + partial pit exit = the real pit time loss.
+        // === Pit time measurement (wall-clock timing) ===
+        // Measures actual time spent in pit lane: entry → exit using Date.now().
+        // The IN-lap approach doesn't work because lapsCompleted only updates at the finish line,
+        // which is after pit exit — so laps never complete while inPit is true.
         standings.forEach(s => {
           let pt = pitTracking.get(s.carIdx);
           if (!pt) {
-            pt = { wasPitting: false, bestLapSnapshot: 0, lapsSnapshot: 0, measured: false };
+            pt = { wasPitting: false };
             pitTracking.set(s.carIdx, pt);
           }
           // Driver just entered pit
           if (s.inPit && !pt.wasPitting) {
             pt.wasPitting = true;
-            pt.bestLapSnapshot = s.bestLap;
-            pt.lapsSnapshot = s.lapsCompleted;
-            pt.measured = false;
-            pt.pitPollCount = 0; // count how many polls they've been in pit
             pitStopCounts.set(s.carIdx, (pitStopCounts.get(s.carIdx) || 0) + 1);
             pitEntryTimes.set(s.carIdx, Date.now());
           }
-          // Track live pit time + poll count
+          // Track live pit time
           if (s.inPit) {
-            if (pt.wasPitting) pt.pitPollCount = (pt.pitPollCount || 0) + 1;
             const entryTime = pitEntryTimes.get(s.carIdx);
             if (entryTime) s.pitTimeLive = (Date.now() - entryTime) / 1000;
-          } else {
-            pitEntryTimes.delete(s.carIdx);
           }
-          // IN lap completed: driver is STILL in pit, been there 3+ polls (~300ms min),
-          // and lapsCompleted incremented. This ensures the lap truly includes pit time.
-          if (s.inPit && pt.wasPitting && !pt.measured && (pt.pitPollCount || 0) >= 3 && s.lapsCompleted > pt.lapsSnapshot) {
-            pt.measured = true;
-            if (s.lastLap > 0 && pt.bestLapSnapshot > 0 && s.carClass) {
-              const delta = s.lastLap - pt.bestLapSnapshot;
-              // Only store per-driver if it's a meaningful pit stop (>10s)
-              if (delta > 10) driverPitDeltas.set(s.carIdx, delta);
-              // Smart filtering for class average: first sample 15-60s, then ±15s of avg
-              const cls = s.carClass;
-              const currentAvg = classPitDeltas[cls] ? classPitDeltas[cls].avgDelta : 0;
-              const isReasonable = currentAvg === 0 ? (delta > 15 && delta < 60) : (delta > currentAvg - 15 && delta < currentAvg + 15);
-              if (isReasonable) { // smart filter for class average
-                const cls = s.carClass;
-                if (!classPitDeltas[cls]) classPitDeltas[cls] = { avgDelta: 0, samples: 0 };
-                const d = classPitDeltas[cls];
-                d.avgDelta = (d.avgDelta * d.samples + delta) / (d.samples + 1);
-                d.samples++;
-                if (!pitTimesData[trackName]) pitTimesData[trackName] = {};
-                pitTimesData[trackName][cls] = { avgDelta: d.avgDelta, samples: d.samples };
-                savePitTimes(pitTimesData);
-                log('[PitTimes] ' + s.driverName + ' (' + cls + ') IN lap delta=' + delta.toFixed(1) + 's avg=' + d.avgDelta.toFixed(1) + 's (' + d.samples + ' samples)');
-              }
-            }
-          }
-          // Driver exited pit — reset
+          // Driver just exited pit — measure duration
           if (!s.inPit && pt.wasPitting) {
             pt.wasPitting = false;
+            const entryTime = pitEntryTimes.get(s.carIdx);
+            if (entryTime) {
+              const duration = (Date.now() - entryTime) / 1000;
+              pitEntryTimes.delete(s.carIdx);
+              // Store per-driver pit duration
+              if (duration > 5) driverPitDeltas.set(s.carIdx, duration);
+              // Smart filter for class average: first sample 15-60s, then ±15s of avg
+              if (s.carClass && duration > 5) {
+                const cls = s.carClass;
+                const currentAvg = classPitDeltas[cls] ? classPitDeltas[cls].avgDelta : 0;
+                const isReasonable = currentAvg === 0 ? (duration > 15 && duration < 60) : (duration > currentAvg - 15 && duration < currentAvg + 15);
+                if (isReasonable) {
+                  if (!classPitDeltas[cls]) classPitDeltas[cls] = { avgDelta: 0, samples: 0 };
+                  const d = classPitDeltas[cls];
+                  d.avgDelta = (d.avgDelta * d.samples + duration) / (d.samples + 1);
+                  d.samples++;
+                  if (!pitTimesData[trackName]) pitTimesData[trackName] = {};
+                  pitTimesData[trackName][cls] = { avgDelta: d.avgDelta, samples: d.samples };
+                  savePitTimes(pitTimesData);
+                  log('[PitTimes] ' + s.driverName + ' (' + cls + ') pit=' + duration.toFixed(1) + 's avg=' + d.avgDelta.toFixed(1) + 's (' + d.samples + ' samples)');
+                } else {
+                  log('[PitTimes] ' + s.driverName + ' (' + cls + ') pit=' + duration.toFixed(1) + 's FILTERED (avg=' + currentAvg.toFixed(1) + 's)');
+                }
+              }
+            }
           }
         });
 
