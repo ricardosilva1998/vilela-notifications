@@ -97,9 +97,11 @@
 
     let _standings = [];
     let _pitDeltas = {};
+    let _session = {};
 
     onData('session', data => {
       if (!data) return;
+      _session = data;
       if (data.pitDeltas) _pitDeltas = data.pitDeltas;
       recalculate();
     });
@@ -130,16 +132,54 @@
       }
 
       const focusClass = focused.carClass || '';
-      const pitDeltaInfo = focusClass && _pitDeltas[focusClass] ? _pitDeltas[focusClass] : null;
 
-      if (!pitDeltaInfo || !pitDeltaInfo.avgDelta) {
-        noDataEl.style.display = '';
-        bodyEl.style.display = 'none';
-        noDataEl.textContent = 'No pit data';
-        return;
+      // Find pit delta: try exact class match, then partial match, then persisted data
+      let pitDelta = 0;
+      if (focusClass && _pitDeltas[focusClass] && _pitDeltas[focusClass].avgDelta > 0) {
+        pitDelta = _pitDeltas[focusClass].avgDelta;
+      } else {
+        // Try partial match (e.g., "GT3 2025" vs "GT3")
+        for (const [key, val] of Object.entries(_pitDeltas)) {
+          if (val && val.avgDelta > 0 && (key.includes(focusClass) || focusClass.includes(key))) {
+            pitDelta = val.avgDelta;
+            break;
+          }
+        }
+      }
+      // Fallback: use persisted pit times from settings file
+      if (pitDelta <= 0) {
+        try {
+          const fs = require('fs');
+          const path = require('path');
+          const os = require('os');
+          const pitFile = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'pittimes.json');
+          if (fs.existsSync(pitFile)) {
+            const pitData = JSON.parse(fs.readFileSync(pitFile, 'utf8'));
+            // Find track from session data
+            const trackName = _session && _session.trackName;
+            if (trackName && pitData[trackName]) {
+              const trackPits = pitData[trackName];
+              if (trackPits[focusClass] && trackPits[focusClass].avgDelta > 0) {
+                pitDelta = trackPits[focusClass].avgDelta;
+              } else {
+                for (const [key, val] of Object.entries(trackPits)) {
+                  if (val && val.avgDelta > 0 && (key.includes(focusClass) || focusClass.includes(key))) {
+                    pitDelta = val.avgDelta;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        } catch(e) {}
       }
 
-      const pitDelta = pitDeltaInfo.avgDelta;
+      if (pitDelta <= 0) {
+        noDataEl.style.display = '';
+        bodyEl.style.display = 'none';
+        noDataEl.textContent = 'No pit data yet';
+        return;
+      }
 
       // Get classmates sorted by classPosition
       const classmates = _standings
@@ -154,10 +194,14 @@
       for (const driver of classmates) {
         if (driver.carIdx === focused.carIdx) continue;
         if (driver.classPosition <= currentPos) continue; // car ahead or same pos
-        // Gap between focus and this driver = difference in gapToLeader
-        const driverGap = driver.gapToLeader || 0;
-        const gapBetween = Math.abs(driverGap - focusGap);
-        if (gapBetween < pitDelta) {
+        // Gap: prefer gapToLeader difference, fallback to estTime difference
+        let gapBetween = 0;
+        if (focusGap > 0 || (driver.gapToLeader || 0) > 0) {
+          gapBetween = Math.abs((driver.gapToLeader || 0) - focusGap);
+        } else if (focused.estTime > 0 && driver.estTime > 0) {
+          gapBetween = Math.abs(driver.estTime - focused.estTime);
+        }
+        if (gapBetween > 0 && gapBetween < pitDelta) {
           carsWouldPass.push({ name: driver.driverName || 'Unknown', gap: gapBetween });
         }
       }
