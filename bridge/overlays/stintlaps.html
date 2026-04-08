@@ -248,6 +248,21 @@
       }
     } catch(e) {}
 
+    // Global state functions for backup/restore across updates
+    window.__getState = () => ({
+      sessionLaps, lastFocusCarIdx, lastFocusLastLap,
+      currentSessionType, currentSessionNum, activeFilter,
+    });
+    window.__restoreState = (s) => {
+      if (s.sessionLaps) sessionLaps = s.sessionLaps;
+      if (s.lastFocusCarIdx) lastFocusCarIdx = s.lastFocusCarIdx;
+      if (s.lastFocusLastLap) lastFocusLastLap = s.lastFocusLastLap;
+      if (s.currentSessionType) currentSessionType = s.currentSessionType;
+      if (s.currentSessionNum !== undefined) currentSessionNum = s.currentSessionNum;
+      if (s.activeFilter) { activeFilter = s.activeFilter; setFilter(s.activeFilter); }
+      renderLaps();
+    };
+
     connectBridge(['standings', 'session']);
 
     // Drag support

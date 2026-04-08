@@ -166,6 +166,33 @@ app.on('ready', () => {
     settings.enabledOverlays.forEach(id => createOverlayWindow(id));
   }
 
+  // Restore session backup after update (if exists)
+  try {
+    const backupFile = path.join(require('os').homedir(), 'Documents', 'Atleta Bridge', 'session-backup.json');
+    const fs = require('fs');
+    if (fs.existsSync(backupFile)) {
+      const backupData = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
+      const overlayIds = Object.keys(backupData);
+      if (overlayIds.length > 0) {
+        console.log('[Backup] Restoring session state for ' + overlayIds.length + ' overlays');
+        // Wait for overlays to load, then inject state
+        setTimeout(() => {
+          overlayIds.forEach(id => {
+            const win = overlayWindows[id];
+            if (win && !win.isDestroyed() && backupData[id]) {
+              try {
+                win.webContents.executeJavaScript(
+                  'typeof window.__restoreState === "function" && window.__restoreState(' + backupData[id] + ')'
+                );
+              } catch(e) {}
+            }
+          });
+        }, 3000); // 3s delay for overlays to fully load
+      }
+      fs.unlinkSync(backupFile); // clear backup after restore
+    }
+  } catch(e) { console.log('[Backup] Restore error:', e.message); }
+
   // Auto-updater setup
   if (autoUpdater) {
     autoUpdater.on('update-available', (info) => {
@@ -526,9 +553,26 @@ ipcMain.on('download-update', () => {
   if (autoUpdater) try { autoUpdater.downloadUpdate(); } catch(e) {}
 });
 
-ipcMain.on('install-update', () => {
-  persistSettings(); // Save overlay state before update
-  quitting = true;   // prevent before-quit from overwriting with empty list
+ipcMain.on('install-update', async () => {
+  persistSettings();
+  // Backup overlay runtime state before update — each overlay saves to sessionStorage-like file
+  const backupData = {};
+  for (const [id, win] of Object.entries(overlayWindows)) {
+    if (!win || win.isDestroyed()) continue;
+    try {
+      const state = await win.webContents.executeJavaScript(
+        'typeof window.__getState === "function" ? JSON.stringify(window.__getState()) : null'
+      );
+      if (state) backupData[id] = state;
+    } catch(e) {}
+  }
+  // Save backup to file
+  try {
+    const backupFile = path.join(require('os').homedir(), 'Documents', 'Atleta Bridge', 'session-backup.json');
+    require('fs').writeFileSync(backupFile, JSON.stringify(backupData, null, 2));
+    console.log('[Backup] Saved session state for ' + Object.keys(backupData).length + ' overlays');
+  } catch(e) { console.log('[Backup] Save error:', e.message); }
+  quitting = true;
   if (autoUpdater) autoUpdater.quitAndInstall();
 });
 

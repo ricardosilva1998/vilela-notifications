@@ -756,6 +756,20 @@
       }
     } catch(e) {}
 
+    // Global state functions for backup/restore across updates
+    window.__getState = () => ({
+      driverLapHistory, compareMode, viewMode,
+      lastFocusIdx, lastCompareIdx,
+    });
+    window.__restoreState = (s) => {
+      if (s.driverLapHistory) Object.assign(driverLapHistory, s.driverLapHistory);
+      if (s.compareMode) { compareMode = s.compareMode; setMode(s.compareMode); }
+      if (s.viewMode) { viewMode = s.viewMode; setView(s.viewMode); }
+      if (s.lastFocusIdx !== undefined) lastFocusIdx = s.lastFocusIdx;
+      if (s.lastCompareIdx !== undefined) lastCompareIdx = s.lastCompareIdx;
+      scheduleDraw();
+    };
+
     connectBridge(['standings']);
 
     // Drag support
