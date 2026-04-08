@@ -593,6 +593,7 @@
     <button class="iracing-subtab" data-irtab="overlays" onclick="switchIRacingTab('overlays')">Stream Overlays</button>
     <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
     <button class="iracing-subtab" data-irtab="tracks" onclick="switchIRacingTab('tracks')">Track Upload</button>
+    <button class="iracing-subtab" data-irtab="trackstats" onclick="switchIRacingTab('trackstats')">Track Stats</button>
     <% } %>
   </div>
 
@@ -698,6 +699,21 @@
     </div>
   </div>
   </div><!-- /irtab-tracks -->
+
+  <div class="iracing-subtab-content" id="irtab-trackstats">
+    <div class="card" style="padding:16px;">
+      <h3 style="margin-bottom:12px;font-size:14px;font-weight:700;">Track Statistics Database</h3>
+      <p style="font-size:12px;color:#8b8a9e;margin-bottom:16px;">Data collected from spectated and driven races. Click a track to view class details.</p>
+      <div id="track-stats-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;"></div>
+      <div id="track-stats-detail" style="display:none;margin-top:16px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <button onclick="closeTrackDetail()" style="background:none;border:none;color:#9146ff;cursor:pointer;font-size:14px;">&#8592; Back</button>
+          <h4 id="track-detail-name" style="font-size:14px;font-weight:700;"></h4>
+        </div>
+        <div id="track-detail-table"></div>
+      </div>
+    </div>
+  </div><!-- /irtab-trackstats -->
   <% } %>
 </div>
 
@@ -707,6 +723,7 @@ function switchIRacingTab(tab) {
   document.querySelectorAll('.iracing-subtab').forEach(t => t.classList.toggle('active', t.dataset.irtab === tab));
   document.querySelectorAll('.iracing-subtab-content').forEach(p => p.classList.toggle('active', p.id === 'irtab-' + tab));
   localStorage.setItem('iracing_subtab', tab);
+  if (tab === 'trackstats') loadTrackStats();
 }
 const savedIRTab = localStorage.getItem('iracing_subtab');
 if (savedIRTab && document.querySelector('[data-irtab="' + savedIRTab + '"]')) switchIRacingTab(savedIRTab);
@@ -961,6 +978,106 @@ const KNOWN_IRACING_TRACKS = [
   'Barber Motorsports Park', 'Sonoma Raceway', 'Circuit Gilles Villeneuve',
   'Nürburgring Combined', 'Imola', 'Knockhill Racing Circuit',
 ];
+
+// ─── Track Stats ───────────────────────────────────────────
+async function loadTrackStats() {
+  try {
+    const res = await fetch('/api/track-stats');
+    const data = await res.json();
+    renderTrackStatsList(data);
+  } catch(e) { console.error('Track stats load error:', e); }
+}
+
+function formatLapTime(s) {
+  if (!s || s <= 0) return '--';
+  const m = Math.floor(s / 60);
+  const sec = (s % 60).toFixed(3);
+  return m > 0 ? m + ':' + sec.padStart(6, '0') : sec;
+}
+
+function renderTrackStatsList(data) {
+  const listEl = document.getElementById('track-stats-list');
+  const detailEl = document.getElementById('track-stats-detail');
+  detailEl.style.display = 'none';
+  listEl.style.display = 'grid';
+
+  // Group by track
+  const tracks = {};
+  data.forEach(row => {
+    if (!tracks[row.track_name]) tracks[row.track_name] = [];
+    tracks[row.track_name].push(row);
+  });
+
+  if (Object.keys(tracks).length === 0) {
+    listEl.innerHTML = '<p style="color:#5c5b6e;font-size:12px;grid-column:1/-1;">No track stats yet. Stats are collected automatically when you spectate or drive races.</p>';
+    return;
+  }
+
+  listEl.innerHTML = Object.entries(tracks).map(([name, rows]) => {
+    const classes = [...new Set(rows.map(r => r.car_class))];
+    const totalSamples = rows.reduce((s, r) => s + r.samples, 0);
+    return '<div onclick="showTrackDetail(\'' + name.replace(/'/g, "\\'") + '\')" style="background:var(--bg-card,#1a1b2e);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;cursor:pointer;transition:border-color 0.15s;" onmouseover="this.style.borderColor=\'rgba(145,70,255,0.3)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.06)\'">'
+      + '<div style="font-size:12px;font-weight:600;margin-bottom:4px;">' + name + '</div>'
+      + '<div style="font-size:10px;color:#8b8a9e;">' + classes.length + ' classes · ' + totalSamples + ' samples</div>'
+      + '<div style="font-size:9px;color:#5c5b6e;margin-top:4px;">' + classes.join(', ') + '</div>'
+      + '</div>';
+  }).join('');
+
+  // Store data for detail view
+  window._trackStatsData = data;
+}
+
+function showTrackDetail(trackName) {
+  const data = (window._trackStatsData || []).filter(r => r.track_name === trackName);
+  if (!data.length) return;
+
+  document.getElementById('track-stats-list').style.display = 'none';
+  document.getElementById('track-stats-detail').style.display = 'block';
+  document.getElementById('track-detail-name').textContent = trackName;
+
+  // Group by class
+  const classes = {};
+  data.forEach(r => {
+    if (!classes[r.car_class]) classes[r.car_class] = {};
+    classes[r.car_class][r.race_type] = r;
+  });
+
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+  html += '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.1);color:#8b8a9e;font-size:10px;text-transform:uppercase;">';
+  html += '<th style="text-align:left;padding:6px 8px;">Class</th>';
+  html += '<th style="text-align:left;padding:6px 4px;">Type</th>';
+  html += '<th style="text-align:right;padding:6px 4px;">Avg Lap</th>';
+  html += '<th style="text-align:right;padding:6px 4px;">Avg Pit</th>';
+  html += '<th style="text-align:right;padding:6px 4px;">Avg Quali</th>';
+  html += '<th style="text-align:right;padding:6px 4px;">Avg SOF</th>';
+  html += '<th style="text-align:right;padding:6px 8px;">Samples</th>';
+  html += '</tr></thead><tbody>';
+
+  Object.entries(classes).sort((a, b) => a[0].localeCompare(b[0])).forEach(([cls, types]) => {
+    ['sprint', 'open', 'endurance'].forEach(rt => {
+      const r = types[rt];
+      if (!r) return;
+      const typeColors = { sprint: '#f7c948', open: '#9146ff', endurance: '#3ecf8e' };
+      html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">';
+      html += '<td style="padding:6px 8px;font-weight:600;">' + cls + '</td>';
+      html += '<td style="padding:6px 4px;"><span style="color:' + typeColors[rt] + ';font-size:10px;font-weight:600;text-transform:uppercase;">' + rt + '</span></td>';
+      html += '<td style="text-align:right;padding:6px 4px;font-family:monospace;">' + formatLapTime(r.avg_lap_time) + '</td>';
+      html += '<td style="text-align:right;padding:6px 4px;font-family:monospace;">' + (r.avg_pit_time > 0 ? r.avg_pit_time.toFixed(1) + 's' : '--') + '</td>';
+      html += '<td style="text-align:right;padding:6px 4px;font-family:monospace;">' + formatLapTime(r.avg_qualify_time) + '</td>';
+      html += '<td style="text-align:right;padding:6px 4px;font-family:monospace;">' + (r.avg_sof > 0 ? Math.round(r.avg_sof).toLocaleString() : '--') + '</td>';
+      html += '<td style="text-align:right;padding:6px 8px;color:#5c5b6e;">' + r.samples + '</td>';
+      html += '</tr>';
+    });
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('track-detail-table').innerHTML = html;
+}
+
+function closeTrackDetail() {
+  document.getElementById('track-stats-detail').style.display = 'none';
+  document.getElementById('track-stats-list').style.display = 'grid';
+}
 
 async function loadTrackDatabase() {
   const grid = document.getElementById('track-db-grid');
