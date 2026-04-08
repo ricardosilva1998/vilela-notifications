@@ -175,7 +175,7 @@
     const showIRatingGain = parseSetting(getSetting('showIRatingGain', true));
 
     function buildTableHead() {
-      const labels = { pos: 'P', flag: '', number: '#', logo: '', name: 'Driver', license: 'Lic', irating: 'iR', best: 'Best', last: 'Last', gap: 'Gap', tire: 'T', pits: 'Pit', pitTime: 'Pit T', gapLdr: 'Ldr' };
+      const labels = { pos: 'P', flag: '', number: '#', logo: '', name: 'Driver', license: 'Lic', irating: 'iR', best: 'Best', last: 'Last', gap: 'Gap', tire: 'T', pits: 'Pit', pitLap: 'P Lap', pitTime: 'Pit T', gapLdr: 'Ldr' };
       return '<tr>' + enabledColumns.map(c => `<th>${labels[c] || ''}</th>`).join('') + '</tr>';
     }
 
@@ -340,7 +340,8 @@
       const classColor = d.carClassColor || '#fff';
       const carBrand = d.carMake || '';
       const pitMark = d.inPit ? ' <span class="pit-indicator">PIT</span>' : '';
-      const stoppedMark = d.isStopped ? ' <span style="background:#f04438;color:#fff;font-weight:700;font-size:' + fsTiny + 'px;padding:1px 5px;border-radius:8px;margin-left:4px;vertical-align:middle;">OUT</span>' : '';
+      // OUT badge disabled — lapsCompleted unreliable for distant cars as spectator
+      const stoppedMark = '';
       const disconnCls = d.disconnected ? ' disconnected' : '';
 
       const numCell = `<span style="background:${classColor};color:#000;padding:1px 5px;border-radius:3px;font-size:${fsSmall}px;font-weight:800;font-family:'JetBrains Mono',monospace;">${d.carNumber || ''}</span>`;
@@ -371,6 +372,7 @@
         gap: `<td class="mono" style="font-size:${fsMed}px;color:rgba(255,255,255,0.45)">${gap}</td>`,
         tire: '<td>' + tireLabel(d.tireCompound) + '</td>',
         pits: '<td class="mono" style="font-size:' + fsSmall + 'px;color:' + (d.pitStops > 0 ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.25)') + '">' + (d.pitStops || 0) + '</td>',
+        pitLap: '<td class="mono" style="font-size:' + fsSmall + 'px;color:' + (d.pitLap > 0 ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.25)') + '">' + (d.pitLap > 0 ? 'L' + d.pitLap : '--') + '</td>',
         pitTime: '<td class="mono" style="font-size:' + fsSmall + 'px;color:' + (d.inPit && d.pitTimeLive > 0 ? '#3ecf8e' : (d.lastPitDelta > 0 ? '#f7c948' : 'rgba(255,255,255,0.25)')) + '">' + (d.inPit && d.pitTimeLive > 0 ? d.pitTimeLive.toFixed(1) + 's' : (d.lastPitDelta > 0 ? d.lastPitDelta.toFixed(1) + 's' : '--')) + '</td>',
         gapLdr: '<td class="mono" style="font-size:' + fsMed + 'px;color:rgba(255,255,255,0.45)">' + (d.gapToLeader > 0 ? '+' + d.gapToLeader.toFixed(1) + 's' : (d.classPosition === 1 ? 'Leader' : '--')) + '</td>',
       };

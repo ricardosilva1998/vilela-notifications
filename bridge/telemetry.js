@@ -170,6 +170,7 @@ let pitTimesData = {}; // { trackName: { className: { avgDelta, samples } } }
 const pitStopCounts = new Map(); // carIdx -> number of pit stops
 const driverPitDeltas = new Map(); // carIdx -> last pit delta in seconds
 const pitEntryTimes = new Map(); // carIdx -> Date.now() when entered pit
+const pitLapMap = new Map(); // carIdx -> lapsCompleted when they entered pit
 const driverLastLapPoll = new Map(); // carIdx -> { laps, poll } — last time lapsCompleted changed
 
 // Canonical class mapping for track stats
@@ -419,6 +420,7 @@ async function startTelemetry(onStatusChange) {
         pitStopCounts.clear();
         driverPitDeltas.clear();
         pitEntryTimes.clear();
+        pitLapMap.clear();
         driverLastLapPoll.clear();
         classPitDeltas = {};
         resetFuel();
@@ -499,6 +501,7 @@ async function startTelemetry(onStatusChange) {
               pitStopCounts.clear();
         driverPitDeltas.clear();
         pitEntryTimes.clear();
+        pitLapMap.clear();
         driverLastLapPoll.clear();
               qualifyBestByClass = {};
               raceSessionTotalTime = 0;
@@ -936,6 +939,7 @@ async function startTelemetry(onStatusChange) {
             tireCompound: tireCompounds[i] ?? -1,
             pitStops: pitStopCounts.get(i) || 0,
             lastPitDelta: driverPitDeltas.get(i) || 0,
+            pitLap: pitLapMap.get(i) || 0,
             pitTimeLive: 0, // filled by pit detection below
             isStopped: false, // filled below
             gapToLeader: 0,
@@ -957,6 +961,7 @@ async function startTelemetry(onStatusChange) {
             pt.wasPitting = true;
             pitStopCounts.set(s.carIdx, (pitStopCounts.get(s.carIdx) || 0) + 1);
             pitEntryTimes.set(s.carIdx, Date.now());
+            pitLapMap.set(s.carIdx, s.lapsCompleted || 0);
           }
           // Track live pit time
           if (s.inPit) {
@@ -976,7 +981,7 @@ async function startTelemetry(onStatusChange) {
               if (s.carClass && duration > 5) {
                 const cls = s.carClass;
                 const currentAvg = classPitDeltas[cls] ? classPitDeltas[cls].avgDelta : 0;
-                const isReasonable = currentAvg === 0 ? (duration > 15 && duration < 60) : (duration > currentAvg - 15 && duration < currentAvg + 15);
+                const isReasonable = currentAvg === 0 ? (duration > 15 && duration < 60) : (Math.abs(duration - currentAvg) <= 5);
                 if (isReasonable) {
                   if (!classPitDeltas[cls]) classPitDeltas[cls] = { avgDelta: 0, samples: 0 };
                   const d = classPitDeltas[cls];
