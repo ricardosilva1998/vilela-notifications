@@ -121,7 +121,7 @@
     // Lap tracking — local to overlay
     let sessionLaps = []; // { time, session }
     let lastFocusCarIdx = -1;
-    let lastFocusLapsCompleted = -1;
+    let lastFocusLastLap = -1; // track lastLap value changes (more reliable than lapsCompleted as spectator)
     let currentSessionType = '';
     let currentSessionNum = -1;
 
@@ -209,17 +209,18 @@
       // Driver changed (switched spectated target) — reset tracking, don't record a lap
       if (focused.carIdx !== lastFocusCarIdx) {
         lastFocusCarIdx = focused.carIdx;
-        lastFocusLapsCompleted = focused.lapsCompleted || 0;
+        lastFocusLastLap = focused.lastLap || -1;
         return;
       }
 
-      // Detect new lap: lapsCompleted incremented (NOT just lastLap changed)
-      const lapsNow = focused.lapsCompleted || 0;
-      if (lapsNow > lastFocusLapsCompleted && focused.lastLap > 0) {
-        sessionLaps.push({ time: focused.lastLap, session: currentSessionType });
+      // Detect new lap: lastLap value changed for the SAME driver
+      // More reliable than lapsCompleted as spectator (lapsCompleted doesn't always update)
+      const currentLastLap = focused.lastLap || 0;
+      if (currentLastLap > 0 && currentLastLap !== lastFocusLastLap && lastFocusLastLap > 0) {
+        sessionLaps.push({ time: currentLastLap, session: currentSessionType });
         renderLaps();
       }
-      lastFocusLapsCompleted = lapsNow;
+      if (currentLastLap > 0) lastFocusLastLap = currentLastLap;
       }
     });
 
