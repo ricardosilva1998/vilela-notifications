@@ -47,6 +47,10 @@
     }
     .sidebar-icon { font-size: 14px; width: 20px; text-align: center; flex-shrink: 0; }
     .sidebar-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 4px 8px; }
+    .sidebar-group-label { padding: 6px 12px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #5c5b6e; cursor: pointer; user-select: none; transition: color 0.15s; }
+    .sidebar-group-label:hover { color: #8b8a9e; }
+    .sidebar-group { overflow: hidden; transition: max-height 0.2s ease; }
+    .sidebar-group.collapsed { max-height: 0 !important; }
     .sidebar-spacer { flex: 1; }
     .sidebar-footer { padding: 10px 12px; font-size: 9px; color: #3a3a4e; text-align: center; }
     .sidebar-footer a { color: #9146ff; text-decoration: none; }
@@ -246,50 +250,62 @@
         <span class="sidebar-icon">&#9638;</span> Overview
       </div>
       <div class="sidebar-divider"></div>
-      <div class="sidebar-item" data-panel="standings" onclick="navigateTo('standings')">
-        <span class="sidebar-icon">&#127937;</span> Standings
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('race')">&#9660; Race</div>
+      <div class="sidebar-group" id="group-race">
+        <div class="sidebar-item" data-panel="standings" onclick="navigateTo('standings')">
+          <span class="sidebar-icon">&#127937;</span> Standings
+        </div>
+        <div class="sidebar-item" data-panel="relative" onclick="navigateTo('relative')">
+          <span class="sidebar-icon">&#128202;</span> Relative
+        </div>
+        <div class="sidebar-item" data-panel="raceduration" onclick="navigateTo('raceduration')">
+          <span class="sidebar-icon">&#9201;</span> Duration
+        </div>
+        <div class="sidebar-item" data-panel="pitstrategy" onclick="navigateTo('pitstrategy')">
+          <span class="sidebar-icon">&#9881;</span> Pit Strategy
+        </div>
+        <div class="sidebar-item" data-panel="lapcompare" onclick="navigateTo('lapcompare')">
+          <span class="sidebar-icon">&#128200;</span> Lap Compare
+        </div>
       </div>
-      <div class="sidebar-item" data-panel="relative" onclick="navigateTo('relative')">
-        <span class="sidebar-icon">&#128202;</span> Relative
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('car')">&#9660; Car</div>
+      <div class="sidebar-group" id="group-car">
+        <div class="sidebar-item" data-panel="fuel" onclick="navigateTo('fuel')">
+          <span class="sidebar-icon">&#9981;</span> Fuel
+        </div>
+        <div class="sidebar-item" data-panel="inputs" onclick="navigateTo('inputs')">
+          <span class="sidebar-icon">&#127918;</span> Inputs
+        </div>
+        <div class="sidebar-item" data-panel="drivercard" onclick="navigateTo('drivercard')">
+          <span class="sidebar-icon">&#127183;</span> Driver Card
+        </div>
+        <div class="sidebar-item" data-panel="stintlaps" onclick="navigateTo('stintlaps')">
+          <span class="sidebar-icon">&#128203;</span> Session Laps
+        </div>
       </div>
-      <div class="sidebar-item" data-panel="fuel" onclick="navigateTo('fuel')">
-        <span class="sidebar-icon">&#9981;</span> Fuel
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('track')">&#9660; Track</div>
+      <div class="sidebar-group" id="group-track">
+        <div class="sidebar-item" data-panel="trackmap" onclick="navigateTo('trackmap')">
+          <span class="sidebar-icon">&#127758;</span> Track Map
+        </div>
+        <div class="sidebar-item" data-panel="wind" onclick="navigateTo('wind')">
+          <span class="sidebar-icon">&#127788;&#65039;</span> Wind
+        </div>
+        <div class="sidebar-item" data-panel="weather" onclick="navigateTo('weather')">
+          <span class="sidebar-icon">&#9925;</span> Weather
+        </div>
+        <div class="sidebar-item" data-panel="proximity" onclick="navigateTo('proximity')">
+          <span class="sidebar-icon">&#128663;</span> Proximity <span style="font-size:8px;color:#f79009;margin-left:2px;">Soon</span>
+        </div>
       </div>
-      <div class="sidebar-item" data-panel="wind" onclick="navigateTo('wind')">
-        <span class="sidebar-icon">&#127788;&#65039;</span> Wind
-      </div>
-      <div class="sidebar-item" data-panel="proximity" onclick="navigateTo('proximity')">
-        <span class="sidebar-icon">&#128663;</span> Proximity <span style="font-size:8px;color:#f79009;margin-left:2px;">Soon</span>
-      </div>
-      <div class="sidebar-item" data-panel="chat" onclick="navigateTo('chat')">
-        <span class="sidebar-icon">&#128172;</span> Stream Chat
-      </div>
-      <div class="sidebar-item" data-panel="trackmap" onclick="navigateTo('trackmap')">
-        <span class="sidebar-icon">&#127758;</span> Track Map
-      </div>
-      <div class="sidebar-item" data-panel="voicechat" onclick="navigateTo('voicechat')">
-        <span class="sidebar-icon">&#127908;</span> Voice Chat
-      </div>
-      <div class="sidebar-item" data-panel="inputs" onclick="navigateTo('inputs')">
-        <span class="sidebar-icon">&#127918;</span> Inputs
-      </div>
-      <div class="sidebar-item" data-panel="raceduration" onclick="navigateTo('raceduration')">
-        <span class="sidebar-icon">&#9201;</span> Race Duration
-      </div>
-      <div class="sidebar-item" data-panel="drivercard" onclick="navigateTo('drivercard')">
-        <span class="sidebar-icon">&#127183;</span> Driver Card
-      </div>
-      <div class="sidebar-item" data-panel="stintlaps" onclick="navigateTo('stintlaps')">
-        <span class="sidebar-icon">&#128203;</span> Stint Laps
-      </div>
-      <div class="sidebar-item" data-panel="weather" onclick="navigateTo('weather')">
-        <span class="sidebar-icon">&#9925;</span> Weather
-      </div>
-      <div class="sidebar-item" data-panel="pitstrategy" onclick="navigateTo('pitstrategy')">
-        <span class="sidebar-icon">&#9881;</span> Pit Strategy
-      </div>
-      <div class="sidebar-item" data-panel="lapcompare" onclick="navigateTo('lapcompare')">
-        <span class="sidebar-icon">&#128200;</span> Lap Compare
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('stream')">&#9660; Stream</div>
+      <div class="sidebar-group" id="group-stream">
+        <div class="sidebar-item" data-panel="chat" onclick="navigateTo('chat')">
+          <span class="sidebar-icon">&#128172;</span> Stream Chat
+        </div>
+        <div class="sidebar-item" data-panel="voicechat" onclick="navigateTo('voicechat')">
+          <span class="sidebar-icon">&#127908;</span> Voice Chat
+        </div>
       </div>
       <div class="sidebar-spacer"></div>
       <div class="sidebar-divider"></div>
@@ -327,6 +343,11 @@
           <input type="checkbox" id="autohide-check" checked onchange="toggleAutoHide(this.checked)" style="accent-color:#9146ff;">
           Auto-hide overlays when iRacing closes
         </label>
+
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <button onclick="saveAllOverlays()" style="flex:1;padding:8px;background:rgba(145,70,255,0.15);border:1px solid rgba(145,70,255,0.3);border-radius:6px;color:#9146ff;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;">Save All Settings</button>
+          <button onclick="resetAllOverlays()" style="flex:1;padding:8px;background:rgba(240,68,56,0.15);border:1px solid rgba(240,68,56,0.3);border-radius:6px;color:#f04438;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;">Reset All</button>
+        </div>
       </div>
 
       <!-- ═══ OVERLAY SETTINGS PANELS (generated by JS) ═══ -->
@@ -672,6 +693,14 @@
     ];
 
     // ─── Navigation ──────────────────────────────────────────
+    function toggleSidebarGroup(name) {
+      const group = document.getElementById('group-' + name);
+      const label = group?.previousElementSibling;
+      if (!group) return;
+      group.classList.toggle('collapsed');
+      if (label) label.innerHTML = (group.classList.contains('collapsed') ? '&#9654; ' : '&#9660; ') + name.charAt(0).toUpperCase() + name.slice(1);
+    }
+
     function navigateTo(panelId) {
       currentPanel = panelId;
       // Update sidebar active state
@@ -1089,6 +1118,24 @@
         toast.style.display = 'block';
         setTimeout(() => { toast.style.display = 'none'; }, 1500);
       }
+    }
+
+    function saveAllOverlays() {
+      overlays.forEach(ov => {
+        try { saveOverlaySettings(ov.id); } catch(e) {}
+      });
+      showToast('All settings saved!');
+    }
+
+    function resetAllOverlays() {
+      if (!confirm('Reset ALL overlays to default settings? This will clear all customization for every overlay.')) return;
+      overlays.forEach(ov => {
+        localStorage.removeItem('overlay_' + ov.id);
+        ipcRenderer.send('reset-overlay', ov.id);
+      });
+      showToast('All overlays reset!');
+      buildSettingsPanels();
+      navigateTo('overview');
     }
 
     function resetOverlay(id) {
