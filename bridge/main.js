@@ -396,6 +396,14 @@ ipcMain.on('resize-overlay-height', (event, overlayId, height) => {
   }
 });
 
+ipcMain.on('auto-resize-height', (event, h) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) {
+    const [w] = win.getSize();
+    win.setSize(w, Math.round(h));
+  }
+});
+
 ipcMain.on('move-overlay', (event, overlayId, x, y) => {
   if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
     const bounds = overlayWindows[overlayId].getBounds();

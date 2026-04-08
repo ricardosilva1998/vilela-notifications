@@ -23,7 +23,7 @@
     .stint-stat-value { font-size: 13px; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.85); }
     .stint-stat-value.fastest { color: #9146ff; }
     .divider-v { width: 1px; height: 36px; background: rgba(255,255,255,0.08); flex-shrink: 0; }
-    .lap-list { max-height: 200px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }
+    .lap-list { overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }
     .lap-list::-webkit-scrollbar { width: 3px; }
     .lap-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
     .lap-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 4px; font-size: 11px; font-family: 'JetBrains Mono', monospace; border-radius: 4px; }
@@ -185,6 +185,19 @@
           </div>`;
       }
       listEl.innerHTML = html;
+
+      // Auto-resize height to fit content
+      try {
+        const { ipcRenderer } = require('electron');
+        const panel = document.querySelector('.overlay-panel');
+        if (panel) {
+          const contentHeight = panel.scrollHeight;
+          const minHeight = 200;
+          const maxHeight = 600;
+          const newHeight = Math.min(maxHeight, Math.max(minHeight, contentHeight + 4));
+          ipcRenderer.send('auto-resize-height', newHeight);
+        }
+      } catch(e) {}
     }
 
     onData('standings', data => {
