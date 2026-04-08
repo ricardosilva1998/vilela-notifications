@@ -139,6 +139,12 @@ const cachedLapsCompleted = new Map(); // carIdx -> laps completed
 const sessionResults = new Map(); // carIdx -> { bestLap, lastLap, lapsComplete }
 // Starting iRatings — captured once at session start for gain/loss display
 const startingIRatings = new Map(); // carIdx -> starting iRating
+// Starting positions — captured once at race start for positions gained display
+const startingClassPositions = new Map(); // carIdx -> class position at race start
+
+// Overtake tracking — count position gains per class (server-side so all clients share data)
+const prevClassPositions = new Map(); // carIdx -> { classPosition, carClass }
+const overtakesByClass = {};          // className -> count
 
 // Pit time tracking — measure time lost per pit stop per class
 const pitTracking = new Map(); // carIdx -> { wasPitting, bestLapSnapshot, lapsSnapshot, waitingForLap, referenceLap }
@@ -420,6 +426,7 @@ async function startTelemetry(onStatusChange) {
         lastFocusCarIdx = -1;
         resetSelectedCar();
         startingIRatings.clear();
+        startingClassPositions.clear();
         pitTracking.clear();
         pitStopCounts.clear();
         driverPitDeltas.clear();
@@ -503,6 +510,9 @@ async function startTelemetry(onStatusChange) {
             pitLapMap.clear();
             pitTracking.clear();
             driverLastLapPoll.clear();
+
+            // Always reset starting positions for new session
+            startingClassPositions.clear();
 
             if (!isQualToRace) {
               cachedBestLaps.clear();
@@ -834,6 +844,7 @@ async function startTelemetry(onStatusChange) {
           sessionLapsRemain, eventType, sessionNum: ir.get(VARS.SESSION_NUM)?.[0] ?? 0, stintLaps, stintTime,
           playerIRChange: _lastPlayerIRChange,
           pitDeltas: classPitDeltas,
+          overtakesByClass,
           fuelPerLap: avgAll > 0 ? avgAll : 0,
           fuelCapacity: fuelPct > 0 ? fuelLevel / fuelPct : 0,
           drivers: drivers.map(d => ({
@@ -1058,26 +1069,39 @@ async function startTelemetry(onStatusChange) {
           return b.lapDistPct - a.lapDistPct;
         });
 
-        // Calculate gap to class leader: estTime > laps behind > best lap difference
+        // Calculate gap to class leader using multiple methods
         const classLeaderData = {};
         standings.forEach(s => {
           if (!classLeaderData[s.carClass] && s.classPosition === 1) {
-            classLeaderData[s.carClass] = { estTime: s.estTime || 0, laps: s.lapsCompleted || 0, bestLap: s.bestLap || 0 };
+            classLeaderData[s.carClass] = {
+              estTime: s.estTime || 0, laps: s.lapsCompleted || 0,
+              bestLap: s.bestLap || 0, lapDistPct: s.lapDistPct || 0,
+            };
           }
         });
         standings.forEach(s => {
           const leader = classLeaderData[s.carClass];
           if (!leader || s.classPosition === 1) return;
+          // Method 1: estTime (most accurate when available)
           if (leader.estTime > 0 && s.estTime > 0) {
-            // Best: real-time estimated time difference
             s.gapToLeader = s.estTime - leader.estTime;
-          } else if (leader.laps > 0 && (s.lapsCompleted || 0) < leader.laps && leader.bestLap > 0) {
-            // Fallback: laps behind × leader best lap
-            const lapsBehind = leader.laps - (s.lapsCompleted || 0);
-            s.gapToLeader = lapsBehind * leader.bestLap;
-          } else if (leader.bestLap > 0 && s.bestLap > 0) {
-            // Fallback: best lap time difference (always available from session results)
-            s.gapToLeader = s.bestLap - leader.bestLap;
+          }
+          // Method 2: lap count + track position → time gap (works for all cars)
+          else if (leader.bestLap > 0) {
+            const leaderLaps = leader.laps || 0;
+            const driverLaps = s.lapsCompleted || 0;
+            const leaderPct = leader.lapDistPct || 0;
+            const driverPct = s.lapDistPct || 0;
+            // Fractional laps: laps completed + current track position
+            const leaderTotal = leaderLaps + leaderPct;
+            const driverTotal = driverLaps + driverPct;
+            const lapsBehind = leaderTotal - driverTotal;
+            if (lapsBehind > 0) {
+              s.gapToLeader = lapsBehind * leader.bestLap;
+            } else if (leader.bestLap > 0 && s.bestLap > 0) {
+              // Same fractional lap — use best lap diff
+              s.gapToLeader = s.bestLap - leader.bestLap;
+            }
           }
         });
 
@@ -1116,10 +1140,49 @@ async function startTelemetry(onStatusChange) {
           log('[Diag] WithBestLap: ' + standings.filter(s => s.bestLap > 0).length + '/' + standings.length);
         }
 
+        // Capture starting class positions once at race start (first time we see valid positions)
+        const isRace = eventType.toLowerCase().includes('race');
+        if (isRace && startingClassPositions.size === 0) {
+          standings.forEach(s => {
+            if (s.classPosition > 0) {
+              startingClassPositions.set(s.carIdx, s.classPosition);
+            }
+          });
+        }
+
+        // Compute positions gained (positive = gained, negative = lost)
+        standings.forEach(s => {
+          const startPos = startingClassPositions.get(s.carIdx);
+          if (startPos && s.classPosition > 0) {
+            s.positionGain = startPos - s.classPosition;
+          } else {
+            s.positionGain = 0;
+          }
+        });
+
         // Compute estimated iRating changes from current positions
         const irChanges = estimateIRatingChanges(standings);
         standings.forEach(s => { s.estIRatingChange = irChanges.get(s.carIdx) || 0; });
         _lastPlayerIRChange = irChanges.get(playerCarIdx) || 0;
+
+        // Track overtakes per class (position gains, excluding pit road)
+        const hasPrevPositions = prevClassPositions.size > 0;
+        if (hasPrevPositions) {
+          standings.forEach(s => {
+            if (!s.carClass || !s.classPosition || s.classPosition <= 0) return;
+            const prev = prevClassPositions.get(s.carIdx);
+            if (!prev || prev.carClass !== s.carClass) return;
+            if (s.classPosition < prev.classPosition && !s.onPitRoad) {
+              const gained = prev.classPosition - s.classPosition;
+              overtakesByClass[s.carClass] = (overtakesByClass[s.carClass] || 0) + gained;
+            }
+          });
+        }
+        standings.forEach(s => {
+          if (s.classPosition > 0) {
+            prevClassPositions.set(s.carIdx, { classPosition: s.classPosition, carClass: s.carClass });
+          }
+        });
 
         // Diagnostic: log flag values (first poll only)
         if (pollCount === 90) {
