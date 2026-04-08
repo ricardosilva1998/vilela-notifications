@@ -36,6 +36,7 @@ let controlWindow = null;
 const overlayWindows = {};
 // Lock feature removed — overlays are always unlocked and draggable
 let autoHideOverlays = true;
+let quitting = false;
 
 // Persisted settings
 let settings = {};
@@ -220,6 +221,7 @@ app.on('ready', () => {
 });
 
 function persistSettings() {
+  if (quitting) return;
   settings.autoHideOverlays = autoHideOverlays;
   settings.enabledOverlays = Object.keys(overlayWindows);
   // Persist overlay positions/sizes
@@ -470,8 +472,15 @@ ipcMain.on('save-overlay-settings', (event, overlayId, overlaySettings) => {
     }
   } else {
     persistSettings();
-    // Don't reload — it kills all in-memory overlay data (lap history, pit counts, etc.)
-    // Settings that need reload (font size, columns) can be applied by toggling overlay off/on
+    // Reload overlay to apply new settings — overlay saves/restores state via sessionStorage
+    if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
+      overlayWindows[overlayId].webContents.send('will-reload');
+      setTimeout(() => {
+        if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
+          overlayWindows[overlayId].reload();
+        }
+      }, 100); // give overlay 100ms to save state
+    }
   }
   // Reconnect Twitch chat if channel changed
   if (overlayId === 'chat' && overlaySettings.twitchChannel !== undefined) {
@@ -519,12 +528,14 @@ ipcMain.on('download-update', () => {
 
 ipcMain.on('install-update', () => {
   persistSettings(); // Save overlay state before update
+  quitting = true;   // prevent before-quit from overwriting with empty list
   if (autoUpdater) autoUpdater.quitAndInstall();
 });
 
 app.on('window-all-closed', () => {});
 app.on('before-quit', () => {
-  persistSettings();
+  persistSettings(); // save with current overlays still open
+  quitting = true;   // prevent closeOverlayWindow from overwriting with empty list
   Object.keys(overlayWindows).forEach(closeOverlayWindow);
   stopTelemetry();
   stopVoiceInput();

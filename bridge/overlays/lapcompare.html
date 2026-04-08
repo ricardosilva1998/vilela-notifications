@@ -131,6 +131,7 @@
     let lastCompareIdx = null;
     let lastFocusName = '';
     let lastCompareName = '';
+    let currentLiveGap = null; // real-time gap from estTime (positive = focus behind, negative = focus ahead)
     let drawScheduled = false;
 
     function setMode(mode) {
@@ -181,10 +182,10 @@
       }
       noDataEl.style.display = 'none';
 
-      // Per-lap gap delta: positive = focus gained time, negative = focus lost time
+      // Per-lap gap delta: negative = focus faster, positive = focus slower
       const deltas = [];
       for (let i = 0; i < minLen; i++) {
-        deltas.push(compareLaps[i] - focusLaps[i]);
+        deltas.push(focusLaps[i] - compareLaps[i]);
       }
 
       const padLeft = 38, padRight = 12, padTop = 12, padBottom = 20;
@@ -227,7 +228,7 @@
         const x = padLeft + (i / deltas.length) * chartW + 1;
         const barTop = d >= 0 ? yPos(d) : zeroY;
         const barHeight = Math.abs(yPos(d) - zeroY);
-        ctx.fillStyle = d >= 0 ? 'rgba(62,207,142,0.7)' : 'rgba(240,68,56,0.7)';
+        ctx.fillStyle = d <= 0 ? 'rgba(62,207,142,0.7)' : 'rgba(240,68,56,0.7)';
         ctx.fillRect(x, barTop, barW, Math.max(1, barHeight));
         // X labels
         ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '8px Segoe UI';
@@ -239,7 +240,7 @@
       // Current gap value
       const lastDelta = deltas[deltas.length - 1];
       ctx.font = 'bold 10px Segoe UI';
-      ctx.fillStyle = lastDelta >= 0 ? '#3ecf8e' : '#f04438';
+      ctx.fillStyle = lastDelta <= 0 ? '#3ecf8e' : '#f04438';
       ctx.textAlign = 'right'; ctx.textBaseline = 'top';
       ctx.fillText((lastDelta >= 0 ? '+' : '') + lastDelta.toFixed(3) + 's', W - padRight, padTop);
     }
@@ -265,21 +266,21 @@
       }
       noDataEl.style.display = 'none';
 
-      // Calculate cumulative gaps (positive = focus gaining)
+      // Calculate cumulative gaps (negative = focus faster, positive = focus slower)
       const cumulativeGaps = [];
       let cumGap = 0;
       for (let i = 0; i < minLen; i++) {
-        cumGap += compareLaps[i] - focusLaps[i];
+        cumGap += focusLaps[i] - compareLaps[i];
         cumulativeGaps.push(cumGap);
       }
 
-      // Pace delta: average of last 3 laps
+      // Pace delta: average of last 3 laps (negative = focus faster per lap)
       const recentCount = Math.min(3, minLen);
       let paceDelta = 0;
       for (let i = minLen - recentCount; i < minLen; i++) {
-        paceDelta += compareLaps[i] - focusLaps[i];
+        paceDelta += focusLaps[i] - compareLaps[i];
       }
-      paceDelta /= recentCount; // positive = focus is faster per lap
+      paceDelta /= recentCount;
 
       // Current gap (from standings data — use gapToLeader difference or cumulative)
       const currentGap = cumulativeGaps[cumulativeGaps.length - 1];
@@ -354,7 +355,7 @@
       // Draw projected line (dashed)
       ctx.save(); ctx.setLineDash([4, 3]);
       ctx.beginPath();
-      ctx.strokeStyle = paceDelta > 0 ? '#3ecf8e' : '#f04438'; ctx.lineWidth = 2;
+      ctx.strokeStyle = paceDelta < 0 ? '#3ecf8e' : '#f04438'; ctx.lineWidth = 2;
       ctx.moveTo(xPos(minLen - 1), yPos(cumulativeGaps[minLen - 1]));
       for (let i = minLen; i < allGaps.length; i++) {
         ctx.lineTo(xPos(i), yPos(allGaps[i]));
@@ -380,13 +381,13 @@
 
       // Info text top-right
       ctx.font = 'bold 9px Segoe UI'; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-      ctx.fillStyle = paceDelta > 0 ? '#3ecf8e' : '#f04438';
+      ctx.fillStyle = paceDelta < 0 ? '#3ecf8e' : '#f04438';
       const paceStr = (paceDelta >= 0 ? '+' : '') + paceDelta.toFixed(3) + 's/lap';
       ctx.fillText(paceStr, W - padRight, padTop);
       ctx.font = '8px Segoe UI'; ctx.fillStyle = 'rgba(255,255,255,0.5)';
       if (overtakeLap > 0) {
         ctx.fillText('Overtake ~L' + overtakeLap, W - padRight, padTop + 12);
-      } else if (paceDelta > 0) {
+      } else if (paceDelta < 0) {
         ctx.fillText('Pulling away', W - padRight, padTop + 12);
       } else {
         ctx.fillText('Losing ground', W - padRight, padTop + 12);
@@ -431,8 +432,8 @@
         const fLap = focusLaps[i];
         const cLap = compareLaps[i];
         const delta = (fLap > 0 && cLap > 0) ? (fLap - cLap) : null;
-        const deltaStr = delta !== null ? (delta > 0 ? '+' : '') + delta.toFixed(3) : '--';
-        const deltaColor = delta !== null ? (delta > 0 ? '#f04438' : '#3ecf8e') : '';
+        const deltaStr = delta !== null ? (delta >= 0 ? '+' : '') + delta.toFixed(3) : '--';
+        const deltaColor = delta !== null ? (delta < 0 ? '#3ecf8e' : '#f04438') : '';
 
         html += '<tr>';
         html += '<td style="color:rgba(255,255,255,0.4)">L' + (i + 1) + '</td>';
@@ -471,6 +472,35 @@
       const classmates = data.filter(d => d.carClass === focused.carClass)
         .sort((a, b) => a.classPosition - b.classPosition);
       const focusIdx = classmates.findIndex(d => d.carIdx === focused.carIdx);
+      const isClassLeader = focusIdx === 0;
+      const isClassLast = focusIdx === classmates.length - 1;
+      const btnAhead = document.getElementById('btn-ahead');
+      const btnBehind = document.getElementById('btn-behind');
+
+      // Auto-switch to behind if leader, disable ahead
+      if (isClassLeader) {
+        btnAhead.classList.add('disabled');
+        btnAhead.style.opacity = '0.3';
+        btnAhead.style.pointerEvents = 'none';
+        if (compareMode === 'ahead') setMode('behind');
+      } else {
+        btnAhead.classList.remove('disabled');
+        btnAhead.style.opacity = '';
+        btnAhead.style.pointerEvents = '';
+      }
+
+      // Auto-switch to ahead if last, disable behind
+      if (isClassLast) {
+        btnBehind.classList.add('disabled');
+        btnBehind.style.opacity = '0.3';
+        btnBehind.style.pointerEvents = 'none';
+        if (compareMode === 'behind') setMode('ahead');
+      } else {
+        btnBehind.classList.remove('disabled');
+        btnBehind.style.opacity = '';
+        btnBehind.style.pointerEvents = '';
+      }
+
       const compareIdx = compareMode === 'ahead' ? focusIdx - 1 : focusIdx + 1;
 
       if (compareIdx < 0 || compareIdx >= classmates.length) {
@@ -478,6 +508,7 @@
         lastCompareIdx = null;
         lastFocusName = shortName(focused.driverName);
         lastCompareName = '';
+        currentLiveGap = null;
         scheduleDraw();
         return;
       }
@@ -487,6 +518,12 @@
       lastCompareIdx = compareDriver.carIdx;
       lastFocusName = shortName(focused.driverName) + ' P' + focused.classPosition;
       lastCompareName = shortName(compareDriver.driverName) + ' P' + compareDriver.classPosition;
+
+      // Compute current live gap from estTime
+      if (focused.estTime > 0 && compareDriver.estTime > 0) {
+        currentLiveGap = focused.estTime - compareDriver.estTime;
+      }
+
       scheduleDraw();
     });
 
@@ -495,6 +532,9 @@
       drawScheduled = true;
       requestAnimationFrame(() => {
         drawScheduled = false;
+        // Update driver name labels on every draw regardless of view
+        document.getElementById('label-focus').textContent = lastFocusName;
+        document.getElementById('label-compare').textContent = lastCompareName;
         if (viewMode === 'chart') drawGapChart();
         else if (viewMode === 'gap') drawGapPerLapChart();
         else if (viewMode === 'battle') drawBattleChart();
@@ -506,9 +546,6 @@
       const canvas = document.getElementById('gap-canvas');
       const container = canvas.parentElement;
       const noDataEl = document.getElementById('no-data');
-      const focusLabel = document.getElementById('label-focus');
-      const compareLabel = document.getElementById('label-compare');
-
       // Resize canvas to fill container
       const rect = container.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
@@ -518,10 +555,6 @@
       ctx.scale(dpr, dpr);
       const W = rect.width;
       const H = rect.height;
-
-      // Update driver labels
-      focusLabel.textContent = lastFocusName;
-      compareLabel.textContent = lastCompareName;
 
       // No comparison target
       if (lastCompareIdx === null) {
@@ -544,12 +577,11 @@
 
       noDataEl.style.display = 'none';
 
-      // Build cumulative gap: positive = focus is gaining (good), negative = focus is losing (bad)
-      // Inverted from raw time diff so chart UP = gaining, DOWN = losing
+      // Build cumulative gap: negative = focus is faster (gaining), positive = focus is slower (losing)
       const gaps = [];
       let cumulativeGap = 0;
       for (let i = 0; i < minLen; i++) {
-        cumulativeGap += compareLaps[i] - focusLaps[i]; // compare - focus: positive when focus is faster
+        cumulativeGap += focusLaps[i] - compareLaps[i];
         gaps.push(cumulativeGap);
       }
 
@@ -626,10 +658,8 @@
       ctx.stroke();
       ctx.restore();
 
-      // Area fill: green below zero (gaining), red above zero (losing)
-      // Draw two separate filled regions split at zero
+      // Area fill: green below zero (faster/gaining), red above zero (slower/losing)
       if (gaps.length === 1) {
-        // Single data point: draw a dot
         const x = xPos(0);
         const y = yPos(gaps[0]);
         ctx.fillStyle = gaps[0] <= 0 ? 'rgba(62,207,142,0.7)' : 'rgba(240,68,56,0.7)';
@@ -637,33 +667,29 @@
         ctx.arc(x, y, 3, 0, Math.PI * 2);
         ctx.fill();
       } else {
-        // Fill gaining (below zero) area in green
+        // Fill faster (below zero) area in green
         ctx.beginPath();
         ctx.moveTo(xPos(0), zeroY);
         for (let i = 0; i < gaps.length; i++) {
-          const x = xPos(i);
-          const y = yPos(Math.min(0, gaps[i]));
-          ctx.lineTo(x, y);
+          ctx.lineTo(xPos(i), yPos(Math.min(0, gaps[i])));
         }
         ctx.lineTo(xPos(gaps.length - 1), zeroY);
         ctx.closePath();
-        const greenGrad = ctx.createLinearGradient(0, zeroY, 0, padTop);
+        const greenGrad = ctx.createLinearGradient(0, zeroY, 0, H - padBottom);
         greenGrad.addColorStop(0, 'rgba(62,207,142,0.05)');
         greenGrad.addColorStop(1, 'rgba(62,207,142,0.35)');
         ctx.fillStyle = greenGrad;
         ctx.fill();
 
-        // Fill losing (above zero) area in red
+        // Fill slower (above zero) area in red
         ctx.beginPath();
         ctx.moveTo(xPos(0), zeroY);
         for (let i = 0; i < gaps.length; i++) {
-          const x = xPos(i);
-          const y = yPos(Math.max(0, gaps[i]));
-          ctx.lineTo(x, y);
+          ctx.lineTo(xPos(i), yPos(Math.max(0, gaps[i])));
         }
         ctx.lineTo(xPos(gaps.length - 1), zeroY);
         ctx.closePath();
-        const redGrad = ctx.createLinearGradient(0, zeroY, 0, H - padBottom);
+        const redGrad = ctx.createLinearGradient(0, zeroY, 0, padTop);
         redGrad.addColorStop(0, 'rgba(240,68,56,0.05)');
         redGrad.addColorStop(1, 'rgba(240,68,56,0.35)');
         ctx.fillStyle = redGrad;
@@ -684,31 +710,66 @@
         for (let i = 0; i < gaps.length; i++) {
           const x = xPos(i);
           const y = yPos(gaps[i]);
-          ctx.fillStyle = gaps[i] <= 0 ? '#3ecf8e' : '#f04438';
+          ctx.fillStyle = gaps[i] >= 0 ? '#f04438' : '#3ecf8e';
           ctx.beginPath();
           ctx.arc(x, y, 2.5, 0, Math.PI * 2);
           ctx.fill();
         }
       }
 
-      // Current gap value label (top right)
-      const currentGap = gaps[gaps.length - 1];
-      const gapText = (currentGap >= 0 ? '+' : '') + currentGap.toFixed(2) + 's';
-      ctx.font = 'bold 12px Segoe UI';
-      ctx.fillStyle = currentGap <= 0 ? '#3ecf8e' : '#f04438';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'top';
-      ctx.fillText(gapText, W - padRight, padTop);
+      // Current gap value label (top right) — use live gap from estTime
+      // Convention: negative = focus faster (green), positive = focus slower (red)
+      if (currentLiveGap !== null) {
+        // currentLiveGap = focused.estTime - compare.estTime (positive = focus behind)
+        const gapText = (currentLiveGap >= 0 ? '+' : '') + currentLiveGap.toFixed(2) + 's';
+        ctx.font = 'bold 12px Segoe UI';
+        ctx.fillStyle = currentLiveGap <= 0 ? '#3ecf8e' : '#f04438';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'top';
+        ctx.fillText(gapText, W - padRight, padTop);
+      } else {
+        const lastGap = gaps[gaps.length - 1];
+        const gapText = (lastGap >= 0 ? '+' : '') + lastGap.toFixed(2) + 's';
+        ctx.font = 'bold 12px Segoe UI';
+        ctx.fillStyle = lastGap <= 0 ? '#3ecf8e' : '#f04438';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'top';
+        ctx.fillText(gapText, W - padRight, padTop);
+      }
     }
 
     // Redraw on resize
     window.addEventListener('resize', scheduleDraw);
+
+    // Restore state from sessionStorage (survives reload)
+    try {
+      const saved = sessionStorage.getItem('_lapCompareState');
+      if (saved) {
+        const s = JSON.parse(saved);
+        if (s.driverLapHistory) Object.assign(driverLapHistory, s.driverLapHistory);
+        if (s.compareMode) { compareMode = s.compareMode; setMode(s.compareMode); }
+        if (s.viewMode) { viewMode = s.viewMode; setView(s.viewMode); }
+        if (s.lastFocusIdx !== undefined) lastFocusIdx = s.lastFocusIdx;
+        if (s.lastCompareIdx !== undefined) lastCompareIdx = s.lastCompareIdx;
+        sessionStorage.removeItem('_lapCompareState');
+        scheduleDraw();
+      }
+    } catch(e) {}
 
     connectBridge(['standings']);
 
     // Drag support
     try {
       const { ipcRenderer } = require('electron');
+      // Save state before reload
+      ipcRenderer.on('will-reload', () => {
+        try {
+          sessionStorage.setItem('_lapCompareState', JSON.stringify({
+            driverLapHistory, compareMode, viewMode,
+            lastFocusIdx, lastCompareIdx,
+          }));
+        } catch(e) {}
+      });
       ipcRenderer.on('lock-state', (event, locked) => {
         document.body.style.pointerEvents = locked ? 'none' : 'auto';
       });
@@ -735,6 +796,30 @@
       });
       document.addEventListener('mouseup', () => { _dragging = false; });
       document.addEventListener('mouseleave', () => { _dragging = false; });
+
+      // Click-through: transparent areas pass clicks through, visible panel captures them
+      let _mouseOverPanel = false;
+      document.addEventListener('mousemove', (e) => {
+        if (_dragging) return;
+        const panel = document.querySelector('.overlay-panel');
+        if (!panel) return;
+        const r = panel.getBoundingClientRect();
+        const over = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+        if (over && !_mouseOverPanel) {
+          _mouseOverPanel = true;
+          ipcRenderer.send('set-ignore-mouse', false);
+        } else if (!over && _mouseOverPanel) {
+          _mouseOverPanel = false;
+          ipcRenderer.send('set-ignore-mouse', true);
+        }
+      });
+      document.addEventListener('mouseleave', () => {
+        if (_dragging) return;
+        if (_mouseOverPanel) {
+          _mouseOverPanel = false;
+          ipcRenderer.send('set-ignore-mouse', true);
+        }
+      });
     } catch(e) {}
   </script>
 </body>

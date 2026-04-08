@@ -232,11 +232,36 @@
       renderLaps();
     });
 
+    // Restore state from sessionStorage (survives reload)
+    try {
+      const saved = sessionStorage.getItem('_stintState');
+      if (saved) {
+        const s = JSON.parse(saved);
+        if (s.sessionLaps) sessionLaps = s.sessionLaps;
+        if (s.lastFocusCarIdx) lastFocusCarIdx = s.lastFocusCarIdx;
+        if (s.lastFocusLastLap) lastFocusLastLap = s.lastFocusLastLap;
+        if (s.currentSessionType) currentSessionType = s.currentSessionType;
+        if (s.currentSessionNum !== undefined) currentSessionNum = s.currentSessionNum;
+        if (s.activeFilter) { activeFilter = s.activeFilter; setFilter(s.activeFilter); }
+        renderLaps();
+        sessionStorage.removeItem('_stintState');
+      }
+    } catch(e) {}
+
     connectBridge(['standings', 'session']);
 
     // Drag support
     try {
       const { ipcRenderer } = require('electron');
+      // Save state before reload
+      ipcRenderer.on('will-reload', () => {
+        try {
+          sessionStorage.setItem('_stintState', JSON.stringify({
+            sessionLaps, lastFocusCarIdx, lastFocusLastLap,
+            currentSessionType, currentSessionNum, activeFilter,
+          }));
+        } catch(e) {}
+      });
       ipcRenderer.on('lock-state', () => {});
       let _dragging = false, _dragStartX = 0, _dragStartY = 0;
       const dragHeader = document.querySelector('.overlay-header');
@@ -258,6 +283,30 @@
       });
       document.addEventListener('mouseup', () => { _dragging = false; });
       document.addEventListener('mouseleave', () => { _dragging = false; });
+
+      // Click-through: transparent areas pass clicks through, visible panel captures them
+      let _mouseOverPanel = false;
+      document.addEventListener('mousemove', (e) => {
+        if (_dragging) return;
+        const panel = document.querySelector('.overlay-panel');
+        if (!panel) return;
+        const r = panel.getBoundingClientRect();
+        const over = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+        if (over && !_mouseOverPanel) {
+          _mouseOverPanel = true;
+          ipcRenderer.send('set-ignore-mouse', false);
+        } else if (!over && _mouseOverPanel) {
+          _mouseOverPanel = false;
+          ipcRenderer.send('set-ignore-mouse', true);
+        }
+      });
+      document.addEventListener('mouseleave', () => {
+        if (_dragging) return;
+        if (_mouseOverPanel) {
+          _mouseOverPanel = false;
+          ipcRenderer.send('set-ignore-mouse', true);
+        }
+      });
     } catch(e) {}
   </script>
 </body>
