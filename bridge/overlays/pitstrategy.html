@@ -23,7 +23,7 @@
 
     .pit-loss { text-align: center; font-size: 10px; color: rgba(255,255,255,0.45); margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px; }
 
-    .pass-list { max-height: 72px; overflow-y: auto; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px; }
+    .pass-list { border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px; }
     .pass-list::-webkit-scrollbar { width: 3px; }
     .pass-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
     .pass-item { display: flex; align-items: center; justify-content: space-between; padding: 2px 0; font-size: 10px; }
@@ -202,12 +202,25 @@
         more.innerHTML = '<span class="pass-name" style="color:rgba(255,255,255,0.35);font-style:italic;">+' + hiddenCount + ' more</span>';
         passListEl.appendChild(more);
       }
+      autoResizeHeight();
     }
 
     function escapeHtml(str) {
       const div = document.createElement('div');
       div.textContent = str;
       return div.innerHTML;
+    }
+
+    // Auto-resize height to fit content
+    function autoResizeHeight() {
+      try {
+        const { ipcRenderer } = require('electron');
+        const panel = document.querySelector('.overlay-panel');
+        if (panel) {
+          const h = Math.min(500, Math.max(150, panel.scrollHeight + 4));
+          ipcRenderer.send('auto-resize-height', h);
+        }
+      } catch(e) {}
     }
 
     connectBridge(['standings', 'session']);

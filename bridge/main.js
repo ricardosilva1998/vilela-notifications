@@ -55,7 +55,7 @@ const OVERLAYS = [
   { id: 'drivercard', name: 'Driver Card', width: 300, height: 180 },
   { id: 'stintlaps', name: 'Stint Laps', width: 320, height: 300 },
   { id: 'weather', name: 'Weather', width: 320, height: 195 },
-  { id: 'pitstrategy', name: 'Pit Strategy', width: 260, height: 340 },
+  { id: 'pitstrategy', name: 'Pit Strategy', width: 260, height: 400 },
   { id: 'lapcompare', name: 'Lap Compare', width: 360, height: 220 },
   { id: 'livestats', name: 'Live Stats', width: 380, height: 250 },
   { id: 'pittimer', name: 'Pit Duration', width: 200, height: 120 },
