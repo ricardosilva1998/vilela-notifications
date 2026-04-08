@@ -285,6 +285,9 @@
       <div class="sidebar-item" data-panel="weather" onclick="navigateTo('weather')">
         <span class="sidebar-icon">&#9925;</span> Weather
       </div>
+      <div class="sidebar-item" data-panel="pitstrategy" onclick="navigateTo('pitstrategy')">
+        <span class="sidebar-icon">&#9881;</span> Pit Strategy
+      </div>
       <div class="sidebar-spacer"></div>
       <div class="sidebar-divider"></div>
       <div class="sidebar-item" data-panel="updates" onclick="navigateTo('updates')">
@@ -337,6 +340,7 @@
       <div class="content-panel" id="panel-drivercard"></div>
       <div class="content-panel" id="panel-stintlaps"></div>
       <div class="content-panel" id="panel-weather"></div>
+      <div class="content-panel" id="panel-pitstrategy"></div>
 
       <!-- ═══ UPDATES PANEL ═══ -->
       <div class="content-panel" id="panel-updates">
@@ -413,6 +417,7 @@
       { id: 'drivercard', icon: '&#127183;', name: 'Driver Card' },
       { id: 'stintlaps', icon: '&#128203;', name: 'Stint Laps' },
       { id: 'weather', icon: '&#9925;', name: 'Weather' },
+      { id: 'pitstrategy', icon: '&#9881;', name: 'Pit Strategy' },
     ];
 
     // ─── CUSTOMIZE_FIELDS (all overlay settings) ─────────────
@@ -555,6 +560,11 @@
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       raceduration: [
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
+        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
+      ],
+      pitstrategy: [
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },

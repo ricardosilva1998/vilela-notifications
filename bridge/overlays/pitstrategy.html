@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Pit Strategy</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; }
+    .overlay-panel { background: rgba(12,13,20,0.88); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; backdrop-filter: blur(12px); overflow: hidden; }
+    .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 5px 10px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+    .status-dot.connected { background: #3ecf8e; }
+    .status-dot.waiting { background: #f79009; }
+    .status-dot.demo { background: #f79009; }
+
+    .pit-body { padding: 10px 14px 8px; }
+    .position-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px; }
+    .pos-current { font-size: 28px; font-weight: 800; font-family: 'JetBrains Mono', 'Consolas', monospace; color: #fff; }
+    .pos-arrow { font-size: 18px; color: rgba(255,255,255,0.35); }
+    .pos-projected { font-size: 28px; font-weight: 800; font-family: 'JetBrains Mono', 'Consolas', monospace; color: #f79009; }
+    .pos-projected.same { color: #3ecf8e; }
+    .pos-projected.loss { color: #f04438; }
+
+    .pit-loss { text-align: center; font-size: 10px; color: rgba(255,255,255,0.45); margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px; }
+
+    .pass-list { max-height: 72px; overflow-y: auto; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px; }
+    .pass-list::-webkit-scrollbar { width: 3px; }
+    .pass-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+    .pass-item { display: flex; align-items: center; justify-content: space-between; padding: 2px 0; font-size: 10px; }
+    .pass-name { color: rgba(255,255,255,0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+    .pass-gap { font-family: 'JetBrains Mono', 'Consolas', monospace; color: rgba(255,255,255,0.4); font-size: 9px; }
+
+    .no-data { text-align: center; padding: 16px 10px; font-size: 11px; color: rgba(255,255,255,0.3); font-style: italic; }
+  </style>
+</head>
+<body>
+  <div class="overlay-panel">
+    <div class="overlay-header">
+      <span>PIT STRATEGY</span>
+      <span id="connection-status"><span class="status-dot demo"></span></span>
+    </div>
+    <div id="pit-content">
+      <div class="no-data" id="no-data">Waiting for data...</div>
+      <div class="pit-body" id="pit-body" style="display:none;">
+        <div class="position-row">
+          <div class="pos-current" id="pos-current">P-</div>
+          <div class="pos-arrow">&#10142;</div>
+          <div class="pos-projected" id="pos-projected">P-</div>
+        </div>
+        <div class="pit-loss" id="pit-loss">-- pit loss</div>
+        <div class="pass-list" id="pass-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BRIDGE_URL = 'ws://localhost:9100';
+    let ws = null;
+    let bridgeConnected = false;
+    let iracingConnected = false;
+    const dataHandlers = {};
+
+    function connectBridge(channels) {
+      try { ws = new WebSocket(BRIDGE_URL); } catch(e) { setTimeout(() => connectBridge(channels), 3000); return; }
+      ws.onopen = () => { bridgeConnected = true; updateStatus(); ws.send(JSON.stringify({ type: 'subscribe', channels })); };
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'bridge-connected') { bridgeConnected = true; updateStatus(); }
+          else if (msg.type === 'status') { iracingConnected = msg.iracing; updateStatus(); }
+          else if (msg.type === 'data' && dataHandlers[msg.channel]) { dataHandlers[msg.channel](msg.data); }
+        } catch(e) {}
+      };
+      ws.onclose = () => { bridgeConnected = false; iracingConnected = false; updateStatus(); setTimeout(() => connectBridge(channels), 3000); };
+      ws.onerror = () => { ws.close(); };
+    }
+    function onData(ch, fn) { dataHandlers[ch] = fn; }
+    function updateStatus() {
+      const el = document.getElementById('connection-status');
+      if (!bridgeConnected) { if (el) el.innerHTML = '<span class="status-dot demo"></span>'; }
+      else if (!iracingConnected) { if (el) el.innerHTML = '<span class="status-dot waiting"></span>'; }
+      else { if (el) el.innerHTML = '<span class="status-dot connected"></span>'; }
+    }
+
+    let _standings = [];
+    let _pitDeltas = {};
+
+    onData('session', data => {
+      if (!data) return;
+      if (data.pitDeltas) _pitDeltas = data.pitDeltas;
+      recalculate();
+    });
+
+    onData('standings', data => {
+      if (!data || !data.length) return;
+      _standings = data;
+      recalculate();
+    });
+
+    function recalculate() {
+      if (!_standings.length) return;
+
+      const noDataEl = document.getElementById('no-data');
+      const bodyEl = document.getElementById('pit-body');
+      const posCurrentEl = document.getElementById('pos-current');
+      const posProjectedEl = document.getElementById('pos-projected');
+      const pitLossEl = document.getElementById('pit-loss');
+      const passListEl = document.getElementById('pass-list');
+
+      // Find focused driver
+      const focused = _standings.find(d => d.isSpectated) || _standings.find(d => d.isPlayer);
+      if (!focused) {
+        noDataEl.style.display = '';
+        bodyEl.style.display = 'none';
+        noDataEl.textContent = 'No driver focused';
+        return;
+      }
+
+      const focusClass = focused.carClass || '';
+      const pitDeltaInfo = focusClass && _pitDeltas[focusClass] ? _pitDeltas[focusClass] : null;
+
+      if (!pitDeltaInfo || !pitDeltaInfo.avgDelta) {
+        noDataEl.style.display = '';
+        bodyEl.style.display = 'none';
+        noDataEl.textContent = 'No pit data';
+        return;
+      }
+
+      const pitDelta = pitDeltaInfo.avgDelta;
+
+      // Get classmates sorted by classPosition
+      const classmates = _standings
+        .filter(d => d.carClass === focusClass)
+        .sort((a, b) => a.classPosition - b.classPosition);
+
+      const focusGap = focused.gapToLeader || 0;
+      const currentPos = focused.classPosition || 0;
+
+      // Find cars behind that would pass during pit stop
+      const carsWouldPass = [];
+      for (const driver of classmates) {
+        if (driver.carIdx === focused.carIdx) continue;
+        if (driver.classPosition <= currentPos) continue; // car ahead or same pos
+        // Gap between focus and this driver = difference in gapToLeader
+        const driverGap = driver.gapToLeader || 0;
+        const gapBetween = Math.abs(driverGap - focusGap);
+        if (gapBetween < pitDelta) {
+          carsWouldPass.push({ name: driver.driverName || 'Unknown', gap: gapBetween });
+        }
+      }
+
+      // Sort by gap (closest first)
+      carsWouldPass.sort((a, b) => a.gap - b.gap);
+
+      const projectedPos = currentPos + carsWouldPass.length;
+
+      // Update UI
+      noDataEl.style.display = 'none';
+      bodyEl.style.display = '';
+
+      posCurrentEl.textContent = 'P' + currentPos;
+      posProjectedEl.textContent = 'P' + projectedPos;
+
+      // Color coding for projected position
+      posProjectedEl.className = 'pos-projected';
+      if (projectedPos === currentPos) {
+        posProjectedEl.classList.add('same');
+      } else {
+        posProjectedEl.classList.add('loss');
+      }
+
+      pitLossEl.textContent = pitDelta.toFixed(1) + 's pit loss';
+
+      // Build pass list
+      passListEl.innerHTML = '';
+      for (const car of carsWouldPass) {
+        const item = document.createElement('div');
+        item.className = 'pass-item';
+        item.innerHTML =
+          '<span class="pass-name">' + escapeHtml(car.name) + '</span>' +
+          '<span class="pass-gap">' + car.gap.toFixed(1) + 's</span>';
+        passListEl.appendChild(item);
+      }
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    connectBridge(['standings', 'session']);
+
+    // Drag support
+    try {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.on('lock-state', (event, locked) => {
+        document.body.style.pointerEvents = locked ? 'none' : 'auto';
+      });
+      let _dragging = false, _dragStartX = 0, _dragStartY = 0;
+      const dragHeader = document.querySelector('.overlay-header');
+      if (dragHeader) {
+        dragHeader.style.cursor = 'move';
+        dragHeader.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return;
+          _dragging = true;
+          _dragStartX = e.screenX;
+          _dragStartY = e.screenY;
+          e.preventDefault();
+        });
+      }
+      document.addEventListener('mousemove', (e) => {
+        if (!_dragging) return;
+        const dx = e.screenX - _dragStartX;
+        const dy = e.screenY - _dragStartY;
+        _dragStartX = e.screenX;
+        _dragStartY = e.screenY;
+        ipcRenderer.send('drag-overlay', dx, dy);
+      });
+      document.addEventListener('mouseup', () => { _dragging = false; });
+      document.addEventListener('mouseleave', () => { _dragging = false; });
+    } catch(e) {}
+  </script>
+</body>
+</html>
