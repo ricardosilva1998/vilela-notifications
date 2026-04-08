@@ -159,6 +159,7 @@ function savePitTimes(data) {
   } catch(e) { log('[PitTimes] Save error: ' + e.message); }
 }
 let pitTimesData = {}; // { trackName: { className: { avgDelta, samples } } }
+const pitStopCounts = new Map(); // carIdx -> number of pit stops
 
 /**
  * iRating change calculator — exact formula from iRacing spreadsheet.
@@ -263,6 +264,7 @@ async function startTelemetry(onStatusChange) {
         resetSelectedCar();
         startingIRatings.clear();
         pitTracking.clear();
+        pitStopCounts.clear();
         classPitDeltas = {};
         resetFuel();
         trackSlots.fill(null);
@@ -326,6 +328,7 @@ async function startTelemetry(onStatusChange) {
               cachedLapsCompleted.clear();
               sessionResults.clear();
               persistedDrivers.clear();
+              pitStopCounts.clear();
               log('[Session] Cleared data: ' + prevType + ' → ' + newType);
             } else {
               log('[Session] Kept data: ' + prevType + ' → ' + newType);
@@ -738,6 +741,8 @@ async function startTelemetry(onStatusChange) {
         // Also include all cars from session info (even if not on track yet)
         drivers.forEach(d => { if (d.CarIdx !== undefined && d.UserName && d.UserName !== 'Pace Car' && !d.IsSpectator) activeIndices.add(d.CarIdx); });
 
+        const tireCompounds = ir.get(VARS.CAR_IDX_TIRE_COMPOUND) || [];
+
         for (const i of activeIndices) {
           const driver = drivers.find(d => d.CarIdx === i);
           const name = driver?.UserName || ('Car ' + i);
@@ -787,6 +792,9 @@ async function startTelemetry(onStatusChange) {
             lapDistPct: lapDistPct[i] || 0,
             isPlayer: i === playerCarIdx,
             isSpectated: i === focusCarIdx,
+            tireCompound: tireCompounds[i] ?? -1,
+            pitStops: pitStopCounts.get(i) || 0,
+            gapToLeader: 0,
           });
         }
 
@@ -802,6 +810,7 @@ async function startTelemetry(onStatusChange) {
             pt.wasPitting = true;
             pt.bestLapSnapshot = s.bestLap;
             pt.lapsSnapshot = s.lapsCompleted;
+            pitStopCounts.set(s.carIdx, (pitStopCounts.get(s.carIdx) || 0) + 1);
           }
           // Driver just exited pit — wait for next completed lap
           if (!s.inPit && pt.wasPitting) {
@@ -857,6 +866,20 @@ async function startTelemetry(onStatusChange) {
           // Fallback: laps completed then track distance
           if (a.lapsCompleted !== b.lapsCompleted) return b.lapsCompleted - a.lapsCompleted;
           return b.lapDistPct - a.lapDistPct;
+        });
+
+        // Calculate gap to class leader in seconds (using estTime)
+        const classLeaderEstTime = {};
+        standings.forEach(s => {
+          if (!classLeaderEstTime[s.carClass] && s.estTime > 0) {
+            classLeaderEstTime[s.carClass] = s.estTime;
+          }
+        });
+        standings.forEach(s => {
+          const leaderTime = classLeaderEstTime[s.carClass];
+          if (leaderTime && s.estTime > 0) {
+            s.gapToLeader = s.estTime - leaderTime;
+          }
         });
 
         // Diagnostic: log standings count
