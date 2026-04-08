@@ -1058,7 +1058,7 @@ async function startTelemetry(onStatusChange) {
           return b.lapDistPct - a.lapDistPct;
         });
 
-        // Calculate gap to class leader in seconds (using estTime, fallback to lap-based)
+        // Calculate gap to class leader: estTime > laps behind > best lap difference
         const classLeaderData = {};
         standings.forEach(s => {
           if (!classLeaderData[s.carClass] && s.classPosition === 1) {
@@ -1067,15 +1067,17 @@ async function startTelemetry(onStatusChange) {
         });
         standings.forEach(s => {
           const leader = classLeaderData[s.carClass];
-          if (!leader) return;
+          if (!leader || s.classPosition === 1) return;
           if (leader.estTime > 0 && s.estTime > 0) {
+            // Best: real-time estimated time difference
             s.gapToLeader = s.estTime - leader.estTime;
-          } else if (leader.laps > 0 && s.lapsCompleted >= 0 && leader.bestLap > 0) {
-            // Fallback: laps behind * leader best lap + track position difference
+          } else if (leader.laps > 0 && (s.lapsCompleted || 0) < leader.laps && leader.bestLap > 0) {
+            // Fallback: laps behind × leader best lap
             const lapsBehind = leader.laps - (s.lapsCompleted || 0);
-            if (lapsBehind > 0) {
-              s.gapToLeader = lapsBehind * leader.bestLap;
-            }
+            s.gapToLeader = lapsBehind * leader.bestLap;
+          } else if (leader.bestLap > 0 && s.bestLap > 0) {
+            // Fallback: best lap time difference (always available from session results)
+            s.gapToLeader = s.bestLap - leader.bestLap;
           }
         });
 
