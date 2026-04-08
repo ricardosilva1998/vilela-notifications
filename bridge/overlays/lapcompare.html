@@ -58,11 +58,16 @@
     </div>
     <div class="tab-bar">
       <div class="tab-btn active" id="tab-chart" onclick="setView('chart')">Chart</div>
+      <div class="tab-btn" id="tab-gap" onclick="setView('gap')">Gap</div>
       <div class="tab-btn" id="tab-laps" onclick="setView('laps')">Laps</div>
     </div>
     <div class="chart-body" id="chart-view">
       <canvas id="gap-canvas"></canvas>
       <div class="no-data" id="no-data">No lap data yet</div>
+    </div>
+    <div class="chart-body" id="gap-view" style="display:none">
+      <canvas id="gap-per-lap-canvas"></canvas>
+      <div class="no-data" id="gap-no-data">No lap data yet</div>
     </div>
     <div class="laps-view" id="laps-view" style="display:none">
       <table class="laps-table">
@@ -133,11 +138,12 @@
     function setView(mode) {
       viewMode = mode;
       document.getElementById('chart-view').style.display = mode === 'chart' ? '' : 'none';
+      document.getElementById('gap-view').style.display = mode === 'gap' ? '' : 'none';
       document.getElementById('laps-view').style.display = mode === 'laps' ? '' : 'none';
       document.getElementById('tab-chart').classList.toggle('active', mode === 'chart');
+      document.getElementById('tab-gap').classList.toggle('active', mode === 'gap');
       document.getElementById('tab-laps').classList.toggle('active', mode === 'laps');
-      if (mode === 'chart') scheduleDraw();
-      else updateLapsTable();
+      scheduleDraw();
     }
 
     function formatLapTime(t) {
@@ -146,6 +152,89 @@
       const secs = t - mins * 60;
       if (mins > 0) return mins + ':' + secs.toFixed(3).padStart(6, '0');
       return secs.toFixed(3);
+    }
+
+    function drawGapPerLapChart() {
+      const canvas = document.getElementById('gap-per-lap-canvas');
+      const noDataEl = document.getElementById('gap-no-data');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.parentElement.clientWidth || 340;
+      const H = canvas.parentElement.clientHeight || 180;
+      canvas.width = W; canvas.height = H;
+
+      const focusLaps = (driverLapHistory[lastFocusIdx] || {}).laps || [];
+      const compareLaps = (driverLapHistory[lastCompareIdx] || {}).laps || [];
+      const minLen = Math.min(focusLaps.length, compareLaps.length);
+
+      if (minLen < 1) {
+        ctx.clearRect(0, 0, W, H);
+        noDataEl.style.display = '';
+        return;
+      }
+      noDataEl.style.display = 'none';
+
+      // Per-lap gap delta: positive = focus gained time, negative = focus lost time
+      const deltas = [];
+      for (let i = 0; i < minLen; i++) {
+        deltas.push(compareLaps[i] - focusLaps[i]);
+      }
+
+      const padLeft = 38, padRight = 12, padTop = 12, padBottom = 20;
+      const chartW = W - padLeft - padRight;
+      const chartH = H - padTop - padBottom;
+      if (chartW <= 0 || chartH <= 0) return;
+
+      let minVal = Math.min(0, ...deltas);
+      let maxVal = Math.max(0, ...deltas);
+      const range = maxVal - minVal;
+      const yPad = range > 0 ? range * 0.15 : 0.3;
+      minVal -= yPad; maxVal += yPad;
+
+      function yPos(v) { return padTop + (1 - (v - minVal) / (maxVal - minVal)) * chartH; }
+      const barW = Math.max(4, (chartW / deltas.length) - 2);
+      const zeroY = yPos(0);
+
+      ctx.clearRect(0, 0, W, H);
+
+      // Grid
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+      ctx.font = '8px Segoe UI'; ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      const niceSteps = [0.05, 0.1, 0.2, 0.5, 1, 2, 5];
+      let gridStep = 0.5;
+      for (const s of niceSteps) { if ((maxVal - minVal) / s <= 6) { gridStep = s; break; } }
+      for (let v = Math.ceil(minVal / gridStep) * gridStep; v <= maxVal; v += gridStep) {
+        const y = yPos(v);
+        ctx.beginPath(); ctx.moveTo(padLeft, y); ctx.lineTo(W - padRight, y); ctx.stroke();
+        ctx.fillText((v >= 0 ? '+' : '') + v.toFixed(gridStep < 1 ? 1 : 0) + 's', padLeft - 4, y);
+      }
+
+      // Zero line
+      ctx.save(); ctx.setLineDash([4, 3]); ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(padLeft, zeroY); ctx.lineTo(W - padRight, zeroY); ctx.stroke(); ctx.restore();
+
+      // Bars
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      deltas.forEach((d, i) => {
+        const x = padLeft + (i / deltas.length) * chartW + 1;
+        const barTop = d >= 0 ? yPos(d) : zeroY;
+        const barHeight = Math.abs(yPos(d) - zeroY);
+        ctx.fillStyle = d >= 0 ? 'rgba(62,207,142,0.7)' : 'rgba(240,68,56,0.7)';
+        ctx.fillRect(x, barTop, barW, Math.max(1, barHeight));
+        // X labels
+        ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '8px Segoe UI';
+        if (deltas.length <= 15 || i % Math.ceil(deltas.length / 10) === 0) {
+          ctx.fillText('L' + (i + 1), x + barW / 2, H - padBottom + 4);
+        }
+      });
+
+      // Current gap value
+      const lastDelta = deltas[deltas.length - 1];
+      ctx.font = 'bold 10px Segoe UI';
+      ctx.fillStyle = lastDelta >= 0 ? '#3ecf8e' : '#f04438';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+      ctx.fillText((lastDelta >= 0 ? '+' : '') + lastDelta.toFixed(3) + 's', W - padRight, padTop);
     }
 
     function updateLapsTable() {
@@ -251,6 +340,7 @@
       requestAnimationFrame(() => {
         drawScheduled = false;
         if (viewMode === 'chart') drawGapChart();
+        else if (viewMode === 'gap') drawGapPerLapChart();
         else updateLapsTable();
       });
     }
@@ -297,11 +387,12 @@
 
       noDataEl.style.display = 'none';
 
-      // Build cumulative gap: positive = focus is slower (losing), negative = focus is faster (gaining)
+      // Build cumulative gap: positive = focus is gaining (good), negative = focus is losing (bad)
+      // Inverted from raw time diff so chart UP = gaining, DOWN = losing
       const gaps = [];
       let cumulativeGap = 0;
       for (let i = 0; i < minLen; i++) {
-        cumulativeGap += focusLaps[i] - compareLaps[i];
+        cumulativeGap += compareLaps[i] - focusLaps[i]; // compare - focus: positive when focus is faster
         gaps.push(cumulativeGap);
       }
 
