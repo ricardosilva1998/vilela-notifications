@@ -200,12 +200,6 @@ let lastStandings = [];
 function collectAndUploadTrackStats(track, standingsData, pitDeltas, sofByClassData, qualifyBest, totalRaceTime) {
   if (!track || !standingsData || standingsData.length === 0) return;
 
-  // Determine base race type from total session duration
-  const totalMinutes = totalRaceTime / 60;
-  let baseRaceType = 'sprint';
-  if (totalMinutes > 60) baseRaceType = 'endurance';
-  else if (totalMinutes >= 30) baseRaceType = 'open';
-
   // Group drivers by canonical class
   const classSummary = {};
   standingsData.forEach(s => {
@@ -216,17 +210,43 @@ function collectAndUploadTrackStats(track, standingsData, pitDeltas, sofByClassD
     if (s.bestLap > 0) classSummary[cls].bestLaps.push(s.bestLap);
   });
 
-  // Detect series: multiclass (2+ classes) = IMSA, single GT3 class = VRS
+  // Detect series from class count + race duration
+  const totalMinutes = totalRaceTime / 60;
   const classCount = Object.keys(classSummary).length;
   const hasMulticlass = classCount >= 2;
 
-  // For each class, determine the race type with series prefix for GT3
+  // Determine race type per class based on duration + series
+  // GT3: Regionals ~20, VRS Sprint ~25, IMSA Sprint ~35, VRS Open ~40, IMSA Open ~45, IMSA Endurance ~160, Global Endurance ~360
+  // LMP2: LMP2 Sprint ~20, IMSA Sprint ~35, IMSA Open ~45, IMSA Endurance ~160, Global Endurance ~360
+  // GTP: IMSA Sprint ~35, IMSA Open ~45, IMSA Endurance ~160, Global Endurance ~360
   function getRaceType(cls) {
     if (cls === 'GT3') {
-      const series = hasMulticlass ? 'imsa' : 'vrs';
-      return series + '_' + baseRaceType;
+      if (totalMinutes >= 300) return 'global_endurance';
+      if (totalMinutes >= 120) return 'imsa_endurance';
+      if (hasMulticlass && totalMinutes >= 40) return 'imsa_open';
+      if (!hasMulticlass && totalMinutes >= 35) return 'vrs_open';
+      if (hasMulticlass && totalMinutes >= 30) return 'imsa_sprint';
+      if (!hasMulticlass && totalMinutes >= 22) return 'vrs_sprint';
+      return 'regionals';
     }
-    return baseRaceType;
+    if (cls === 'LMP2') {
+      if (totalMinutes >= 300) return 'global_endurance';
+      if (totalMinutes >= 120) return 'imsa_endurance';
+      if (hasMulticlass && totalMinutes >= 40) return 'imsa_open';
+      if (hasMulticlass && totalMinutes >= 30) return 'imsa_sprint';
+      return 'lmp2_sprint';
+    }
+    if (cls === 'GTP') {
+      if (totalMinutes >= 300) return 'global_endurance';
+      if (totalMinutes >= 120) return 'imsa_endurance';
+      if (totalMinutes >= 40) return 'imsa_open';
+      if (totalMinutes >= 30) return 'imsa_sprint';
+      return 'prototype_sprint';
+    }
+    // Other classes: simple sprint/open/endurance
+    if (totalMinutes >= 120) return 'endurance';
+    if (totalMinutes >= 30) return 'open';
+    return 'sprint';
   }
 
   // Find overall leader pace (fastest class)

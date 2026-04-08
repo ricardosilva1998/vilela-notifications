@@ -997,15 +997,21 @@ async function showTrackStatsPage(trackName) {
     function formatRaceType(rt) {
       const labels = {
         sprint: 'Sprint', open: 'Open', endurance: 'Endurance',
+        regionals: 'Regionals',
+        vrs_sprint: 'VRS Sprint', vrs_open: 'VRS Open',
         imsa_sprint: 'IMSA Sprint', imsa_open: 'IMSA Open', imsa_endurance: 'IMSA Endurance',
-        vrs_sprint: 'VRS Sprint', vrs_open: 'VRS Open', vrs_endurance: 'VRS Endurance',
+        global_endurance: 'Global Endurance',
+        lmp2_sprint: 'LMP2 Sprint',
+        prototype_sprint: 'Proto Sprint',
       };
       return labels[rt] || rt;
     }
 
-    // Race types per class: GT3 gets IMSA + VRS variants, others get standard
+    // Race types per class
     function getRaceTypes(cls) {
-      if (cls === 'GT3') return ['imsa_sprint', 'imsa_open', 'imsa_endurance', 'vrs_sprint', 'vrs_open', 'vrs_endurance'];
+      if (cls === 'GT3') return ['regionals', 'vrs_sprint', 'imsa_sprint', 'vrs_open', 'imsa_open', 'imsa_endurance', 'global_endurance'];
+      if (cls === 'LMP2') return ['lmp2_sprint', 'imsa_sprint', 'imsa_open', 'imsa_endurance', 'global_endurance'];
+      if (cls === 'GTP') return ['prototype_sprint', 'imsa_sprint', 'imsa_open', 'imsa_endurance', 'global_endurance'];
       return ['sprint', 'open', 'endurance'];
     }
 
