@@ -181,6 +181,58 @@ app.post('/api/track-map', (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Track stats API (public — must be before /api auth middleware)
+app.post('/api/track-stats', express.json(), (req, res) => {
+  try {
+    const { trackName, raceType, stats } = req.body;
+    if (!trackName || !raceType || !stats) return res.status(400).json({ error: 'Missing fields' });
+    if (!['sprint', 'open', 'endurance'].includes(raceType)) return res.status(400).json({ error: 'Invalid raceType' });
+
+    const stmt = db.db.prepare(`
+      INSERT INTO track_stats (track_name, car_class, race_type, avg_lap_time, avg_pit_time, avg_qualify_time, avg_sof, samples, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      ON CONFLICT(track_name, car_class, race_type) DO UPDATE SET
+        avg_lap_time = (avg_lap_time * samples + excluded.avg_lap_time * excluded.samples) / (samples + excluded.samples),
+        avg_pit_time = CASE WHEN excluded.avg_pit_time > 0
+          THEN (CASE WHEN avg_pit_time > 0 THEN (avg_pit_time * samples + excluded.avg_pit_time * excluded.samples) / (samples + excluded.samples) ELSE excluded.avg_pit_time END)
+          ELSE avg_pit_time END,
+        avg_qualify_time = CASE WHEN excluded.avg_qualify_time > 0
+          THEN (CASE WHEN avg_qualify_time > 0 THEN (avg_qualify_time * samples + excluded.avg_qualify_time * excluded.samples) / (samples + excluded.samples) ELSE excluded.avg_qualify_time END)
+          ELSE avg_qualify_time END,
+        avg_sof = (avg_sof * samples + excluded.avg_sof * excluded.samples) / (samples + excluded.samples),
+        samples = samples + excluded.samples,
+        updated_at = datetime('now')
+    `);
+
+    Object.entries(stats).forEach(([cls, data]) => {
+      stmt.run(trackName, cls, raceType, data.avgLapTime || 0, data.avgPitTime || 0, data.avgQualifyTime || 0, data.avgSOF || 0, data.samples || 1);
+    });
+
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('[TrackStats] POST error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/track-stats', (req, res) => {
+  try {
+    const rows = db.db.prepare('SELECT track_name, car_class, race_type, avg_lap_time, avg_pit_time, avg_qualify_time, avg_sof, samples, updated_at FROM track_stats ORDER BY track_name, car_class, race_type').all();
+    res.json(rows);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/track-stats/:trackName', (req, res) => {
+  try {
+    const rows = db.db.prepare('SELECT car_class, race_type, avg_lap_time, avg_pit_time, avg_qualify_time, avg_sof, samples, updated_at FROM track_stats WHERE track_name = ? ORDER BY car_class, race_type').all(req.params.trackName);
+    res.json(rows);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.use('/api', apiRoutes);
 app.use('/admin', adminRoutes);
 app.use('/vtuber', vtuberRoutes);

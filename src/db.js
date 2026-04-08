@@ -763,6 +763,23 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS track_stats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    track_name TEXT NOT NULL,
+    car_class TEXT NOT NULL,
+    race_type TEXT NOT NULL CHECK(race_type IN ('sprint', 'open', 'endurance')),
+    avg_lap_time REAL DEFAULT 0,
+    avg_pit_time REAL DEFAULT 0,
+    avg_qualify_time REAL DEFAULT 0,
+    avg_sof REAL DEFAULT 0,
+    samples INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(track_name, car_class, race_type)
+  )
+`);
+
 // --- Seed: ensure enterprise subscriptions for specific users ---
 const _enterpriseUsers = ['Ricardo Apple', 'andre_vilela'];
 for (const name of _enterpriseUsers) {
