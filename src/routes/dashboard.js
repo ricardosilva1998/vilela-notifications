@@ -839,11 +839,16 @@ router.post('/donations', (req, res) => {
   res.redirect('/dashboard/donations');
 });
 
+// iRacing page
+router.get('/iracing', (req, res) => {
+  res.render('iracing', { streamer: req.streamer });
+});
+
 // iRacing overlay settings
 router.get('/iracing/overlays/:type', (req, res) => {
   const validTypes = ['standings', 'relative', 'fuel', 'chat', 'wind', 'proximity'];
   const type = req.params.type;
-  if (!validTypes.includes(type)) return res.redirect('/dashboard?tab=iracing');
+  if (!validTypes.includes(type)) return res.redirect('/dashboard/iracing');
   let setting = null;
   try { setting = db.getIracingOverlaySetting(req.streamer.id, type); } catch (e) {}
   const overlayUrl = req.streamer.overlay_token ? `${config.app.url}/overlay/iracing/${type}/${req.streamer.overlay_token}` : null;
@@ -853,7 +858,7 @@ router.get('/iracing/overlays/:type', (req, res) => {
 router.post('/iracing/overlays/:type', (req, res) => {
   const validTypes = ['standings', 'relative', 'fuel', 'chat', 'wind', 'proximity'];
   const type = req.params.type;
-  if (!validTypes.includes(type)) return res.redirect('/dashboard?tab=iracing');
+  if (!validTypes.includes(type)) return res.redirect('/dashboard/iracing');
   const enabled = req.body.enabled ? 1 : 0;
   const settings = {};
   for (const [key, value] of Object.entries(req.body)) {
