@@ -817,6 +817,30 @@ try { db.exec('ALTER TABLE track_maps ADD COLUMN track_turns INTEGER'); } catch(
 try { db.exec('ALTER TABLE track_maps ADD COLUMN track_country TEXT'); } catch(e) {}
 try { db.exec('ALTER TABLE track_maps ADD COLUMN track_city TEXT'); } catch(e) {}
 
+// --- Bridge Remote Logs ---
+db.exec(`
+  CREATE TABLE IF NOT EXISTS bridge_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bridge_id TEXT NOT NULL,
+    lines TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_bridge_logs_lookup ON bridge_logs (bridge_id, created_at)`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS bridge_bug_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bridge_id TEXT NOT NULL,
+    error_pattern TEXT NOT NULL,
+    explanation TEXT NOT NULL,
+    suggested_fix TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_bridge_bug_reports_lookup ON bridge_bug_reports (bridge_id, status)`);
+
 // --- Seed: ensure enterprise subscriptions for specific users ---
 const _enterpriseUsers = ['Ricardo Apple', 'andre_vilela'];
 for (const name of _enterpriseUsers) {
@@ -3096,6 +3120,45 @@ function selectVtuberModel(streamerId, modelId) {
   db.prepare('UPDATE streamers SET vtuber_model_id = ? WHERE id = ?').run(modelId, streamerId);
 }
 
+// --- Bridge Logs ---
+
+function insertBridgeLogs(bridgeId, lines) {
+  db.prepare('INSERT INTO bridge_logs (bridge_id, lines) VALUES (?, ?)').run(bridgeId, lines);
+}
+
+function getBridgeLogs(bridgeId, hours) {
+  const h = Math.min(Math.max(hours || 24, 1), 168);
+  return db.prepare(
+    "SELECT id, lines, created_at FROM bridge_logs WHERE bridge_id = ? AND created_at >= datetime('now', '-' || ? || ' hours') ORDER BY created_at ASC"
+  ).all(bridgeId, h);
+}
+
+function cleanupOldBridgeLogs() {
+  const result = db.prepare("DELETE FROM bridge_logs WHERE created_at < datetime('now', '-7 days')").run();
+  if (result.changes > 0) console.log(`[DB] Cleaned up ${result.changes} old bridge log entries`);
+}
+
+function insertBridgeBugReport(bridgeId, errorPattern, explanation, suggestedFix) {
+  const result = db.prepare('INSERT INTO bridge_bug_reports (bridge_id, error_pattern, explanation, suggested_fix) VALUES (?, ?, ?, ?)').run(bridgeId, errorPattern, explanation, suggestedFix);
+  return result.lastInsertRowid;
+}
+
+function getBridgeBugReports(bridgeId, status) {
+  if (status) {
+    return db.prepare('SELECT * FROM bridge_bug_reports WHERE bridge_id = ? AND status = ? ORDER BY created_at DESC').all(bridgeId, status);
+  }
+  return db.prepare('SELECT * FROM bridge_bug_reports WHERE bridge_id = ? ORDER BY created_at DESC').all(bridgeId);
+}
+
+function updateBridgeBugReportStatus(id, status) {
+  db.prepare('UPDATE bridge_bug_reports SET status = ? WHERE id = ?').run(status, id);
+}
+
+function cleanupOldBridgeBugReports() {
+  const result = db.prepare("DELETE FROM bridge_bug_reports WHERE status = 'dismissed' AND created_at < datetime('now', '-30 days')").run();
+  if (result.changes > 0) console.log(`[DB] Cleaned up ${result.changes} old dismissed bug reports`);
+}
+
 module.exports = {
   db,
   getStreamerByDiscordId,
@@ -3300,6 +3363,13 @@ module.exports = {
   addVtuberModel,
   deleteVtuberModel,
   selectVtuberModel,
+  insertBridgeLogs,
+  getBridgeLogs,
+  cleanupOldBridgeLogs,
+  insertBridgeBugReport,
+  getBridgeBugReports,
+  updateBridgeBugReportStatus,
+  cleanupOldBridgeBugReports,
   closeDb() { db.close(); },
   backup(dest) { return db.backup(dest); },
 };
