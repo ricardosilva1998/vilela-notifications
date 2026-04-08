@@ -132,7 +132,7 @@
 
         // Effective racing time minus pit losses
         const effectiveTime = totalTimeToCheckered - pitTimeLoss;
-        const estLaps = Math.floor(effectiveTime / focusPace);
+        const estLaps = (effectiveTime / focusPace).toFixed(2);
 
         if (remainingPitStops > 0 && pitDelta > 0) {
           lapsEl.textContent = '~' + estLaps + ' (' + remainingPitStops + 'p)';
