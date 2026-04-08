@@ -175,7 +175,7 @@
     const showIRatingGain = parseSetting(getSetting('showIRatingGain', true));
 
     function buildTableHead() {
-      const labels = { pos: 'P', flag: '', number: '#', logo: '', name: 'Driver', license: 'Lic', irating: 'iR', best: 'Best', last: 'Last', gap: 'Gap' };
+      const labels = { pos: 'P', flag: '', number: '#', logo: '', name: 'Driver', license: 'Lic', irating: 'iR', best: 'Best', last: 'Last', gap: 'Gap', tire: 'T', pits: 'Pit', gapLdr: 'Ldr' };
       return '<tr>' + enabledColumns.map(c => `<th>${labels[c] || ''}</th>`).join('') + '</tr>';
     }
 
@@ -314,6 +314,14 @@
       { position: 8, classPosition: 8, carNumber: '63', driverName: 'G. Russell',    carMake: 'Dallara IR18', carClass: 'IR18', carClassColor: '#cc0000', safetyRating: 'D 1.50', country: 'GB', iRating: 5100, bestLap: 95.012, lastLap: 95.234, inPit: false, isPlayer: false },
     ];
 
+    function tireLabel(compound) {
+      if (compound === undefined || compound < 0) return '--';
+      const labels = ['D', 'W', 'I', 'D2', 'W2'];
+      const colors = ['#3ecf8e', '#38bdf8', '#f7c948', '#3ecf8e', '#38bdf8'];
+      const idx = Math.min(compound, labels.length - 1);
+      return '<span style="color:' + colors[idx] + ';font-weight:700;font-size:' + fsSmall + 'px">' + labels[idx] + '</span>';
+    }
+
     function buildDriverRow(d, rank, classLeaderBest) {
       const pos = rank; // Use our sorted rank, not iRacing's classPosition
       const bestFormatted = formatLapTime(d.bestLap);
@@ -360,6 +368,9 @@
         best: `<td class="mono" style="font-size:${fsMed}px">${bestFormatted}</td>`,
         last: `<td class="mono" style="font-size:${fsMed}px;color:rgba(255,255,255,0.55)">${lastFormatted}</td>`,
         gap: `<td class="mono" style="font-size:${fsMed}px;color:rgba(255,255,255,0.45)">${gap}</td>`,
+        tire: '<td>' + tireLabel(d.tireCompound) + '</td>',
+        pits: '<td class="mono" style="font-size:' + fsSmall + 'px;color:' + (d.pitStops > 0 ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.25)') + '">' + (d.pitStops || 0) + '</td>',
+        gapLdr: '<td class="mono" style="font-size:' + fsMed + 'px;color:rgba(255,255,255,0.45)">' + (d.gapToLeader > 0 ? '+' + d.gapToLeader.toFixed(1) + 's' : (d.classPosition === 1 ? 'Leader' : '--')) + '</td>',
       };
       return `<tr class="${rowClass}${disconnCls}" data-caridx="${d.carIdx}" onclick="selectDriver(${d.carIdx})" style="cursor:pointer">
         ${enabledColumns.map(c => cells[c] || '').join('')}
