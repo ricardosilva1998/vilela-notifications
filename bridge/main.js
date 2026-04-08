@@ -56,6 +56,7 @@ const OVERLAYS = [
   { id: 'stintlaps', name: 'Stint Laps', width: 260, height: 300 },
   { id: 'weather', name: 'Weather', width: 320, height: 195 },
   { id: 'pitstrategy', name: 'Pit Strategy', width: 260, height: 200 },
+  { id: 'lapcompare', name: 'Lap Compare', width: 360, height: 220 },
   // { id: 'discord', name: 'Discord Voice', width: 200, height: 300 }, // DISABLED — Railway doesn't support UDP for voice speaking detection
 ];
 

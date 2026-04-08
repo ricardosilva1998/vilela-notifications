@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Lap Compare</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; }
+    .overlay-panel { background: rgba(12,13,20,0.88); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; backdrop-filter: blur(12px); overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
+    .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 5px 10px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); flex-shrink: 0; }
+    .header-left { display: flex; align-items: center; gap: 6px; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+    .status-dot.connected { background: #3ecf8e; }
+    .status-dot.waiting { background: #f79009; }
+    .status-dot.demo { background: #f79009; }
+
+    .toggle-group { display: flex; gap: 2px; }
+    .toggle-btn { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.45); font-size: 8px; font-weight: 700; padding: 2px 8px; cursor: pointer; letter-spacing: 0.5px; text-transform: uppercase; border-radius: 3px; transition: all 0.15s; }
+    .toggle-btn:hover { background: rgba(255,255,255,0.1); }
+    .toggle-btn.active { background: rgba(145,70,255,0.3); border-color: #9146ff; color: #c9a8ff; }
+
+    .chart-body { flex: 1; position: relative; min-height: 0; }
+    .chart-body canvas { display: block; width: 100%; height: 100%; }
+
+    .no-data { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 11px; color: rgba(255,255,255,0.3); font-style: italic; text-align: center; pointer-events: none; }
+
+    .driver-labels { display: flex; justify-content: space-between; padding: 2px 10px 4px; font-size: 8px; font-weight: 600; letter-spacing: 0.5px; flex-shrink: 0; }
+    .driver-label-focus { color: #3ecf8e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
+    .driver-label-compare { color: #f04438; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; text-align: right; }
+  </style>
+</head>
+<body>
+  <div class="overlay-panel">
+    <div class="overlay-header">
+      <div class="header-left">
+        <span id="connection-status"><span class="status-dot demo"></span></span>
+        <span>LAP COMPARE</span>
+      </div>
+      <div class="toggle-group">
+        <div class="toggle-btn active" id="btn-ahead" onclick="setMode('ahead')">AHEAD</div>
+        <div class="toggle-btn" id="btn-behind" onclick="setMode('behind')">BEHIND</div>
+      </div>
+    </div>
+    <div class="chart-body">
+      <canvas id="gap-canvas"></canvas>
+      <div class="no-data" id="no-data">No lap data yet</div>
+    </div>
+    <div class="driver-labels">
+      <div class="driver-label-focus" id="label-focus"></div>
+      <div class="driver-label-compare" id="label-compare"></div>
+    </div>
+  </div>
+
+  <script>
+    const BRIDGE_URL = 'ws://localhost:9100';
+    let ws = null;
+    let bridgeConnected = false;
+    let iracingConnected = false;
+    const dataHandlers = {};
+
+    function connectBridge(channels) {
+      try { ws = new WebSocket(BRIDGE_URL); } catch(e) { setTimeout(() => connectBridge(channels), 3000); return; }
+      ws.onopen = () => { bridgeConnected = true; updateStatus(); ws.send(JSON.stringify({ type: 'subscribe', channels })); };
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'bridge-connected') { bridgeConnected = true; updateStatus(); }
+          else if (msg.type === 'status') { iracingConnected = msg.iracing; updateStatus(); }
+          else if (msg.type === 'data' && dataHandlers[msg.channel]) { dataHandlers[msg.channel](msg.data); }
+        } catch(e) {}
+      };
+      ws.onclose = () => { bridgeConnected = false; iracingConnected = false; updateStatus(); setTimeout(() => connectBridge(channels), 3000); };
+      ws.onerror = () => { ws.close(); };
+    }
+    function onData(ch, fn) { dataHandlers[ch] = fn; }
+    function updateStatus() {
+      const el = document.getElementById('connection-status');
+      if (!bridgeConnected) { if (el) el.innerHTML = '<span class="status-dot demo"></span>'; }
+      else if (!iracingConnected) { if (el) el.innerHTML = '<span class="status-dot waiting"></span>'; }
+      else { if (el) el.innerHTML = '<span class="status-dot connected"></span>'; }
+    }
+
+    // ─── State ───
+    const driverLapHistory = {}; // carIdx -> { laps: [lapTime1, ...], lastLapCount: 0 }
+    let compareMode = 'ahead';
+    let lastFocusIdx = null;
+    let lastCompareIdx = null;
+    let lastFocusName = '';
+    let lastCompareName = '';
+    let drawScheduled = false;
+
+    function setMode(mode) {
+      compareMode = mode;
+      document.getElementById('btn-ahead').classList.toggle('active', mode === 'ahead');
+      document.getElementById('btn-behind').classList.toggle('active', mode === 'behind');
+      scheduleDraw();
+    }
+
+    function shortName(name) {
+      if (!name) return '';
+      const parts = name.trim().split(/\s+/);
+      if (parts.length <= 1) return name;
+      return parts[0][0] + '. ' + parts.slice(1).join(' ');
+    }
+
+    onData('standings', data => {
+      if (!data || !data.length) return;
+
+      // Track lap completions for all drivers
+      data.forEach(d => {
+        if (!driverLapHistory[d.carIdx]) driverLapHistory[d.carIdx] = { laps: [], lastLapCount: 0 };
+        const hist = driverLapHistory[d.carIdx];
+        if (d.lapsCompleted > hist.lastLapCount && d.lastLap > 0 && d.lastLap < 600) {
+          hist.laps.push(d.lastLap);
+          hist.lastLapCount = d.lapsCompleted;
+        }
+      });
+
+      // Find focus driver and comparison target
+      const focused = data.find(d => d.isSpectated) || data.find(d => d.isPlayer);
+      if (!focused) return;
+
+      const classmates = data.filter(d => d.carClass === focused.carClass)
+        .sort((a, b) => a.classPosition - b.classPosition);
+      const focusIdx = classmates.findIndex(d => d.carIdx === focused.carIdx);
+      const compareIdx = compareMode === 'ahead' ? focusIdx - 1 : focusIdx + 1;
+
+      if (compareIdx < 0 || compareIdx >= classmates.length) {
+        lastFocusIdx = focused.carIdx;
+        lastCompareIdx = null;
+        lastFocusName = shortName(focused.driverName);
+        lastCompareName = '';
+        scheduleDraw();
+        return;
+      }
+
+      const compareDriver = classmates[compareIdx];
+      lastFocusIdx = focused.carIdx;
+      lastCompareIdx = compareDriver.carIdx;
+      lastFocusName = shortName(focused.driverName) + ' P' + focused.classPosition;
+      lastCompareName = shortName(compareDriver.driverName) + ' P' + compareDriver.classPosition;
+      scheduleDraw();
+    });
+
+    function scheduleDraw() {
+      if (drawScheduled) return;
+      drawScheduled = true;
+      requestAnimationFrame(() => {
+        drawScheduled = false;
+        drawGapChart();
+      });
+    }
+
+    function drawGapChart() {
+      const canvas = document.getElementById('gap-canvas');
+      const container = canvas.parentElement;
+      const noDataEl = document.getElementById('no-data');
+      const focusLabel = document.getElementById('label-focus');
+      const compareLabel = document.getElementById('label-compare');
+
+      // Resize canvas to fill container
+      const rect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      const W = rect.width;
+      const H = rect.height;
+
+      // Update driver labels
+      focusLabel.textContent = lastFocusName;
+      compareLabel.textContent = lastCompareName;
+
+      // No comparison target
+      if (lastCompareIdx === null) {
+        noDataEl.textContent = compareMode === 'ahead' ? 'Leading the class' : 'Last in class';
+        noDataEl.style.display = '';
+        ctx.clearRect(0, 0, W, H);
+        return;
+      }
+
+      const focusLaps = (driverLapHistory[lastFocusIdx] || {}).laps || [];
+      const compareLaps = (driverLapHistory[lastCompareIdx] || {}).laps || [];
+      const minLen = Math.min(focusLaps.length, compareLaps.length);
+
+      if (minLen < 1) {
+        noDataEl.textContent = 'Waiting for lap data...';
+        noDataEl.style.display = '';
+        ctx.clearRect(0, 0, W, H);
+        return;
+      }
+
+      noDataEl.style.display = 'none';
+
+      // Build cumulative gap: positive = focus is slower (losing), negative = focus is faster (gaining)
+      const gaps = [];
+      let cumulativeGap = 0;
+      for (let i = 0; i < minLen; i++) {
+        cumulativeGap += focusLaps[i] - compareLaps[i];
+        gaps.push(cumulativeGap);
+      }
+
+      // Chart layout
+      const padLeft = 38;
+      const padRight = 12;
+      const padTop = 12;
+      const padBottom = 20;
+      const chartW = W - padLeft - padRight;
+      const chartH = H - padTop - padBottom;
+
+      if (chartW <= 0 || chartH <= 0) return;
+
+      // Auto-scale Y axis
+      let minGap = Math.min(0, ...gaps);
+      let maxGap = Math.max(0, ...gaps);
+      const range = maxGap - minGap;
+      const yPad = range > 0 ? range * 0.15 : 0.5;
+      minGap -= yPad;
+      maxGap += yPad;
+
+      function xPos(lapIdx) { return padLeft + (lapIdx / (gaps.length - 1 || 1)) * chartW; }
+      function yPos(val) { return padTop + (1 - (val - minGap) / (maxGap - minGap)) * chartH; }
+
+      ctx.clearRect(0, 0, W, H);
+
+      // Grid lines (horizontal)
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.lineWidth = 1;
+      const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 30, 60];
+      let gridStep = 1;
+      for (const s of niceSteps) {
+        if ((maxGap - minGap) / s <= 6) { gridStep = s; break; }
+      }
+      const gridStart = Math.ceil(minGap / gridStep) * gridStep;
+      ctx.font = '8px Segoe UI';
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      for (let v = gridStart; v <= maxGap; v += gridStep) {
+        const y = yPos(v);
+        ctx.beginPath();
+        ctx.moveTo(padLeft, y);
+        ctx.lineTo(W - padRight, y);
+        ctx.stroke();
+        const label = Math.abs(v) < 0.01 ? '0' : (v >= 0 ? '+' : '') + v.toFixed(gridStep < 1 ? 1 : 0) + 's';
+        ctx.fillText(label, padLeft - 4, y);
+      }
+
+      // X axis labels (lap numbers)
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      const maxXLabels = Math.floor(chartW / 30);
+      const xStep = Math.max(1, Math.ceil(gaps.length / maxXLabels));
+      for (let i = 0; i < gaps.length; i += xStep) {
+        const x = xPos(i);
+        ctx.fillText('L' + (i + 1), x, H - padBottom + 4);
+      }
+      // Always show last lap label if not already shown
+      if ((gaps.length - 1) % xStep !== 0) {
+        ctx.fillText('L' + gaps.length, xPos(gaps.length - 1), H - padBottom + 4);
+      }
+
+      // Zero line (dashed)
+      const zeroY = yPos(0);
+      ctx.save();
+      ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padLeft, zeroY);
+      ctx.lineTo(W - padRight, zeroY);
+      ctx.stroke();
+      ctx.restore();
+
+      // Area fill: green below zero (gaining), red above zero (losing)
+      // Draw two separate filled regions split at zero
+      if (gaps.length === 1) {
+        // Single data point: draw a dot
+        const x = xPos(0);
+        const y = yPos(gaps[0]);
+        ctx.fillStyle = gaps[0] <= 0 ? 'rgba(62,207,142,0.7)' : 'rgba(240,68,56,0.7)';
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Fill gaining (below zero) area in green
+        ctx.beginPath();
+        ctx.moveTo(xPos(0), zeroY);
+        for (let i = 0; i < gaps.length; i++) {
+          const x = xPos(i);
+          const y = yPos(Math.min(0, gaps[i]));
+          ctx.lineTo(x, y);
+        }
+        ctx.lineTo(xPos(gaps.length - 1), zeroY);
+        ctx.closePath();
+        const greenGrad = ctx.createLinearGradient(0, zeroY, 0, padTop);
+        greenGrad.addColorStop(0, 'rgba(62,207,142,0.05)');
+        greenGrad.addColorStop(1, 'rgba(62,207,142,0.35)');
+        ctx.fillStyle = greenGrad;
+        ctx.fill();
+
+        // Fill losing (above zero) area in red
+        ctx.beginPath();
+        ctx.moveTo(xPos(0), zeroY);
+        for (let i = 0; i < gaps.length; i++) {
+          const x = xPos(i);
+          const y = yPos(Math.max(0, gaps[i]));
+          ctx.lineTo(x, y);
+        }
+        ctx.lineTo(xPos(gaps.length - 1), zeroY);
+        ctx.closePath();
+        const redGrad = ctx.createLinearGradient(0, zeroY, 0, H - padBottom);
+        redGrad.addColorStop(0, 'rgba(240,68,56,0.05)');
+        redGrad.addColorStop(1, 'rgba(240,68,56,0.35)');
+        ctx.fillStyle = redGrad;
+        ctx.fill();
+
+        // Gap line
+        ctx.beginPath();
+        ctx.moveTo(xPos(0), yPos(gaps[0]));
+        for (let i = 1; i < gaps.length; i++) {
+          ctx.lineTo(xPos(i), yPos(gaps[i]));
+        }
+        ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+        ctx.lineWidth = 1.5;
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+
+        // Data point dots
+        for (let i = 0; i < gaps.length; i++) {
+          const x = xPos(i);
+          const y = yPos(gaps[i]);
+          ctx.fillStyle = gaps[i] <= 0 ? '#3ecf8e' : '#f04438';
+          ctx.beginPath();
+          ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Current gap value label (top right)
+      const currentGap = gaps[gaps.length - 1];
+      const gapText = (currentGap >= 0 ? '+' : '') + currentGap.toFixed(2) + 's';
+      ctx.font = 'bold 12px Segoe UI';
+      ctx.fillStyle = currentGap <= 0 ? '#3ecf8e' : '#f04438';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'top';
+      ctx.fillText(gapText, W - padRight, padTop);
+    }
+
+    // Redraw on resize
+    window.addEventListener('resize', scheduleDraw);
+
+    connectBridge(['standings']);
+
+    // Drag support
+    try {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.on('lock-state', (event, locked) => {
+        document.body.style.pointerEvents = locked ? 'none' : 'auto';
+      });
+      let _dragging = false, _dragStartX = 0, _dragStartY = 0;
+      const dragHeader = document.querySelector('.overlay-header');
+      if (dragHeader) {
+        dragHeader.style.cursor = 'move';
+        dragHeader.addEventListener('mousedown', (e) => {
+          if (e.target.classList.contains('toggle-btn')) return;
+          if (e.button !== 0) return;
+          _dragging = true;
+          _dragStartX = e.screenX;
+          _dragStartY = e.screenY;
+          e.preventDefault();
+        });
+      }
+      document.addEventListener('mousemove', (e) => {
+        if (!_dragging) return;
+        const dx = e.screenX - _dragStartX;
+        const dy = e.screenY - _dragStartY;
+        _dragStartX = e.screenX;
+        _dragStartY = e.screenY;
+        ipcRenderer.send('drag-overlay', dx, dy);
+      });
+      document.addEventListener('mouseup', () => { _dragging = false; });
+      document.addEventListener('mouseleave', () => { _dragging = false; });
+    } catch(e) {}
+  </script>
+</body>
+</html>

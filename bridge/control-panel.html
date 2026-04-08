@@ -288,6 +288,9 @@
       <div class="sidebar-item" data-panel="pitstrategy" onclick="navigateTo('pitstrategy')">
         <span class="sidebar-icon">&#9881;</span> Pit Strategy
       </div>
+      <div class="sidebar-item" data-panel="lapcompare" onclick="navigateTo('lapcompare')">
+        <span class="sidebar-icon">&#128200;</span> Lap Compare
+      </div>
       <div class="sidebar-spacer"></div>
       <div class="sidebar-divider"></div>
       <div class="sidebar-item" data-panel="updates" onclick="navigateTo('updates')">
@@ -341,6 +344,7 @@
       <div class="content-panel" id="panel-stintlaps"></div>
       <div class="content-panel" id="panel-weather"></div>
       <div class="content-panel" id="panel-pitstrategy"></div>
+      <div class="content-panel" id="panel-lapcompare"></div>
 
       <!-- ═══ UPDATES PANEL ═══ -->
       <div class="content-panel" id="panel-updates">
@@ -418,6 +422,7 @@
       { id: 'stintlaps', icon: '&#128203;', name: 'Stint Laps' },
       { id: 'weather', icon: '&#9925;', name: 'Weather' },
       { id: 'pitstrategy', icon: '&#9881;', name: 'Pit Strategy' },
+      { id: 'lapcompare', icon: '&#128200;', name: 'Lap Compare' },
     ];
 
     // ─── CUSTOMIZE_FIELDS (all overlay settings) ─────────────
@@ -565,6 +570,11 @@
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       pitstrategy: [
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
+        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
+      ],
+      lapcompare: [
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
