@@ -1017,6 +1017,7 @@ async function showTrackStatsPage(trackName) {
       html += '<th style="text-align:right;padding:6px 6px;">Avg Lap</th>';
       html += '<th style="text-align:right;padding:6px 6px;">Avg Pit</th>';
       html += '<th style="text-align:right;padding:6px 6px;">Avg Quali</th>';
+      html += '<th style="text-align:right;padding:6px 6px;">Est. Laps</th>';
       html += '<th style="text-align:right;padding:6px 6px;">Avg SOF</th>';
       html += '<th style="text-align:right;padding:6px 8px;">Races</th>';
       html += '</tr></thead><tbody>';
@@ -1029,6 +1030,7 @@ async function showTrackStatsPage(trackName) {
         html += '<td style="text-align:right;padding:8px 6px;font-family:monospace;color:' + (noData ? '#3a3a4e' : '#e8e6f0') + ';">' + (noData ? '--' : fmtLap(r.avg_lap_time)) + '</td>';
         html += '<td style="text-align:right;padding:8px 6px;font-family:monospace;color:' + (noData ? '#3a3a4e' : '#e8e6f0') + ';">' + (noData ? '--' : (r.avg_pit_time > 0 ? r.avg_pit_time.toFixed(1) + 's' : '--')) + '</td>';
         html += '<td style="text-align:right;padding:8px 6px;font-family:monospace;color:' + (noData ? '#3a3a4e' : '#e8e6f0') + ';">' + (noData ? '--' : fmtLap(r.avg_qualify_time)) + '</td>';
+        html += '<td style="text-align:right;padding:8px 6px;font-family:monospace;color:' + (noData ? '#3a3a4e' : '#f7c948') + ';">' + (noData ? '--' : (r.est_laps > 0 ? r.est_laps.toFixed(2) : '--')) + '</td>';
         html += '<td style="text-align:right;padding:8px 6px;font-family:monospace;color:' + (noData ? '#3a3a4e' : '#e8e6f0') + ';">' + (noData ? '--' : (r.avg_sof > 0 ? Math.round(r.avg_sof).toLocaleString() : '--')) + '</td>';
         html += '<td style="text-align:right;padding:8px;color:' + (noData ? '#3a3a4e' : 'var(--text-muted)') + ';">' + (noData ? '0' : r.samples) + '</td>';
         html += '</tr>';

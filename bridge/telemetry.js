@@ -205,16 +205,33 @@ function collectAndUploadTrackStats(track, standingsData, pitDeltas, sofByClassD
     if (s.bestLap > 0) classSummary[cls].bestLaps.push(s.bestLap);
   });
 
+  // Find overall leader pace (fastest class)
+  let overallLeaderBest = Infinity;
+  Object.values(classSummary).forEach(data => {
+    const best = Math.min(...data.bestLaps);
+    if (best < overallLeaderBest) overallLeaderBest = best;
+  });
+  if (overallLeaderBest === Infinity) overallLeaderBest = 0;
+
   const stats = {};
   Object.entries(classSummary).forEach(([cls, data]) => {
     if (data.bestLaps.length === 0) return;
-    // Class leader best lap = avg lap time approximation
     const leaderBest = Math.min(...data.bestLaps);
+    const pitDelta = (pitDeltas[cls] || pitDeltas[Object.keys(pitDeltas).find(k => canonicalClass(k) === cls)] || {}).avgDelta || 0;
+    // Estimated laps: totalRaceTime + leader final lap, minus pit time, divided by class pace
+    let estLaps = 0;
+    if (leaderBest > 0 && overallLeaderBest > 0 && totalRaceTime > 0) {
+      const totalTime = totalRaceTime + overallLeaderBest;
+      const estStops = Math.max(0, Math.floor(totalTime / 1800) - 1);
+      const effectiveTime = totalTime - (estStops * pitDelta);
+      estLaps = parseFloat((effectiveTime / leaderBest).toFixed(2));
+    }
     stats[cls] = {
       avgLapTime: leaderBest,
-      avgPitTime: (pitDeltas[cls] || pitDeltas[Object.keys(pitDeltas).find(k => canonicalClass(k) === cls)] || {}).avgDelta || 0,
+      avgPitTime: pitDelta,
       avgQualifyTime: qualifyBest[cls] || 0,
       avgSOF: sofByClassData[Object.keys(sofByClassData).find(k => canonicalClass(k) === cls)] || 0,
+      estLaps,
       samples: data.drivers,
     };
   });

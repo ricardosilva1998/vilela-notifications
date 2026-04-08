@@ -189,8 +189,8 @@ app.post('/api/track-stats', express.json(), (req, res) => {
     if (!['sprint', 'open', 'endurance'].includes(raceType)) return res.status(400).json({ error: 'Invalid raceType' });
 
     const stmt = db.db.prepare(`
-      INSERT INTO track_stats (track_name, car_class, race_type, avg_lap_time, avg_pit_time, avg_qualify_time, avg_sof, samples, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      INSERT INTO track_stats (track_name, car_class, race_type, avg_lap_time, avg_pit_time, avg_qualify_time, avg_sof, est_laps, samples, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
       ON CONFLICT(track_name, car_class, race_type) DO UPDATE SET
         avg_lap_time = (avg_lap_time * samples + excluded.avg_lap_time * excluded.samples) / (samples + excluded.samples),
         avg_pit_time = CASE WHEN excluded.avg_pit_time > 0
@@ -200,12 +200,15 @@ app.post('/api/track-stats', express.json(), (req, res) => {
           THEN (CASE WHEN avg_qualify_time > 0 THEN (avg_qualify_time * samples + excluded.avg_qualify_time * excluded.samples) / (samples + excluded.samples) ELSE excluded.avg_qualify_time END)
           ELSE avg_qualify_time END,
         avg_sof = (avg_sof * samples + excluded.avg_sof * excluded.samples) / (samples + excluded.samples),
+        est_laps = CASE WHEN excluded.est_laps > 0
+          THEN (CASE WHEN est_laps > 0 THEN (est_laps * samples + excluded.est_laps * excluded.samples) / (samples + excluded.samples) ELSE excluded.est_laps END)
+          ELSE est_laps END,
         samples = samples + excluded.samples,
         updated_at = datetime('now')
     `);
 
     Object.entries(stats).forEach(([cls, data]) => {
-      stmt.run(trackName, cls, raceType, data.avgLapTime || 0, data.avgPitTime || 0, data.avgQualifyTime || 0, data.avgSOF || 0, data.samples || 1);
+      stmt.run(trackName, cls, raceType, data.avgLapTime || 0, data.avgPitTime || 0, data.avgQualifyTime || 0, data.avgSOF || 0, data.estLaps || 0, data.samples || 1);
     });
 
     res.json({ ok: true });
@@ -217,7 +220,7 @@ app.post('/api/track-stats', express.json(), (req, res) => {
 
 app.get('/api/track-stats', (req, res) => {
   try {
-    const rows = db.db.prepare('SELECT track_name, car_class, race_type, avg_lap_time, avg_pit_time, avg_qualify_time, avg_sof, samples, updated_at FROM track_stats ORDER BY track_name, car_class, race_type').all();
+    const rows = db.db.prepare('SELECT track_name, car_class, race_type, avg_lap_time, avg_pit_time, avg_qualify_time, avg_sof, est_laps, samples, updated_at FROM track_stats ORDER BY track_name, car_class, race_type').all();
     res.json(rows);
   } catch(e) {
     res.status(500).json({ error: e.message });
@@ -226,7 +229,7 @@ app.get('/api/track-stats', (req, res) => {
 
 app.get('/api/track-stats/:trackName', (req, res) => {
   try {
-    const rows = db.db.prepare('SELECT car_class, race_type, avg_lap_time, avg_pit_time, avg_qualify_time, avg_sof, samples, updated_at FROM track_stats WHERE track_name = ? ORDER BY car_class, race_type').all(req.params.trackName);
+    const rows = db.db.prepare('SELECT car_class, race_type, avg_lap_time, avg_pit_time, avg_qualify_time, avg_sof, est_laps, samples, updated_at FROM track_stats WHERE track_name = ? ORDER BY car_class, race_type').all(req.params.trackName);
     res.json(rows);
   } catch(e) {
     res.status(500).json({ error: e.message });

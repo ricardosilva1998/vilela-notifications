@@ -773,12 +773,16 @@ db.exec(`
     avg_pit_time REAL DEFAULT 0,
     avg_qualify_time REAL DEFAULT 0,
     avg_sof REAL DEFAULT 0,
+    est_laps REAL DEFAULT 0,
     samples INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
     UNIQUE(track_name, car_class, race_type)
   )
 `);
+
+// Migration: add est_laps column to track_stats
+try { db.exec('ALTER TABLE track_stats ADD COLUMN est_laps REAL DEFAULT 0'); } catch(e) {}
 
 // --- Seed: ensure enterprise subscriptions for specific users ---
 const _enterpriseUsers = ['Ricardo Apple', 'andre_vilela'];

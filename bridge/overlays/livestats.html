@@ -136,8 +136,19 @@
       const pitDeltas = (_session && _session.pitDeltas) || {};
       const sofByClass = (_session && _session.sofByClass) || {};
 
+      // Calculate estimated laps per class (same formula as race duration)
+      const timeRemain = _session.sessionTimeRemain || 0;
+      // Find overall leader pace (fastest class leader's last lap)
+      let overallLeaderPace = 0;
+      classNames.forEach(cls => {
+        const leader = classes[cls].find(d => d.classPosition === 1);
+        if (leader && leader.lastLap > 0 && (overallLeaderPace === 0 || leader.lastLap < overallLeaderPace)) {
+          overallLeaderPace = leader.lastLap;
+        }
+      });
+
       let html = '<table class="stats-table"><thead><tr>';
-      html += '<th>Class</th><th>Avg Lap</th><th>Best Lap</th><th>Pit Time</th><th>SOF</th><th>Drivers</th>';
+      html += '<th>Class</th><th>Avg Lap</th><th>Best Lap</th><th>Est. Laps</th><th>Pit Time</th><th>SOF</th><th>#</th>';
       html += '</tr></thead><tbody>';
 
       classNames.forEach(cls => {
@@ -173,6 +184,19 @@
 
         const count = drivers.length;
 
+        // Estimated laps for this class
+        let estLaps = '--';
+        const leader = drivers.find(d => d.classPosition === 1);
+        const classPace = leader && leader.lastLap > 0 ? leader.lastLap : 0;
+        if (classPace > 0 && timeRemain > 0 && overallLeaderPace > 0) {
+          const totalTime = timeRemain + overallLeaderPace;
+          const pitDelta = (pitDeltas[cls] && pitDeltas[cls].avgDelta > 0) ? pitDeltas[cls].avgDelta : 0;
+          // Rough remaining stops estimate (1 stop per 30 min of race)
+          const estStops = Math.max(0, Math.floor(totalTime / 1800) - 1);
+          const effectiveTime = totalTime - (estStops * pitDelta);
+          estLaps = (effectiveTime / classPace).toFixed(2);
+        }
+
         // Shorten class name for display if too long
         const displayName = cls.length > 10 ? cls.replace(/\s*20\d{2}$/, '') : cls;
 
@@ -180,6 +204,7 @@
         html += `<td><span class="class-dot" style="background:${color};"></span>${displayName}</td>`;
         html += `<td>${formatLapTime(avgLap)}</td>`;
         html += `<td>${formatLapTime(bestLap)}</td>`;
+        html += `<td style="color:#f7c948;">${estLaps}</td>`;
         html += `<td>${pitTime}</td>`;
         html += `<td>${sof}</td>`;
         html += `<td>${count}</td>`;
