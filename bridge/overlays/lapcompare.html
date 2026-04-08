@@ -188,7 +188,7 @@
         deltas.push(focusLaps[i] - compareLaps[i]);
       }
 
-      const padLeft = 38, padRight = 12, padTop = 12, padBottom = 20;
+      const padLeft = 32, padRight = 12, padTop = 12, padBottom = 20;
       const chartW = W - padLeft - padRight;
       const chartH = H - padTop - padBottom;
       if (chartW <= 0 || chartH <= 0) return;
@@ -196,7 +196,7 @@
       let minVal = Math.min(0, ...deltas);
       let maxVal = Math.max(0, ...deltas);
       const range = maxVal - minVal;
-      const yPad = range > 0 ? range * 0.15 : 0.3;
+      const yPad = range > 0 ? range * 0.2 : 0.5;
       minVal -= yPad; maxVal += yPad;
 
       function yPos(v) { return padTop + (1 - (v - minVal) / (maxVal - minVal)) * chartH; }
@@ -205,17 +205,18 @@
 
       ctx.clearRect(0, 0, W, H);
 
-      // Grid
+      // Grid — max 4 lines, wider spacing
       ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
-      ctx.font = '8px Segoe UI'; ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.font = '7px Segoe UI'; ctx.fillStyle = 'rgba(255,255,255,0.3)';
       ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-      const niceSteps = [0.05, 0.1, 0.2, 0.5, 1, 2, 5];
-      let gridStep = 0.5;
-      for (const s of niceSteps) { if ((maxVal - minVal) / s <= 6) { gridStep = s; break; } }
+      const niceSteps = [0.2, 0.5, 1, 2, 5, 10, 20];
+      let gridStep = 1;
+      for (const s of niceSteps) { if ((maxVal - minVal) / s <= 4) { gridStep = s; break; } }
       for (let v = Math.ceil(minVal / gridStep) * gridStep; v <= maxVal; v += gridStep) {
         const y = yPos(v);
         ctx.beginPath(); ctx.moveTo(padLeft, y); ctx.lineTo(W - padRight, y); ctx.stroke();
-        ctx.fillText((v >= 0 ? '+' : '') + v.toFixed(gridStep < 1 ? 1 : 0) + 's', padLeft - 4, y);
+        const label = Math.abs(v) < 0.01 ? '0' : (v > 0 ? '+' : '') + (gridStep < 1 ? v.toFixed(1) : Math.round(v));
+        ctx.fillText(label, padLeft - 3, y);
       }
 
       // Zero line
