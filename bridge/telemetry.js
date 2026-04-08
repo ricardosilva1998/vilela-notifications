@@ -161,6 +161,89 @@ function savePitTimes(data) {
 let pitTimesData = {}; // { trackName: { className: { avgDelta, samples } } }
 const pitStopCounts = new Map(); // carIdx -> number of pit stops
 
+// Canonical class mapping for track stats
+const CLASS_MAP = {
+  'GTP': 'GTP', 'Hypercar': 'GTP',
+  'LMP2': 'LMP2', 'Dallara P217': 'LMP2',
+  'GT3': 'GT3', 'GT3 2025': 'GT3', 'GT3 Class': 'GT3',
+  'GT4': 'GT4', 'GT4 Class': 'GT4',
+  'LMP3': 'LMP3',
+  'MX5': 'Mazda', 'Mazda MX-5': 'Mazda', 'MX-5': 'Mazda',
+  'TCR': 'TCR',
+  'PCCR': 'Porsche Cup', 'Porsche 992': 'Porsche Cup', 'Porsche Cup': 'Porsche Cup', 'Porsche 911 GT3 Cup': 'Porsche Cup',
+  'BMW M2 CS': 'BMW M2', 'BMW M2': 'BMW M2',
+  'Toyota GR86': 'Toyota', 'GR86': 'Toyota',
+  'GTE': 'GTE',
+};
+function canonicalClass(shortName) {
+  if (!shortName) return null;
+  return CLASS_MAP[shortName] || CLASS_MAP[shortName.trim()] || null;
+}
+
+const TRACK_STATS_URL = 'https://atletanotifications.com/api/track-stats';
+
+// Persisted across polls for use at session-change time
+let lastSofByClass = {};
+let lastStandings = [];
+
+function collectAndUploadTrackStats(track, standingsData, pitDeltas, sofByClassData, qualifyBest, totalRaceTime) {
+  if (!track || !standingsData || standingsData.length === 0) return;
+
+  // Determine race type from total session duration
+  const totalMinutes = totalRaceTime / 60;
+  let raceType = 'sprint';
+  if (totalMinutes > 60) raceType = 'endurance';
+  else if (totalMinutes >= 30) raceType = 'open';
+
+  // Group drivers by canonical class
+  const classSummary = {};
+  standingsData.forEach(s => {
+    const cls = canonicalClass(s.carClass);
+    if (!cls) return;
+    if (!classSummary[cls]) classSummary[cls] = { bestLaps: [], drivers: 0 };
+    classSummary[cls].drivers++;
+    if (s.bestLap > 0) classSummary[cls].bestLaps.push(s.bestLap);
+  });
+
+  const stats = {};
+  Object.entries(classSummary).forEach(([cls, data]) => {
+    if (data.bestLaps.length === 0) return;
+    // Class leader best lap = avg lap time approximation
+    const leaderBest = Math.min(...data.bestLaps);
+    stats[cls] = {
+      avgLapTime: leaderBest,
+      avgPitTime: (pitDeltas[cls] || pitDeltas[Object.keys(pitDeltas).find(k => canonicalClass(k) === cls)] || {}).avgDelta || 0,
+      avgQualifyTime: qualifyBest[cls] || 0,
+      avgSOF: sofByClassData[Object.keys(sofByClassData).find(k => canonicalClass(k) === cls)] || 0,
+      samples: data.drivers,
+    };
+  });
+
+  if (Object.keys(stats).length === 0) return;
+
+  const payload = JSON.stringify({ trackName: track, raceType, stats });
+  log('[TrackStats] Uploading: ' + track + ' (' + raceType + ') classes=' + Object.keys(stats).join(','));
+
+  // POST to server (same pattern as uploadTrackToServer)
+  try {
+    const https = require('https');
+    const url = new URL(TRACK_STATS_URL);
+    const req = https.request({
+      hostname: url.hostname, port: 443, path: url.pathname, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+      timeout: 10000,
+    }, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => log('[TrackStats] Upload response: ' + res.statusCode + ' ' + body));
+    });
+    req.on('error', (e) => log('[TrackStats] Upload error: ' + e.message));
+    req.on('timeout', () => { req.destroy(); });
+    req.write(payload);
+    req.end();
+  } catch(e) { log('[TrackStats] Upload error: ' + e.message); }
+}
+
 /**
  * iRating change calculator — exact formula from iRacing spreadsheet.
  * Source: github.com/arrecio/ircalculator (matches iRacing official calc)
@@ -249,6 +332,8 @@ async function startTelemetry(onStatusChange) {
   let lastCameraSwitchPoll = -999;
   let lastSessionNum = -1;
   let pollCount = 0;
+  let qualifyBestByClass = {}; // className -> best lap time from qualify session
+  let raceSessionTotalTime = 0; // total race duration for sprint/open/endurance detection
 
   connectInterval = setInterval(async () => {
     if (ir && connected) return;
@@ -302,6 +387,15 @@ async function startTelemetry(onStatusChange) {
       try {
         if (!ir.isConnected()) {
           if (connected) {
+            // Upload track stats if disconnected during a race
+            try {
+              const si = ir.getSessionInfo('SessionInfo');
+              const sn = lastSessionNum >= 0 ? lastSessionNum : 0;
+              const sessType = si?.Sessions?.[sn]?.SessionType || '';
+              if (sessType.toLowerCase().includes('race') && lastStandings.length > 0) {
+                collectAndUploadTrackStats(trackName, lastStandings, classPitDeltas, lastSofByClass, qualifyBestByClass, raceSessionTotalTime);
+              }
+            } catch(e) {}
             connected = false;
             log('[Telemetry] Disconnected during poll');
             broadcastToChannel('_all', { type: 'status', iracing: false });
@@ -322,6 +416,10 @@ async function startTelemetry(onStatusChange) {
             const prevType = sessionInfo?.Sessions?.[lastSessionNum]?.SessionType || '';
             const newType = sessionInfo?.Sessions?.[sessionNum]?.SessionType || '';
             const isQualToRace = prevType.toLowerCase().includes('qualify') && newType.toLowerCase().includes('race');
+            // Upload track stats when leaving a Race session
+            if (prevType.toLowerCase().includes('race') && lastStandings.length > 0) {
+              collectAndUploadTrackStats(trackName, lastStandings, classPitDeltas, lastSofByClass, qualifyBestByClass, raceSessionTotalTime);
+            }
             if (!isQualToRace) {
               cachedBestLaps.clear();
               cachedLastLaps.clear();
@@ -329,6 +427,8 @@ async function startTelemetry(onStatusChange) {
               sessionResults.clear();
               persistedDrivers.clear();
               pitStopCounts.clear();
+              qualifyBestByClass = {};
+              raceSessionTotalTime = 0;
               log('[Session] Cleared data: ' + prevType + ' → ' + newType);
             } else {
               log('[Session] Kept data: ' + prevType + ' → ' + newType);
@@ -654,6 +754,11 @@ async function startTelemetry(onStatusChange) {
           }
         } catch(e) {}
 
+        // Capture total race session time on first race poll
+        if (eventType.toLowerCase().includes('race') && raceSessionTotalTime === 0) {
+          raceSessionTotalTime = sessionTime + sessionTimeRemain;
+        }
+
         // Stint tracking (laps + time since last pit)
         const _pitRoad = ir.get(VARS.CAR_IDX_ON_PIT_ROAD) || [];
         const _lapsDone = ir.get(VARS.LAP_COMPLETED)?.[0] || 0;
@@ -881,6 +986,20 @@ async function startTelemetry(onStatusChange) {
             s.gapToLeader = s.estTime - leaderTime;
           }
         });
+
+        // Track qualify best laps per class
+        if (eventType.toLowerCase().includes('qual') || eventType.toLowerCase().includes('lone')) {
+          standings.forEach(s => {
+            const cls = canonicalClass(s.carClass);
+            if (cls && s.bestLap > 0 && s.classPosition === 1) {
+              qualifyBestByClass[cls] = s.bestLap;
+            }
+          });
+        }
+
+        // Persist standings and SOF for use at session-change time
+        lastStandings = standings;
+        lastSofByClass = sofByClass;
 
         // Diagnostic: log standings count
         if (pollCount === 90 || pollCount === 300) {
