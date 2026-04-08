@@ -749,43 +749,6 @@ async function startTelemetry(onStatusChange) {
           const wi = ir.getSessionInfo('WeekendInfo');
           skies = wi?.TrackSkies || '';
           weatherType = wi?.TrackWeatherType || '';
-          // Log weather data periodically (every 60s = 600 polls at 10Hz)
-          if (pollCount % 600 === 1) {
-            log('[Weather] Skies=' + skies + ' Type=' + weatherType +
-              ' Air=' + airTemp.toFixed(1) + 'C Track=' + trackTemp.toFixed(1) + 'C' +
-              ' Humidity=' + humidity.toFixed(0) + '%' +
-              ' Precip=' + (precipitation * 100).toFixed(1) + '%' +
-              ' Fog=' + (fogLevel * 100).toFixed(1) + '%' +
-              ' Wet=' + weatherWet +
-              ' Wind=' + ((ir.get(VARS.WIND_VEL)?.[0] || 0) * 3.6).toFixed(1) + 'km/h' +
-              ' Wetness=' + trackWetness);
-            // Log all WeekendInfo keys
-            if (wi) {
-              log('[Weather] WeekendInfo ALL keys: ' + Object.keys(wi).join(', '));
-            }
-            // Try to find forecast data in all session info sections
-            try {
-              const allSections = ['WeekendInfo', 'WeekendOptions', 'SessionInfo', 'WeatherInfo', 'RadioInfo', 'CameraInfo', 'SplitTimeInfo', 'QualifyResultsInfo'];
-              allSections.forEach(section => {
-                try {
-                  const data = ir.getSessionInfo(section);
-                  if (data && typeof data === 'object') {
-                    const keys = Object.keys(data);
-                    const hasWeather = keys.some(k => k.toLowerCase().includes('weather') || k.toLowerCase().includes('forecast') || k.toLowerCase().includes('skies'));
-                    if (hasWeather || section === 'WeekendOptions') {
-                      log('[Weather] ' + section + ' keys: ' + keys.join(', '));
-                      keys.forEach(k => {
-                        const v = data[k];
-                        if (typeof v === 'object' && v !== null) {
-                          log('[Weather]   ' + section + '.' + k + ' = ' + JSON.stringify(v).substring(0, 500));
-                        }
-                      });
-                    }
-                  }
-                } catch(e) {}
-              });
-            } catch(e) {}
-          }
         } catch(e) {}
 
         // Capture total race session time on first race poll
