@@ -591,6 +591,7 @@
   <div style="display:flex; gap:0; margin-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.08);">
     <button class="iracing-subtab active" data-irtab="app" onclick="switchIRacingTab('app')">App Download</button>
     <button class="iracing-subtab" data-irtab="overlays" onclick="switchIRacingTab('overlays')">Stream Overlays</button>
+    <button class="iracing-subtab" data-irtab="logs" onclick="switchIRacingTab('logs')">Bridge Logs</button>
     <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
     <button class="iracing-subtab" data-irtab="tracks" onclick="switchIRacingTab('tracks')">Track Upload</button>
     <% } %>
@@ -655,6 +656,46 @@
     <% }) %>
   </div>
   </div><!-- /irtab-overlays -->
+
+  <div class="iracing-subtab-content" id="irtab-logs">
+    <!-- Bridge ID input -->
+    <div class="card animate-in" style="margin-bottom: 12px; padding: 16px 20px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <label style="font-size:13px; font-weight:600; white-space:nowrap;">Bridge ID</label>
+        <input type="text" id="bridge-id-input" placeholder="Paste your Bridge ID here (from Bridge app → About)" style="flex:1; background:var(--bg-base); border:1px solid var(--border); color:var(--text-primary); padding:7px 10px; border-radius:var(--radius-sm); font-size:12px; font-family:monospace;">
+        <button onclick="saveBridgeId()" class="btn btn-primary" style="font-size:12px; padding:7px 14px;">Connect</button>
+      </div>
+      <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Find your Bridge ID in the Atleta Bridge app → About tab.</p>
+    </div>
+
+    <!-- Bug Reports Card -->
+    <div class="card animate-in" style="margin-bottom: 12px; padding: 20px 24px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <h3 style="font-size:15px; font-weight:700; margin:0;">Bug Reports</h3>
+        <span id="bug-report-count" style="font-size:11px; color:var(--text-muted);"></span>
+      </div>
+      <div id="bug-reports-container">
+        <p style="font-size:12px; color:var(--text-muted);">Enter your Bridge ID above to see bug reports.</p>
+      </div>
+    </div>
+
+    <!-- Bridge Logs Card -->
+    <div class="card animate-in" style="padding: 20px 24px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <h3 style="font-size:15px; font-weight:700; margin:0;">Bridge Logs</h3>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <label style="font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:4px; cursor:pointer;">
+            <input type="checkbox" id="logs-auto-refresh" onchange="toggleLogAutoRefresh(this.checked)"> Auto-refresh
+          </label>
+          <button onclick="fetchBridgeLogs()" class="btn btn-secondary" style="font-size:11px; padding:5px 10px;">Refresh</button>
+          <button onclick="copyAllLogs()" class="btn btn-secondary" style="font-size:11px; padding:5px 10px;">Copy All</button>
+        </div>
+      </div>
+      <div id="bridge-logs-container" style="background:rgba(0,0,0,0.3); border-radius:8px; padding:12px; max-height:500px; overflow-y:auto; font-family:monospace; font-size:11px; line-height:1.6; white-space:pre-wrap; word-break:break-all; color:#ccc;">
+        <span style="color:var(--text-muted);">Enter your Bridge ID above to view logs.</span>
+      </div>
+    </div>
+  </div><!-- /irtab-logs -->
 
   <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
   <div class="iracing-subtab-content" id="irtab-tracks">
@@ -1145,6 +1186,125 @@ async function loadTrackDatabase() {
   }
 }
 loadTrackDatabase();
+
+// ─── Bridge Logs ──────────────────────────────────────────
+let bridgeLogRefreshInterval = null;
+
+function saveBridgeId() {
+  const id = document.getElementById('bridge-id-input').value.trim();
+  if (!id) return;
+  localStorage.setItem('bridgeId', id);
+  fetchBridgeLogs();
+  fetchBugReports();
+}
+
+// Load saved Bridge ID on page load
+(function() {
+  const saved = localStorage.getItem('bridgeId');
+  if (saved) {
+    document.getElementById('bridge-id-input').value = saved;
+    setTimeout(() => { fetchBridgeLogs(); fetchBugReports(); }, 500);
+  }
+})();
+
+function fetchBridgeLogs() {
+  const bridgeId = localStorage.getItem('bridgeId');
+  if (!bridgeId) return;
+  const container = document.getElementById('bridge-logs-container');
+  fetch('/api/bridge-logs/' + encodeURIComponent(bridgeId) + '?hours=24')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.logs || data.logs.length === 0) {
+        container.innerHTML = '<span style="color:var(--text-muted);">No logs found in the last 24 hours.</span>';
+        return;
+      }
+      const allLines = data.logs.map(l => l.lines).join('');
+      container.innerHTML = colorizeLogs(allLines);
+      container.scrollTop = container.scrollHeight;
+    })
+    .catch(() => { container.innerHTML = '<span style="color:#e74c3c;">Failed to fetch logs.</span>'; });
+}
+
+function colorizeLogs(text) {
+  return text.split('\n').map(line => {
+    if (!line.trim()) return '';
+    let color = '#ccc';
+    if (/\[VOICE\]|\[SPEECH\]/i.test(line)) color = '#b39ddb';
+    else if (/error|ERR|\[UNCAUGHT\]/i.test(line)) color = '#ef5350';
+    else if (/\[TELEMETRY\]/i.test(line)) color = '#66bb6a';
+    else if (/\[DIAG\]/i.test(line)) color = '#888';
+    else if (/\[MAIN\]|\[Bridge\]/i.test(line)) color = '#42a5f5';
+    return '<span style="color:' + color + ';">' + escapeHtml(line) + '</span>';
+  }).filter(Boolean).join('\n');
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function toggleLogAutoRefresh(enabled) {
+  if (bridgeLogRefreshInterval) { clearInterval(bridgeLogRefreshInterval); bridgeLogRefreshInterval = null; }
+  if (enabled) {
+    bridgeLogRefreshInterval = setInterval(fetchBridgeLogs, 10000);
+  }
+}
+
+function copyAllLogs() {
+  const container = document.getElementById('bridge-logs-container');
+  navigator.clipboard.writeText(container.textContent);
+}
+
+// ─── Bug Reports ──────────────────────────────────────────
+function fetchBugReports() {
+  const bridgeId = localStorage.getItem('bridgeId');
+  if (!bridgeId) return;
+  const container = document.getElementById('bug-reports-container');
+  const countEl = document.getElementById('bug-report-count');
+  fetch('/api/bridge-bug-reports?bridgeId=' + encodeURIComponent(bridgeId))
+    .then(r => r.json())
+    .then(data => {
+      if (!data.reports || data.reports.length === 0) {
+        container.innerHTML = '<p style="font-size:12px; color:var(--text-muted);">No bug reports yet. The AI agent will analyze your logs periodically.</p>';
+        countEl.textContent = '';
+        return;
+      }
+      const pending = data.reports.filter(r => r.status === 'pending').length;
+      countEl.textContent = pending > 0 ? pending + ' pending' : '';
+      container.innerHTML = data.reports.map(r => renderBugReport(r)).join('');
+    })
+    .catch(() => { container.innerHTML = '<p style="color:#e74c3c;">Failed to fetch reports.</p>'; });
+}
+
+function renderBugReport(report) {
+  const statusColors = { pending: '#f39c12', approved: '#2ecc71', dismissed: '#888' };
+  const statusColor = statusColors[report.status] || '#888';
+  const firstLine = escapeHtml((report.error_pattern || '').split('\n')[0].substring(0, 120));
+  const ts = new Date(report.created_at).toLocaleString();
+  const actions = report.status === 'pending' ? '<div style="display:flex; gap:6px; margin-top:10px;"><button onclick="updateBugReport(' + report.id + ', \'approved\')" style="background:rgba(46,204,113,0.15); color:#2ecc71; border:none; padding:5px 12px; border-radius:6px; font-size:11px; cursor:pointer; font-weight:600;">Approve Fix</button><button onclick="updateBugReport(' + report.id + ', \'dismissed\')" style="background:rgba(136,136,136,0.15); color:#888; border:none; padding:5px 12px; border-radius:6px; font-size:11px; cursor:pointer;">Dismiss</button></div>' : '';
+
+  return '<div style="border:1px solid rgba(255,255,255,0.06); border-radius:8px; margin-bottom:8px; overflow:hidden;">' +
+    '<div onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === \'none\' ? \'block\' : \'none\'" style="padding:10px 14px; cursor:pointer; display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.02);">' +
+      '<span style="width:8px; height:8px; border-radius:50%; background:' + statusColor + '; flex-shrink:0;"></span>' +
+      '<span style="font-size:12px; flex:1; color:var(--text-primary); font-family:monospace;">' + firstLine + '</span>' +
+      '<span style="font-size:10px; color:var(--text-muted);">' + ts + '</span>' +
+      '<span style="font-size:10px; padding:2px 6px; border-radius:4px; background:' + statusColor + '22; color:' + statusColor + '; font-weight:600; text-transform:uppercase;">' + escapeHtml(report.status) + '</span>' +
+    '</div>' +
+    '<div style="display:none; padding:12px 14px; border-top:1px solid rgba(255,255,255,0.04);">' +
+      '<div style="margin-bottom:8px;"><div style="font-size:10px; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase; font-weight:600;">Error Pattern</div><pre style="background:rgba(0,0,0,0.3); padding:8px; border-radius:6px; font-size:11px; color:#ef5350; white-space:pre-wrap; margin:0;">' + escapeHtml(report.error_pattern) + '</pre></div>' +
+      '<div style="margin-bottom:8px;"><div style="font-size:10px; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase; font-weight:600;">Why This Is Likely a Bug</div><p style="font-size:12px; color:var(--text-secondary); margin:0; line-height:1.5;">' + escapeHtml(report.explanation) + '</p></div>' +
+      '<div><div style="font-size:10px; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase; font-weight:600;">Suggested Fix</div><p style="font-size:12px; color:var(--text-secondary); margin:0; line-height:1.5;">' + escapeHtml(report.suggested_fix) + '</p></div>' +
+      actions +
+    '</div>' +
+  '</div>';
+}
+
+function updateBugReport(id, status) {
+  fetch('/api/bridge-bug-reports/' + id, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: status }),
+  }).then(() => fetchBugReports());
+}
 </script>
 
 <div class="tab-content" id="tab-experimental">
