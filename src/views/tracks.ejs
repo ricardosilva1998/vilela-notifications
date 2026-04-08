@@ -25,6 +25,11 @@
   .track-card-name { font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; }
   .track-card-meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; color: rgba(255,255,255,0.45); }
   .track-card-meta span { display: flex; align-items: center; gap: 3px; }
+  .live-badge { background: #3ecf8e; color: #000; font-size: 9px; font-weight: 800; padding: 2px 8px; border-radius: 10px; animation: live-pulse 1.5s ease-in-out infinite; display: inline-flex; align-items: center; gap: 4px; }
+  .live-badge::before { content: ''; width: 6px; height: 6px; background: #000; border-radius: 50%; }
+  @keyframes live-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
+  .live-detail { background: rgba(62,207,142,0.1); border: 1px solid rgba(62,207,142,0.2); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; font-size: 11px; }
+  .live-detail .live-badge { font-size: 10px; }
   .track-card-missing { font-size: 11px; color: rgba(255,80,80,0.7); padding: 12px; text-align: center; }
 
   /* List View */
@@ -103,6 +108,7 @@
   <!-- Detail View -->
   <div class="track-detail" id="track-detail">
     <button class="btn-back" onclick="showList()">&#8592; Back to tracks</button>
+    <div class="live-detail" id="detail-live-info" style="display:none;"></div>
     <div class="track-detail-header">
       <div class="track-detail-canvas"><canvas id="detail-canvas" width="400" height="320"></canvas></div>
       <div class="track-detail-info">
@@ -441,6 +447,51 @@
   });
 
   loadData();
+
+  // ─── Live Session Polling ───
+  let liveSession = null;
+  async function pollLiveSession() {
+    try {
+      const res = await fetch('/api/live-session');
+      liveSession = await res.json();
+    } catch(e) { liveSession = null; }
+    updateLiveBadges();
+  }
+
+  function updateLiveBadges() {
+    // Update grid cards
+    document.querySelectorAll('.track-card').forEach(card => {
+      const name = card.querySelector('.track-card-name')?.textContent;
+      const existing = card.querySelector('.live-badge');
+      if (existing) existing.remove();
+      if (liveSession && liveSession.trackName === name) {
+        const badge = document.createElement('div');
+        badge.className = 'live-badge';
+        badge.textContent = 'LIVE';
+        badge.style.position = 'absolute'; badge.style.top = '8px'; badge.style.right = '8px';
+        const canvas = card.querySelector('.track-card-canvas');
+        if (canvas) { canvas.style.position = 'relative'; canvas.appendChild(badge); }
+      }
+    });
+    // Update detail page live indicator
+    const detailLive = document.getElementById('detail-live-info');
+    if (detailLive) {
+      const detailName = document.getElementById('detail-name')?.textContent;
+      if (liveSession && liveSession.trackName === detailName) {
+        const classes = (liveSession.classes || []).join(', ');
+        const type = liveSession.eventType || 'Unknown';
+        const drivers = liveSession.driversCount || 0;
+        const timeLeft = liveSession.timeRemain ? Math.round(liveSession.timeRemain / 60) + ' min left' : '';
+        detailLive.innerHTML = '<span class="live-badge">LIVE</span> <span>' + type + '</span> <span style="color:rgba(255,255,255,0.5);">·</span> <span>' + classes + '</span> <span style="color:rgba(255,255,255,0.5);">·</span> <span>' + drivers + ' drivers</span>' + (timeLeft ? ' <span style="color:rgba(255,255,255,0.5);">·</span> <span>' + timeLeft + '</span>' : '');
+        detailLive.style.display = 'flex';
+      } else {
+        detailLive.style.display = 'none';
+      }
+    }
+  }
+
+  pollLiveSession();
+  setInterval(pollLiveSession, 10000);
 })();
 </script>
 

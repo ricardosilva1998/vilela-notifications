@@ -241,6 +241,25 @@ app.get('/api/track-stats/:trackName', (req, res) => {
   }
 });
 
+// Live session heartbeat — Bridge sends current session state every 30s
+let liveSession = null;
+let liveSessionTime = 0;
+
+app.post('/api/live-session', express.json(), (req, res) => {
+  liveSession = req.body;
+  liveSessionTime = Date.now();
+  res.json({ ok: true });
+});
+
+app.get('/api/live-session', (req, res) => {
+  // Stale after 60s = no active session
+  if (liveSession && (Date.now() - liveSessionTime) < 60000) {
+    res.json(liveSession);
+  } else {
+    res.json(null);
+  }
+});
+
 app.delete('/api/track-stats/:trackName/:carClass/:raceType', (req, res) => {
   try {
     const { trackName, carClass, raceType } = req.params;
