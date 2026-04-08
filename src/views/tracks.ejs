@@ -1,0 +1,447 @@
+<%- include('header', { streamer, t, title: 'Track Database' }) %>
+
+<style>
+  .tracks-page { max-width: 1200px; margin: 0 auto; padding: 20px; }
+  .tracks-header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+  .tracks-header h1 { font-size: 24px; font-weight: 700; flex: 1; min-width: 200px; }
+  .tracks-search { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 14px; color: #fff; font-size: 14px; width: 240px; outline: none; }
+  .tracks-search:focus { border-color: var(--accent, #9146ff); }
+  .view-toggle { display: flex; gap: 4px; background: rgba(255,255,255,0.06); border-radius: 8px; padding: 3px; }
+  .view-toggle button { background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; padding: 6px 10px; border-radius: 6px; display: flex; align-items: center; }
+  .view-toggle button.active { background: var(--accent, #9146ff); color: #fff; }
+  .view-toggle button svg { width: 16px; height: 16px; fill: currentColor; }
+  .btn-upload-ibt { background: var(--accent, #9146ff); color: #fff; border: none; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .btn-upload-ibt:hover { filter: brightness(1.15); }
+
+  /* Grid View */
+  .tracks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+  .track-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; overflow: hidden; cursor: pointer; transition: border-color 0.2s, transform 0.15s; }
+  .track-card:hover { border-color: var(--accent, #9146ff); transform: translateY(-2px); }
+  .track-card.missing { border: 2px dashed rgba(255,80,80,0.4); opacity: 0.6; cursor: default; }
+  .track-card.missing:hover { transform: none; border-color: rgba(255,80,80,0.4); }
+  .track-card-canvas { width: 100%; height: 140px; background: rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; }
+  .track-card-canvas canvas { width: 100%; height: 100%; }
+  .track-card-body { padding: 12px; }
+  .track-card-name { font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; }
+  .track-card-meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; color: rgba(255,255,255,0.45); }
+  .track-card-meta span { display: flex; align-items: center; gap: 3px; }
+  .track-card-missing { font-size: 11px; color: rgba(255,80,80,0.7); padding: 12px; text-align: center; }
+
+  /* List View */
+  .tracks-list { display: none; }
+  .tracks-list table { width: 100%; border-collapse: collapse; }
+  .tracks-list th { text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.4); border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .tracks-list td { padding: 8px 12px; font-size: 13px; color: rgba(255,255,255,0.75); border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+  .tracks-list tr.clickable { cursor: pointer; }
+  .tracks-list tr.clickable:hover { background: rgba(255,255,255,0.04); }
+  .tracks-list tr.missing td { color: rgba(255,80,80,0.5); }
+  .tracks-list tr.missing { border-left: 3px solid rgba(255,80,80,0.4); }
+  .list-thumb { width: 60px; height: 36px; border-radius: 4px; background: rgba(0,0,0,0.3); }
+
+  /* Detail Page */
+  .track-detail { display: none; }
+  .track-detail-header { display: flex; gap: 24px; align-items: flex-start; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 24px; margin-bottom: 24px; }
+  .track-detail-canvas { width: 200px; height: 160px; flex-shrink: 0; background: rgba(0,0,0,0.2); border-radius: 10px; overflow: hidden; }
+  .track-detail-canvas canvas { width: 100%; height: 100%; }
+  .track-detail-info { flex: 1; min-width: 0; }
+  .track-detail-info h2 { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .track-detail-location { font-size: 14px; color: rgba(255,255,255,0.45); margin-bottom: 16px; }
+  .track-detail-stats { display: flex; gap: 24px; flex-wrap: wrap; }
+  .track-stat { text-align: center; }
+  .track-stat-value { font-size: 20px; font-weight: 700; color: #fff; font-family: 'JetBrains Mono', monospace; }
+  .track-stat-label { font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.5px; }
+  .btn-back { background: none; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 6px 14px; color: rgba(255,255,255,0.6); font-size: 13px; cursor: pointer; margin-bottom: 16px; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-back:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
+
+  /* Class Tabs */
+  .class-tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+  .class-tab { padding: 6px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.5); font-size: 13px; font-weight: 600; cursor: pointer; }
+  .class-tab.active { background: var(--accent, #9146ff); color: #fff; border-color: var(--accent, #9146ff); }
+  .class-tab .class-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+
+  /* Stats Table */
+  .stats-table { width: 100%; border-collapse: collapse; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; overflow: hidden; }
+  .stats-table th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .stats-table td { padding: 10px 14px; font-size: 13px; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.04); font-family: 'JetBrains Mono', monospace; }
+  .stats-table td.dimmed { color: rgba(255,255,255,0.15); }
+  .stats-table tr:last-child td { border-bottom: none; }
+
+  @media (max-width: 600px) {
+    .tracks-header { flex-direction: column; align-items: stretch; }
+    .tracks-search { width: 100%; }
+    .track-detail-header { flex-direction: column; }
+    .track-detail-canvas { width: 100%; height: 140px; }
+  }
+</style>
+
+<div class="tracks-page">
+  <!-- List View -->
+  <div id="tracks-list-view">
+    <div class="tracks-header">
+      <h1>Track Database</h1>
+      <div class="view-toggle">
+        <button id="btn-grid" class="active" onclick="setView('grid')" title="Grid view">
+          <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm0 10h8v8H3v-8zm10-10h8v8h-8V3zm0 10h8v8h-8v-8z"/></svg>
+        </button>
+        <button id="btn-list" onclick="setView('list')" title="List view">
+          <svg viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
+        </button>
+      </div>
+      <input type="text" class="tracks-search" id="tracks-search" placeholder="Search tracks..." oninput="filterTracks()">
+      <button class="btn-upload-ibt" onclick="window.location='/dashboard#iracing-tracks'">Upload IBT</button>
+    </div>
+
+    <div class="tracks-grid" id="tracks-grid"></div>
+    <div class="tracks-list" id="tracks-list">
+      <table>
+        <thead><tr><th>Track</th><th>Location</th><th>Length</th><th>Turns</th><th>Classes</th><th>Races</th></tr></thead>
+        <tbody id="tracks-list-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Detail View -->
+  <div class="track-detail" id="track-detail">
+    <button class="btn-back" onclick="showList()">&#8592; Back to tracks</button>
+    <div class="track-detail-header">
+      <div class="track-detail-canvas"><canvas id="detail-canvas" width="400" height="320"></canvas></div>
+      <div class="track-detail-info">
+        <h2 id="detail-name">--</h2>
+        <div class="track-detail-location" id="detail-location">--</div>
+        <div class="track-detail-stats" id="detail-stats"></div>
+      </div>
+    </div>
+    <div class="class-tabs" id="class-tabs"></div>
+    <div id="class-stats-content"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  let allTracks = [];
+  let allStats = [];
+  let currentView = localStorage.getItem('tracks-view') || 'grid';
+
+  const KNOWN_IRACING_TRACKS = [
+    'Daytona International Speedway', 'Spa-Francorchamps', 'Nurburgring Grand-Prix-Strecke',
+    'Nurburgring Nordschleife', 'Autodromo Nazionale Monza', 'Silverstone Circuit',
+    'Suzuka International Racing Course', 'Autodromo Jose Carlos Pace', 'Road America',
+    'Watkins Glen International', 'Circuit of the Americas', 'Mount Panorama Circuit',
+    'Hockenheimring Baden-Wurttemberg', 'Autodromo Enzo e Dino Ferrari', 'Brands Hatch Circuit',
+    'WeatherTech Raceway at Laguna Seca', 'Summit Point Raceway', 'Okayama International Circuit',
+    'Sebring International Raceway', 'Circuit des 24 Heures du Mans', 'Red Bull Ring',
+    'Circuit de Barcelona-Catalunya', 'Hungaroring', 'Fuji Speedway',
+    'Charlotte Motor Speedway', 'Indianapolis Motor Speedway', 'Long Beach Street Circuit',
+    'Belle Isle - Detroit', 'Mid-Ohio Sports Car Course', 'Virginia International Raceway',
+    'Lime Rock Park', 'Snetterton Circuit', 'Donington Park Racing Circuit',
+    'Oulton Park Circuit', 'Phillip Island Circuit', 'Autodromo Internazionale del Mugello',
+    'Autodromo Internacional do Algarve', 'Circuit Zandvoort', 'Twin Ring Motegi',
+    'Tsukuba Circuit', 'Road Atlanta', 'Canadian Tire Motorsport Park', 'Oran Park Raceway',
+    'Barber Motorsports Park', 'Sonoma Raceway', 'Circuit Gilles Villeneuve',
+    'Nurburgring Combined', 'Imola', 'Knockhill Racing Circuit',
+  ];
+
+  const RACE_TYPES_BY_CLASS = {
+    'GT3':  ['Regionals', 'VRS Sprint', 'IMSA Sprint', 'VRS Open', 'IMSA Open', 'IMSA Endurance', 'Global Endurance'],
+    'LMP2': ['LMP2 Sprint', 'IMSA Sprint', 'IMSA Open', 'IMSA Endurance', 'Global Endurance'],
+    'GTP':  ['Proto Sprint', 'IMSA Sprint', 'IMSA Open', 'IMSA Endurance', 'Global Endurance'],
+  };
+  const DEFAULT_RACE_TYPES = ['Sprint', 'Open', 'Endurance'];
+
+  function drawTrackPreview(canvas, points) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    if (!points || points.length < 10) return;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    points.forEach(p => { if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x; if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y; });
+    const xR = maxX - minX || 1, yR = maxY - minY || 1;
+    const pad = 0.08, aspect = xR / yR;
+    let scX = 1, scY = 1;
+    if (aspect > 1) scY = 1 / aspect; else scX = aspect;
+    const u = 1 - 2 * pad;
+    ctx.beginPath();
+    ctx.strokeStyle = '#9146ff';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    points.forEach((p, i) => {
+      const x = (pad + u * scX * (p.x - minX) / xR + u * (1 - scX) / 2) * w;
+      const y = (pad + u * scY * (1 - (p.y - minY) / yR) + u * (1 - scY) / 2) * h;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.stroke();
+    // Start/finish dot
+    const sf = points[0];
+    const sfx = (pad + u * scX * (sf.x - minX) / xR + u * (1 - scX) / 2) * w;
+    const sfy = (pad + u * scY * (1 - (sf.y - minY) / yR) + u * (1 - scY) / 2) * h;
+    ctx.beginPath(); ctx.arc(sfx, sfy, 4, 0, Math.PI * 2); ctx.fillStyle = '#3ecf8e'; ctx.fill();
+  }
+
+  function formatLapTime(t) {
+    if (!t || t <= 0) return '--';
+    const m = Math.floor(t / 60);
+    const s = (t % 60).toFixed(3);
+    return m > 0 ? m + ':' + s.padStart(6, '0') : s;
+  }
+
+  function formatSOF(v) {
+    if (!v || v <= 0) return '--';
+    return v >= 1000 ? (v / 1000).toFixed(1) + 'k' : String(Math.round(v));
+  }
+
+  function isNamedTrack(name) {
+    return !name.match(/^-?\d+\.\d+_-?\d+\.\d+$/);
+  }
+
+  // ─── Load data ───
+  async function loadData() {
+    try {
+      const [tracksRes, statsRes] = await Promise.all([
+        fetch('/api/track-maps'),
+        fetch('/api/track-stats'),
+      ]);
+      allTracks = await tracksRes.json();
+      allStats = await statsRes.json();
+    } catch(e) { console.error('Failed to load track data:', e); }
+
+    // Apply initial view
+    setView(currentView);
+    renderTracks();
+
+    // Check URL for detail view
+    const pathMatch = window.location.pathname.match(/^\/tracks\/(.+)/);
+    if (pathMatch) {
+      const trackName = decodeURIComponent(pathMatch[1]);
+      showDetail(trackName);
+    }
+  }
+
+  // ─── Render ───
+  function renderTracks() {
+    const search = (document.getElementById('tracks-search').value || '').toLowerCase();
+    const named = allTracks.filter(t => isNamedTrack(t.track_name));
+
+    // Build stats lookup: track -> { classes, totalRaces }
+    const statsLookup = {};
+    allStats.forEach(s => {
+      if (!statsLookup[s.track_name]) statsLookup[s.track_name] = { classes: new Set(), totalRaces: 0 };
+      statsLookup[s.track_name].classes.add(s.car_class);
+      statsLookup[s.track_name].totalRaces += s.race_count || 0;
+    });
+
+    // Merge known tracks (missing ones)
+    const existingNames = new Set(named.map(t => t.track_name));
+    const missing = KNOWN_IRACING_TRACKS.filter(n => !existingNames.has(n));
+
+    const filtered = named.filter(t => t.track_name.toLowerCase().includes(search));
+    const filteredMissing = missing.filter(n => n.toLowerCase().includes(search));
+
+    // Grid view
+    let gridHtml = '';
+    filtered.forEach(t => {
+      const s = statsLookup[t.track_name];
+      const loc = [t.track_city, t.track_country].filter(Boolean).join(', ');
+      gridHtml += `<div class="track-card" onclick="window._showDetail('${t.track_name.replace(/'/g, "\\'")}')">
+        <div class="track-card-canvas"><canvas data-track="${t.track_name}" width="440" height="280"></canvas></div>
+        <div class="track-card-body">
+          <div class="track-card-name" title="${t.track_name}">${t.track_name}</div>
+          <div class="track-card-meta">
+            ${t.track_length ? '<span>' + t.track_length + '</span>' : ''}
+            ${t.track_turns ? '<span>' + t.track_turns + ' turns</span>' : ''}
+            ${s ? '<span>' + s.classes.size + ' class' + (s.classes.size !== 1 ? 'es' : '') + '</span>' : ''}
+            ${s ? '<span>' + s.totalRaces + ' race' + (s.totalRaces !== 1 ? 's' : '') + '</span>' : ''}
+          </div>
+        </div>
+      </div>`;
+    });
+    filteredMissing.forEach(n => {
+      gridHtml += `<div class="track-card missing">
+        <div class="track-card-canvas" style="display:flex;align-items:center;justify-content:center;color:rgba(255,80,80,0.35);font-size:11px;">No data</div>
+        <div class="track-card-body">
+          <div class="track-card-name" title="${n}">${n}</div>
+          <div class="track-card-missing">Upload IBT to add</div>
+        </div>
+      </div>`;
+    });
+    document.getElementById('tracks-grid').innerHTML = gridHtml;
+
+    // List view
+    let listHtml = '';
+    filtered.forEach(t => {
+      const s = statsLookup[t.track_name];
+      const loc = [t.track_city, t.track_country].filter(Boolean).join(', ') || '--';
+      listHtml += `<tr class="clickable" onclick="window._showDetail('${t.track_name.replace(/'/g, "\\'")}')">
+        <td><canvas class="list-thumb" data-track="${t.track_name}" width="120" height="72"></canvas> ${t.track_name}</td>
+        <td>${loc}</td>
+        <td>${t.track_length || '--'}</td>
+        <td>${t.track_turns || '--'}</td>
+        <td>${s ? s.classes.size : 0}</td>
+        <td>${s ? s.totalRaces : 0}</td>
+      </tr>`;
+    });
+    filteredMissing.forEach(n => {
+      listHtml += `<tr class="missing"><td>${n}</td><td>--</td><td>--</td><td>--</td><td>0</td><td>0</td></tr>`;
+    });
+    document.getElementById('tracks-list-body').innerHTML = listHtml;
+
+    // Draw canvases
+    requestAnimationFrame(() => {
+      document.querySelectorAll('canvas[data-track]').forEach(async (canvas) => {
+        const name = canvas.dataset.track;
+        try {
+          const res = await fetch('/api/track-map/' + encodeURIComponent(name));
+          if (res.ok) {
+            const data = await res.json();
+            drawTrackPreview(canvas, data.trackData);
+          }
+        } catch(e) {}
+      });
+    });
+  }
+
+  // ─── Detail ───
+  async function showDetail(trackName) {
+    document.getElementById('tracks-list-view').style.display = 'none';
+    const detail = document.getElementById('track-detail');
+    detail.style.display = 'block';
+    history.pushState(null, '', '/tracks/' + encodeURIComponent(trackName));
+
+    const track = allTracks.find(t => t.track_name === trackName);
+    document.getElementById('detail-name').textContent = trackName;
+    const loc = track ? [track.track_city, track.track_country].filter(Boolean).join(', ') : '';
+    document.getElementById('detail-location').textContent = loc || 'Location unknown';
+
+    // Track stats from allStats
+    const trackStats = allStats.filter(s => s.track_name === trackName);
+    const classes = [...new Set(trackStats.map(s => s.car_class))];
+    const totalRaces = trackStats.reduce((sum, s) => sum + (s.race_count || 0), 0);
+
+    // Header stats
+    let statsHtml = '';
+    if (track && track.track_length) statsHtml += `<div class="track-stat"><div class="track-stat-value">${track.track_length}</div><div class="track-stat-label">Length</div></div>`;
+    if (track && track.track_turns) statsHtml += `<div class="track-stat"><div class="track-stat-value">${track.track_turns}</div><div class="track-stat-label">Turns</div></div>`;
+    statsHtml += `<div class="track-stat"><div class="track-stat-value">${totalRaces}</div><div class="track-stat-label">Races</div></div>`;
+    statsHtml += `<div class="track-stat"><div class="track-stat-value">${classes.length}</div><div class="track-stat-label">Classes</div></div>`;
+    document.getElementById('detail-stats').innerHTML = statsHtml;
+
+    // Canvas
+    try {
+      const res = await fetch('/api/track-map/' + encodeURIComponent(trackName));
+      if (res.ok) {
+        const data = await res.json();
+        drawTrackPreview(document.getElementById('detail-canvas'), data.trackData);
+      }
+    } catch(e) {}
+
+    // Class tabs
+    if (classes.length === 0) {
+      document.getElementById('class-tabs').innerHTML = '';
+      document.getElementById('class-stats-content').innerHTML = '<p style="color:rgba(255,255,255,0.35);text-align:center;padding:40px 0;">No race data yet. Run races with Atleta Bridge to populate stats.</p>';
+      return;
+    }
+
+    let tabsHtml = '';
+    classes.forEach((cls, i) => {
+      tabsHtml += `<button class="class-tab${i === 0 ? ' active' : ''}" onclick="window._switchClassTab(this, '${cls.replace(/'/g, "\\'")}')" data-class="${cls}"><span class="class-dot"></span>${cls}</button>`;
+    });
+    document.getElementById('class-tabs').innerHTML = tabsHtml;
+    renderClassStats(trackName, classes[0]);
+  }
+
+  function renderClassStats(trackName, className) {
+    const trackStats = allStats.filter(s => s.track_name === trackName && s.car_class === className);
+    const raceTypes = RACE_TYPES_BY_CLASS[className] || DEFAULT_RACE_TYPES;
+
+    // Build lookup
+    const lookup = {};
+    trackStats.forEach(s => { lookup[s.race_type] = s; });
+
+    let html = '<table class="stats-table"><thead><tr>';
+    html += '<th>Race Type</th><th>Avg Lap</th><th>Avg Pit</th><th>Avg Qualify</th><th>Est. Laps</th><th>Avg SOF</th><th>Races</th><th>Avg Drivers</th>';
+    html += '</tr></thead><tbody>';
+
+    raceTypes.forEach(rt => {
+      const s = lookup[rt];
+      if (s) {
+        html += `<tr>
+          <td style="color:#fff;font-family:inherit;font-weight:600;">${rt}</td>
+          <td>${formatLapTime(s.avg_lap_time)}</td>
+          <td>${s.avg_pit_time > 0 ? s.avg_pit_time.toFixed(1) + 's' : '--'}</td>
+          <td>${formatLapTime(s.avg_qualify_time)}</td>
+          <td>${s.est_laps > 0 ? Math.round(s.est_laps) : '--'}</td>
+          <td>${formatSOF(s.avg_sof)}</td>
+          <td>${s.race_count || 0}</td>
+          <td>${s.avg_drivers > 0 ? Math.round(s.avg_drivers) : '--'}</td>
+        </tr>`;
+      } else {
+        html += `<tr>
+          <td style="color:rgba(255,255,255,0.25);font-family:inherit;">${rt}</td>
+          <td class="dimmed">--</td><td class="dimmed">--</td><td class="dimmed">--</td>
+          <td class="dimmed">--</td><td class="dimmed">--</td><td class="dimmed">--</td><td class="dimmed">--</td>
+        </tr>`;
+      }
+    });
+
+    // Also show any race types in data not in the predefined list
+    trackStats.forEach(s => {
+      if (!raceTypes.includes(s.race_type)) {
+        html += `<tr>
+          <td style="color:#fff;font-family:inherit;font-weight:600;">${s.race_type}</td>
+          <td>${formatLapTime(s.avg_lap_time)}</td>
+          <td>${s.avg_pit_time > 0 ? s.avg_pit_time.toFixed(1) + 's' : '--'}</td>
+          <td>${formatLapTime(s.avg_qualify_time)}</td>
+          <td>${s.est_laps > 0 ? Math.round(s.est_laps) : '--'}</td>
+          <td>${formatSOF(s.avg_sof)}</td>
+          <td>${s.race_count || 0}</td>
+          <td>${s.avg_drivers > 0 ? Math.round(s.avg_drivers) : '--'}</td>
+        </tr>`;
+      }
+    });
+
+    html += '</tbody></table>';
+    document.getElementById('class-stats-content').innerHTML = html;
+  }
+
+  function showList() {
+    document.getElementById('track-detail').style.display = 'none';
+    document.getElementById('tracks-list-view').style.display = 'block';
+    history.pushState(null, '', '/tracks');
+  }
+
+  // ─── View toggle ───
+  window.setView = function(view) {
+    currentView = view;
+    localStorage.setItem('tracks-view', view);
+    document.getElementById('btn-grid').classList.toggle('active', view === 'grid');
+    document.getElementById('btn-list').classList.toggle('active', view === 'list');
+    document.getElementById('tracks-grid').style.display = view === 'grid' ? 'grid' : 'none';
+    document.getElementById('tracks-list').style.display = view === 'list' ? 'block' : 'none';
+  };
+
+  window.filterTracks = renderTracks;
+  window._showDetail = showDetail;
+  window.showList = showList;
+  window._switchClassTab = function(btn, cls) {
+    document.querySelectorAll('.class-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    const trackName = document.getElementById('detail-name').textContent;
+    renderClassStats(trackName, cls);
+  };
+
+  // Handle browser back
+  window.addEventListener('popstate', () => {
+    const pathMatch = window.location.pathname.match(/^\/tracks\/(.+)/);
+    if (pathMatch) {
+      showDetail(decodeURIComponent(pathMatch[1]));
+    } else {
+      showList();
+    }
+  });
+
+  loadData();
+})();
+</script>
+
+<%- include('footer') %>

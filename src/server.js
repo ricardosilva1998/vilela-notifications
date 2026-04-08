@@ -150,7 +150,7 @@ app.get('/api/voice/:discordUserId', async (req, res) => {
 // Track map API (public — must be before /api auth middleware)
 app.get('/api/track-maps', (req, res) => {
   try {
-    const rows = db.db.prepare('SELECT track_name, point_count, created_at, updated_at FROM track_maps ORDER BY track_name').all();
+    const rows = db.db.prepare('SELECT track_name, point_count, track_length, track_turns, track_country, track_city, created_at, updated_at FROM track_maps ORDER BY track_name').all();
     res.json(rows);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -165,18 +165,23 @@ app.get('/api/track-map/:trackName', (req, res) => {
 
 app.post('/api/track-map', (req, res) => {
   try {
-    const { trackName, trackData } = req.body;
+    const { trackName, trackData, trackLength, trackTurns, trackCountry, trackCity } = req.body;
     if (!trackName || !trackData || !Array.isArray(trackData) || trackData.length < 50) {
       return res.status(400).json({ error: 'Invalid track data' });
     }
     const json = JSON.stringify(trackData);
     const existing = db.db.prepare('SELECT point_count FROM track_maps WHERE track_name = ?').get(trackName);
     if (existing && existing.point_count >= trackData.length) {
+      // Still update metadata if provided
+      if (trackLength || trackTurns || trackCountry || trackCity) {
+        db.db.prepare(`UPDATE track_maps SET track_length = COALESCE(?, track_length), track_turns = COALESCE(?, track_turns), track_country = COALESCE(?, track_country), track_city = COALESCE(?, track_city), updated_at = datetime('now') WHERE track_name = ?`)
+          .run(trackLength || null, trackTurns || null, trackCountry || null, trackCity || null, trackName);
+      }
       return res.json({ status: 'exists', message: 'Better or equal track already stored' });
     }
-    db.db.prepare(`INSERT INTO track_maps (track_name, track_data, point_count) VALUES (?, ?, ?)
-      ON CONFLICT(track_name) DO UPDATE SET track_data = excluded.track_data, point_count = excluded.point_count, updated_at = datetime('now')
-    `).run(trackName, json, trackData.length);
+    db.db.prepare(`INSERT INTO track_maps (track_name, track_data, point_count, track_length, track_turns, track_country, track_city) VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(track_name) DO UPDATE SET track_data = excluded.track_data, point_count = excluded.point_count, track_length = COALESCE(excluded.track_length, track_length), track_turns = COALESCE(excluded.track_turns, track_turns), track_country = COALESCE(excluded.track_country, track_country), track_city = COALESCE(excluded.track_city, track_city), updated_at = datetime('now')
+    `).run(trackName, json, trackData.length, trackLength || null, trackTurns || null, trackCountry || null, trackCity || null);
     res.json({ status: 'ok', points: trackData.length });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -234,6 +239,16 @@ app.get('/api/track-stats/:trackName', (req, res) => {
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// Track Database page (admin only)
+app.get('/tracks', (req, res) => {
+  if (!req.streamer || !db.isAdmin(req.streamer.id)) return res.redirect('/');
+  res.render('tracks', { streamer: req.streamer, t: res.locals.t });
+});
+app.get('/tracks/:trackName', (req, res) => {
+  if (!req.streamer || !db.isAdmin(req.streamer.id)) return res.redirect('/');
+  res.render('tracks', { streamer: req.streamer, t: res.locals.t });
 });
 
 app.use('/api', apiRoutes);

@@ -811,6 +811,12 @@ try {
   } catch(e2) {}
 }
 
+// Migration: add track metadata columns to track_maps
+try { db.exec('ALTER TABLE track_maps ADD COLUMN track_length TEXT'); } catch(e) {}
+try { db.exec('ALTER TABLE track_maps ADD COLUMN track_turns INTEGER'); } catch(e) {}
+try { db.exec('ALTER TABLE track_maps ADD COLUMN track_country TEXT'); } catch(e) {}
+try { db.exec('ALTER TABLE track_maps ADD COLUMN track_city TEXT'); } catch(e) {}
+
 // --- Seed: ensure enterprise subscriptions for specific users ---
 const _enterpriseUsers = ['Ricardo Apple', 'andre_vilela'];
 for (const name of _enterpriseUsers) {

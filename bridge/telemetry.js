@@ -82,10 +82,10 @@ async function fetchTrackFromServer(trackName) {
   } catch(e) { return null; }
 }
 
-function uploadTrackToServer(trackName, pathData) {
+function uploadTrackToServer(trackName, pathData, metadata) {
   try {
     const https = require('https');
-    const postData = JSON.stringify({ trackName, trackData: pathData });
+    const postData = JSON.stringify({ trackName, trackData: pathData, ...metadata });
     const url = new URL(TRACK_API_URL);
     const req = https.request({
       hostname: url.hostname, port: 443, path: url.pathname, method: 'POST',
@@ -1326,7 +1326,13 @@ async function startTelemetry(onStatusChange) {
             log('[TrackMap] Path complete: ' + trackPathOutput.length + ' points (' + filledSlots + '/' + TRACK_SLOTS + ' slots)');
             if (trackName) {
               saveCachedTrack(trackName, trackPathOutput);
-              uploadTrackToServer(trackName, trackPathOutput);
+              const wi = ir.getSessionInfo('WeekendInfo');
+              uploadTrackToServer(trackName, trackPathOutput, {
+                trackLength: wi?.TrackLength || '',
+                trackTurns: parseInt(wi?.TrackNumTurns) || 0,
+                trackCountry: wi?.TrackCountry || '',
+                trackCity: wi?.TrackCity || '',
+              });
             }
           }
 
