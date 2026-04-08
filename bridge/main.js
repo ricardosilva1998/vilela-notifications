@@ -470,10 +470,8 @@ ipcMain.on('save-overlay-settings', (event, overlayId, overlaySettings) => {
     }
   } else {
     persistSettings();
-    // Reload the overlay window to apply new settings
-    if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
-      overlayWindows[overlayId].reload();
-    }
+    // Don't reload — it kills all in-memory overlay data (lap history, pit counts, etc.)
+    // Settings that need reload (font size, columns) can be applied by toggling overlay off/on
   }
   // Reconnect Twitch chat if channel changed
   if (overlayId === 'chat' && overlaySettings.twitchChannel !== undefined) {
