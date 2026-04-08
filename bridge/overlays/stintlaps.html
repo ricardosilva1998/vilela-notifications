@@ -39,6 +39,9 @@
     .lap-delta { font-size: 10px; width: 60px; text-align: right; }
     .lap-delta.faster { color: #3ecf8e; }
     .lap-delta.slower { color: #f04438; }
+    .lap-tabs { display: flex; gap: 2px; padding: 4px 14px 0; }
+    .lap-tab { padding: 3px 8px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.35); background: rgba(255,255,255,0.04); border-radius: 4px 4px 0 0; cursor: pointer; transition: all 0.15s; }
+    .lap-tab.active { color: #e8e6f0; background: rgba(255,255,255,0.1); }
   </style>
 </head>
 <body>
@@ -46,6 +49,12 @@
     <div class="overlay-header">
       <span>SESSION LAPS</span>
       <span id="connection-status"><span class="status-dot demo"></span></span>
+    </div>
+    <div class="lap-tabs">
+      <div class="lap-tab active" data-filter="all" onclick="setFilter('all')">All</div>
+      <div class="lap-tab" data-filter="practice" onclick="setFilter('practice')">P</div>
+      <div class="lap-tab" data-filter="qualify" onclick="setFilter('qualify')">Q</div>
+      <div class="lap-tab" data-filter="race" onclick="setFilter('race')">R</div>
     </div>
     <div class="stint-body">
       <div class="stint-summary">
@@ -123,6 +132,61 @@
       return { label: 'P', cls: 'practice' };
     }
 
+    let activeFilter = 'all';
+
+    function setFilter(filter) {
+      activeFilter = filter;
+      document.querySelectorAll('.lap-tab').forEach(t => t.classList.remove('active'));
+      document.querySelector('.lap-tab[data-filter="' + filter + '"]').classList.add('active');
+      renderLaps();
+    }
+
+    function getFilteredLaps() {
+      if (activeFilter === 'all') return sessionLaps;
+      return sessionLaps.filter(l => sessionTag(l.session).cls === activeFilter);
+    }
+
+    function renderLaps() {
+      const filtered = getFilteredLaps();
+      document.getElementById('stint-laps').textContent = filtered.length || 0;
+
+      if (filtered.length === 0) {
+        document.getElementById('stint-best').textContent = '--';
+        document.getElementById('stint-last').textContent = '--';
+        document.getElementById('stint-avg').textContent = '--';
+        document.getElementById('lap-list').innerHTML = '';
+        return;
+      }
+
+      const times = filtered.map(l => l.time);
+      const best = Math.min(...times);
+      const last = times[times.length - 1];
+      const avg = times.reduce((a, b) => a + b, 0) / times.length;
+
+      document.getElementById('stint-best').textContent = formatLapTime(best);
+      document.getElementById('stint-last').textContent = formatLapTime(last);
+      document.getElementById('stint-avg').textContent = formatLapTime(avg);
+
+      // Render lap list (newest on top)
+      const listEl = document.getElementById('lap-list');
+      let html = '';
+      for (let i = filtered.length - 1; i >= 0; i--) {
+        const lap = filtered[i];
+        const isBest = lap.time === best;
+        const delta = lap.time - best;
+        const deltaStr = delta === 0 ? '' : (delta > 0 ? '+' + delta.toFixed(3) : delta.toFixed(3));
+        const deltaClass = delta === 0 ? '' : (delta > 0 ? 'slower' : 'faster');
+        const tag = sessionTag(lap.session);
+        html += `<div class="lap-row ${isBest ? 'fastest' : ''}">
+            <span class="lap-num">L${i + 1}</span>
+            <span class="lap-session ${tag.cls}">${tag.label}</span>
+            <span class="lap-time ${isBest ? 'fastest' : ''}">${formatLapTime(lap.time)}</span>
+            <span class="lap-delta ${deltaClass}">${deltaStr}</span>
+          </div>`;
+      }
+      listEl.innerHTML = html;
+    }
+
     onData('standings', data => {
       if (!data || !data.length) return;
       const focused = data.find(d => d.isSpectated) || data.find(d => d.isPlayer);
@@ -141,47 +205,9 @@
     onData('session', data => {
       if (!data) return;
       currentSessionType = data.eventType || '';
-
-      // Detect session change (practice → qualify → race) — clear laps
       const sn = data.sessionNum ?? -1;
-      if (sn >= 0 && currentSessionNum >= 0 && sn !== currentSessionNum) {
-        sessionLaps = [];
-        lastFocusLap = -1;
-      }
       currentSessionNum = sn;
-
-      // Update summary
-      document.getElementById('stint-laps').textContent = sessionLaps.length || 0;
-
-      if (sessionLaps.length > 0) {
-        const times = sessionLaps.map(l => l.time);
-        const best = Math.min(...times);
-        const last = times[times.length - 1];
-        const avg = times.reduce((a, b) => a + b, 0) / times.length;
-
-        document.getElementById('stint-best').textContent = formatLapTime(best);
-        document.getElementById('stint-last').textContent = formatLapTime(last);
-        document.getElementById('stint-avg').textContent = formatLapTime(avg);
-
-        // Render lap list (newest on top)
-        const listEl = document.getElementById('lap-list');
-        let html = '';
-        for (let i = sessionLaps.length - 1; i >= 0; i--) {
-          const lap = sessionLaps[i];
-          const isBest = lap.time === best;
-          const delta = lap.time - best;
-          const deltaStr = delta === 0 ? '' : (delta > 0 ? '+' + delta.toFixed(3) : delta.toFixed(3));
-          const deltaClass = delta === 0 ? '' : (delta > 0 ? 'slower' : 'faster');
-          const tag = sessionTag(lap.session);
-          html += `<div class="lap-row ${isBest ? 'fastest' : ''}">
-            <span class="lap-num">L${i + 1}</span>
-            <span class="lap-session ${tag.cls}">${tag.label}</span>
-            <span class="lap-time ${isBest ? 'fastest' : ''}">${formatLapTime(lap.time)}</span>
-            <span class="lap-delta ${deltaClass}">${deltaStr}</span>
-          </div>`;
-        }
-        listEl.innerHTML = html;
-      }
+      renderLaps();
     });
 
     connectBridge(['standings', 'session']);
