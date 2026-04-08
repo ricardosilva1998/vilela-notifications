@@ -855,33 +855,6 @@ async function startTelemetry(onStatusChange) {
           })),
         }});
 
-        // Send live session heartbeat to server every ~30s (300 polls)
-        if (pollCount % 300 === 10 && trackName) {
-          try {
-            const classes = [...new Set(standings.map(s => s.carClass).filter(Boolean))];
-            const totalMin = raceSessionTotalTime > 0 ? raceSessionTotalTime / 60 : (sessionTime + sessionTimeRemain) / 60;
-            const https = require('https');
-            const payload = JSON.stringify({
-              trackName,
-              eventType,
-              classes,
-              driversCount: standings.length,
-              totalMinutes: Math.round(totalMin),
-              timeRemain: Math.round(sessionTimeRemain),
-            });
-            const url = new URL('https://atletanotifications.com/api/live-session');
-            const req = https.request({
-              hostname: url.hostname, port: 443, path: url.pathname, method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
-              timeout: 5000,
-            }, () => {});
-            req.on('error', () => {});
-            req.on('timeout', () => req.destroy());
-            req.write(payload);
-            req.end();
-          } catch(e) {}
-        }
-
         // Read camera spectated car index (for replay/spectate)
         let camCarIdx = playerCarIdx;
         try {
@@ -1145,6 +1118,35 @@ async function startTelemetry(onStatusChange) {
         // Persist standings and SOF for use at session-change time
         lastStandings = standings;
         lastSofByClass = sofByClass;
+
+        // Send live session heartbeat to server every ~30s (300 polls)
+        if (pollCount % 300 === 10 && trackName) {
+          try {
+            const classes = [...new Set(standings.map(s => s.carClass).filter(Boolean))];
+            const totalMin = raceSessionTotalTime > 0 ? raceSessionTotalTime / 60 : (sessionTime + sessionTimeRemain) / 60;
+            const https = require('https');
+            const payload = JSON.stringify({
+              trackName, eventType, classes,
+              driversCount: standings.length,
+              totalMinutes: Math.round(totalMin),
+              timeRemain: Math.round(sessionTimeRemain),
+            });
+            const url = new URL('https://atletanotifications.com/api/live-session');
+            const req = https.request({
+              hostname: url.hostname, port: 443, path: url.pathname, method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+              timeout: 5000,
+            }, (res) => {
+              let body = '';
+              res.on('data', c => body += c);
+              res.on('end', () => { if (pollCount % 600 === 10) log('[LiveSession] Heartbeat: ' + res.statusCode + ' ' + body); });
+            });
+            req.on('error', (e) => log('[LiveSession] Error: ' + e.message));
+            req.on('timeout', () => { log('[LiveSession] Timeout'); req.destroy(); });
+            req.write(payload);
+            req.end();
+          } catch(e) { log('[LiveSession] Exception: ' + e.message); }
+        }
 
         // Diagnostic: log standings count
         if (pollCount === 90 || pollCount === 300) {
