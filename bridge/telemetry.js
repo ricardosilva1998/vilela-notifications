@@ -200,6 +200,10 @@ let lastStandings = [];
 
 function collectAndUploadTrackStats(track, standingsData, pitDeltas, sofByClassData, qualifyBest, totalRaceTime) {
   if (!track || !standingsData || standingsData.length === 0) return;
+  if (!totalRaceTime || totalRaceTime < 300) {
+    log('[TrackStats] Skipped upload — race time too short or unknown: ' + (totalRaceTime || 0).toFixed(0) + 's');
+    return;
+  }
 
   // Group drivers by canonical class
   const classSummary = {};
@@ -797,8 +801,14 @@ async function startTelemetry(onStatusChange) {
         } catch(e) {}
 
         // Capture total race session time on first race poll
-        if (eventType.toLowerCase().includes('race') && raceSessionTotalTime === 0) {
-          raceSessionTotalTime = sessionTime + sessionTimeRemain;
+        // Capture total race session time — wait until sessionTimeRemain is valid (>60s)
+        // to avoid capturing 0 on the first poll before iRacing populates the data
+        if (eventType.toLowerCase().includes('race') && (raceSessionTotalTime === 0 || raceSessionTotalTime < 60)) {
+          const totalTime = sessionTime + sessionTimeRemain;
+          if (totalTime > 300) { // at least 5 min total to be a real race
+            raceSessionTotalTime = totalTime;
+            log('[Session] Race total time: ' + (totalTime / 60).toFixed(1) + ' min');
+          }
         }
 
         // Stint tracking (laps + time since last pit)
