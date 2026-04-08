@@ -170,7 +170,7 @@ let pitTimesData = {}; // { trackName: { className: { avgDelta, samples } } }
 const pitStopCounts = new Map(); // carIdx -> number of pit stops
 const driverPitDeltas = new Map(); // carIdx -> last pit delta in seconds
 const pitEntryTimes = new Map(); // carIdx -> Date.now() when entered pit
-const driverLastMovePoll = new Map(); // carIdx -> last poll count when lapDistPct changed
+const driverLastLapPoll = new Map(); // carIdx -> { laps, poll } — last time lapsCompleted changed
 
 // Canonical class mapping for track stats
 const CLASS_MAP = {
@@ -380,7 +380,7 @@ async function startTelemetry(onStatusChange) {
         pitStopCounts.clear();
         driverPitDeltas.clear();
         pitEntryTimes.clear();
-        driverLastMovePoll.clear();
+        driverLastLapPoll.clear();
         classPitDeltas = {};
         resetFuel();
         trackSlots.fill(null);
@@ -460,7 +460,7 @@ async function startTelemetry(onStatusChange) {
               pitStopCounts.clear();
         driverPitDeltas.clear();
         pitEntryTimes.clear();
-        driverLastMovePoll.clear();
+        driverLastLapPoll.clear();
               qualifyBestByClass = {};
               raceSessionTotalTime = 0;
               log('[Session] Cleared data: ' + prevType + ' → ' + newType);
@@ -961,18 +961,21 @@ async function startTelemetry(onStatusChange) {
           }
         });
 
-        // Detect stopped drivers (lapDistPct hasn't changed for ~30s = 300 polls at 10Hz)
+        // Detect stopped drivers (lapsCompleted hasn't changed for 3+ minutes)
+        // Uses laps, not lapDistPct — as spectator, lapDistPct only updates for nearby cars
         standings.forEach(s => {
-          const prevPoll = driverLastMovePoll.get(s.carIdx);
-          const prevPct = driverLastMovePoll.get('pct_' + s.carIdx);
-          if (prevPct !== undefined && Math.abs((s.lapDistPct || 0) - prevPct) > 0.001) {
-            driverLastMovePoll.set(s.carIdx, pollCount);
+          const prev = driverLastLapPoll.get(s.carIdx);
+          if (!prev) {
+            driverLastLapPoll.set(s.carIdx, { laps: s.lapsCompleted || 0, poll: pollCount });
+          } else if ((s.lapsCompleted || 0) > prev.laps) {
+            driverLastLapPoll.set(s.carIdx, { laps: s.lapsCompleted, poll: pollCount });
           }
-          driverLastMovePoll.set('pct_' + s.carIdx, s.lapDistPct || 0);
-          if (!driverLastMovePoll.has(s.carIdx)) driverLastMovePoll.set(s.carIdx, pollCount);
-          const stalePollCount = pollCount - (driverLastMovePoll.get(s.carIdx) || pollCount);
-          // Mark as stopped if no movement for 30s (300 polls) and not in pit
-          if (stalePollCount > 300 && !s.inPit) s.isStopped = true;
+          const entry = driverLastLapPoll.get(s.carIdx);
+          // 1800 polls = ~3 minutes at 10Hz — no lap completed in 3 min = likely out
+          // Only mark if they've done at least 1 lap (not just joined)
+          if (entry && entry.laps > 0 && (pollCount - entry.poll) > 1800 && !s.inPit) {
+            s.isStopped = true;
+          }
         });
 
         // Update persisted data for active drivers
