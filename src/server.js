@@ -290,6 +290,13 @@ app.get('/api/bridge-ids', (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+app.get('/api/bridge-users', (req, res) => {
+  try {
+    const stats = db.getBridgeUserStats();
+    res.json({ users: stats });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/bridge-logs/:bridgeId', (req, res) => {
   try {
     const hours = parseInt(req.query.hours) || 24;

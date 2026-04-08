@@ -3133,6 +3133,30 @@ function getActiveBridgeIds(hours) {
   ).all(h).map(r => r.bridge_id);
 }
 
+function getBridgeUserStats() {
+  return db.prepare(`
+    SELECT
+      l.bridge_id,
+      COUNT(*) AS log_batches,
+      SUM(LENGTH(l.lines)) AS total_bytes,
+      MIN(l.created_at) AS first_seen,
+      MAX(l.created_at) AS last_seen,
+      COALESCE(b.pending, 0) AS pending_reports,
+      COALESCE(b.approved, 0) AS approved_reports,
+      COALESCE(b.dismissed, 0) AS dismissed_reports
+    FROM bridge_logs l
+    LEFT JOIN (
+      SELECT bridge_id,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending,
+        SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved,
+        SUM(CASE WHEN status = 'dismissed' THEN 1 ELSE 0 END) AS dismissed
+      FROM bridge_bug_reports GROUP BY bridge_id
+    ) b ON l.bridge_id = b.bridge_id
+    GROUP BY l.bridge_id
+    ORDER BY last_seen DESC
+  `).all();
+}
+
 function getBridgeLogs(bridgeId, hours) {
   const h = Math.min(Math.max(hours || 24, 1), 168);
   return db.prepare(
@@ -3372,6 +3396,7 @@ module.exports = {
   selectVtuberModel,
   insertBridgeLogs,
   getActiveBridgeIds,
+  getBridgeUserStats,
   getBridgeLogs,
   cleanupOldBridgeLogs,
   insertBridgeBugReport,

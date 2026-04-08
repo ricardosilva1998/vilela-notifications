@@ -593,6 +593,7 @@
     <button class="iracing-subtab" data-irtab="overlays" onclick="switchIRacingTab('overlays')">Stream Overlays</button>
     <button class="iracing-subtab" data-irtab="logs" onclick="switchIRacingTab('logs')">Bridge Logs</button>
     <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+    <button class="iracing-subtab" data-irtab="bridgeusers" onclick="switchIRacingTab('bridgeusers')">Bridge Users</button>
     <button class="iracing-subtab" data-irtab="tracks" onclick="switchIRacingTab('tracks')">Track Upload</button>
     <% } %>
   </div>
@@ -698,6 +699,21 @@
   </div><!-- /irtab-logs -->
 
   <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+  <div class="iracing-subtab-content" id="irtab-bridgeusers">
+    <div class="card animate-in" style="padding: 20px 24px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h3 style="font-size:15px; font-weight:700; margin:0;">Bridge Users</h3>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span id="bridge-users-total" style="font-size:11px; color:var(--text-muted);"></span>
+          <button onclick="fetchBridgeUsers()" class="btn btn-secondary" style="font-size:11px; padding:5px 10px;">Refresh</button>
+        </div>
+      </div>
+      <div id="bridge-users-container">
+        <p style="font-size:12px; color:var(--text-muted);">Loading...</p>
+      </div>
+    </div>
+  </div><!-- /irtab-bridgeusers -->
+
   <div class="iracing-subtab-content" id="irtab-tracks">
   <!-- Track Map Upload -->
   <div class="card animate-in" style="margin-top: 16px;">
@@ -1305,6 +1321,79 @@ function updateBugReport(id, status) {
     body: JSON.stringify({ bridgeId: localStorage.getItem('bridgeId'), status: status }),
   }).then(() => fetchBugReports());
 }
+
+// ─── Bridge Users (Admin) ─────────────────────────────────
+function fetchBridgeUsers() {
+  var container = document.getElementById('bridge-users-container');
+  var totalEl = document.getElementById('bridge-users-total');
+  if (!container) return;
+  fetch('/api/bridge-users')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.users || data.users.length === 0) {
+        container.innerHTML = '<p style="font-size:12px; color:var(--text-muted);">No Bridge users have uploaded logs yet.</p>';
+        totalEl.textContent = '';
+        return;
+      }
+      totalEl.textContent = data.users.length + ' user' + (data.users.length !== 1 ? 's' : '');
+      var totalData = 0;
+      data.users.forEach(function(u) { totalData += u.total_bytes || 0; });
+      container.innerHTML =
+        '<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:10px;">' +
+        data.users.map(function(u) {
+          var size = formatBytes(u.total_bytes || 0);
+          var lastSeen = timeAgo(u.last_seen);
+          var firstSeen = new Date(u.first_seen).toLocaleDateString();
+          var reports = (u.pending_reports || 0) + (u.approved_reports || 0) + (u.dismissed_reports || 0);
+          var isOnline = (Date.now() - new Date(u.last_seen + 'Z').getTime()) < 120000;
+          return '<div style="border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:12px 14px; background:rgba(255,255,255,0.02);">' +
+            '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">' +
+              '<span style="width:8px; height:8px; border-radius:50%; background:' + (isOnline ? '#2ecc71' : '#888') + '; flex-shrink:0;"></span>' +
+              '<span style="font-size:11px; font-family:monospace; color:var(--text-primary); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + escapeHtml(u.bridge_id) + '">' + escapeHtml(u.bridge_id) + '</span>' +
+              '<button onclick="navigator.clipboard.writeText(\'' + escapeHtml(u.bridge_id) + '\'); this.textContent=\'Copied!\'; setTimeout(function(){this.textContent=\'Copy\';}.bind(this), 1500);" style="background:rgba(145,70,255,0.15); color:#9146ff; border:none; padding:2px 8px; border-radius:4px; font-size:10px; cursor:pointer;">Copy</button>' +
+            '</div>' +
+            '<div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; font-size:11px;">' +
+              '<div><span style="color:var(--text-muted);">Data:</span> <span style="color:var(--text-secondary);">' + size + '</span></div>' +
+              '<div><span style="color:var(--text-muted);">Batches:</span> <span style="color:var(--text-secondary);">' + u.log_batches + '</span></div>' +
+              '<div><span style="color:var(--text-muted);">Last seen:</span> <span style="color:var(--text-secondary);">' + lastSeen + '</span></div>' +
+              '<div><span style="color:var(--text-muted);">First seen:</span> <span style="color:var(--text-secondary);">' + firstSeen + '</span></div>' +
+              '<div><span style="color:var(--text-muted);">Reports:</span> <span style="color:var(--text-secondary);">' + reports + '</span>' +
+                (u.pending_reports > 0 ? ' <span style="color:#f39c12;">(' + u.pending_reports + ' pending)</span>' : '') +
+              '</div>' +
+            '</div>' +
+          '</div>';
+        }).join('') +
+        '</div>' +
+        '<div style="margin-top:12px; font-size:11px; color:var(--text-muted);">Total data stored: ' + formatBytes(totalData) + '</div>';
+    })
+    .catch(function() { container.innerHTML = '<p style="color:#e74c3c;">Failed to fetch users.</p>'; });
+}
+
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 B';
+  var k = 1024;
+  var sizes = ['B', 'KB', 'MB', 'GB'];
+  var i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function timeAgo(dateStr) {
+  var ms = Date.now() - new Date(dateStr + 'Z').getTime();
+  var s = Math.floor(ms / 1000);
+  if (s < 60) return 'just now';
+  var m = Math.floor(s / 60);
+  if (m < 60) return m + 'm ago';
+  var h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ago';
+  var d = Math.floor(h / 24);
+  return d + 'd ago';
+}
+
+// Auto-load bridge users when admin visits the tab
+(function() {
+  var tab = document.querySelector('[data-irtab="bridgeusers"]');
+  if (tab) setTimeout(fetchBridgeUsers, 600);
+})();
 </script>
 
 <div class="tab-content" id="tab-experimental">
