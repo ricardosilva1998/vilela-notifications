@@ -583,7 +583,7 @@ async function loadTrackDatabase() {
         card.style.cssText = 'background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px; text-align: center; cursor: pointer; transition: border-color 0.15s;';
         card.onmouseover = function() { this.style.borderColor = 'rgba(145,70,255,0.3)'; };
         card.onmouseout = function() { this.style.borderColor = 'rgba(255,255,255,0.08)'; };
-        card.onclick = function() { showTrackStatsPage(track.track_name); };
+        card.onclick = function() { window.location.href = '/tracks/' + encodeURIComponent(track.track_name); };
         card.innerHTML =
           '<canvas width="140" height="140" style="border-radius: 6px; background: rgba(0,0,0,0.3); margin-bottom: 8px;"></canvas>' +
           '<div style="font-size: 11px; font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="' + track.track_name.replace(/"/g, '&quot;') + '">' + track.track_name.replace(/</g, '&lt;') + '</div>' +

@@ -337,13 +337,13 @@ app.patch('/api/bridge-bug-reports/:id', (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// Track Database page (admin only)
+// Track Database page
 app.get('/tracks', (req, res) => {
-  if (!req.streamer || !db.isAdmin(req.streamer.id)) return res.redirect('/');
+  if (!req.streamer) return res.redirect('/');
   res.render('tracks', { streamer: req.streamer, t: res.locals.t });
 });
 app.get('/tracks/:trackName', (req, res) => {
-  if (!req.streamer || !db.isAdmin(req.streamer.id)) return res.redirect('/');
+  if (!req.streamer) return res.redirect('/');
   res.render('tracks', { streamer: req.streamer, t: res.locals.t });
 });
 
