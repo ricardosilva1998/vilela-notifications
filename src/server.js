@@ -241,6 +241,16 @@ app.get('/api/track-stats/:trackName', (req, res) => {
   }
 });
 
+app.delete('/api/track-stats/:trackName/:carClass/:raceType', (req, res) => {
+  try {
+    const { trackName, carClass, raceType } = req.params;
+    const result = db.db.prepare('DELETE FROM track_stats WHERE track_name = ? AND car_class = ? AND race_type = ?').run(trackName, carClass, raceType);
+    res.json({ ok: true, deleted: result.changes });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Track Database page (admin only)
 app.get('/tracks', (req, res) => {
   if (!req.streamer || !db.isAdmin(req.streamer.id)) return res.redirect('/');
