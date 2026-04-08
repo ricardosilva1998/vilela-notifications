@@ -282,6 +282,14 @@ app.post('/api/bridge-logs', (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+app.get('/api/bridge-ids', (req, res) => {
+  try {
+    const hours = parseInt(req.query.hours) || 24;
+    const ids = db.getActiveBridgeIds(hours);
+    res.json({ ids });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/bridge-logs/:bridgeId', (req, res) => {
   try {
     const hours = parseInt(req.query.hours) || 24;

@@ -3126,6 +3126,13 @@ function insertBridgeLogs(bridgeId, lines) {
   db.prepare('INSERT INTO bridge_logs (bridge_id, lines) VALUES (?, ?)').run(bridgeId, lines);
 }
 
+function getActiveBridgeIds(hours) {
+  const h = Math.min(Math.max(hours || 24, 1), 168);
+  return db.prepare(
+    "SELECT DISTINCT bridge_id FROM bridge_logs WHERE created_at >= datetime('now', '-' || ? || ' hours') ORDER BY bridge_id"
+  ).all(h).map(r => r.bridge_id);
+}
+
 function getBridgeLogs(bridgeId, hours) {
   const h = Math.min(Math.max(hours || 24, 1), 168);
   return db.prepare(
@@ -3364,6 +3371,7 @@ module.exports = {
   deleteVtuberModel,
   selectVtuberModel,
   insertBridgeLogs,
+  getActiveBridgeIds,
   getBridgeLogs,
   cleanupOldBridgeLogs,
   insertBridgeBugReport,
