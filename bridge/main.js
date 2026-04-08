@@ -366,6 +366,11 @@ function closeOverlayWindow(overlayId) {
 ipcMain.on('toggle-overlay', (event, overlayId, enabled) => {
   if (enabled) createOverlayWindow(overlayId);
   else closeOverlayWindow(overlayId);
+  // Persist enabled overlays
+  if (!settings.enabledOverlays) settings.enabledOverlays = [];
+  if (enabled && !settings.enabledOverlays.includes(overlayId)) settings.enabledOverlays.push(overlayId);
+  if (!enabled) settings.enabledOverlays = settings.enabledOverlays.filter(id => id !== overlayId);
+  saveSettings(settings);
 });
 
 // Overlays call this when mouse enters/leaves visible content
