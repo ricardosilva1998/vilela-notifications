@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Live Stats</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; }
+    .overlay-panel { background: rgba(12,13,20,0.88); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; backdrop-filter: blur(12px); overflow: hidden; }
+    .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 5px 10px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); }
+    .header-left { display: flex; align-items: center; gap: 6px; }
+    .header-right { display: flex; align-items: center; gap: 6px; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+    .status-dot.connected { background: #3ecf8e; }
+    .status-dot.waiting { background: #f79009; }
+    .status-dot.demo { background: #f79009; }
+    .event-badge { font-size: 8px; font-weight: 600; padding: 1px 5px; border-radius: 3px; background: rgba(145,70,255,0.2); color: #b18cff; letter-spacing: 0.5px; text-transform: uppercase; }
+    .track-name { font-size: 8px; font-weight: 500; color: rgba(255,255,255,0.35); letter-spacing: 0.5px; text-transform: none; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .stats-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .stats-table th {
+      font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+      color: rgba(255,255,255,0.3); padding: 5px 6px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .stats-table th:first-child { text-align: left; width: 72px; }
+    .stats-table td {
+      font-size: 11px; font-family: 'JetBrains Mono', 'Consolas', monospace; font-weight: 500;
+      color: rgba(255,255,255,0.8); padding: 4px 6px; text-align: right;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .stats-table td:first-child {
+      text-align: left; font-family: 'Segoe UI', -apple-system, sans-serif;
+      font-weight: 700; font-size: 10px; color: #e8e6f0;
+    }
+    .stats-table tr:last-child td { border-bottom: none; }
+
+    .class-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+    .no-data { padding: 14px; text-align: center; font-size: 10px; color: rgba(255,255,255,0.25); letter-spacing: 0.5px; }
+  </style>
+</head>
+<body>
+  <div class="overlay-panel">
+    <div class="overlay-header">
+      <div class="header-left">
+        <span>LIVE STATS</span>
+        <span class="track-name" id="track-name"></span>
+      </div>
+      <div class="header-right">
+        <span class="event-badge" id="event-badge" style="display:none;"></span>
+        <span id="connection-status"><span class="status-dot demo"></span></span>
+      </div>
+    </div>
+    <div id="stats-body">
+      <div class="no-data">Waiting for session data...</div>
+    </div>
+  </div>
+
+  <script>
+    const BRIDGE_URL = 'ws://localhost:9100';
+    let ws = null;
+    let bridgeConnected = false;
+    let iracingConnected = false;
+    const dataHandlers = {};
+
+    function connectBridge(channels) {
+      try { ws = new WebSocket(BRIDGE_URL); } catch(e) { setTimeout(() => connectBridge(channels), 3000); return; }
+      ws.onopen = () => { bridgeConnected = true; updateStatus(); ws.send(JSON.stringify({ type: 'subscribe', channels })); };
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'bridge-connected') { bridgeConnected = true; updateStatus(); }
+          else if (msg.type === 'status') { iracingConnected = msg.iracing; updateStatus(); }
+          else if (msg.type === 'data' && dataHandlers[msg.channel]) { dataHandlers[msg.channel](msg.data); }
+        } catch(e) {}
+      };
+      ws.onclose = () => { bridgeConnected = false; iracingConnected = false; updateStatus(); setTimeout(() => connectBridge(channels), 3000); };
+      ws.onerror = () => { ws.close(); };
+    }
+    function onData(ch, fn) { dataHandlers[ch] = fn; }
+    function updateStatus() {
+      const el = document.getElementById('connection-status');
+      if (!bridgeConnected) { if (el) el.innerHTML = '<span class="status-dot demo"></span>'; }
+      else if (!iracingConnected) { if (el) el.innerHTML = '<span class="status-dot waiting"></span>'; }
+      else { if (el) el.innerHTML = '<span class="status-dot connected"></span>'; }
+    }
+
+    // ─── Formatters ────────────────────────────────────────
+    function formatLapTime(t) {
+      if (!t || t <= 0) return '--';
+      const m = Math.floor(t / 60);
+      const s = (t % 60).toFixed(1);
+      return m > 0 ? m + ':' + s.padStart(4, '0') : s;
+    }
+
+    function formatSOF(v) {
+      if (!v || v <= 0) return '--';
+      return v >= 1000 ? (v / 1000).toFixed(1) + 'k' : String(Math.round(v));
+    }
+
+    // ─── State ─────────────────────────────────────────────
+    let _standings = [];
+    let _session = {};
+
+    // Known iRacing class colors (common ones)
+    const CLASS_COLORS = {
+      'GT3': '#e74c3c',
+      'GT3 2025': '#e74c3c',
+      'GTP': '#3498db',
+      'GTP 2025': '#3498db',
+      'GT4': '#2ecc71',
+      'GT4 2025': '#2ecc71',
+      'LMP2': '#f39c12',
+      'LMP2 2025': '#f39c12',
+      'LMP3': '#e67e22',
+      'TCR': '#9b59b6',
+      'Porsche Cup': '#1abc9c',
+      'Formula': '#e74c3c',
+      'Mx5': '#27ae60',
+    };
+
+    function getClassColor(className) {
+      if (CLASS_COLORS[className]) return CLASS_COLORS[className];
+      // Try partial match
+      for (const [key, color] of Object.entries(CLASS_COLORS)) {
+        if (className.includes(key) || key.includes(className)) return color;
+      }
+      // Hash-based fallback
+      let hash = 0;
+      for (let i = 0; i < className.length; i++) hash = className.charCodeAt(i) + ((hash << 5) - hash);
+      const hue = Math.abs(hash) % 360;
+      return `hsl(${hue}, 60%, 55%)`;
+    }
+
+    function renderStats() {
+      const body = document.getElementById('stats-body');
+      if (!_standings || !_standings.length) {
+        body.innerHTML = '<div class="no-data">Waiting for session data...</div>';
+        return;
+      }
+
+      // Group drivers by class
+      const classes = {};
+      _standings.forEach(d => {
+        const cls = d.carClass || 'Unknown';
+        if (!classes[cls]) classes[cls] = [];
+        classes[cls].push(d);
+      });
+
+      const classNames = Object.keys(classes).sort((a, b) => classes[b].length - classes[a].length);
+      if (!classNames.length) {
+        body.innerHTML = '<div class="no-data">No class data yet</div>';
+        return;
+      }
+
+      const pitDeltas = (_session && _session.pitDeltas) || {};
+      const sofByClass = (_session && _session.sofByClass) || {};
+
+      let html = '<table class="stats-table"><thead><tr>';
+      html += '<th>Class</th><th>Avg Lap</th><th>Best Lap</th><th>Pit Time</th><th>SOF</th><th>Drivers</th>';
+      html += '</tr></thead><tbody>';
+
+      classNames.forEach(cls => {
+        const drivers = classes[cls];
+        const color = getClassColor(cls);
+
+        // Avg Lap: average of all valid lastLap values
+        const validLast = drivers.map(d => d.lastLap).filter(t => t && t > 0);
+        const avgLap = validLast.length > 0 ? validLast.reduce((a, b) => a + b, 0) / validLast.length : 0;
+
+        // Best Lap: minimum valid bestLap
+        const validBest = drivers.map(d => d.bestLap).filter(t => t && t > 0);
+        const bestLap = validBest.length > 0 ? Math.min(...validBest) : 0;
+
+        // Pit Time: from session pitDeltas
+        let pitTime = '--';
+        if (pitDeltas[cls] && pitDeltas[cls].avgDelta > 0) {
+          pitTime = pitDeltas[cls].avgDelta.toFixed(1) + 's';
+        }
+
+        // SOF: from session sofByClass (keys are raw iRacing class names)
+        let sof = '--';
+        if (sofByClass[cls] && sofByClass[cls] > 0) {
+          sof = formatSOF(sofByClass[cls]);
+        } else {
+          // Try partial match (class names may differ slightly)
+          for (const [key, val] of Object.entries(sofByClass)) {
+            if (key.includes(cls) || cls.includes(key)) {
+              if (val > 0) { sof = formatSOF(val); break; }
+            }
+          }
+        }
+
+        const count = drivers.length;
+
+        // Shorten class name for display if too long
+        const displayName = cls.length > 10 ? cls.replace(/\s*20\d{2}$/, '') : cls;
+
+        html += '<tr>';
+        html += `<td><span class="class-dot" style="background:${color};"></span>${displayName}</td>`;
+        html += `<td>${formatLapTime(avgLap)}</td>`;
+        html += `<td>${formatLapTime(bestLap)}</td>`;
+        html += `<td>${pitTime}</td>`;
+        html += `<td>${sof}</td>`;
+        html += `<td>${count}</td>`;
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
+      body.innerHTML = html;
+    }
+
+    // ─── Data handlers ─────────────────────────────────────
+    onData('standings', data => {
+      if (!data || !data.length) return;
+      _standings = data;
+      renderStats();
+    });
+
+    onData('session', data => {
+      if (!data) return;
+      _session = data;
+
+      // Update track name
+      const trackEl = document.getElementById('track-name');
+      if (trackEl && data.trackName) {
+        trackEl.textContent = '\u00b7 ' + data.trackName;
+      }
+
+      // Update event type badge
+      const badgeEl = document.getElementById('event-badge');
+      if (badgeEl && data.eventType) {
+        badgeEl.textContent = data.eventType;
+        badgeEl.style.display = 'inline-block';
+      }
+
+      renderStats();
+    });
+
+    connectBridge(['standings', 'session']);
+
+    // ─── Drag support ──────────────────────────────────────
+    try {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.on('lock-state', (event, locked) => {
+        document.body.style.pointerEvents = locked ? 'none' : 'auto';
+      });
+      let _dragging = false, _dragStartX = 0, _dragStartY = 0;
+      const dragHeader = document.querySelector('.overlay-header');
+      if (dragHeader) {
+        dragHeader.style.cursor = 'move';
+        dragHeader.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return;
+          _dragging = true;
+          _dragStartX = e.screenX;
+          _dragStartY = e.screenY;
+          e.preventDefault();
+        });
+      }
+      document.addEventListener('mousemove', (e) => {
+        if (!_dragging) return;
+        const dx = e.screenX - _dragStartX;
+        const dy = e.screenY - _dragStartY;
+        _dragStartX = e.screenX;
+        _dragStartY = e.screenY;
+        ipcRenderer.send('drag-overlay', dx, dy);
+      });
+      document.addEventListener('mouseup', () => { _dragging = false; });
+      document.addEventListener('mouseleave', () => { _dragging = false; });
+    } catch(e) {}
+  </script>
+</body>
+</html>
