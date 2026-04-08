@@ -137,7 +137,7 @@
     } catch(e) { headerItems = DEFAULT_HEADER_ITEMS; }
 
     function buildTableHead() {
-      const labels = { pos: 'P', flag: '', number: '#', logo: '', name: 'Driver', license: 'Lic', irating: 'iR', gap: 'Gap' };
+      const labels = { pos: 'P', flag: '', number: '#', logo: '', name: 'Driver', license: 'Lic', irating: 'iR', gap: 'Gap', tire: 'T' };
       return '<tr>' + enabledColumns.map(c => `<th>${labels[c] || ''}</th>`).join('') + '</tr>';
     }
 
@@ -275,6 +275,14 @@
       ]
     };
 
+    function tireLabel(compound) {
+      if (compound === undefined || compound < 0) return '--';
+      const labels = ['D', 'W', 'I', 'D2', 'W2'];
+      const colors = ['#3ecf8e', '#38bdf8', '#f7c948', '#3ecf8e', '#38bdf8'];
+      const idx = Math.min(compound, labels.length - 1);
+      return '<span style="color:' + colors[idx] + ';font-weight:700;font-size:' + fsSmall + 'px">' + labels[idx] + '</span>';
+    }
+
     function buildRelativeRow(d, gapClass, gapStr, isPlayerRow) {
       const pos = d.classPosition > 0 ? d.classPosition : (d.position > 0 ? d.position : '-');
       const flag = countryToFlag(d.country);
@@ -307,6 +315,7 @@
           license: `<td>${licCell}</td>`,
           irating: `<td>${irCell}</td>`,
           gap: `<td class="mono" style="font-size:${fsMed}px">—</td>`,
+          tire: '<td>' + tireLabel(d.tireCompound) + '</td>',
         };
         return `<tr class="player-row" data-caridx="${d.carIdx}">${enabledColumns.map(c => cells[c] || '').join('')}</tr>`;
       }
@@ -320,6 +329,7 @@
         license: `<td>${licCell}</td>`,
         irating: `<td>${irCell}</td>`,
         gap: `<td class="mono ${gapClass}" style="font-size:${fsMed}px">${gapStr}</td>`,
+        tire: '<td>' + tireLabel(d.tireCompound) + '</td>',
       };
       return `<tr class="${disconnCls}" data-caridx="${d.carIdx}">${enabledColumns.map(c => cells[c] || '').join('')}</tr>`;
     }
