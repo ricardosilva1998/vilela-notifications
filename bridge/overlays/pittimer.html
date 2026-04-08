@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Pit Timer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; }
+    .overlay-panel { background: rgba(12,13,20,0.88); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; backdrop-filter: blur(12px); overflow: hidden; }
+    .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 5px 10px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+    .status-dot.connected { background: #3ecf8e; }
+    .status-dot.waiting { background: #f79009; }
+    .status-dot.demo { background: #f79009; }
+    .timer-body { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 14px; position: relative; }
+    .timer-value { font-size: 28px; font-weight: 700; font-family: 'JetBrains Mono', 'Consolas', monospace; color: #fff; transition: color 0.2s; line-height: 1.2; }
+    .timer-label { font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.35); margin-top: 3px; }
+    .timer-last { font-size: 10px; color: rgba(255,255,255,0.4); font-family: 'JetBrains Mono', 'Consolas', monospace; margin-top: 2px; }
+
+    /* Pulsing glow while timer is active */
+    .timer-body.timing { background: radial-gradient(ellipse at center, rgba(62,207,142,0.08) 0%, transparent 70%); }
+    .timer-body.timing .timer-value { color: #3ecf8e; }
+
+    /* Result state */
+    .timer-body.result .timer-value { color: #f7c948; }
+
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: inset 0 0 20px rgba(62,207,142,0.05); }
+      50% { box-shadow: inset 0 0 30px rgba(62,207,142,0.12); }
+    }
+    .timer-body.timing { animation: pulse-glow 1.5s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+  <div class="overlay-panel">
+    <div class="overlay-header">
+      <span>PIT TIMER</span>
+      <span id="connection-status"><span class="status-dot demo"></span></span>
+    </div>
+    <div class="timer-body" id="timer-body">
+      <div class="timer-value" id="timer-value">--</div>
+      <div class="timer-label" id="timer-label">Waiting...</div>
+      <div class="timer-last" id="timer-last"></div>
+    </div>
+  </div>
+
+  <script>
+    const BRIDGE_URL = 'ws://localhost:9100';
+    let ws = null;
+    let bridgeConnected = false;
+    let iracingConnected = false;
+    const dataHandlers = {};
+
+    function connectBridge(channels) {
+      try { ws = new WebSocket(BRIDGE_URL); } catch(e) { setTimeout(() => connectBridge(channels), 3000); return; }
+      ws.onopen = () => { bridgeConnected = true; updateStatus(); ws.send(JSON.stringify({ type: 'subscribe', channels })); };
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'bridge-connected') { bridgeConnected = true; updateStatus(); }
+          else if (msg.type === 'status') { iracingConnected = msg.iracing; updateStatus(); }
+          else if (msg.type === 'data' && dataHandlers[msg.channel]) { dataHandlers[msg.channel](msg.data); }
+        } catch(e) {}
+      };
+      ws.onclose = () => { bridgeConnected = false; iracingConnected = false; updateStatus(); setTimeout(() => connectBridge(channels), 3000); };
+      ws.onerror = () => { ws.close(); };
+    }
+    function onData(ch, fn) { dataHandlers[ch] = fn; }
+    function updateStatus() {
+      const el = document.getElementById('connection-status');
+      if (!bridgeConnected) { if (el) el.innerHTML = '<span class="status-dot demo"></span>'; }
+      else if (!iracingConnected) { if (el) el.innerHTML = '<span class="status-dot waiting"></span>'; }
+      else { if (el) el.innerHTML = '<span class="status-dot connected"></span>'; }
+    }
+
+    // ─── Pit Timer State ──────────────────────────────────
+    const timerBody = document.getElementById('timer-body');
+    const timerValue = document.getElementById('timer-value');
+    const timerLabel = document.getElementById('timer-label');
+    const timerLast = document.getElementById('timer-last');
+
+    let focusCarIdx = -1;
+    let wasInPit = false;
+    let pitEntryTime = 0;
+    let lastPitDuration = 0;
+    let timerRunning = false;
+    let resultTimeout = null;
+
+    function formatPitTime(seconds) {
+      return seconds.toFixed(1) + 's';
+    }
+
+    function showResult(duration) {
+      timerRunning = false;
+      timerBody.classList.remove('timing');
+      timerBody.classList.add('result');
+      timerValue.textContent = formatPitTime(duration);
+      timerLabel.textContent = 'Pit Complete';
+      timerLast.textContent = '';
+
+      if (resultTimeout) clearTimeout(resultTimeout);
+      resultTimeout = setTimeout(() => {
+        timerBody.classList.remove('result');
+        timerValue.textContent = formatPitTime(duration);
+        timerValue.style.color = '';
+        timerLabel.textContent = 'Waiting...';
+        timerLast.textContent = 'Last: ' + formatPitTime(duration);
+      }, 10000);
+    }
+
+    function resetState() {
+      timerRunning = false;
+      wasInPit = false;
+      pitEntryTime = 0;
+      timerBody.classList.remove('timing', 'result');
+      if (resultTimeout) clearTimeout(resultTimeout);
+      if (lastPitDuration > 0) {
+        timerValue.textContent = formatPitTime(lastPitDuration);
+        timerLabel.textContent = 'Waiting...';
+        timerLast.textContent = 'Last: ' + formatPitTime(lastPitDuration);
+      } else {
+        timerValue.textContent = '--';
+        timerLabel.textContent = 'Waiting...';
+        timerLast.textContent = '';
+      }
+    }
+
+    onData('standings', data => {
+      if (!data || !data.length) return;
+
+      const focused = data.find(d => d.isSpectated) || data.find(d => d.isPlayer);
+      if (!focused) return;
+
+      // Handle driver switch — reset timer state
+      if (focused.carIdx !== focusCarIdx) {
+        focusCarIdx = focused.carIdx;
+        lastPitDuration = 0;
+        resetState();
+        wasInPit = focused.inPit; // sync to current state without triggering enter/exit
+        return;
+      }
+
+      const inPit = focused.inPit;
+
+      // Entered pit
+      if (inPit && !wasInPit) {
+        pitEntryTime = performance.now();
+        timerRunning = true;
+        if (resultTimeout) clearTimeout(resultTimeout);
+        timerBody.classList.remove('result');
+        timerBody.classList.add('timing');
+        timerLabel.textContent = 'In Pit';
+        if (lastPitDuration > 0) {
+          timerLast.textContent = 'Last: ' + formatPitTime(lastPitDuration);
+        } else {
+          timerLast.textContent = '';
+        }
+      }
+
+      // Exited pit
+      if (!inPit && wasInPit && timerRunning) {
+        lastPitDuration = (performance.now() - pitEntryTime) / 1000;
+        showResult(lastPitDuration);
+      }
+
+      wasInPit = inPit;
+    });
+
+    // ─── Live Timer Animation ─────────────────────────────
+    function animateTimer() {
+      if (timerRunning) {
+        const elapsed = (performance.now() - pitEntryTime) / 1000;
+        timerValue.textContent = elapsed.toFixed(1) + 's';
+      }
+      requestAnimationFrame(animateTimer);
+    }
+    requestAnimationFrame(animateTimer);
+
+    connectBridge(['standings']);
+
+    // ─── Drag Support ─────────────────────────────────────
+    try {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.on('lock-state', (event, locked) => {
+        document.body.style.pointerEvents = locked ? 'none' : 'auto';
+      });
+      let _dragging = false, _dragStartX = 0, _dragStartY = 0;
+      const dragHeader = document.querySelector('.overlay-header');
+      if (dragHeader) {
+        dragHeader.style.cursor = 'move';
+        dragHeader.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return;
+          _dragging = true;
+          _dragStartX = e.screenX;
+          _dragStartY = e.screenY;
+          e.preventDefault();
+        });
+      }
+      document.addEventListener('mousemove', (e) => {
+        if (!_dragging) return;
+        const dx = e.screenX - _dragStartX;
+        const dy = e.screenY - _dragStartY;
+        _dragStartX = e.screenX;
+        _dragStartY = e.screenY;
+        ipcRenderer.send('drag-overlay', dx, dy);
+      });
+      document.addEventListener('mouseup', () => { _dragging = false; });
+      document.addEventListener('mouseleave', () => { _dragging = false; });
+    } catch(e) {}
+  </script>
+</body>
+</html>

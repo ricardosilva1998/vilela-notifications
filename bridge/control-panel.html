@@ -285,6 +285,9 @@
         <div class="sidebar-item" data-panel="stintlaps" onclick="navigateTo('stintlaps')">
           <span class="sidebar-icon">&#128203;</span> Session Laps
         </div>
+        <div class="sidebar-item" data-panel="pittimer" onclick="navigateTo('pittimer')">
+          <span class="sidebar-icon">&#9201;</span> Pit Timer
+        </div>
       </div>
       <div class="sidebar-group-label" onclick="toggleSidebarGroup('track')">&#9660; Track</div>
       <div class="sidebar-group" id="group-track">
@@ -370,6 +373,7 @@
       <div class="content-panel" id="panel-pitstrategy"></div>
       <div class="content-panel" id="panel-lapcompare"></div>
       <div class="content-panel" id="panel-livestats"></div>
+      <div class="content-panel" id="panel-pittimer"></div>
 
       <!-- ═══ UPDATES PANEL ═══ -->
       <div class="content-panel" id="panel-updates">
@@ -449,6 +453,7 @@
       { id: 'pitstrategy', icon: '&#9881;', name: 'Pit Strategy' },
       { id: 'lapcompare', icon: '&#128200;', name: 'Lap Compare' },
       { id: 'livestats', icon: '&#128202;', name: 'Live Stats' },
+      { id: 'pittimer', icon: '&#9201;', name: 'Pit Timer' },
     ];
 
     // ─── CUSTOMIZE_FIELDS (all overlay settings) ─────────────
@@ -607,6 +612,11 @@
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       livestats: [
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
+        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
+      ],
+      pittimer: [
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
