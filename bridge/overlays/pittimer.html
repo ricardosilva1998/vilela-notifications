@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Pit Timer</title>
+  <title>Pit Duration</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; }
@@ -34,7 +34,7 @@
 <body>
   <div class="overlay-panel">
     <div class="overlay-header">
-      <span>PIT TIMER</span>
+      <span>PIT DURATION</span>
       <span id="connection-status"><span class="status-dot demo"></span></span>
     </div>
     <div class="timer-body" id="timer-body">
@@ -73,7 +73,7 @@
       else { if (el) el.innerHTML = '<span class="status-dot connected"></span>'; }
     }
 
-    // ─── Pit Timer State ──────────────────────────────────
+    // ─── Pit Duration State ──────────────────────────────────
     const timerBody = document.getElementById('timer-body');
     const timerValue = document.getElementById('timer-value');
     const timerLabel = document.getElementById('timer-label');
