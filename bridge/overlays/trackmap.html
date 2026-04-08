@@ -13,7 +13,7 @@
     .status-dot.connected { background: #3ecf8e; }
     .status-dot.waiting { background: #f79009; }
     .status-dot.demo { background: #f79009; }
-    .map-container { flex: 1; position: relative; }
+    .map-container { flex: 1; position: relative; padding: 4px 4px 10px 4px; }
     canvas { width: 100%; height: 100%; }
     .map-legend { position: absolute; bottom: 4px; right: 8px; font-size: 8px; color: rgba(255,255,255,0.3); }
     .overlay-disconnected { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(12,13,20,0.9); color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 600; border-radius: 8px; }
@@ -50,6 +50,15 @@
     const trackColor = getSetting('trackColor', 'rgba(255,255,255,0.15)');
     const playerColor = getSetting('playerColor', '#9146ff');
     const focusColor = getSetting('focusColor', '#3ecf8e');
+
+    // Apply overlay size from settings
+    const sizeMap = { small: 300, medium: 500, large: 700 };
+    const overlaySize = getSetting('overlaySize', 'medium');
+    const targetSize = sizeMap[overlaySize] || 500;
+    try {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.send('resize-overlay', 'trackmap', targetSize, targetSize);
+    } catch(e) {}
 
     const BRIDGE_URL = 'ws://localhost:9100';
     let ws = null;

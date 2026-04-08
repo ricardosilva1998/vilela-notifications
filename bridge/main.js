@@ -275,7 +275,9 @@ function createOverlayWindow(overlayId) {
   // Trackmap: always square, size from settings, ignore saved bounds
   if (overlayId === 'trackmap') {
     if (settings.overlayCustom && settings.overlayCustom.trackmap) {
-      const size = parseInt(settings.overlayCustom.trackmap.overlaySize) || config.width;
+      const sizeMap = { small: 300, medium: 500, large: 700 };
+      const sizeVal = settings.overlayCustom.trackmap.overlaySize;
+      const size = sizeMap[sizeVal] || parseInt(sizeVal) || config.width;
       config.width = size;
       config.height = size;
     }
