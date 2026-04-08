@@ -79,6 +79,14 @@
             <span class="fuel-label">To Add</span>
             <span class="fuel-value" id="fuel-to-add">--</span>
           </div>
+          <div class="fuel-row">
+            <span class="fuel-label">Pit In</span>
+            <span class="fuel-value" id="fuel-pit-in">--</span>
+          </div>
+          <div class="fuel-row">
+            <span class="fuel-label">Fuel Save</span>
+            <span class="fuel-value" id="fuel-save">--</span>
+          </div>
         </div>
         <div class="fuel-bar-track">
           <div class="fuel-bar-fill" id="fuel-bar" style="width:62%;background:#3ecf8e;"></div>
@@ -155,7 +163,7 @@
       if (!demoCleared) {
         demoCleared = true;
         // Reset all fields to -- so old demo values don't linger
-        ['fuel-avg-lap','fuel-laps-of-fuel','fuel-min','fuel-max','fuel-avg5','fuel-avg10','fuel-laps-remaining','fuel-to-finish','fuel-to-add'].forEach(id => {
+        ['fuel-avg-lap','fuel-laps-of-fuel','fuel-min','fuel-max','fuel-avg5','fuel-avg10','fuel-laps-remaining','fuel-to-finish','fuel-to-add','fuel-pit-in','fuel-save'].forEach(id => {
           const el = document.getElementById(id);
           if (el) el.textContent = '--';
         });
@@ -218,6 +226,31 @@
 
       const toAddEl = document.getElementById('fuel-to-add');
       if (toAddEl) toAddEl.textContent = (fuelToAdd === 0 || fuelToAdd === undefined) ? '--' : fuelToAdd.toFixed(2) + ' L';
+
+      // Pit window: laps until fuel runs out
+      const pitInEl = document.getElementById('fuel-pit-in');
+      const lapsOfFuelVal = data.lapsOfFuel || 0;
+      if (lapsOfFuelVal > 0) {
+        const pitIn = Math.floor(lapsOfFuelVal);
+        pitInEl.textContent = pitIn + ' laps';
+        pitInEl.style.color = pitIn > 5 ? '#3ecf8e' : (pitIn > 2 ? '#f7c948' : '#f04438');
+      } else {
+        pitInEl.textContent = '--';
+        pitInEl.style.color = '';
+      }
+
+      // Fuel save: potential savings per lap (avg - min usage)
+      const saveEl = document.getElementById('fuel-save');
+      const avgUsage = data.avgPerLap || 0;
+      const minUsage = data.minUsage || 0;
+      if (avgUsage > 0 && minUsage > 0 && avgUsage > minUsage) {
+        const savePotential = avgUsage - minUsage;
+        saveEl.textContent = savePotential.toFixed(3) + ' L/lap';
+        saveEl.style.color = '#38bdf8';
+      } else {
+        saveEl.textContent = '--';
+        saveEl.style.color = '';
+      }
     });
 
     connectBridge(['fuel']);
