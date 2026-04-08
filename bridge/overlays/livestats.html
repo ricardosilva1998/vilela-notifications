@@ -36,6 +36,10 @@
 
     .class-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
     .no-data { padding: 14px; text-align: center; font-size: 10px; color: rgba(255,255,255,0.25); letter-spacing: 0.5px; }
+    .recording-bar { display: none; padding: 4px 10px; background: rgba(62,207,142,0.08); border-bottom: 1px solid rgba(62,207,142,0.15); font-size: 8px; color: rgba(255,255,255,0.5); letter-spacing: 0.5px; }
+    .recording-bar .rec-dot { display: inline-block; width: 5px; height: 5px; background: #f04438; border-radius: 50%; margin-right: 4px; animation: rec-blink 1s ease-in-out infinite; }
+    @keyframes rec-blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .recording-bar .rec-type { color: #f7c948; font-weight: 700; }
   </style>
 </head>
 <body>
@@ -49,6 +53,9 @@
         <span class="event-badge" id="event-badge" style="display:none;"></span>
         <span id="connection-status"><span class="status-dot demo"></span></span>
       </div>
+    </div>
+    <div class="recording-bar" id="recording-bar">
+      <span class="rec-dot"></span>REC <span id="rec-info"></span>
     </div>
     <div id="stats-body">
       <div class="no-data">Waiting for session data...</div>
@@ -239,6 +246,31 @@
       if (badgeEl && data.eventType) {
         badgeEl.textContent = data.eventType;
         badgeEl.style.display = 'inline-block';
+      }
+
+      // Update recording info bar
+      const recBar = document.getElementById('recording-bar');
+      const recInfo = document.getElementById('rec-info');
+      if (recBar && recInfo && data.eventType && data.eventType.toLowerCase().includes('race')) {
+        const totalMin = (data.sessionTime + data.sessionTimeRemain) / 60;
+        const classes = [...new Set(_standings.map(d => d.carClass).filter(Boolean))];
+        const hasMulti = classes.length >= 2;
+        // Detect series/race type for display
+        let raceTypeLabel = '';
+        if (totalMin >= 300) raceTypeLabel = 'Global Endurance';
+        else if (totalMin >= 120) raceTypeLabel = 'IMSA Endurance';
+        else if (hasMulti && totalMin >= 40) raceTypeLabel = 'IMSA Open';
+        else if (!hasMulti && totalMin >= 35) raceTypeLabel = 'VRS Open';
+        else if (hasMulti && totalMin >= 30) raceTypeLabel = 'IMSA Sprint';
+        else if (!hasMulti && totalMin >= 22) raceTypeLabel = 'VRS Sprint';
+        else if (totalMin >= 15) raceTypeLabel = 'Regionals';
+        else raceTypeLabel = 'Race';
+        const drivers = _standings.length;
+        const timeLeft = data.sessionTimeRemain > 0 ? Math.round(data.sessionTimeRemain / 60) + 'min left' : '';
+        recInfo.innerHTML = '<span class="rec-type">' + raceTypeLabel + '</span> · ' + drivers + ' drivers' + (timeLeft ? ' · ' + timeLeft : '');
+        recBar.style.display = 'block';
+      } else if (recBar) {
+        recBar.style.display = 'none';
       }
 
       renderStats();
