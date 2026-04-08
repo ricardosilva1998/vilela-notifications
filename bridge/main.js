@@ -245,6 +245,61 @@ app.on('ready', () => {
   }
 
   console.log('[Bridge] Started');
+
+  // --- Remote Log Upload (every 60s) ---
+  const LOG_UPLOAD_URL = 'https://atletanotifications.com/api/bridge-logs';
+  let lastLogOffset = 0;
+
+  function uploadLogs() {
+    try {
+      const fs = require('fs');
+      const https = require('https');
+      const logPath = require('path').join(require('os').homedir(), 'atleta-bridge.log');
+      if (!fs.existsSync(logPath)) return;
+
+      const stat = fs.statSync(logPath);
+      // Log file was recreated (smaller than offset) — reset
+      if (stat.size < lastLogOffset) lastLogOffset = 0;
+      if (stat.size <= lastLogOffset) return; // no new data
+
+      const fd = fs.openSync(logPath, 'r');
+      const buf = Buffer.alloc(stat.size - lastLogOffset);
+      fs.readSync(fd, buf, 0, buf.length, lastLogOffset);
+      fs.closeSync(fd);
+
+      const newLines = buf.toString('utf8');
+      if (!newLines.trim()) return;
+
+      const postData = JSON.stringify({ bridgeId: settings.bridgeId, lines: newLines });
+
+      // Cap at 1MB per upload
+      if (postData.length > 1024 * 1024) {
+        lastLogOffset = stat.size;
+        return;
+      }
+
+      const url = new URL(LOG_UPLOAD_URL);
+      const req = https.request({
+        hostname: url.hostname, port: 443, path: url.pathname, method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) },
+        timeout: 10000,
+      }, (res) => {
+        let body = '';
+        res.on('data', chunk => body += chunk);
+        res.on('end', () => {
+          if (res.statusCode === 200) lastLogOffset = stat.size;
+        });
+      });
+      req.on('error', () => {}); // silent fail
+      req.on('timeout', () => req.destroy());
+      req.write(postData);
+      req.end();
+    } catch(e) {} // never crash the app
+  }
+
+  setInterval(uploadLogs, 60000);
+  // Upload initial logs after 10s
+  setTimeout(uploadLogs, 10000);
 });
 
 function persistSettings() {
