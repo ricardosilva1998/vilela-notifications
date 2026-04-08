@@ -149,15 +149,15 @@ function loadPitTimes() {
   try {
     if (fs.existsSync(PIT_TIMES_FILE)) {
       const data = JSON.parse(fs.readFileSync(PIT_TIMES_FILE, 'utf8'));
-      // v3.5.9: pit formula changed from OUT lap to IN lap — clear old bad data
-      if (!data._version || data._version < 2) {
+      // v3.6.4: pit formula fixed — require 3+ polls in pit, clear old bad data
+      if (!data._version || data._version < 3) {
         log('[PitTimes] Clearing old pit data (formula changed to IN lap measurement)');
-        return { _version: 2 };
+        return { _version: 3 };
       }
       return data;
     }
   } catch(e) { log('[PitTimes] Load error: ' + e.message); }
-  return { _version: 2 };
+  return { _version: 3 };
 }
 function savePitTimes(data) {
   try {
@@ -955,26 +955,30 @@ async function startTelemetry(onStatusChange) {
             pt.bestLapSnapshot = s.bestLap;
             pt.lapsSnapshot = s.lapsCompleted;
             pt.measured = false;
+            pt.pitPollCount = 0; // count how many polls they've been in pit
             pitStopCounts.set(s.carIdx, (pitStopCounts.get(s.carIdx) || 0) + 1);
             pitEntryTimes.set(s.carIdx, Date.now());
           }
-          // Track live pit time
+          // Track live pit time + poll count
           if (s.inPit) {
+            if (pt.wasPitting) pt.pitPollCount = (pt.pitPollCount || 0) + 1;
             const entryTime = pitEntryTimes.get(s.carIdx);
             if (entryTime) s.pitTimeLive = (Date.now() - entryTime) / 1000;
           } else {
             pitEntryTimes.delete(s.carIdx);
           }
-          // IN lap completed: driver is STILL in pit but lapsCompleted incremented
-          if (s.inPit && pt.wasPitting && !pt.measured && s.lapsCompleted > pt.lapsSnapshot) {
+          // IN lap completed: driver is STILL in pit, been there 3+ polls (~300ms min),
+          // and lapsCompleted incremented. This ensures the lap truly includes pit time.
+          if (s.inPit && pt.wasPitting && !pt.measured && (pt.pitPollCount || 0) >= 3 && s.lapsCompleted > pt.lapsSnapshot) {
             pt.measured = true;
             if (s.lastLap > 0 && pt.bestLapSnapshot > 0 && s.carClass) {
               const delta = s.lastLap - pt.bestLapSnapshot;
-              driverPitDeltas.set(s.carIdx, delta);
-              // Smart filtering: only count to class avg if within ±15s of current avg (or first sample)
+              // Only store per-driver if it's a meaningful pit stop (>10s)
+              if (delta > 10) driverPitDeltas.set(s.carIdx, delta);
+              // Smart filtering for class average: first sample 15-60s, then ±15s of avg
               const cls = s.carClass;
               const currentAvg = classPitDeltas[cls] ? classPitDeltas[cls].avgDelta : 0;
-              const isReasonable = currentAvg === 0 ? (delta > 10 && delta < 120) : (delta > currentAvg - 15 && delta < currentAvg + 15);
+              const isReasonable = currentAvg === 0 ? (delta > 15 && delta < 60) : (delta > currentAvg - 15 && delta < currentAvg + 15);
               if (isReasonable) { // smart filter for class average
                 const cls = s.carClass;
                 if (!classPitDeltas[cls]) classPitDeltas[cls] = { avgDelta: 0, samples: 0 };
