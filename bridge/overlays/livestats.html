@@ -101,34 +101,10 @@
     let _standings = [];
     let _session = {};
 
-    // Known iRacing class colors (common ones)
-    const CLASS_COLORS = {
-      'GT3': '#e74c3c',
-      'GT3 2025': '#e74c3c',
-      'GTP': '#3498db',
-      'GTP 2025': '#3498db',
-      'GT4': '#2ecc71',
-      'GT4 2025': '#2ecc71',
-      'LMP2': '#f39c12',
-      'LMP2 2025': '#f39c12',
-      'LMP3': '#e67e22',
-      'TCR': '#9b59b6',
-      'Porsche Cup': '#1abc9c',
-      'Formula': '#e74c3c',
-      'Mx5': '#27ae60',
-    };
-
-    function getClassColor(className) {
-      if (CLASS_COLORS[className]) return CLASS_COLORS[className];
-      // Try partial match
-      for (const [key, color] of Object.entries(CLASS_COLORS)) {
-        if (className.includes(key) || key.includes(className)) return color;
-      }
-      // Hash-based fallback
-      let hash = 0;
-      for (let i = 0; i < className.length; i++) hash = className.charCodeAt(i) + ((hash << 5) - hash);
-      const hue = Math.abs(hash) % 360;
-      return `hsl(${hue}, 60%, 55%)`;
+    // Get class color from standings data (actual iRacing colors)
+    function getClassColor(drivers) {
+      const d = drivers.find(d => d.carClassColor && d.carClassColor !== '#fff' && d.carClassColor !== '#ffffff');
+      return d ? d.carClassColor : 'rgba(255,255,255,0.4)';
     }
 
     function renderStats() {
@@ -146,7 +122,12 @@
         classes[cls].push(d);
       });
 
-      const classNames = Object.keys(classes).sort((a, b) => classes[b].length - classes[a].length);
+      // Sort by fastest class (best lap) — GTP on top, then LMP2, then GT3, etc.
+      const classNames = Object.keys(classes).sort((a, b) => {
+        const bestA = Math.min(...classes[a].map(d => d.bestLap).filter(t => t > 0), Infinity);
+        const bestB = Math.min(...classes[b].map(d => d.bestLap).filter(t => t > 0), Infinity);
+        return bestA - bestB;
+      });
       if (!classNames.length) {
         body.innerHTML = '<div class="no-data">No class data yet</div>';
         return;
@@ -161,7 +142,7 @@
 
       classNames.forEach(cls => {
         const drivers = classes[cls];
-        const color = getClassColor(cls);
+        const color = getClassColor(drivers);
 
         // Avg Lap: average of all valid lastLap values
         const validLast = drivers.map(d => d.lastLap).filter(t => t && t > 0);
