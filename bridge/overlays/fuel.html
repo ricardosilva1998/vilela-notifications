@@ -96,6 +96,14 @@
     <div class="overlay-disconnected" id="overlay-disconnected"></div>
   </div>
   <script>
+    const _fs = require('fs');
+    const _logPath = require('path').join(require('os').homedir(), 'atleta-bridge.log');
+    function log(msg) {
+      const line = '[' + new Date().toISOString() + '] ' + msg + '\n';
+      console.log(msg);
+      try { _fs.appendFileSync(_logPath, line); } catch(e) {}
+    }
+
     const BRIDGE_URL = 'ws://localhost:9100';
     let ws = null;
     let bridgeConnected = false;
@@ -103,10 +111,10 @@
     const dataHandlers = {};
 
     function connectBridge(channels) {
-      console.log('[Fuel] Connecting to', BRIDGE_URL);
-      try { ws = new WebSocket(BRIDGE_URL); } catch(e) { console.log('[Fuel] WS constructor error:', e.message); setTimeout(() => connectBridge(channels), 3000); return; }
+      log('[Fuel] Connecting to', BRIDGE_URL);
+      try { ws = new WebSocket(BRIDGE_URL); } catch(e) { log('[Fuel] WS constructor error:', e.message); setTimeout(() => connectBridge(channels), 3000); return; }
       ws.onopen = () => {
-        console.log('[Fuel] WebSocket connected');
+        log('[Fuel] WebSocket connected');
         bridgeConnected = true;
         updateConnectionStatus();
         ws.send(JSON.stringify({ type: 'subscribe', channels }));
@@ -114,8 +122,8 @@
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          if (msg.type === 'bridge-connected') { console.log('[Fuel] Bridge confirmed'); bridgeConnected = true; updateConnectionStatus(); } else if (msg.type === 'status') {
-            console.log('[Fuel] iRacing status:', msg.iracing);
+          if (msg.type === 'bridge-connected') { log('[Fuel] Bridge confirmed'); bridgeConnected = true; updateConnectionStatus(); } else if (msg.type === 'status') {
+            log('[Fuel] iRacing status:', msg.iracing);
             iracingConnected = msg.iracing;
             updateConnectionStatus();
           } else if (msg.type === 'data' && dataHandlers[msg.channel]) {
@@ -124,13 +132,13 @@
         } catch(e) {}
       };
       ws.onclose = (ev) => {
-        console.log('[Fuel] WebSocket closed, code:', ev.code, 'reason:', ev.reason);
+        log('[Fuel] WebSocket closed, code:', ev.code, 'reason:', ev.reason);
         bridgeConnected = false;
         iracingConnected = false;
         updateConnectionStatus();
         setTimeout(() => connectBridge(channels), 3000);
       };
-      ws.onerror = (e) => { console.log('[Fuel] WebSocket error'); ws.close(); };
+      ws.onerror = (e) => { log('[Fuel] WebSocket error'); ws.close(); };
     }
 
     function onData(ch, fn) { dataHandlers[ch] = fn; }
