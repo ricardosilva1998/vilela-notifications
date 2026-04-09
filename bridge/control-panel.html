@@ -424,9 +424,114 @@
         </div>
         <div class="logs-layout">
           <div class="logs-client-list" id="logs-client-list">
-            <div class="logs-client-item active" data-client="all" onclick="selectLogClient('all')">
+            <div class="logs-client-item active" data-filter="all" onclick="selectLogFilter('all', this)">
               <div class="logs-client-dot all"></div>
               <div class="logs-client-name">All Logs</div>
+            </div>
+            <div class="logs-client-item" data-filter="error" onclick="selectLogFilter('error', this)">
+              <div class="logs-client-dot" style="background:#f04438;"></div>
+              <div class="logs-client-name">Errors</div>
+              <div class="logs-client-count" id="log-count-error"></div>
+            </div>
+            <div style="font-size:9px;color:#5c5b6e;padding:10px 10px 4px;text-transform:uppercase;font-weight:700;letter-spacing:0.5px;">System</div>
+            <div class="logs-client-item" data-filter="Telemetry" onclick="selectLogFilter('Telemetry', this)">
+              <div class="logs-client-dot" style="background:#3ecf8e;"></div>
+              <div class="logs-client-name">Telemetry</div>
+              <div class="logs-client-count" id="log-count-Telemetry"></div>
+            </div>
+            <div class="logs-client-item" data-filter="SessionInfo" onclick="selectLogFilter('SessionInfo', this)">
+              <div class="logs-client-dot" style="background:#3ecf8e;"></div>
+              <div class="logs-client-name">Session Info</div>
+              <div class="logs-client-count" id="log-count-SessionInfo"></div>
+            </div>
+            <div class="logs-client-item" data-filter="MAIN,Bridge" onclick="selectLogFilter('MAIN,Bridge', this)">
+              <div class="logs-client-dot" style="background:#42a5f5;"></div>
+              <div class="logs-client-name">Main</div>
+              <div class="logs-client-count" id="log-count-MAIN"></div>
+            </div>
+            <div style="font-size:9px;color:#5c5b6e;padding:10px 10px 4px;text-transform:uppercase;font-weight:700;letter-spacing:0.5px;">Race Overlays</div>
+            <div class="logs-client-item" data-filter="Standings" onclick="selectLogFilter('Standings', this)">
+              <div class="logs-client-dot" style="background:#42a5f5;"></div>
+              <div class="logs-client-name">Standings</div>
+              <div class="logs-client-count" id="log-count-Standings"></div>
+            </div>
+            <div class="logs-client-item" data-filter="Relative" onclick="selectLogFilter('Relative', this)">
+              <div class="logs-client-dot" style="background:#29b6f6;"></div>
+              <div class="logs-client-name">Relative</div>
+              <div class="logs-client-count" id="log-count-Relative"></div>
+            </div>
+            <div class="logs-client-item" data-filter="Fuel" onclick="selectLogFilter('Fuel', this)">
+              <div class="logs-client-dot" style="background:#ffa726;"></div>
+              <div class="logs-client-name">Fuel</div>
+              <div class="logs-client-count" id="log-count-Fuel"></div>
+            </div>
+            <div class="logs-client-item" data-filter="RaceDuration" onclick="selectLogFilter('RaceDuration', this)">
+              <div class="logs-client-dot" style="background:#78909c;"></div>
+              <div class="logs-client-name">Race Duration</div>
+              <div class="logs-client-count" id="log-count-RaceDuration"></div>
+            </div>
+            <div class="logs-client-item" data-filter="PitStrategy" onclick="selectLogFilter('PitStrategy', this)">
+              <div class="logs-client-dot" style="background:#f06292;"></div>
+              <div class="logs-client-name">Pit Strategy</div>
+              <div class="logs-client-count" id="log-count-PitStrategy"></div>
+            </div>
+            <div class="logs-client-item" data-filter="PitTimer" onclick="selectLogFilter('PitTimer', this)">
+              <div class="logs-client-dot" style="background:#f06292;"></div>
+              <div class="logs-client-name">Pit Timer</div>
+              <div class="logs-client-count" id="log-count-PitTimer"></div>
+            </div>
+            <div class="logs-client-item" data-filter="LapCompare" onclick="selectLogFilter('LapCompare', this)">
+              <div class="logs-client-dot" style="background:#ab47bc;"></div>
+              <div class="logs-client-name">Lap Compare</div>
+              <div class="logs-client-count" id="log-count-LapCompare"></div>
+            </div>
+            <div class="logs-client-item" data-filter="LiveStats" onclick="selectLogFilter('LiveStats', this)">
+              <div class="logs-client-dot" style="background:#7e57c2;"></div>
+              <div class="logs-client-name">Live Stats</div>
+              <div class="logs-client-count" id="log-count-LiveStats"></div>
+            </div>
+            <div style="font-size:9px;color:#5c5b6e;padding:10px 10px 4px;text-transform:uppercase;font-weight:700;letter-spacing:0.5px;">Car Overlays</div>
+            <div class="logs-client-item" data-filter="Inputs" onclick="selectLogFilter('Inputs', this)">
+              <div class="logs-client-dot" style="background:#66bb6a;"></div>
+              <div class="logs-client-name">Inputs</div>
+              <div class="logs-client-count" id="log-count-Inputs"></div>
+            </div>
+            <div class="logs-client-item" data-filter="DriverCard" onclick="selectLogFilter('DriverCard', this)">
+              <div class="logs-client-dot" style="background:#ba68c8;"></div>
+              <div class="logs-client-name">Driver Card</div>
+              <div class="logs-client-count" id="log-count-DriverCard"></div>
+            </div>
+            <div class="logs-client-item" data-filter="StintLaps" onclick="selectLogFilter('StintLaps', this)">
+              <div class="logs-client-dot" style="background:#9ccc65;"></div>
+              <div class="logs-client-name">Stint Laps</div>
+              <div class="logs-client-count" id="log-count-StintLaps"></div>
+            </div>
+            <div style="font-size:9px;color:#5c5b6e;padding:10px 10px 4px;text-transform:uppercase;font-weight:700;letter-spacing:0.5px;">Track Overlays</div>
+            <div class="logs-client-item" data-filter="Wind" onclick="selectLogFilter('Wind', this)">
+              <div class="logs-client-dot" style="background:#78909c;"></div>
+              <div class="logs-client-name">Wind</div>
+              <div class="logs-client-count" id="log-count-Wind"></div>
+            </div>
+            <div class="logs-client-item" data-filter="Weather" onclick="selectLogFilter('Weather', this)">
+              <div class="logs-client-dot" style="background:#4dd0e1;"></div>
+              <div class="logs-client-name">Weather</div>
+              <div class="logs-client-count" id="log-count-Weather"></div>
+            </div>
+            <div class="logs-client-item" data-filter="TrackMap" onclick="selectLogFilter('TrackMap', this)">
+              <div class="logs-client-dot" style="background:#9ccc65;"></div>
+              <div class="logs-client-name">Track Map</div>
+              <div class="logs-client-count" id="log-count-TrackMap"></div>
+            </div>
+            <div style="font-size:9px;color:#5c5b6e;padding:10px 10px 4px;text-transform:uppercase;font-weight:700;letter-spacing:0.5px;">Stream</div>
+            <div class="logs-client-item" data-filter="Chat,TwitchChat" onclick="selectLogFilter('Chat,TwitchChat', this)">
+              <div class="logs-client-dot" style="background:#aed581;"></div>
+              <div class="logs-client-name">Chat</div>
+              <div class="logs-client-count" id="log-count-Chat"></div>
+            </div>
+            <div class="logs-client-item" data-filter="VoiceChat,VoiceInput,VoiceOverlay,Speech" onclick="selectLogFilter('VoiceChat,VoiceInput,VoiceOverlay,Speech', this)">
+              <div class="logs-client-dot" style="background:#b39ddb;"></div>
+              <div class="logs-client-name">Voice</div>
+              <div class="logs-client-count" id="log-count-Voice"></div>
             </div>
           </div>
           <div class="logs-viewer">
@@ -1514,126 +1619,107 @@
     const logPath = require('path').join(require('os').homedir(), 'atleta-bridge.log');
     let logContent = '';
     let logInterval = null;
-    let selectedLogClient = 'all';
+
+    let currentLogFilter = 'all';
+    let allLogLines = [];
+
+    const LOG_COLORS = {
+      'Telemetry': '#3ecf8e', 'SessionInfo': '#3ecf8e',
+      'MAIN': '#42a5f5', 'Bridge': '#42a5f5',
+      'Standings': '#42a5f5', 'Relative': '#29b6f6',
+      'Fuel': '#ffa726', 'RaceDuration': '#78909c',
+      'PitStrategy': '#f06292', 'PitTimer': '#f06292',
+      'LapCompare': '#ab47bc', 'LiveStats': '#7e57c2',
+      'Inputs': '#66bb6a', 'DriverCard': '#ba68c8', 'StintLaps': '#9ccc65',
+      'Wind': '#78909c', 'Weather': '#4dd0e1', 'TrackMap': '#9ccc65',
+      'Chat': '#aed581', 'TwitchChat': '#aed581',
+      'VoiceChat': '#b39ddb', 'VoiceInput': '#b39ddb', 'VoiceOverlay': '#b39ddb', 'Speech': '#b39ddb',
+      'KeyboardSim': '#78909c', 'iRating': '#f7c948', 'Session': '#3ecf8e',
+    };
 
     function loadLogs() {
-      if (selectedLogClient === 'all') {
-        loadGlobalLogs();
-      }
-      ipcRenderer.send('get-ws-clients');
-    }
-
-    function loadGlobalLogs() {
       try {
         const content = logFs.readFileSync(logPath, 'utf8');
         if (content !== logContent) {
           logContent = content;
-          renderGlobalLogs();
+          allLogLines = content.split('\n').filter(l => l.trim());
+          updateLogCounts();
+          renderFilteredLogs();
         }
       } catch(e) {
         document.getElementById('log-container').textContent = 'Log file not found: ' + logPath;
       }
     }
 
-    function renderGlobalLogs() {
-      const container = document.getElementById('log-container');
-      container.innerHTML = logContent.split('\n').map(line => {
-        if (line.includes('[Speech]') || line.includes('[VoiceInput]') || line.includes('[VoiceOverlay]'))
-          return '<span style="color:#9146ff">' + escapeLogHtml(line) + '</span>';
-        if (line.includes('ERROR') || line.includes('error') || line.includes('FATAL'))
-          return '<span style="color:#f04438">' + escapeLogHtml(line) + '</span>';
-        if (line.includes('[Telemetry]') || line.includes('[SessionInfo]'))
-          return '<span style="color:#3ecf8e">' + escapeLogHtml(line) + '</span>';
-        if (line.includes('[Diag]'))
-          return '<span style="color:#5c5b6e">' + escapeLogHtml(line) + '</span>';
-        return escapeLogHtml(line);
-      }).join('\n');
-      container.scrollTop = container.scrollHeight;
+    function updateLogCounts() {
+      var counts = {};
+      allLogLines.forEach(function(line) {
+        var m = line.match(/\[([A-Za-z]+)\]/);
+        if (m) counts[m[1]] = (counts[m[1]] || 0) + 1;
+        if (/error|ERR|UNCAUGHT|FATAL/i.test(line)) counts['error'] = (counts['error'] || 0) + 1;
+      });
+      // Update count badges
+      document.querySelectorAll('.logs-client-count').forEach(function(el) {
+        var id = el.id.replace('log-count-', '');
+        var filter = el.parentElement ? el.parentElement.dataset.filter : '';
+        var total = 0;
+        if (filter) {
+          filter.split(',').forEach(function(kw) { total += counts[kw] || 0; });
+        }
+        el.textContent = total > 0 ? total : '';
+      });
     }
 
-    function renderClientLog(entries) {
-      const container = document.getElementById('log-container');
-      if (!entries || entries.length === 0) {
-        container.innerHTML = '<span style="color:#5c5b6e">No messages logged yet.</span>';
+    function renderFilteredLogs() {
+      var container = document.getElementById('log-container');
+      var lines = allLogLines;
+      if (currentLogFilter !== 'all') {
+        var keywords = currentLogFilter.split(',');
+        if (currentLogFilter === 'error') {
+          lines = allLogLines.filter(function(l) { return /error|ERR|UNCAUGHT|FATAL/i.test(l); });
+        } else {
+          lines = allLogLines.filter(function(l) {
+            return keywords.some(function(kw) { return l.indexOf('[' + kw + ']') !== -1; });
+          });
+        }
+      }
+      if (lines.length === 0) {
+        container.innerHTML = '<span style="color:#5c5b6e">No logs matching this filter.</span>';
         return;
       }
-      container.innerHTML = entries.map(e => {
-        const time = new Date(e.ts).toISOString().slice(11, 23);
-        const sizeStr = e.size > 1024 ? (e.size / 1024).toFixed(1) + 'KB' : e.size + 'B';
-        const channelColor = e.channel === 'broadcast' ? '#9146ff' : '#3ecf8e';
-        return '<span style="color:#5c5b6e">' + time + '</span> ' +
-               '<span style="color:' + channelColor + '">[' + escapeLogHtml(e.channel) + ']</span> ' +
-               '<span style="color:#8b8a9e">' + escapeLogHtml(e.type) + '</span> ' +
-               '<span style="color:#5c5b6e">(' + sizeStr + ')</span>';
+      container.innerHTML = lines.map(function(line) {
+        var m = line.match(/\[([A-Za-z]+)\]/);
+        var color = m && LOG_COLORS[m[1]] ? LOG_COLORS[m[1]] : '#8b8a9e';
+        if (/error|ERR|UNCAUGHT|FATAL/i.test(line)) color = '#f04438';
+        return '<span style="color:' + color + '">' + escapeLogHtml(line) + '</span>';
       }).join('\n');
       container.scrollTop = container.scrollHeight;
     }
 
     function escapeLogHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-    function selectLogClient(clientId) {
-      selectedLogClient = clientId;
-      document.querySelectorAll('.logs-client-item').forEach(el => {
-        el.classList.toggle('active', el.dataset.client === String(clientId));
-      });
-      const title = document.getElementById('logs-viewer-title');
-      if (clientId === 'all') {
-        title.textContent = 'All Logs';
-        logContent = '';
-        loadGlobalLogs();
-      } else {
-        const item = document.querySelector('.logs-client-item[data-client="' + clientId + '"]');
-        title.textContent = item ? item.querySelector('.logs-client-name').textContent : 'Client #' + clientId;
-        ipcRenderer.send('get-ws-client-log', clientId);
-      }
+    function selectLogFilter(filter, el) {
+      currentLogFilter = filter;
+      document.querySelectorAll('.logs-client-item').forEach(function(item) { item.classList.remove('active'); });
+      if (el) el.classList.add('active');
+      var title = document.getElementById('logs-viewer-title');
+      var name = el ? el.querySelector('.logs-client-name') : null;
+      title.textContent = name ? name.textContent : 'All Logs';
+      renderFilteredLogs();
     }
 
     function copyLogs() {
-      const container = document.getElementById('log-container');
-      const text = container.innerText;
+      var container = document.getElementById('log-container');
+      var text = container.innerText;
       require('electron').clipboard.writeText(text);
-      const toast = document.getElementById('copy-toast');
+      var toast = document.getElementById('copy-toast');
       toast.style.display = 'block';
-      setTimeout(() => { toast.style.display = 'none'; }, 1500);
+      setTimeout(function() { toast.style.display = 'none'; }, 1500);
     }
 
     function clearCurrentLog() {
-      if (selectedLogClient === 'all') {
-        document.getElementById('log-container').innerHTML = '';
-        logContent = '';
-      } else {
-        ipcRenderer.send('clear-ws-client-log', selectedLogClient);
-      }
+      document.getElementById('log-container').innerHTML = '';
     }
-
-    ipcRenderer.on('ws-clients', (event, clientList) => {
-      const list = document.getElementById('logs-client-list');
-      const allItem = list.querySelector('[data-client="all"]');
-      list.innerHTML = '';
-      list.appendChild(allItem);
-      clientList.forEach(c => {
-        const item = document.createElement('div');
-        item.className = 'logs-client-item' + (selectedLogClient === c.id ? ' active' : '');
-        item.dataset.client = c.id;
-        item.onclick = () => selectLogClient(c.id);
-        const dotClass = c.state === 1 ? 'connected' : 'disconnected';
-        const logCount = c.logCount !== undefined ? c.logCount : '';
-        item.innerHTML =
-          '<div class="logs-client-dot ' + dotClass + '"></div>' +
-          '<div class="logs-client-name">' + escapeLogHtml(c.name) + '</div>' +
-          (logCount ? '<div class="logs-client-count">' + logCount + '</div>' : '');
-        list.appendChild(item);
-      });
-      if (selectedLogClient !== 'all') {
-        ipcRenderer.send('get-ws-client-log', selectedLogClient);
-      }
-    });
-
-    ipcRenderer.on('ws-client-log', (event, clientId, entries) => {
-      if (selectedLogClient === clientId) {
-        renderClientLog(entries);
-      }
-    });
 
     function startLogRefresh() { if (!logInterval) { loadLogs(); logInterval = setInterval(loadLogs, 2000); } }
     function stopLogRefresh() { if (logInterval) { clearInterval(logInterval); logInterval = null; } }
