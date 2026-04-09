@@ -728,28 +728,57 @@
       if (d.car_classes && d.car_classes.length) {
         data.avgSOF = d.car_classes[0].strength_of_field || d.event_strength_of_field;
         data.driverCount = d.car_classes[0].num_entries || d.num_drivers;
+        // Auto-detect car class
+        if (!carClass || carClass === 'auto') {
+          var cls = d.car_classes[0].short_name || d.car_classes[0].name || '';
+          if (cls.includes('GT3')) data.carClass = 'GT3';
+          else if (cls.includes('GTP') || cls.includes('Hypercar')) data.carClass = 'GTP';
+          else if (cls.includes('LMP2')) data.carClass = 'LMP2';
+          else if (cls.includes('GT4')) data.carClass = 'GT4';
+          else if (cls.includes('LMP3')) data.carClass = 'LMP3';
+          else if (cls.includes('GTE')) data.carClass = 'GTE';
+          else if (cls.includes('TCR')) data.carClass = 'TCR';
+          else if (cls.includes('Porsche')) data.carClass = 'Porsche Cup';
+          else if (cls.includes('BMW M2') || cls.includes('MX-5') || cls.includes('Mazda')) data.carClass = cls.includes('Mazda') || cls.includes('MX-5') ? 'Mazda' : 'BMW M2';
+          else if (cls.includes('Toyota') || cls.includes('GR86')) data.carClass = 'Toyota';
+          else data.carClass = cls;
+        }
       }
       data.estLaps = d.event_laps_complete || 0;
+
+      // Auto-detect race type from series name
+      if ((!raceType || raceType === 'auto') && d.series_name) {
+        var sn = d.series_name.toLowerCase();
+        if (sn.includes('regional')) data.raceType = 'Regionals';
+        else if (sn.includes('vrs') && sn.includes('sprint')) data.raceType = 'VRS Sprint';
+        else if (sn.includes('vrs') && sn.includes('open')) data.raceType = 'VRS Open';
+        else if (sn.includes('imsa') && sn.includes('sprint')) data.raceType = 'IMSA Sprint';
+        else if (sn.includes('imsa') && sn.includes('open')) data.raceType = 'IMSA Open';
+        else if (sn.includes('imsa') && sn.includes('endurance')) data.raceType = 'IMSA Endurance';
+        else if (sn.includes('global') && sn.includes('endurance')) data.raceType = 'Global Endurance';
+        else if (sn.includes('sprint')) data.raceType = 'Sprint';
+        else if (sn.includes('open')) data.raceType = 'Open';
+        else if (sn.includes('endurance')) data.raceType = 'Endurance';
+      }
 
       // Find RACE session results
       var raceSession = (d.session_results || []).find(function(s) { return s.simsession_type === 6; });
       if (raceSession && raceSession.results && raceSession.results.length) {
-        // Average of best lap times (in tenths of ms → divide by 10000 for seconds)
-        var bestLaps = raceSession.results
-          .map(function(r) { return r.best_lap_time; })
+        // Use average_lap (race pace) not best_lap_time — values in tenths of ms (÷10000 for seconds)
+        var avgLaps = raceSession.results
+          .map(function(r) { return r.average_lap; })
           .filter(function(t) { return t && t > 0; });
-        if (bestLaps.length) {
-          data.avgLapTime = (bestLaps.reduce(function(a,b){return a+b;},0) / bestLaps.length) / 10000;
+        if (avgLaps.length) {
+          data.avgLapTime = (avgLaps.reduce(function(a,b){return a+b;},0) / avgLaps.length) / 10000;
         }
-        // Leader's best lap
-        var leader = raceSession.results.find(function(r) { return r.finish_position_in_class === 0; });
-        if (leader && leader.best_lap_time > 0) {
-          data.leaderBestLap = leader.best_lap_time / 10000;
-        }
+        // Max laps completed (leader)
+        var maxLaps = 0;
+        raceSession.results.forEach(function(r) { if (r.laps_complete > maxLaps) maxLaps = r.laps_complete; });
+        if (maxLaps > 0) data.estLaps = maxLaps;
         data.driverCount = raceSession.results.length;
       }
 
-      // Find QUALIFY session
+      // Find QUALIFY session (type 4 = Lone Qualifying, type 5 = Open Qualifying)
       var qualSession = (d.session_results || []).find(function(s) { return s.simsession_type === 4 || s.simsession_type === 5; });
       if (qualSession && qualSession.results && qualSession.results.length) {
         var qualLaps = qualSession.results
@@ -760,7 +789,6 @@
         }
       }
 
-      // Series name for auto-detecting race type
       if (d.series_name) data._seriesName = d.series_name;
 
       return data;
