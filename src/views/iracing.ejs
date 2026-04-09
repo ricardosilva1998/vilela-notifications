@@ -112,7 +112,13 @@
     <div class="card animate-in" style="margin-bottom: 12px; padding: 20px 24px;">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
         <h3 style="font-size:15px; font-weight:700; margin:0;">Bug Reports</h3>
-        <span id="bug-report-count" style="font-size:11px; color:var(--text-muted);"></span>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span id="bug-report-count" style="font-size:11px; color:var(--text-muted);"></span>
+          <span id="next-review-timer" style="font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:4px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span id="next-review-countdown"></span>
+          </span>
+        </div>
       </div>
       <div id="bug-reports-container">
         <p style="font-size:12px; color:var(--text-muted);">Enter your Bridge ID above to see bug reports.</p>
@@ -624,6 +630,24 @@ async function loadTrackDatabase() {
   }
 }
 loadTrackDatabase();
+
+// ─── Next Review Countdown ────────────────────────────────
+function updateReviewCountdown() {
+  var now = new Date();
+  var utcH = now.getUTCHours();
+  var nextH = Math.ceil((utcH + 1) / 6) * 6;
+  var next = new Date(now);
+  next.setUTCHours(nextH, 0, 0, 0);
+  if (next <= now) next.setUTCHours(next.getUTCHours() + 6);
+  var diff = next - now;
+  var h = Math.floor(diff / 3600000);
+  var m = Math.floor((diff % 3600000) / 60000);
+  var s = Math.floor((diff % 60000) / 1000);
+  var el = document.getElementById('next-review-countdown');
+  if (el) el.textContent = 'Next review in ' + (h > 0 ? h + 'h ' : '') + m + 'm ' + s + 's';
+}
+updateReviewCountdown();
+setInterval(updateReviewCountdown, 1000);
 
 // ─── Bridge Logs ──────────────────────────────────────────
 let bridgeLogRefreshInterval = null;
