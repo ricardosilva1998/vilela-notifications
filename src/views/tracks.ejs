@@ -617,6 +617,11 @@
           pendingQualData = { avgQualifyTime: data.avgLapTime };
           if (qualZone) { qualZone.style.borderColor = '#3ecf8e'; qualZone.querySelector('.import-dropzone-text').textContent = '✓ Qualify loaded'; }
         }
+        // If confirm card is already visible, refresh it with merged qualify data
+        if (pendingQualData && importData) {
+          importData.avgQualifyTime = pendingQualData.avgQualifyTime;
+          showImportConfirm(importData);
+        }
       } catch(e) {
         document.getElementById('import-error').textContent = 'Qualify parse error: ' + e.message;
       }
@@ -856,11 +861,10 @@
   }
 
   function showImportConfirm(data) {
-    // Merge pending qualify data
-    if (pendingQualData && pendingQualData.avgQualifyTime && !data.avgQualifyTime) {
+    // Merge pending qualify data (always override with separate qualify file if available)
+    if (pendingQualData && pendingQualData.avgQualifyTime) {
       data.avgQualifyTime = pendingQualData.avgQualifyTime;
     }
-    pendingQualData = null;
     // Populate class dropdown
     var classOpts = ['GTP','LMP2','GT3','LMP3','GT4','GTE','TCR','Porsche Cup','BMW M2','Toyota','Mazda'];
     var classSelect = document.getElementById('import-confirm-class');
