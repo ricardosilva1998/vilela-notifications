@@ -17,11 +17,8 @@
   <div style="display:flex; gap:0; margin-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.08);">
     <button class="iracing-subtab active" data-irtab="app" onclick="switchIRacingTab('app')">App Download</button>
     <button class="iracing-subtab" data-irtab="overlays" onclick="switchIRacingTab('overlays')">Stream Overlays</button>
-    <button class="iracing-subtab" data-irtab="logs" onclick="switchIRacingTab('logs')">Bridge Logs</button>
+    <button class="iracing-subtab" data-irtab="logs" onclick="switchIRacingTab('logs')">Bridge</button>
     <button class="iracing-subtab" data-irtab="tracks" onclick="switchIRacingTab('tracks')">Track Database</button>
-    <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
-    <button class="iracing-subtab" data-irtab="bridgeusers" onclick="switchIRacingTab('bridgeusers')">Bridge Users</button>
-    <% } %>
   </div>
 
   <div class="iracing-subtab-content active" id="irtab-app">
@@ -94,6 +91,22 @@
       </div>
       <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Find your Bridge ID in the Atleta Bridge app → About tab.</p>
     </div>
+
+    <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+    <!-- Bridge Users Card (admin only) -->
+    <div class="card animate-in" style="margin-bottom: 12px; padding: 20px 24px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <h3 style="font-size:15px; font-weight:700; margin:0;">Bridge Users</h3>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span id="bridge-users-total" style="font-size:11px; color:var(--text-muted);"></span>
+          <button onclick="fetchBridgeUsers()" class="btn btn-secondary" style="font-size:11px; padding:5px 10px;">Refresh</button>
+        </div>
+      </div>
+      <div id="bridge-users-container">
+        <p style="font-size:12px; color:var(--text-muted);">Loading...</p>
+      </div>
+    </div>
+    <% } %>
 
     <!-- Bug Reports Card -->
     <div class="card animate-in" style="margin-bottom: 12px; padding: 20px 24px;">
@@ -176,22 +189,6 @@
   </div>
   </div><!-- /irtab-tracks -->
 
-  <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
-  <div class="iracing-subtab-content" id="irtab-bridgeusers">
-    <div class="card animate-in" style="padding: 20px 24px;">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
-        <h3 style="font-size:15px; font-weight:700; margin:0;">Bridge Users</h3>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span id="bridge-users-total" style="font-size:11px; color:var(--text-muted);"></span>
-          <button onclick="fetchBridgeUsers()" class="btn btn-secondary" style="font-size:11px; padding:5px 10px;">Refresh</button>
-        </div>
-      </div>
-      <div id="bridge-users-container">
-        <p style="font-size:12px; color:var(--text-muted);">Loading...</p>
-      </div>
-    </div>
-  </div><!-- /irtab-bridgeusers -->
-  <% } %>
 
 <script>
 // ─── iRacing Sub-Tab Switching ──────────────────────────────
