@@ -12,6 +12,10 @@
     .status-dot.connected { background: #3ecf8e; }
     .status-dot.waiting { background: #f79009; }
     .status-dot.demo { background: #f79009; }
+    .driver-selector { padding: 4px 10px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .driver-selector select { width: 100%; background: rgba(255,255,255,0.06); color: #e8e6f0; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 3px 6px; font-size: 10px; font-family: 'JetBrains Mono', 'Consolas', monospace; outline: none; cursor: pointer; }
+    .driver-selector select:hover { border-color: rgba(255,255,255,0.2); }
+    .driver-selector select option { background: #1a1b26; color: #e8e6f0; }
     .stint-body { padding: 10px 14px; }
     .stint-summary { display: flex; gap: 14px; align-items: center; margin-bottom: 8px; }
     .stint-big { text-align: center; }
@@ -49,6 +53,11 @@
     <div class="overlay-header">
       <span>SESSION LAPS</span>
       <span id="connection-status"><span class="status-dot demo"></span></span>
+    </div>
+    <div class="driver-selector">
+      <select id="driver-select">
+        <option value="">-- waiting for data --</option>
+      </select>
     </div>
     <div class="lap-tabs">
       <div class="lap-tab active" data-filter="all" onclick="setFilter('all')">All</div>
@@ -127,10 +136,11 @@
       return m > 0 ? m + ':' + s.padStart(6, '0') : s;
     }
 
-    // Lap tracking — local to overlay
-    let sessionLaps = []; // { time, session }
-    let lastFocusCarIdx = -1;
-    let lastFocusLastLap = -1; // track lastLap value changes (more reliable than lapsCompleted as spectator)
+    // All-driver lap tracking
+    // Map: carIdx -> { name, number, class, lastLap (previous value), laps: [{ time, session }] }
+    let allDrivers = new Map();
+    let selectedCarIdx = -1;   // currently selected driver in dropdown
+    let manualSelect = false;  // true if user manually picked a driver (don't auto-follow)
     let currentSessionType = '';
     let currentSessionNum = -1;
 
@@ -151,13 +161,15 @@
       renderLaps();
     }
 
-    function getFilteredLaps() {
-      if (activeFilter === 'all') return sessionLaps;
-      return sessionLaps.filter(l => sessionTag(l.session).cls === activeFilter);
+    function getSelectedLaps() {
+      const driver = allDrivers.get(selectedCarIdx);
+      if (!driver) return [];
+      if (activeFilter === 'all') return driver.laps;
+      return driver.laps.filter(l => sessionTag(l.session).cls === activeFilter);
     }
 
     function renderLaps() {
-      const filtered = getFilteredLaps();
+      const filtered = getSelectedLaps();
       document.getElementById('stint-laps').textContent = filtered.length || 0;
 
       if (filtered.length === 0) {
@@ -165,6 +177,7 @@
         document.getElementById('stint-last').textContent = '--';
         document.getElementById('stint-avg').textContent = '--';
         document.getElementById('lap-list').innerHTML = '';
+        autoResize();
         return;
       }
 
@@ -195,8 +208,10 @@
           </div>`;
       }
       listEl.innerHTML = html;
+      autoResize();
+    }
 
-      // Auto-resize height to fit content
+    function autoResize() {
       try {
         const { ipcRenderer } = require('electron');
         const panel = document.querySelector('.overlay-panel');
@@ -210,32 +225,129 @@
       } catch(e) {}
     }
 
-    onData('standings', data => {
-      if (!data || !data.length) return;
-      const focused = data.find(d => d.isSpectated) || data.find(d => d.isPlayer);
-      if (!focused) return;
+    // Build/update the driver dropdown from allDrivers map
+    function updateDriverDropdown(spectatedIdx) {
+      const sel = document.getElementById('driver-select');
+      const prevValue = sel.value;
 
-      // Driver changed (switched spectated target) — reset tracking, don't record a lap
-      if (focused.carIdx !== lastFocusCarIdx) {
-        lastFocusCarIdx = focused.carIdx;
-        lastFocusLastLap = focused.lastLap || -1;
+      // Sort drivers: spectated first, then player, then by car number
+      const sorted = [...allDrivers.entries()].sort((a, b) => {
+        if (a[1]._isSpectated && !b[1]._isSpectated) return -1;
+        if (!a[1]._isSpectated && b[1]._isSpectated) return 1;
+        if (a[1]._isPlayer && !b[1]._isPlayer) return -1;
+        if (!a[1]._isPlayer && b[1]._isPlayer) return 1;
+        return (parseInt(a[1].number) || 999) - (parseInt(b[1].number) || 999);
+      });
+
+      // Only rebuild if driver list changed
+      const optionKeys = sorted.map(([idx]) => String(idx)).join(',');
+      if (sel.dataset.keys === optionKeys) {
+        // Just update selection if needed
+        if (!manualSelect && spectatedIdx >= 0 && String(sel.value) !== String(spectatedIdx)) {
+          sel.value = String(spectatedIdx);
+          selectedCarIdx = spectatedIdx;
+          renderLaps();
+        }
         return;
       }
+      sel.dataset.keys = optionKeys;
 
-      // Detect new lap: lastLap value changed for the SAME driver
-      // More reliable than lapsCompleted as spectator (lapsCompleted doesn't always update)
-      const currentLastLap = focused.lastLap || 0;
-      if (currentLastLap > 0 && currentLastLap !== lastFocusLastLap && lastFocusLastLap > 0) {
-        sessionLaps.push({ time: currentLastLap, session: currentSessionType });
-        renderLaps();
+      sel.innerHTML = '';
+      for (const [idx, driver] of sorted) {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        const lapCount = driver.laps.length;
+        const prefix = driver._isSpectated ? '\u25B6 ' : (driver._isPlayer ? '\u2605 ' : '');
+        opt.textContent = prefix + '#' + driver.number + ' ' + driver.name + (lapCount ? ' (' + lapCount + ')' : '');
+        sel.appendChild(opt);
       }
-      if (currentLastLap > 0) lastFocusLastLap = currentLastLap;
+
+      // Restore selection
+      if (manualSelect && allDrivers.has(selectedCarIdx)) {
+        sel.value = String(selectedCarIdx);
+      } else if (spectatedIdx >= 0) {
+        sel.value = String(spectatedIdx);
+        selectedCarIdx = spectatedIdx;
+      } else if (prevValue && allDrivers.has(Number(prevValue))) {
+        sel.value = prevValue;
+      }
+    }
+
+    // Handle manual driver selection
+    document.getElementById('driver-select').addEventListener('change', function() {
+      const idx = Number(this.value);
+      if (isNaN(idx) || !allDrivers.has(idx)) return;
+      selectedCarIdx = idx;
+      manualSelect = true;
+      renderLaps();
+    });
+
+    onData('standings', data => {
+      if (!data || !data.length) return;
+
+      const spectated = data.find(d => d.isSpectated) || data.find(d => d.isPlayer);
+      const spectatedIdx = spectated ? spectated.carIdx : -1;
+
+      // Auto-follow: if spectated driver changed and user hasn't manually selected
+      if (!manualSelect && spectatedIdx >= 0 && spectatedIdx !== selectedCarIdx) {
+        selectedCarIdx = spectatedIdx;
+      }
+
+      // Process every driver: detect lastLap changes
+      for (const d of data) {
+        const idx = d.carIdx;
+        const currentLastLap = d.lastLap || 0;
+
+        if (!allDrivers.has(idx)) {
+          // New driver — initialize
+          allDrivers.set(idx, {
+            name: d.driverName || ('Car ' + d.carNumber),
+            number: d.carNumber || '?',
+            class: d.carClass || '',
+            lastLap: currentLastLap,
+            laps: [],
+            _isPlayer: !!d.isPlayer,
+            _isSpectated: !!d.isSpectated,
+          });
+        } else {
+          const entry = allDrivers.get(idx);
+          // Update metadata
+          entry._isPlayer = !!d.isPlayer;
+          entry._isSpectated = !!d.isSpectated;
+          if (d.driverName) entry.name = d.driverName;
+
+          // Detect new lap: lastLap changed and both old and new are valid
+          if (currentLastLap > 0 && currentLastLap !== entry.lastLap && entry.lastLap > 0) {
+            entry.laps.push({ time: currentLastLap, session: currentSessionType });
+          }
+          if (currentLastLap > 0) entry.lastLap = currentLastLap;
+        }
+      }
+
+      updateDriverDropdown(spectatedIdx);
+
+      // Re-render if the selected driver got a new lap (or on any update for freshness)
+      renderLaps();
     });
 
     onData('session', data => {
       if (!data) return;
       currentSessionType = data.eventType || '';
       const sn = data.sessionNum ?? -1;
+      if (sn !== currentSessionNum && currentSessionNum >= 0) {
+        // Session changed — clear all laps if going backwards or new session
+        // Keep laps across qualify->race, clear on practice->qualify
+        const prevTag = sessionTag(currentSessionType);
+        // Actually, just let laps accumulate across all sessions (P/Q/R tags distinguish them)
+        // Only clear if session number went DOWN (rejoin/restart)
+        if (sn < currentSessionNum) {
+          for (const driver of allDrivers.values()) {
+            driver.laps = [];
+            driver.lastLap = -1;
+          }
+          log('[StintLaps] Session number decreased (' + currentSessionNum + ' -> ' + sn + '), cleared all laps');
+        }
+      }
       currentSessionNum = sn;
       renderLaps();
     });
@@ -245,9 +357,11 @@
       const saved = sessionStorage.getItem('_stintState');
       if (saved) {
         const s = JSON.parse(saved);
-        if (s.sessionLaps) sessionLaps = s.sessionLaps;
-        if (s.lastFocusCarIdx) lastFocusCarIdx = s.lastFocusCarIdx;
-        if (s.lastFocusLastLap) lastFocusLastLap = s.lastFocusLastLap;
+        if (s.allDrivers) {
+          allDrivers = new Map(s.allDrivers);
+        }
+        if (s.selectedCarIdx !== undefined) selectedCarIdx = s.selectedCarIdx;
+        if (s.manualSelect !== undefined) manualSelect = s.manualSelect;
         if (s.currentSessionType) currentSessionType = s.currentSessionType;
         if (s.currentSessionNum !== undefined) currentSessionNum = s.currentSessionNum;
         if (s.activeFilter) { activeFilter = s.activeFilter; setFilter(s.activeFilter); }
@@ -256,15 +370,20 @@
       }
     } catch(e) {}
 
+    function serializeState() {
+      return {
+        allDrivers: [...allDrivers.entries()],
+        selectedCarIdx, manualSelect,
+        currentSessionType, currentSessionNum, activeFilter,
+      };
+    }
+
     // Global state functions for backup/restore across updates
-    window.__getState = () => ({
-      sessionLaps, lastFocusCarIdx, lastFocusLastLap,
-      currentSessionType, currentSessionNum, activeFilter,
-    });
+    window.__getState = () => serializeState();
     window.__restoreState = (s) => {
-      if (s.sessionLaps) sessionLaps = s.sessionLaps;
-      if (s.lastFocusCarIdx) lastFocusCarIdx = s.lastFocusCarIdx;
-      if (s.lastFocusLastLap) lastFocusLastLap = s.lastFocusLastLap;
+      if (s.allDrivers) allDrivers = new Map(s.allDrivers);
+      if (s.selectedCarIdx !== undefined) selectedCarIdx = s.selectedCarIdx;
+      if (s.manualSelect !== undefined) manualSelect = s.manualSelect;
       if (s.currentSessionType) currentSessionType = s.currentSessionType;
       if (s.currentSessionNum !== undefined) currentSessionNum = s.currentSessionNum;
       if (s.activeFilter) { activeFilter = s.activeFilter; setFilter(s.activeFilter); }
@@ -279,10 +398,7 @@
       // Save state before reload
       ipcRenderer.on('will-reload', () => {
         try {
-          sessionStorage.setItem('_stintState', JSON.stringify({
-            sessionLaps, lastFocusCarIdx, lastFocusLastLap,
-            currentSessionType, currentSessionNum, activeFilter,
-          }));
+          sessionStorage.setItem('_stintState', JSON.stringify(serializeState()));
         } catch(e) {}
       });
       ipcRenderer.on('lock-state', () => {});
