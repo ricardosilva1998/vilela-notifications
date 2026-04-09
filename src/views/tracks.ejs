@@ -958,6 +958,28 @@
     var userCategory = document.getElementById('import-category').value;
     var userClass = document.getElementById('import-class').value;
     var userRaceType = document.getElementById('import-race-type').value;
+
+    // Auto-detect category from car class if user left on auto
+    var detectedClass = data.carClass || data.topCar || '';
+    if (userClass === 'auto' && detectedClass) {
+      // Search all categories for the detected class
+      for (var cat in IMPORT_OPTIONS) {
+        if (!IMPORT_OPTIONS[cat]) continue;
+        var found = IMPORT_OPTIONS[cat].classes.find(function(c) {
+          return c.toLowerCase() === detectedClass.toLowerCase() || detectedClass.toLowerCase().includes(c.toLowerCase());
+        });
+        if (found && found !== 'auto') {
+          userCategory = cat;
+          userClass = found;
+          // Also update the import panel dropdowns
+          document.getElementById('import-category').value = cat;
+          updateImportOptions();
+          document.getElementById('import-class').value = found;
+          break;
+        }
+      }
+    }
+
     var opts = IMPORT_OPTIONS[userCategory] || IMPORT_OPTIONS.road;
 
     // Populate class dropdown from current category
