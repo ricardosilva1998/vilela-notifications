@@ -870,41 +870,72 @@
 
   // Parse CSV import — expects header row with lap time columns
   function parseImportCSV(text, carClass, raceType) {
-    var lines = text.trim().split('\n');
+    var lines = text.trim().split('\n').filter(function(l) { return l.trim(); });
     if (lines.length < 2) throw new Error('CSV needs header + at least 1 data row');
-    var headers = lines[0].split(',').map(function(h) { return h.trim().toLowerCase().replace(/"/g, ''); });
     var data = { carClass: carClass, raceType: raceType };
-    var lapTimes = [];
-    var pitTimes = [];
-    var sofs = [];
 
-    // Find column indices
-    var lapCol = headers.findIndex(function(h) { return h.includes('lap') && (h.includes('best') || h.includes('fast') || h.includes('avg')); });
-    var pitCol = headers.findIndex(function(h) { return h.includes('pit'); });
-    var sofCol = headers.findIndex(function(h) { return h.includes('sof') || h.includes('strength'); });
-    // Fallback: any column with "time" or "lap"
-    if (lapCol < 0) lapCol = headers.findIndex(function(h) { return h.includes('time') || h === 'lap'; });
+    // iRacing CSV format has a summary header (row 0), summary data (row 1),
+    // blank line, then results header + driver rows.
+    // Detect by checking if row 0 has "Strength of Field" (summary header)
+    var summaryHeader = lines[0].split(',').map(function(h) { return h.trim().replace(/"/g, ''); });
+    var hasSummary = summaryHeader.some(function(h) { return h.toLowerCase().includes('strength of field'); });
 
-    for (var i = 1; i < lines.length; i++) {
-      var cols = lines[i].split(',').map(function(c) { return c.trim().replace(/"/g, ''); });
-      if (lapCol >= 0 && cols[lapCol]) {
-        var t = parseLapTime(cols[lapCol]);
-        if (t > 0) lapTimes.push(t);
-      }
-      if (pitCol >= 0 && cols[pitCol]) {
-        var p = parseFloat(cols[pitCol]);
-        if (p > 0) pitTimes.push(p);
-      }
-      if (sofCol >= 0 && cols[sofCol]) {
-        var s = parseFloat(cols[sofCol]);
-        if (s > 0) sofs.push(s);
+    var resultsStartLine = 0;
+    if (hasSummary) {
+      // Parse summary row for SOF and series info
+      var summaryHeaders = summaryHeader.map(function(h) { return h.toLowerCase(); });
+      var summaryVals = lines[1].split(',').map(function(c) { return c.trim().replace(/"/g, ''); });
+      var sofIdx = summaryHeaders.findIndex(function(h) { return h.includes('strength'); });
+      var seriesIdx = summaryHeaders.findIndex(function(h) { return h.includes('series'); });
+      if (sofIdx >= 0 && summaryVals[sofIdx]) data.avgSOF = parseFloat(summaryVals[sofIdx]) || 0;
+      if (seriesIdx >= 0) data._seriesName = summaryVals[seriesIdx] || '';
+      // Skip to results header (find line with "Fin Pos" or "Car")
+      for (var i = 2; i < lines.length; i++) {
+        if (lines[i].toLowerCase().includes('fin pos') || lines[i].toLowerCase().includes('car class')) {
+          resultsStartLine = i;
+          break;
+        }
       }
     }
 
-    if (lapTimes.length) data.avgLapTime = lapTimes.reduce(function(a,b){return a+b;},0) / lapTimes.length;
-    if (pitTimes.length) data.avgPitTime = pitTimes.reduce(function(a,b){return a+b;},0) / pitTimes.length;
-    if (sofs.length) data.avgSOF = sofs.reduce(function(a,b){return a+b;},0) / sofs.length;
-    data.driverCount = lines.length - 1;
+    var headers = lines[resultsStartLine].split(',').map(function(h) { return h.trim().toLowerCase().replace(/"/g, ''); });
+
+    // Find column indices
+    var fastLapCol = headers.findIndex(function(h) { return h.includes('fastest lap') || h.includes('fast lap'); });
+    var avgLapCol = headers.findIndex(function(h) { return h.includes('average lap'); });
+    var qualCol = headers.findIndex(function(h) { return h.includes('qualify time') || h.includes('qual time'); });
+    var carCol = headers.findIndex(function(h) { return h === 'car'; });
+    var carClassCol = headers.findIndex(function(h) { return h === 'car class'; });
+    var lapsCol = headers.findIndex(function(h) { return h.includes('laps comp'); });
+    var newIRCol = headers.findIndex(function(h) { return h.includes('new irating'); });
+
+    var fastLaps = [], avgLaps = [], qualTimes = [], lapsArr = [], iRatings = [];
+    var detectedCar = '', detectedClass = '', driverCount = 0;
+
+    for (var i = resultsStartLine + 1; i < lines.length; i++) {
+      var cols = lines[i].split(',').map(function(c) { return c.trim().replace(/"/g, ''); });
+      if (cols.length < 3) continue;
+      driverCount++;
+
+      if (fastLapCol >= 0 && cols[fastLapCol]) { var t = parseLapTime(cols[fastLapCol]); if (t > 0) fastLaps.push(t); }
+      if (avgLapCol >= 0 && cols[avgLapCol]) { var t = parseLapTime(cols[avgLapCol]); if (t > 0) avgLaps.push(t); }
+      if (qualCol >= 0 && cols[qualCol]) { var t = parseLapTime(cols[qualCol]); if (t > 0) qualTimes.push(t); }
+      if (lapsCol >= 0 && cols[lapsCol]) { var l = parseInt(cols[lapsCol]); if (l > 0) lapsArr.push(l); }
+      if (newIRCol >= 0 && cols[newIRCol]) { var r = parseInt(cols[newIRCol]); if (r > 0) iRatings.push(r); }
+      if (carCol >= 0 && cols[carCol] && !detectedCar) detectedCar = cols[carCol];
+      if (carClassCol >= 0 && cols[carClassCol] && !detectedClass) detectedClass = cols[carClassCol];
+    }
+
+    // Use fastest laps for avg lap (most meaningful)
+    if (fastLaps.length) data.avgLapTime = fastLaps.reduce(function(a,b){return a+b;},0) / fastLaps.length;
+    else if (avgLaps.length) data.avgLapTime = avgLaps.reduce(function(a,b){return a+b;},0) / avgLaps.length;
+    if (qualTimes.length) data.avgQualifyTime = qualTimes.reduce(function(a,b){return a+b;},0) / qualTimes.length;
+    if (lapsArr.length) data.estLaps = Math.max.apply(null, lapsArr);
+    if (iRatings.length && !data.avgSOF) data.avgSOF = Math.round(iRatings.reduce(function(a,b){return a+b;},0) / iRatings.length);
+    data.driverCount = driverCount;
+    if (detectedCar) data.topCar = detectedCar;
+    // Auto-detect class from CSV if user chose 'auto'
+    if ((!carClass || carClass === 'auto') && detectedCar) data.carClass = detectedCar;
     return data;
   }
 
