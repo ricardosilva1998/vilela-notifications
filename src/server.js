@@ -316,6 +316,136 @@ app.post('/api/track-stats/import-screenshot', express.json({ limit: '10mb' }), 
   }
 });
 
+// CSV import — parse iRacing/Garage61 CSV data directly
+app.post('/api/track-stats/import-csv', express.json({ limit: '10mb' }), (req, res) => {
+  try {
+    if (!req.streamer) return res.status(401).json({ error: 'Login required' });
+
+    const { csvData, trackName, carClass, raceType, sessionType } = req.body;
+    if (!csvData || !trackName) return res.status(400).json({ error: 'csvData and trackName required' });
+
+    // Parse CSV: split by newlines, handle quoted fields
+    function parseCSVLine(line) {
+      const fields = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') { inQuotes = !inQuotes; }
+        else if (ch === ',' && !inQuotes) { fields.push(current.trim()); current = ''; }
+        else { current += ch; }
+      }
+      fields.push(current.trim());
+      return fields;
+    }
+
+    function parseLapTime(str) {
+      if (!str || str === '' || str === '00.000') return 0;
+      const parts = str.split(':');
+      if (parts.length === 2) return parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
+      return parseFloat(str) || 0;
+    }
+
+    const lines = csvData.split('\n').filter(l => l.trim());
+
+    // Find header row and SOF from metadata
+    let sof = 0;
+    let headerIdx = -1;
+    let detectedClass = null;
+    let detectedSeries = null;
+    for (let i = 0; i < lines.length; i++) {
+      const fields = parseCSVLine(lines[i]);
+      if (fields[0] === 'Fin Pos') { headerIdx = i; break; }
+      // Metadata row: "Start Time","Track","Series",...,"Strength of Field",...
+      if (fields.length > 7 && fields[0] !== 'Start Time') {
+        sof = parseInt(fields[7]) || 0;
+        detectedSeries = fields[2] || null;
+      }
+    }
+
+    if (headerIdx < 0) return res.status(400).json({ error: 'Could not find header row in CSV' });
+
+    const headers = parseCSVLine(lines[headerIdx]);
+    const colIdx = {};
+    headers.forEach((h, i) => { colIdx[h] = i; });
+
+    // Parse driver rows
+    const drivers = [];
+    for (let i = headerIdx + 1; i < lines.length; i++) {
+      if (!lines[i].trim()) continue;
+      const fields = parseCSVLine(lines[i]);
+      if (fields.length < 5) continue;
+      drivers.push({
+        qualifyTime: parseLapTime(fields[colIdx['Qualify Time']] || ''),
+        avgLapTime: parseLapTime(fields[colIdx['Average Lap Time']] || ''),
+        fastestLapTime: parseLapTime(fields[colIdx['Fastest Lap Time']] || ''),
+        lapsComp: parseInt(fields[colIdx['Laps Comp']] || '0') || 0,
+        carClass: fields[colIdx['Car Class']] || '',
+      });
+    }
+
+    if (drivers.length === 0) return res.status(400).json({ error: 'No driver data found in CSV' });
+
+    // Detect car class from data
+    if (!detectedClass && drivers[0].carClass) {
+      const cls = drivers[0].carClass;
+      // Map iRacing class names to our standard names
+      if (cls.includes('GT3')) detectedClass = 'GT3';
+      else if (cls.includes('GTP') || cls.includes('Hypercar')) detectedClass = 'GTP';
+      else if (cls.includes('LMP2')) detectedClass = 'LMP2';
+      else if (cls.includes('GT4')) detectedClass = 'GT4';
+      else if (cls.includes('LMP3')) detectedClass = 'LMP3';
+      else if (cls.includes('GTE')) detectedClass = 'GTE';
+      else if (cls.includes('TCR')) detectedClass = 'TCR';
+      else if (cls.includes('Porsche')) detectedClass = 'Porsche Cup';
+      else if (cls.includes('BMW M2')) detectedClass = 'BMW M2';
+      else if (cls.includes('Toyota') || cls.includes('GR86')) detectedClass = 'Toyota';
+      else if (cls.includes('Mazda') || cls.includes('MX-5')) detectedClass = 'Mazda';
+      else detectedClass = cls;
+    }
+
+    // Detect race type from series name
+    let detectedRaceType = null;
+    if (detectedSeries) {
+      const s = detectedSeries.toLowerCase();
+      if (s.includes('regional')) detectedRaceType = 'Regionals';
+      else if (s.includes('vrs') && s.includes('sprint')) detectedRaceType = 'VRS Sprint';
+      else if (s.includes('vrs') && s.includes('open')) detectedRaceType = 'VRS Open';
+      else if (s.includes('imsa') && s.includes('sprint')) detectedRaceType = 'IMSA Sprint';
+      else if (s.includes('imsa') && s.includes('open')) detectedRaceType = 'IMSA Open';
+      else if (s.includes('imsa') && s.includes('endurance')) detectedRaceType = 'IMSA Endurance';
+      else if (s.includes('global') && s.includes('endurance')) detectedRaceType = 'Global Endurance';
+      else if (s.includes('sprint')) detectedRaceType = 'Sprint';
+      else if (s.includes('open')) detectedRaceType = 'Open';
+      else if (s.includes('endurance')) detectedRaceType = 'Endurance';
+    }
+
+    // Calculate averages from valid drivers
+    const validAvgLaps = drivers.filter(d => d.avgLapTime > 0).map(d => d.avgLapTime);
+    const validQualTimes = drivers.filter(d => d.qualifyTime > 0).map(d => d.qualifyTime);
+    const maxLaps = Math.max(...drivers.map(d => d.lapsComp), 0);
+
+    const avgLapTime = validAvgLaps.length > 0 ? validAvgLaps.reduce((a, b) => a + b, 0) / validAvgLaps.length : null;
+    const avgQualifyTime = validQualTimes.length > 0 ? validQualTimes.reduce((a, b) => a + b, 0) / validQualTimes.length : null;
+
+    const data = {
+      carClass: (carClass && carClass !== 'auto') ? carClass : (detectedClass || null),
+      raceType: (raceType && raceType !== 'auto') ? raceType : (detectedRaceType || null),
+      avgLapTime: avgLapTime ? Number(avgLapTime.toFixed(3)) : null,
+      avgQualifyTime: avgQualifyTime ? Number(avgQualifyTime.toFixed(3)) : null,
+      avgPitTime: null,
+      avgSOF: sof || null,
+      driverCount: drivers.length,
+      estLaps: maxLaps || null,
+    };
+
+    res.json({ ok: true, data });
+  } catch(e) {
+    console.error('[CSVImport] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/track-stats', (req, res) => {
   try {
     const rows = db.db.prepare('SELECT track_name, car_class, race_type, avg_lap_time, avg_pit_time, avg_qualify_time, avg_sof, est_laps, avg_drivers, race_count, updated_at FROM track_stats ORDER BY track_name, car_class, race_type').all();
