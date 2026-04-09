@@ -201,9 +201,9 @@
           ondragleave="this.classList.remove('dragover');"
           ondrop="event.preventDefault(); this.classList.remove('dragover'); handleImportDrop(event);"
           onclick="document.getElementById('import-file-input').click();">
-          <input type="file" id="import-file-input" accept="image/*" style="display:none" onchange="handleImportFile(this.files[0])">
-          <div class="import-dropzone-text">Drop Garage61 screenshot here or click to browse</div>
-          <div class="import-dropzone-hint">PNG, JPG, or WEBP</div>
+          <input type="file" id="import-file-input" accept="image/*,.json,.csv" style="display:none" onchange="handleImportFile(this.files[0])">
+          <div class="import-dropzone-text">Drop file here or click to browse</div>
+          <div class="import-dropzone-hint">Screenshot (PNG/JPG) · JSON · CSV from Garage61</div>
         </div>
         <div class="import-spinner" id="import-spinner">Analyzing screenshot...</div>
         <div class="import-confirm" id="import-confirm">
@@ -576,8 +576,8 @@
 
   window.handleImportFile = function(file) {
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      document.getElementById('import-error').textContent = 'File too large (max 5MB)';
+    if (file.size > 10 * 1024 * 1024) {
+      document.getElementById('import-error').textContent = 'File too large (max 10MB)';
       return;
     }
     document.getElementById('import-error').textContent = '';
@@ -585,37 +585,140 @@
     document.getElementById('import-spinner').classList.add('active');
     document.getElementById('import-dropzone').style.display = 'none';
 
-    var reader = new FileReader();
-    reader.onload = function() {
-      var base64 = reader.result;
-      var trackName = document.getElementById('detail-name').textContent;
-      var carClass = document.getElementById('import-class').value;
-      var raceType = document.getElementById('import-race-type').value;
+    var ext = file.name.split('.').pop().toLowerCase();
+    var trackName = document.getElementById('detail-name').textContent;
+    var carClass = document.getElementById('import-class').value;
+    var raceType = document.getElementById('import-race-type').value;
 
-      fetch('/api/track-stats/import-screenshot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64, trackName: trackName, carClass: carClass, raceType: raceType }),
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(result) {
-        document.getElementById('import-spinner').classList.remove('active');
-        if (!result.ok) {
-          document.getElementById('import-error').textContent = result.error || 'Failed to analyze screenshot';
+    if (ext === 'json') {
+      // JSON import — parse directly
+      var reader = new FileReader();
+      reader.onload = function() {
+        try {
+          var json = JSON.parse(reader.result);
+          var data = parseImportJSON(json, carClass, raceType);
+          document.getElementById('import-spinner').classList.remove('active');
+          importData = data;
+          showImportConfirm(data);
+        } catch(e) {
+          document.getElementById('import-spinner').classList.remove('active');
+          document.getElementById('import-error').textContent = 'Invalid JSON: ' + e.message;
           document.getElementById('import-dropzone').style.display = '';
-          return;
         }
-        importData = result.data;
-        showImportConfirm(result.data);
-      })
-      .catch(function(e) {
-        document.getElementById('import-spinner').classList.remove('active');
-        document.getElementById('import-error').textContent = 'Request failed: ' + e.message;
-        document.getElementById('import-dropzone').style.display = '';
-      });
-    };
-    reader.readAsDataURL(file);
+      };
+      reader.readAsText(file);
+    } else if (ext === 'csv') {
+      // CSV import — parse lap times
+      var reader = new FileReader();
+      reader.onload = function() {
+        try {
+          var data = parseImportCSV(reader.result, carClass, raceType);
+          document.getElementById('import-spinner').classList.remove('active');
+          importData = data;
+          showImportConfirm(data);
+        } catch(e) {
+          document.getElementById('import-spinner').classList.remove('active');
+          document.getElementById('import-error').textContent = 'CSV parse error: ' + e.message;
+          document.getElementById('import-dropzone').style.display = '';
+        }
+      };
+      reader.readAsText(file);
+    } else {
+      // Image — send to server for OCR/AI analysis
+      var reader = new FileReader();
+      reader.onload = function() {
+        fetch('/api/track-stats/import-screenshot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: reader.result, trackName: trackName, carClass: carClass, raceType: raceType }),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(result) {
+          document.getElementById('import-spinner').classList.remove('active');
+          if (!result.ok) {
+            document.getElementById('import-error').textContent = result.error || 'Failed to analyze screenshot';
+            document.getElementById('import-dropzone').style.display = '';
+            return;
+          }
+          importData = result.data;
+          showImportConfirm(result.data);
+        })
+        .catch(function(e) {
+          document.getElementById('import-spinner').classList.remove('active');
+          document.getElementById('import-error').textContent = 'Request failed: ' + e.message;
+          document.getElementById('import-dropzone').style.display = '';
+        });
+      };
+      reader.readAsDataURL(file);
+    }
   };
+
+  // Parse JSON import — expects { avgLapTime, avgPitTime, avgSOF, ... } or Garage61 format
+  function parseImportJSON(json, carClass, raceType) {
+    // Direct format: { avgLapTime: 92.5, avgPitTime: 28.3, ... }
+    if (json.avgLapTime !== undefined) return json;
+    // Garage61 format: look for race summary data
+    var data = { carClass: carClass, raceType: raceType };
+    // Try common Garage61 JSON fields
+    if (json.results && Array.isArray(json.results)) {
+      var laps = json.results.map(function(r) { return r.bestLapTime || r.best_lap || r.fastestLap; }).filter(function(t) { return t && t > 0; });
+      if (laps.length) data.avgLapTime = laps.reduce(function(a,b){return a+b;},0) / laps.length;
+      data.driverCount = json.results.length;
+    }
+    if (json.sof || json.SOF || json.strengthOfField) data.avgSOF = json.sof || json.SOF || json.strengthOfField;
+    if (json.laps && typeof json.laps === 'number') data.estLaps = json.laps;
+    return data;
+  }
+
+  // Parse CSV import — expects header row with lap time columns
+  function parseImportCSV(text, carClass, raceType) {
+    var lines = text.trim().split('\n');
+    if (lines.length < 2) throw new Error('CSV needs header + at least 1 data row');
+    var headers = lines[0].split(',').map(function(h) { return h.trim().toLowerCase().replace(/"/g, ''); });
+    var data = { carClass: carClass, raceType: raceType };
+    var lapTimes = [];
+    var pitTimes = [];
+    var sofs = [];
+
+    // Find column indices
+    var lapCol = headers.findIndex(function(h) { return h.includes('lap') && (h.includes('best') || h.includes('fast') || h.includes('avg')); });
+    var pitCol = headers.findIndex(function(h) { return h.includes('pit'); });
+    var sofCol = headers.findIndex(function(h) { return h.includes('sof') || h.includes('strength'); });
+    // Fallback: any column with "time" or "lap"
+    if (lapCol < 0) lapCol = headers.findIndex(function(h) { return h.includes('time') || h === 'lap'; });
+
+    for (var i = 1; i < lines.length; i++) {
+      var cols = lines[i].split(',').map(function(c) { return c.trim().replace(/"/g, ''); });
+      if (lapCol >= 0 && cols[lapCol]) {
+        var t = parseLapTime(cols[lapCol]);
+        if (t > 0) lapTimes.push(t);
+      }
+      if (pitCol >= 0 && cols[pitCol]) {
+        var p = parseFloat(cols[pitCol]);
+        if (p > 0) pitTimes.push(p);
+      }
+      if (sofCol >= 0 && cols[sofCol]) {
+        var s = parseFloat(cols[sofCol]);
+        if (s > 0) sofs.push(s);
+      }
+    }
+
+    if (lapTimes.length) data.avgLapTime = lapTimes.reduce(function(a,b){return a+b;},0) / lapTimes.length;
+    if (pitTimes.length) data.avgPitTime = pitTimes.reduce(function(a,b){return a+b;},0) / pitTimes.length;
+    if (sofs.length) data.avgSOF = sofs.reduce(function(a,b){return a+b;},0) / sofs.length;
+    data.driverCount = lines.length - 1;
+    return data;
+  }
+
+  // Parse lap time string "1:32.456" → 92.456 seconds
+  function parseLapTime(str) {
+    if (!str) return 0;
+    str = String(str).trim();
+    var match = str.match(/^(\d+):(\d+\.\d+)$/);
+    if (match) return parseInt(match[1]) * 60 + parseFloat(match[2]);
+    var num = parseFloat(str);
+    return isNaN(num) ? 0 : num;
+  }
 
   function showImportConfirm(data) {
     // Populate class dropdown
