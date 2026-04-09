@@ -815,7 +815,8 @@ function fetchBridgeUsers() {
           return '<div style="border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:12px 14px; background:rgba(255,255,255,0.02);">' +
             '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">' +
               '<span style="width:8px; height:8px; border-radius:50%; background:' + (isOnline ? '#2ecc71' : '#888') + '; flex-shrink:0;"></span>' +
-              '<span style="font-size:11px; font-family:monospace; color:var(--text-primary); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + escapeHtml(u.bridge_id) + '">' + escapeHtml(u.bridge_id) + '</span>' +
+              (u.iracing_name ? '<span style="font-size:12px; font-weight:600; color:#fff;">' + escapeHtml(u.iracing_name) + '</span>' : '') +
+              '<span style="font-size:10px; font-family:monospace; color:var(--text-muted); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + escapeHtml(u.bridge_id) + '">' + escapeHtml(u.bridge_id) + '</span>' +
               '<button onclick="navigator.clipboard.writeText(\'' + escapeHtml(u.bridge_id) + '\'); this.textContent=\'Copied!\'; setTimeout(function(){this.textContent=\'Copy\';}.bind(this), 1500);" style="background:rgba(145,70,255,0.15); color:#9146ff; border:none; padding:2px 8px; border-radius:4px; font-size:10px; cursor:pointer;">Copy</button>' +
             '</div>' +
             '<div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; font-size:11px;">' +

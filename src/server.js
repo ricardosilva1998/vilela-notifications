@@ -366,11 +366,15 @@ app.delete('/api/track-stats/:trackName/:carClass/:raceType', (req, res) => {
 // Bridge remote logs (public — must be before /api auth middleware)
 app.post('/api/bridge-logs', (req, res) => {
   try {
-    const { bridgeId, lines } = req.body;
+    const { bridgeId, lines, iracingName } = req.body;
     if (!bridgeId || typeof bridgeId !== 'string') return res.status(400).json({ error: 'bridgeId required' });
     if (!lines || typeof lines !== 'string') return res.status(400).json({ error: 'lines required' });
     if (lines.length > 1024 * 1024) return res.status(400).json({ error: 'Payload too large (max 1MB)' });
     db.insertBridgeLogs(bridgeId, lines);
+    // Store iRacing name if provided
+    if (iracingName && typeof iracingName === 'string') {
+      try { db.db.prepare('UPDATE bridge_logs SET iracing_name = ? WHERE bridge_id = ? AND iracing_name IS NULL').run(iracingName, bridgeId); } catch(e) {}
+    }
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });

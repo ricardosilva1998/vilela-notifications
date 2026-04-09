@@ -625,6 +625,8 @@ async function startTelemetry(onStatusChange) {
               }
               drivers = driverInfo.Drivers;
               playerCarIdx = driverInfo.DriverCarIdx ?? 0;
+              const playerDriver = drivers.find(d => d.CarIdx === playerCarIdx);
+              if (playerDriver && playerDriver.UserName) playerIRacingName = playerDriver.UserName;
               trackName = newTrackName;
 
               // Retry track map fetch every ~30s if still missing
@@ -1408,4 +1410,5 @@ function stopTelemetry() {
   if (connectInterval) clearInterval(connectInterval);
 }
 
-module.exports = { startTelemetry, stopTelemetry, getStatus: () => ({ iracing: connected }) };
+let playerIRacingName = '';
+module.exports = { startTelemetry, stopTelemetry, getStatus: () => ({ iracing: connected }), getPlayerName: () => playerIRacingName };

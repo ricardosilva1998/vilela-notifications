@@ -827,6 +827,7 @@ db.exec(`
   )
 `);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_bridge_logs_lookup ON bridge_logs (bridge_id, created_at)`);
+try { db.exec('ALTER TABLE bridge_logs ADD COLUMN iracing_name TEXT'); } catch(e) {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS bridge_bug_reports (
@@ -3137,6 +3138,7 @@ function getBridgeUserStats() {
   return db.prepare(`
     SELECT
       l.bridge_id,
+      MAX(l.iracing_name) AS iracing_name,
       COUNT(*) AS log_batches,
       SUM(LENGTH(l.lines)) AS total_bytes,
       MIN(l.created_at) AS first_seen,

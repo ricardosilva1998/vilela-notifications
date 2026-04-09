@@ -270,7 +270,9 @@ app.on('ready', () => {
       const newLines = buf.toString('utf8');
       if (!newLines.trim()) return;
 
-      const postData = JSON.stringify({ bridgeId: settings.bridgeId, lines: newLines });
+      let iracingName = '';
+      try { iracingName = require('./telemetry').getPlayerName() || ''; } catch(e) {}
+      const postData = JSON.stringify({ bridgeId: settings.bridgeId, lines: newLines, iracingName });
 
       // Cap at 1MB per upload
       if (postData.length > 1024 * 1024) {
