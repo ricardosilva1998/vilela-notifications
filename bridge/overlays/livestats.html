@@ -264,14 +264,20 @@
         const totalMin = (data.sessionTime + data.sessionTimeRemain) / 60;
         const classes = [...new Set(_standings.map(d => d.carClass).filter(Boolean))];
         const hasMulti = classes.length >= 2;
-        // Detect series/race type for display
+        // Detect series/race type for display — must match telemetry.js getRaceType()
+        // Check which classes are present to determine series
+        const hasGT3 = classes.some(c => c.includes('GT3') || c === 'IMSA23');
+        const hasLMP2 = classes.some(c => c.includes('LMP2') || c.includes('P217') || c.includes('Dallara'));
+        const hasGTP = classes.some(c => c.includes('GTP') || c === 'Hypercar');
         let raceTypeLabel = '';
         if (totalMin >= 300) raceTypeLabel = 'Global Endurance';
         else if (totalMin >= 120) raceTypeLabel = 'IMSA Endurance';
         else if (hasMulti && totalMin >= 40) raceTypeLabel = 'IMSA Open';
-        else if (!hasMulti && totalMin >= 35) raceTypeLabel = 'VRS Open';
         else if (hasMulti && totalMin >= 30) raceTypeLabel = 'IMSA Sprint';
-        else if (!hasMulti && totalMin >= 22) raceTypeLabel = 'VRS Sprint';
+        else if (!hasMulti && hasGT3 && totalMin >= 35) raceTypeLabel = 'VRS Open';
+        else if (!hasMulti && hasGT3 && totalMin >= 22) raceTypeLabel = 'VRS Sprint';
+        else if (!hasMulti && hasLMP2 && totalMin < 30) raceTypeLabel = 'LMP2 Sprint';
+        else if (!hasMulti && hasGTP && totalMin < 30) raceTypeLabel = 'Proto Sprint';
         else if (totalMin >= 15) raceTypeLabel = 'Regionals';
         else raceTypeLabel = 'Race';
         const drivers = _standings.length;
