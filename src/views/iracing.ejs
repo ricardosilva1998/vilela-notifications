@@ -16,7 +16,6 @@
 
   <div style="display:flex; gap:0; margin-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.08);">
     <button class="iracing-subtab active" data-irtab="app" onclick="switchIRacingTab('app')">App Download</button>
-    <button class="iracing-subtab" data-irtab="overlays" onclick="switchIRacingTab('overlays')">Stream Overlays</button>
     <button class="iracing-subtab" data-irtab="logs" onclick="switchIRacingTab('logs')">Bridge</button>
     <button class="iracing-subtab" data-irtab="tracks" onclick="switchIRacingTab('tracks')">Track Database</button>
   </div>
@@ -43,43 +42,7 @@
   </div>
   </div><!-- /irtab-app -->
 
-  <div class="iracing-subtab-content" id="irtab-overlays">
-  <!-- Overlay Cards Grid -->
-  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-    <% const iracingOverlays = [
-      { type: 'standings', icon: '🏁', name: 'Standings', desc: 'Race positions, intervals, lap times' },
-      { type: 'relative', icon: '📊', name: 'Relative', desc: 'Cars ahead and behind with time gaps' },
-      { type: 'fuel', icon: '⛽', name: 'Fuel Calculator', desc: 'Fuel usage, laps remaining, pit strategy' },
-      { type: 'chat', icon: '💬', name: 'Streaming Chat', desc: 'Twitch + YouTube chat merged overlay' },
-      { type: 'wind', icon: '🌬️', name: 'Wind Direction', desc: 'Wind compass relative to car heading' },
-      { type: 'proximity', icon: '🚗', name: 'Car Proximity', desc: 'Spotter — cars alongside left/right' },
-    ]; %>
-    <% iracingOverlays.forEach(ov => {
-      const overlayUrl = streamer.overlay_token ? '/overlay/iracing/' + ov.type + '/' + streamer.overlay_token : null;
-    %>
-    <div class="card animate-in" style="padding: 20px; display: flex; flex-direction: column;">
-      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
-        <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(26,26,46,0.4); display: flex; align-items: center; justify-content: center; font-size: 18px;">
-          <%= ov.icon %>
-        </div>
-        <div style="flex: 1;">
-          <h3 style="font-size: 15px; font-weight: 700; margin: 0;"><%= ov.name %></h3>
-          <span style="color: var(--text-muted); font-size: 11px;"><%= ov.desc %></span>
-        </div>
-      </div>
-      <% if (overlayUrl) { %>
-        <div style="display: flex; gap: 6px; margin-bottom: 10px;">
-          <input type="text" value="<%= overlayUrl %>" readonly id="iracing-url-<%= ov.type %>" style="flex: 1; background: var(--bg-base); border: 1px solid var(--border); color: var(--text-primary); padding: 5px 8px; border-radius: var(--radius-sm); font-size: 10px; font-family: monospace;">
-          <button onclick="navigator.clipboard.writeText(document.getElementById('iracing-url-<%= ov.type %>').value); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy', 1500);" class="btn btn-secondary" style="font-size: 10px; padding: 5px 8px;">Copy</button>
-        </div>
-      <% } %>
-      <div style="display: flex; gap: 6px; margin-top: auto;">
-        <a href="/dashboard/iracing/overlays/<%= ov.type %>" class="btn btn-primary" style="font-size: 12px; padding: 7px 14px; text-decoration: none;">Settings</a>
-      </div>
-    </div>
-    <% }) %>
-  </div>
-  </div><!-- /irtab-overlays -->
+  <!-- Stream Overlays tab removed -->
 
   <div class="iracing-subtab-content" id="irtab-logs">
     <!-- Bridge ID input -->
