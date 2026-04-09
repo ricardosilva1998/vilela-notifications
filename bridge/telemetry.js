@@ -227,30 +227,29 @@ function collectAndUploadTrackStats(track, standingsData, pitDeltas, sofByClassD
   const hasMulticlass = classCount >= 2;
 
   // Determine race type per class based on duration + series
-  // GT3: Regionals ~20, VRS Sprint ~25, IMSA Sprint ~35, VRS Open ~40, IMSA Open ~45, IMSA Endurance ~160, Global Endurance ~360
-  // LMP2: LMP2 Sprint ~20, IMSA Sprint ~35, IMSA Open ~45, IMSA Endurance ~160, Global Endurance ~360
-  // GTP: IMSA Sprint ~35, IMSA Open ~45, IMSA Endurance ~160, Global Endurance ~360
+  // Thresholds account for formation lap adding ~3-5 min to session time
+  // IMSA Sprint=35min(~38-40 total), IMSA Open=45min(~48-50 total), VRS Open=40min(~43-45 total)
   function getRaceType(cls) {
     if (cls === 'GT3') {
       if (totalMinutes >= 300) return 'global_endurance';
       if (totalMinutes >= 120) return 'imsa_endurance';
-      if (hasMulticlass && totalMinutes >= 40) return 'imsa_open';
-      if (!hasMulticlass && totalMinutes >= 35) return 'vrs_open';
-      if (hasMulticlass && totalMinutes >= 30) return 'imsa_sprint';
+      if (hasMulticlass && totalMinutes >= 42) return 'imsa_open';
+      if (!hasMulticlass && totalMinutes >= 37) return 'vrs_open';
+      if (hasMulticlass) return 'imsa_sprint';
       if (!hasMulticlass && totalMinutes >= 22) return 'vrs_sprint';
       return 'regionals';
     }
     if (cls === 'LMP2') {
       if (totalMinutes >= 300) return 'global_endurance';
       if (totalMinutes >= 120) return 'imsa_endurance';
-      if (hasMulticlass && totalMinutes >= 40) return 'imsa_open';
-      if (hasMulticlass && totalMinutes >= 30) return 'imsa_sprint';
+      if (hasMulticlass && totalMinutes >= 42) return 'imsa_open';
+      if (hasMulticlass) return 'imsa_sprint';
       return 'lmp2_sprint';
     }
     if (cls === 'GTP') {
       if (totalMinutes >= 300) return 'global_endurance';
       if (totalMinutes >= 120) return 'imsa_endurance';
-      if (totalMinutes >= 40) return 'imsa_open';
+      if (totalMinutes >= 42) return 'imsa_open';
       if (totalMinutes >= 30) return 'imsa_sprint';
       return 'prototype_sprint';
     }

@@ -270,14 +270,16 @@
         const hasLMP2 = classes.some(c => c.includes('LMP2') || c.includes('P217') || c.includes('Dallara'));
         const hasGTP = classes.some(c => c.includes('GTP') || c === 'Hypercar');
         let raceTypeLabel = '';
+        // Thresholds account for formation lap adding ~3-5 min to session time
+        // IMSA Sprint=35min(~38-40 total), IMSA Open=45min(~48-50 total)
         if (totalMin >= 300) raceTypeLabel = 'Global Endurance';
         else if (totalMin >= 120) raceTypeLabel = 'IMSA Endurance';
-        else if (hasMulti && totalMin >= 40) raceTypeLabel = 'IMSA Open';
-        else if (hasMulti && totalMin >= 30) raceTypeLabel = 'IMSA Sprint';
-        else if (!hasMulti && hasGT3 && totalMin >= 35) raceTypeLabel = 'VRS Open';
-        else if (!hasMulti && hasGT3 && totalMin >= 22) raceTypeLabel = 'VRS Sprint';
-        else if (!hasMulti && hasLMP2 && totalMin < 30) raceTypeLabel = 'LMP2 Sprint';
-        else if (!hasMulti && hasGTP && totalMin < 30) raceTypeLabel = 'Proto Sprint';
+        else if (hasMulti && totalMin >= 42) raceTypeLabel = 'IMSA Open';
+        else if (hasMulti) raceTypeLabel = 'IMSA Sprint';
+        else if (hasGT3 && totalMin >= 37) raceTypeLabel = 'VRS Open';
+        else if (hasGT3 && totalMin >= 22) raceTypeLabel = 'VRS Sprint';
+        else if (hasLMP2) raceTypeLabel = 'LMP2 Sprint';
+        else if (hasGTP) raceTypeLabel = 'Proto Sprint';
         else if (totalMin >= 15) raceTypeLabel = 'Regionals';
         else raceTypeLabel = 'Race';
         const drivers = _standings.length;
