@@ -347,8 +347,15 @@
     });
 
     // Merge known tracks (missing ones)
-    const existingNames = new Set(named.map(t => t.track_name));
-    const missing = KNOWN_IRACING_TRACKS.filter(n => !existingNames.has(n));
+    const existingLower = named.map(t => t.track_name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+    const missing = KNOWN_IRACING_TRACKS.filter(function(known) {
+      var knownClean = known.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      // Check exact match, substring match, or first-word match
+      return !existingLower.some(function(db) {
+        return db === knownClean || db.includes(knownClean) || knownClean.includes(db)
+          || db.split(' ')[0] === knownClean.split(' ')[0] && db.split(' ').length > 1 && knownClean.split(' ').length > 1;
+      });
+    });
 
     const filtered = named.filter(t => t.track_name.toLowerCase().includes(search));
     const filteredMissing = missing.filter(n => n.toLowerCase().includes(search));
