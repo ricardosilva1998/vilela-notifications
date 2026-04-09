@@ -582,23 +582,23 @@
 
     // ─── Overlay Definitions ─────────────────────────────────
     const overlays = [
-      { id: 'standings', icon: '&#127937;', name: 'Standings' },
-      { id: 'relative', icon: '&#128202;', name: 'Relative' },
-      { id: 'fuel', icon: '&#9981;', name: 'Fuel Calculator' },
-      { id: 'wind', icon: '&#127788;&#65039;', name: 'Wind' },
-      { id: 'proximity', icon: '&#128663;', name: 'Proximity' },
-      { id: 'chat', icon: '&#128172;', name: 'Stream Chat' },
-      { id: 'trackmap', icon: '&#127758;', name: 'Track Map' },
-      { id: 'voicechat', icon: '&#127908;', name: 'Voice Chat' },
-      { id: 'inputs', icon: '&#127918;', name: 'Driver Inputs' },
-      { id: 'raceduration', icon: '&#9201;', name: 'Race Duration' },
-      { id: 'drivercard', icon: '&#127183;', name: 'Driver Card' },
-      { id: 'stintlaps', icon: '&#128203;', name: 'Stint Laps' },
-      { id: 'weather', icon: '&#9925;', name: 'Weather' },
-      { id: 'pitstrategy', icon: '&#9881;', name: 'Pit Strategy' },
-      { id: 'lapcompare', icon: '&#128200;', name: 'Lap Compare' },
-      { id: 'livestats', icon: '&#128202;', name: 'Live Stats' },
-      { id: 'pittimer', icon: '&#9201;', name: 'Pit Duration' },
+      { id: 'standings', icon: '&#127937;', name: 'Standings', width: 900, height: 800 },
+      { id: 'relative', icon: '&#128202;', name: 'Relative', width: 520, height: 500 },
+      { id: 'fuel', icon: '&#9981;', name: 'Fuel Calculator', width: 300, height: 370 },
+      { id: 'wind', icon: '&#127788;&#65039;', name: 'Wind', width: 170, height: 210 },
+      { id: 'proximity', icon: '&#128663;', name: 'Proximity', width: 180, height: 280 },
+      { id: 'chat', icon: '&#128172;', name: 'Stream Chat', width: 340, height: 500 },
+      { id: 'trackmap', icon: '&#127758;', name: 'Track Map', width: 500, height: 500 },
+      { id: 'voicechat', icon: '&#127908;', name: 'Voice Chat', width: 340, height: 400 },
+      { id: 'inputs', icon: '&#127918;', name: 'Driver Inputs', width: 540, height: 150 },
+      { id: 'raceduration', icon: '&#9201;', name: 'Race Duration', width: 280, height: 80 },
+      { id: 'drivercard', icon: '&#127183;', name: 'Driver Card', width: 300, height: 180 },
+      { id: 'stintlaps', icon: '&#128203;', name: 'Stint Laps', width: 320, height: 300 },
+      { id: 'weather', icon: '&#9925;', name: 'Weather', width: 320, height: 195 },
+      { id: 'pitstrategy', icon: '&#9881;', name: 'Pit Strategy', width: 260, height: 400 },
+      { id: 'lapcompare', icon: '&#128200;', name: 'Lap Compare', width: 360, height: 220 },
+      { id: 'livestats', icon: '&#128202;', name: 'Live Stats', width: 420, height: 250 },
+      { id: 'pittimer', icon: '&#9201;', name: 'Pit Duration', width: 200, height: 120 },
     ];
 
     // ─── CUSTOMIZE_FIELDS (all overlay settings) ─────────────
@@ -804,14 +804,19 @@
       if (extracted.maxOtherClasses) fields.push(extracted.maxOtherClasses);
 
       // Section 2: Size & Position (at end — always present on all overlays)
+      // Get default dimensions from OVERLAYS array
+      var ovInfo = overlays.find(function(o) { return o.id === id; });
+      var defW = ovInfo ? ovInfo.width || 300 : 300;
+      var defH = ovInfo ? ovInfo.height || 200 : 200;
+      // Use width from OVERLAYS config (populated from main.js via IPC)
       fields.push(
         { key: '_section_size', type: 'section', label: 'Size & Position' },
         extracted.fontSize || { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 6, max: 24 },
         extracted.rowHeight || { key: 'rowHeight', label: 'Row height (px)', type: 'number', default: '24', min: 14, max: 48 },
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
-        { key: 'width', label: 'Width (px)', type: 'number', default: '', min: 50, max: 3000 },
-        { key: 'height', label: 'Height (px)', type: 'number', default: '', min: 50, max: 2000 }
+        { key: 'width', label: 'Width (px)', type: 'number', default: String(defW), min: 50, max: 3000 },
+        { key: 'height', label: 'Height (px)', type: 'number', default: String(defH), min: 50, max: 2000 }
       );
     });
 
