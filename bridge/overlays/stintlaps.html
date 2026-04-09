@@ -12,10 +12,6 @@
     .status-dot.connected { background: #3ecf8e; }
     .status-dot.waiting { background: #f79009; }
     .status-dot.demo { background: #f79009; }
-    .driver-selector { padding: 4px 10px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-    .driver-selector select { width: 100%; background: rgba(255,255,255,0.06); color: #e8e6f0; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 3px 6px; font-size: 10px; font-family: 'JetBrains Mono', 'Consolas', monospace; outline: none; cursor: pointer; }
-    .driver-selector select:hover { border-color: rgba(255,255,255,0.2); }
-    .driver-selector select option { background: #1a1b26; color: #e8e6f0; }
     .stint-body { padding: 10px 14px; }
     .stint-summary { display: flex; gap: 14px; align-items: center; margin-bottom: 8px; }
     .stint-big { text-align: center; }
@@ -54,11 +50,7 @@
       <span>SESSION LAPS</span>
       <span id="connection-status"><span class="status-dot demo"></span></span>
     </div>
-    <div class="driver-selector">
-      <select id="driver-select">
-        <option value="">-- waiting for data --</option>
-      </select>
-    </div>
+    <div id="driver-name-bar" style="padding:3px 10px;font-size:10px;font-weight:600;color:rgba(255,255,255,0.5);border-bottom:1px solid rgba(255,255,255,0.06);font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
     <div class="lap-tabs">
       <div class="lap-tab active" data-filter="all" onclick="setFilter('all')">All</div>
       <div class="lap-tab" data-filter="practice" onclick="setFilter('practice')">P</div>
@@ -139,8 +131,7 @@
     // All-driver lap tracking
     // Map: carIdx -> { name, number, class, lastLap (previous value), laps: [{ time, session }] }
     let allDrivers = new Map();
-    let selectedCarIdx = -1;   // currently selected driver in dropdown
-    let manualSelect = false;  // true if user manually picked a driver (don't auto-follow)
+    let focusedCarIdx = -1;
     let currentSessionType = '';
     let currentSessionNum = -1;
 
@@ -162,7 +153,7 @@
     }
 
     function getSelectedLaps() {
-      const driver = allDrivers.get(selectedCarIdx);
+      const driver = allDrivers.get(focusedCarIdx);
       if (!driver) return [];
       if (activeFilter === 'all') return driver.laps;
       return driver.laps.filter(l => sessionTag(l.session).cls === activeFilter);
@@ -225,73 +216,21 @@
       } catch(e) {}
     }
 
-    // Build/update the driver dropdown from allDrivers map
-    function updateDriverDropdown(spectatedIdx) {
-      const sel = document.getElementById('driver-select');
-      const prevValue = sel.value;
-
-      // Sort drivers: spectated first, then player, then by car number
-      const sorted = [...allDrivers.entries()].sort((a, b) => {
-        if (a[1]._isSpectated && !b[1]._isSpectated) return -1;
-        if (!a[1]._isSpectated && b[1]._isSpectated) return 1;
-        if (a[1]._isPlayer && !b[1]._isPlayer) return -1;
-        if (!a[1]._isPlayer && b[1]._isPlayer) return 1;
-        return (parseInt(a[1].number) || 999) - (parseInt(b[1].number) || 999);
-      });
-
-      // Only rebuild if driver list changed
-      const optionKeys = sorted.map(([idx]) => String(idx)).join(',');
-      if (sel.dataset.keys === optionKeys) {
-        // Just update selection if needed
-        if (!manualSelect && spectatedIdx >= 0 && String(sel.value) !== String(spectatedIdx)) {
-          sel.value = String(spectatedIdx);
-          selectedCarIdx = spectatedIdx;
-          renderLaps();
-        }
-        return;
-      }
-      sel.dataset.keys = optionKeys;
-
-      sel.innerHTML = '';
-      for (const [idx, driver] of sorted) {
-        const opt = document.createElement('option');
-        opt.value = idx;
-        const lapCount = driver.laps.length;
-        const prefix = driver._isSpectated ? '\u25B6 ' : (driver._isPlayer ? '\u2605 ' : '');
-        opt.textContent = prefix + '#' + driver.number + ' ' + driver.name + (lapCount ? ' (' + lapCount + ')' : '');
-        sel.appendChild(opt);
-      }
-
-      // Restore selection
-      if (manualSelect && allDrivers.has(selectedCarIdx)) {
-        sel.value = String(selectedCarIdx);
-      } else if (spectatedIdx >= 0) {
-        sel.value = String(spectatedIdx);
-        selectedCarIdx = spectatedIdx;
-      } else if (prevValue && allDrivers.has(Number(prevValue))) {
-        sel.value = prevValue;
+    function updateDriverBar() {
+      const driver = allDrivers.get(focusedCarIdx);
+      const bar = document.getElementById('driver-name-bar');
+      if (driver) {
+        bar.textContent = '#' + driver.number + '  ' + driver.name + '  (' + driver.laps.length + ' laps)';
+      } else {
+        bar.textContent = '';
       }
     }
-
-    // Handle manual driver selection
-    document.getElementById('driver-select').addEventListener('change', function() {
-      const idx = Number(this.value);
-      if (isNaN(idx) || !allDrivers.has(idx)) return;
-      selectedCarIdx = idx;
-      manualSelect = true;
-      renderLaps();
-    });
 
     onData('standings', data => {
       if (!data || !data.length) return;
 
       const spectated = data.find(d => d.isSpectated) || data.find(d => d.isPlayer);
-      const spectatedIdx = spectated ? spectated.carIdx : -1;
-
-      // Auto-follow: if spectated driver changed and user hasn't manually selected
-      if (!manualSelect && spectatedIdx >= 0 && spectatedIdx !== selectedCarIdx) {
-        selectedCarIdx = spectatedIdx;
-      }
+      if (spectated) focusedCarIdx = spectated.carIdx;
 
       // Process every driver: detect lastLap changes
       for (const d of data) {
@@ -299,21 +238,15 @@
         const currentLastLap = d.lastLap || 0;
 
         if (!allDrivers.has(idx)) {
-          // New driver — initialize
           allDrivers.set(idx, {
             name: d.driverName || ('Car ' + d.carNumber),
             number: d.carNumber || '?',
             class: d.carClass || '',
             lastLap: currentLastLap,
             laps: [],
-            _isPlayer: !!d.isPlayer,
-            _isSpectated: !!d.isSpectated,
           });
         } else {
           const entry = allDrivers.get(idx);
-          // Update metadata
-          entry._isPlayer = !!d.isPlayer;
-          entry._isSpectated = !!d.isSpectated;
           if (d.driverName) entry.name = d.driverName;
 
           // Detect new lap: lastLap changed and both old and new are valid
@@ -324,9 +257,7 @@
         }
       }
 
-      updateDriverDropdown(spectatedIdx);
-
-      // Re-render if the selected driver got a new lap (or on any update for freshness)
+      updateDriverBar();
       renderLaps();
     });
 
@@ -360,8 +291,7 @@
         if (s.allDrivers) {
           allDrivers = new Map(s.allDrivers);
         }
-        if (s.selectedCarIdx !== undefined) selectedCarIdx = s.selectedCarIdx;
-        if (s.manualSelect !== undefined) manualSelect = s.manualSelect;
+        if (s.focusedCarIdx !== undefined) focusedCarIdx = s.focusedCarIdx;
         if (s.currentSessionType) currentSessionType = s.currentSessionType;
         if (s.currentSessionNum !== undefined) currentSessionNum = s.currentSessionNum;
         if (s.activeFilter) { activeFilter = s.activeFilter; setFilter(s.activeFilter); }
@@ -373,7 +303,7 @@
     function serializeState() {
       return {
         allDrivers: [...allDrivers.entries()],
-        selectedCarIdx, manualSelect,
+        focusedCarIdx,
         currentSessionType, currentSessionNum, activeFilter,
       };
     }
@@ -382,8 +312,7 @@
     window.__getState = () => serializeState();
     window.__restoreState = (s) => {
       if (s.allDrivers) allDrivers = new Map(s.allDrivers);
-      if (s.selectedCarIdx !== undefined) selectedCarIdx = s.selectedCarIdx;
-      if (s.manualSelect !== undefined) manualSelect = s.manualSelect;
+      if (s.focusedCarIdx !== undefined) focusedCarIdx = s.focusedCarIdx;
       if (s.currentSessionType) currentSessionType = s.currentSessionType;
       if (s.currentSessionNum !== undefined) currentSessionNum = s.currentSessionNum;
       if (s.activeFilter) { activeFilter = s.activeFilter; setFilter(s.activeFilter); }
