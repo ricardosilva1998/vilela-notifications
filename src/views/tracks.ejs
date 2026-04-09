@@ -598,32 +598,48 @@
     var ext = file.name.split('.').pop().toLowerCase();
     var reader = new FileReader();
     reader.onload = function() {
-      try {
-        var carClass = document.getElementById('import-class').value;
-        var raceType = document.getElementById('import-race-type').value;
-        var data;
-        if (ext === 'json') {
-          var json = JSON.parse(reader.result);
-          data = parseImportJSON(json, carClass, raceType);
-        } else if (ext === 'csv') {
-          data = parseImportCSV(reader.result, carClass, raceType);
-        }
-        var qualZone = document.getElementById('import-qual-input').closest('.import-dropzone');
+      var carClass = document.getElementById('import-class').value;
+      var raceType = document.getElementById('import-race-type').value;
+      var trackName = document.getElementById('detail-name').textContent;
+      var qualZone = document.getElementById('import-qual-input').closest('.import-dropzone');
+
+      function applyQualData(data) {
         if (data && data.avgQualifyTime) {
           pendingQualData = data;
-          document.getElementById('import-error').textContent = '';
-          if (qualZone) { qualZone.style.borderColor = '#3ecf8e'; qualZone.querySelector('.import-dropzone-text').textContent = '✓ Qualify loaded'; }
         } else if (data && data.avgLapTime) {
           pendingQualData = { avgQualifyTime: data.avgLapTime };
+        }
+        if (pendingQualData) {
+          document.getElementById('import-error').textContent = '';
           if (qualZone) { qualZone.style.borderColor = '#3ecf8e'; qualZone.querySelector('.import-dropzone-text').textContent = '✓ Qualify loaded'; }
+          if (importData) {
+            importData.avgQualifyTime = pendingQualData.avgQualifyTime;
+            showImportConfirm(importData);
+          }
         }
-        // If confirm card is already visible, refresh it with merged qualify data
-        if (pendingQualData && importData) {
-          importData.avgQualifyTime = pendingQualData.avgQualifyTime;
-          showImportConfirm(importData);
+      }
+
+      if (ext === 'json') {
+        try {
+          var json = JSON.parse(reader.result);
+          applyQualData(parseImportJSON(json, carClass, raceType));
+        } catch(e) {
+          document.getElementById('import-error').textContent = 'Qualify parse error: ' + e.message;
         }
-      } catch(e) {
-        document.getElementById('import-error').textContent = 'Qualify parse error: ' + e.message;
+      } else if (ext === 'csv') {
+        fetch('/api/track-stats/import-csv', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ csvData: reader.result, trackName: trackName, carClass: carClass, raceType: raceType }),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(result) {
+          if (result.ok) applyQualData(result.data);
+          else document.getElementById('import-error').textContent = result.error || 'Failed to parse qualify CSV';
+        })
+        .catch(function(e) {
+          document.getElementById('import-error').textContent = 'Qualify request failed: ' + e.message;
+        });
       }
     };
     reader.readAsText(file);

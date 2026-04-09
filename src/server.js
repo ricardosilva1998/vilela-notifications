@@ -423,10 +423,14 @@ app.post('/api/track-stats/import-csv', express.json({ limit: '10mb' }), (req, r
     // Calculate averages from valid drivers
     const validAvgLaps = drivers.filter(d => d.avgLapTime > 0).map(d => d.avgLapTime);
     const validQualTimes = drivers.filter(d => d.qualifyTime > 0).map(d => d.qualifyTime);
+    // Fallback: use Fastest Lap Time for qualify average if no Qualify Time column data
+    const validFastestLaps = drivers.filter(d => d.fastestLapTime > 0).map(d => d.fastestLapTime);
     const maxLaps = Math.max(...drivers.map(d => d.lapsComp), 0);
 
     const avgLapTime = validAvgLaps.length > 0 ? validAvgLaps.reduce((a, b) => a + b, 0) / validAvgLaps.length : null;
-    const avgQualifyTime = validQualTimes.length > 0 ? validQualTimes.reduce((a, b) => a + b, 0) / validQualTimes.length : null;
+    const avgQualifyTime = validQualTimes.length > 0
+      ? validQualTimes.reduce((a, b) => a + b, 0) / validQualTimes.length
+      : (validFastestLaps.length > 0 ? validFastestLaps.reduce((a, b) => a + b, 0) / validFastestLaps.length : null);
 
     const data = {
       carClass: (carClass && carClass !== 'auto') ? carClass : (detectedClass || null),
