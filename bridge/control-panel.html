@@ -774,22 +774,45 @@
       ],
     };
 
-    // Add shared settings to all overlays
+    // Reorganize all overlay settings into sections
     Object.keys(CUSTOMIZE_FIELDS).forEach(function(id) {
-      CUSTOMIZE_FIELDS[id].unshift({ key: 'showHeader', label: 'Show header bar', type: 'checkbox', default: true });
-      // Add scale selector before posX/posY
-      var posIdx = CUSTOMIZE_FIELDS[id].findIndex(function(f) { return f.key === 'posX'; });
-      if (posIdx >= 0) {
-        CUSTOMIZE_FIELDS[id].splice(posIdx, 0,
-          { key: 'scale', label: 'Scale', type: 'select', default: '100', options: [
-            { value: '40', label: '40%' }, { value: '50', label: '50%' }, { value: '60', label: '60%' },
-            { value: '70', label: '70%' }, { value: '80', label: '80%' }, { value: '90', label: '90%' },
-            { value: '100', label: '100% (Default)' }, { value: '110', label: '110%' }, { value: '120', label: '120%' },
-            { value: '130', label: '130%' }, { value: '140', label: '140%' }, { value: '150', label: '150%' },
-            { value: '175', label: '175%' }, { value: '200', label: '200%' },
-          ]}
-        );
-      }
+      var fields = CUSTOMIZE_FIELDS[id];
+      // Remove posX, posY, autoHide, fontSize, rowHeight, showIRatingGain from current positions
+      var extracted = {};
+      ['posX', 'posY', 'autoHide', 'fontSize', 'rowHeight', 'showIRatingGain', 'maxMyClass', 'maxOtherClasses', 'sofDisplay'].forEach(function(key) {
+        var idx = fields.findIndex(function(f) { return f.key === key; });
+        if (idx >= 0) { extracted[key] = fields.splice(idx, 1)[0]; }
+      });
+
+      // Section 1: Settings (at top)
+      fields.unshift(
+        { key: '_section_settings', type: 'section', label: 'Settings' },
+        { key: 'showHeader', label: 'Show header bar', type: 'checkbox', default: true },
+        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: (extracted.autoHide || {}).default !== undefined ? extracted.autoHide.default : true },
+        { key: 'scale', label: 'Scale', type: 'select', default: '100', options: [
+          { value: '40', label: '40%' }, { value: '50', label: '50%' }, { value: '60', label: '60%' },
+          { value: '70', label: '70%' }, { value: '80', label: '80%' }, { value: '90', label: '90%' },
+          { value: '100', label: '100% (Default)' }, { value: '110', label: '110%' }, { value: '120', label: '120%' },
+          { value: '130', label: '130%' }, { value: '140', label: '140%' }, { value: '150', label: '150%' },
+          { value: '175', label: '175%' }, { value: '200', label: '200%' },
+        ]}
+      );
+      // Add overlay-specific settings that were extracted
+      if (extracted.showIRatingGain) fields.push(extracted.showIRatingGain);
+      if (extracted.sofDisplay) fields.push(extracted.sofDisplay);
+      if (extracted.maxMyClass) fields.push(extracted.maxMyClass);
+      if (extracted.maxOtherClasses) fields.push(extracted.maxOtherClasses);
+
+      // Section 2: Size & Position (at end)
+      fields.push(
+        { key: '_section_size', type: 'section', label: 'Size & Position' }
+      );
+      if (extracted.fontSize) fields.push(extracted.fontSize);
+      if (extracted.rowHeight) fields.push(extracted.rowHeight);
+      fields.push(
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 }
+      );
     });
 
     // Migrate old column keys to new ones
@@ -996,12 +1019,7 @@
           SESSION_HEADER_ITEMS.forEach(item => {
             if (!orderedHeaders.find(h => h.key === item.key)) orderedHeaders.push(item);
           });
-          let lastCat = '';
           orderedHeaders.forEach(item => {
-            if (item.category && item.category !== lastCat) {
-              lastCat = item.category;
-              html += `<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#5c5b6e;padding:8px 10px 4px;${lastCat === orderedHeaders[0]?.category ? '' : 'margin-top:6px;'}">${item.category}</div>`;
-            }
             const checked = savedHeaderEnabled[item.key] !== undefined ? savedHeaderEnabled[item.key] : item.default;
             html += `<div class="column-item" draggable="true" data-key="${item.key}" data-overlay="${ov.id}" data-list="header">
               <span class="drag-handle">&#10303;</span>
@@ -1092,6 +1110,9 @@
     }
 
     function renderField(f, saved, overlayId) {
+      if (f.type === 'section') {
+        return '<div class="section-header">' + f.label + '</div>';
+      }
       const val = saved[f.key] !== undefined ? saved[f.key] : f.default;
       if (f.type === 'number') {
         const liveMove = (f.key === 'posX' || f.key === 'posY') ? ` oninput="liveMoveOverlay('${overlayId}')"` : '';
