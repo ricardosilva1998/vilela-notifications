@@ -161,41 +161,24 @@
       <div class="import-panel" id="import-panel">
         <div class="import-controls">
           <div class="import-field">
-            <label>Car Class</label>
-            <select id="import-class">
-              <option value="auto">Auto-detect</option>
-              <option value="GTP">GTP</option>
-              <option value="LMP2">LMP2</option>
-              <option value="GT3">GT3</option>
-              <option value="LMP3">LMP3</option>
-              <option value="GT4">GT4</option>
-              <option value="GTE">GTE</option>
-              <option value="TCR">TCR</option>
-              <option value="Porsche Cup">Porsche Cup</option>
-              <option value="BMW M2">BMW M2</option>
-              <option value="Toyota">Toyota</option>
-              <option value="Mazda">Mazda</option>
+            <label>Category</label>
+            <select id="import-category" onchange="updateImportOptions()">
+              <option value="road">Road</option>
+              <option value="formula">Formula</option>
+              <option value="nascar">NASCAR</option>
+              <option value="dirt">Dirt Road</option>
             </select>
           </div>
           <div class="import-field">
+            <label>Car Class</label>
+            <select id="import-class"></select>
+          </div>
+          <div class="import-field">
             <label>Race Type</label>
-            <select id="import-race-type">
-              <option value="auto">Auto-detect</option>
-              <option value="Sprint">Sprint</option>
-              <option value="Open">Open</option>
-              <option value="Endurance">Endurance</option>
-              <option value="Regionals">Regionals</option>
-              <option value="VRS Sprint">VRS Sprint</option>
-              <option value="VRS Open">VRS Open</option>
-              <option value="IMSA Sprint">IMSA Sprint</option>
-              <option value="IMSA Open">IMSA Open</option>
-              <option value="IMSA Endurance">IMSA Endurance</option>
-              <option value="Global Endurance">Global Endurance</option>
-              <option value="LMP2 Sprint">LMP2 Sprint</option>
-              <option value="Proto Sprint">Proto Sprint</option>
-            </select>
+            <select id="import-race-type"></select>
           </div>
         </div>
+        <div id="import-coming-soon" style="display:none;padding:20px;text-align:center;color:rgba(255,255,255,0.35);font-size:13px;font-weight:600;">Coming Soon</div>
         <div style="display:flex;gap:12px;margin-bottom:12px;" id="import-dropzones">
           <div class="import-dropzone" id="import-dropzone" style="flex:1;"
             ondragover="event.preventDefault(); this.classList.add('dragover');"
@@ -592,6 +575,48 @@
     var panel = document.getElementById('import-panel');
     panel.classList.toggle('open');
   };
+
+  var IMPORT_OPTIONS = {
+    road: {
+      classes: ['auto', 'GTP', 'LMP2', 'GT3', 'LMP3', 'GT4', 'GTE', 'TCR', 'Porsche Cup', 'BMW M2', 'Toyota', 'Mazda'],
+      raceTypes: ['auto', 'Sprint', 'Open', 'Endurance', 'Regionals', 'VRS Sprint', 'VRS Open', 'IMSA Sprint', 'IMSA Open', 'IMSA Endurance', 'Global Endurance', 'LMP2 Sprint', 'Proto Sprint'],
+    },
+    formula: {
+      classes: ['auto', 'Formula A', 'Formula B', 'IndyCar', 'Lotus 79', 'Formula C', 'Formula 4', 'Formula Vee', 'Formula 1600'],
+      raceTypes: ['auto', 'Sprint', 'Open', 'Endurance'],
+    },
+    nascar: null,
+    dirt: null,
+  };
+
+  window.updateImportOptions = function() {
+    var cat = document.getElementById('import-category').value;
+    var opts = IMPORT_OPTIONS[cat];
+    var classEl = document.getElementById('import-class');
+    var typeEl = document.getElementById('import-race-type');
+    var dropzones = document.getElementById('import-dropzones');
+    var comingSoon = document.getElementById('import-coming-soon');
+
+    if (!opts) {
+      classEl.innerHTML = '';
+      typeEl.innerHTML = '';
+      if (dropzones) dropzones.style.display = 'none';
+      comingSoon.style.display = 'block';
+      return;
+    }
+
+    comingSoon.style.display = 'none';
+    if (dropzones) dropzones.style.display = 'flex';
+    classEl.innerHTML = opts.classes.map(function(c) {
+      return '<option value="' + (c === 'auto' ? 'auto' : c) + '">' + (c === 'auto' ? 'Auto-detect' : c) + '</option>';
+    }).join('');
+    typeEl.innerHTML = opts.raceTypes.map(function(t) {
+      return '<option value="' + (t === 'auto' ? 'auto' : t) + '">' + (t === 'auto' ? 'Auto-detect' : t) + '</option>';
+    }).join('');
+  };
+
+  // Initialize on load
+  updateImportOptions();
 
   var pendingQualData = null; // store qualify data to merge with race
 
