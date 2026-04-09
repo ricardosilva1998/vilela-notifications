@@ -203,9 +203,29 @@
       background: transparent; color: #8b8a9e; font-size: 10px; cursor: pointer;
     }
     .log-action-btn:hover { border-color: rgba(255,255,255,0.2); color: #e8e6f0; }
+    .logs-layout { display: flex; gap: 10px; height: calc(100vh - 140px); }
+    .logs-client-list {
+      width: 180px; min-width: 180px; background: #0a0b10; border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 6px; overflow-y: auto; padding: 4px;
+    }
+    .logs-client-item {
+      display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 4px;
+      cursor: pointer; font-size: 11px; color: #8b8a9e; transition: background 0.15s, color 0.15s;
+    }
+    .logs-client-item:hover { background: rgba(255,255,255,0.04); color: #c0bfd0; }
+    .logs-client-item.active { background: rgba(145,70,255,0.15); color: #e8e6f0; }
+    .logs-client-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .logs-client-dot.connected { background: #3ecf8e; }
+    .logs-client-dot.disconnected { background: #5c5b6e; }
+    .logs-client-dot.all { background: #9146ff; }
+    .logs-client-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+    .logs-client-count { font-size: 9px; color: #5c5b6e; }
+    .logs-viewer { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .logs-viewer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .logs-viewer-title { font-size: 11px; font-weight: 700; color: #e8e6f0; }
     #log-container {
       background: #0a0b10; border: 1px solid rgba(255,255,255,0.06); border-radius: 6px;
-      padding: 8px; height: calc(100vh - 140px); overflow-y: auto; font-family: Consolas, monospace;
+      padding: 8px; flex: 1; overflow-y: auto; font-family: Consolas, monospace;
       font-size: 10px; color: #8b8a9e; line-height: 1.5; white-space: pre-wrap; word-break: break-all;
     }
 
@@ -401,12 +421,25 @@
       <div class="content-panel" id="panel-logs">
         <div class="logs-header">
           <div class="section-header" style="margin:0;border:none;padding:0;">Live Logs</div>
-          <div class="logs-actions">
-            <button class="log-action-btn" onclick="copyLogs()">Copy All</button>
-            <button class="log-action-btn" onclick="clearLogView()">Clear</button>
+        </div>
+        <div class="logs-layout">
+          <div class="logs-client-list" id="logs-client-list">
+            <div class="logs-client-item active" data-client="all" onclick="selectLogClient('all')">
+              <div class="logs-client-dot all"></div>
+              <div class="logs-client-name">All Logs</div>
+            </div>
+          </div>
+          <div class="logs-viewer">
+            <div class="logs-viewer-header">
+              <div class="logs-viewer-title" id="logs-viewer-title">All Logs</div>
+              <div class="logs-actions">
+                <button class="log-action-btn" onclick="copyLogs()">Copy</button>
+                <button class="log-action-btn" onclick="clearCurrentLog()">Clear</button>
+              </div>
+            </div>
+            <div id="log-container">Loading logs...</div>
           </div>
         </div>
-        <div id="log-container">Loading logs...</div>
       </div>
 
       <!-- ═══ ABOUT PANEL ═══ -->
@@ -1481,44 +1514,126 @@
     const logPath = require('path').join(require('os').homedir(), 'atleta-bridge.log');
     let logContent = '';
     let logInterval = null;
+    let selectedLogClient = 'all';
 
     function loadLogs() {
+      if (selectedLogClient === 'all') {
+        loadGlobalLogs();
+      }
+      ipcRenderer.send('get-ws-clients');
+    }
+
+    function loadGlobalLogs() {
       try {
         const content = logFs.readFileSync(logPath, 'utf8');
         if (content !== logContent) {
           logContent = content;
-          const container = document.getElementById('log-container');
-          container.innerHTML = content.split('\n').map(line => {
-            if (line.includes('[Speech]') || line.includes('[VoiceInput]') || line.includes('[VoiceOverlay]'))
-              return '<span style="color:#9146ff">' + escapeLogHtml(line) + '</span>';
-            if (line.includes('ERROR') || line.includes('error') || line.includes('FATAL'))
-              return '<span style="color:#f04438">' + escapeLogHtml(line) + '</span>';
-            if (line.includes('[Telemetry]') || line.includes('[SessionInfo]'))
-              return '<span style="color:#3ecf8e">' + escapeLogHtml(line) + '</span>';
-            if (line.includes('[Diag]'))
-              return '<span style="color:#5c5b6e">' + escapeLogHtml(line) + '</span>';
-            return escapeLogHtml(line);
-          }).join('\n');
-          container.scrollTop = container.scrollHeight;
+          renderGlobalLogs();
         }
       } catch(e) {
         document.getElementById('log-container').textContent = 'Log file not found: ' + logPath;
       }
     }
 
+    function renderGlobalLogs() {
+      const container = document.getElementById('log-container');
+      container.innerHTML = logContent.split('\n').map(line => {
+        if (line.includes('[Speech]') || line.includes('[VoiceInput]') || line.includes('[VoiceOverlay]'))
+          return '<span style="color:#9146ff">' + escapeLogHtml(line) + '</span>';
+        if (line.includes('ERROR') || line.includes('error') || line.includes('FATAL'))
+          return '<span style="color:#f04438">' + escapeLogHtml(line) + '</span>';
+        if (line.includes('[Telemetry]') || line.includes('[SessionInfo]'))
+          return '<span style="color:#3ecf8e">' + escapeLogHtml(line) + '</span>';
+        if (line.includes('[Diag]'))
+          return '<span style="color:#5c5b6e">' + escapeLogHtml(line) + '</span>';
+        return escapeLogHtml(line);
+      }).join('\n');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function renderClientLog(entries) {
+      const container = document.getElementById('log-container');
+      if (!entries || entries.length === 0) {
+        container.innerHTML = '<span style="color:#5c5b6e">No messages logged yet.</span>';
+        return;
+      }
+      container.innerHTML = entries.map(e => {
+        const time = new Date(e.ts).toISOString().slice(11, 23);
+        const sizeStr = e.size > 1024 ? (e.size / 1024).toFixed(1) + 'KB' : e.size + 'B';
+        const channelColor = e.channel === 'broadcast' ? '#9146ff' : '#3ecf8e';
+        return '<span style="color:#5c5b6e">' + time + '</span> ' +
+               '<span style="color:' + channelColor + '">[' + escapeLogHtml(e.channel) + ']</span> ' +
+               '<span style="color:#8b8a9e">' + escapeLogHtml(e.type) + '</span> ' +
+               '<span style="color:#5c5b6e">(' + sizeStr + ')</span>';
+      }).join('\n');
+      container.scrollTop = container.scrollHeight;
+    }
+
     function escapeLogHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+    function selectLogClient(clientId) {
+      selectedLogClient = clientId;
+      document.querySelectorAll('.logs-client-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.client === String(clientId));
+      });
+      const title = document.getElementById('logs-viewer-title');
+      if (clientId === 'all') {
+        title.textContent = 'All Logs';
+        logContent = '';
+        loadGlobalLogs();
+      } else {
+        const item = document.querySelector('.logs-client-item[data-client="' + clientId + '"]');
+        title.textContent = item ? item.querySelector('.logs-client-name').textContent : 'Client #' + clientId;
+        ipcRenderer.send('get-ws-client-log', clientId);
+      }
+    }
+
     function copyLogs() {
-      require('electron').clipboard.writeText(logContent);
+      const container = document.getElementById('log-container');
+      const text = container.innerText;
+      require('electron').clipboard.writeText(text);
       const toast = document.getElementById('copy-toast');
       toast.style.display = 'block';
       setTimeout(() => { toast.style.display = 'none'; }, 1500);
     }
 
-    function clearLogView() {
-      document.getElementById('log-container').innerHTML = '';
-      logContent = '';
+    function clearCurrentLog() {
+      if (selectedLogClient === 'all') {
+        document.getElementById('log-container').innerHTML = '';
+        logContent = '';
+      } else {
+        ipcRenderer.send('clear-ws-client-log', selectedLogClient);
+      }
     }
+
+    ipcRenderer.on('ws-clients', (event, clientList) => {
+      const list = document.getElementById('logs-client-list');
+      const allItem = list.querySelector('[data-client="all"]');
+      list.innerHTML = '';
+      list.appendChild(allItem);
+      clientList.forEach(c => {
+        const item = document.createElement('div');
+        item.className = 'logs-client-item' + (selectedLogClient === c.id ? ' active' : '');
+        item.dataset.client = c.id;
+        item.onclick = () => selectLogClient(c.id);
+        const dotClass = c.state === 1 ? 'connected' : 'disconnected';
+        const logCount = c.logCount !== undefined ? c.logCount : '';
+        item.innerHTML =
+          '<div class="logs-client-dot ' + dotClass + '"></div>' +
+          '<div class="logs-client-name">' + escapeLogHtml(c.name) + '</div>' +
+          (logCount ? '<div class="logs-client-count">' + logCount + '</div>' : '');
+        list.appendChild(item);
+      });
+      if (selectedLogClient !== 'all') {
+        ipcRenderer.send('get-ws-client-log', selectedLogClient);
+      }
+    });
+
+    ipcRenderer.on('ws-client-log', (event, clientId, entries) => {
+      if (selectedLogClient === clientId) {
+        renderClientLog(entries);
+      }
+    });
 
     function startLogRefresh() { if (!logInterval) { loadLogs(); logInterval = setInterval(loadLogs, 2000); } }
     function stopLogRefresh() { if (logInterval) { clearInterval(logInterval); logInterval = null; } }
