@@ -17,7 +17,7 @@ process.on('uncaughtException', (err) => {
 
 const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, screen, session, Notification } = require('electron');
 const path = require('path');
-const { startServer, stopServer } = require('./websocket');
+const { startServer, stopServer, getClientInfo: getWsClients, getClientLog, clearClientLog, clearAllClientLogs } = require('./websocket');
 const { startTelemetry, stopTelemetry } = require('./telemetry');
 const { load: loadSettings, save: saveSettings } = require('./settings');
 const { startVoiceInput, stopVoiceInput, setVoiceChatWindow } = require('./voiceInput');
@@ -598,6 +598,25 @@ ipcMain.on('get-overlay-settings', (event, overlayId) => {
   if (overlaySettings) {
     event.reply('overlay-settings', overlayId, overlaySettings);
   }
+});
+
+// ─── WebSocket client logs IPC ────────────────────────────────
+ipcMain.on('get-ws-clients', (event) => {
+  event.reply('ws-clients', getWsClients());
+});
+
+ipcMain.on('get-ws-client-log', (event, clientId) => {
+  event.reply('ws-client-log', clientId, getClientLog(clientId));
+});
+
+ipcMain.on('clear-ws-client-log', (event, clientId) => {
+  clearClientLog(clientId);
+  event.reply('ws-client-log', clientId, []);
+});
+
+ipcMain.on('clear-all-ws-client-logs', (event) => {
+  clearAllClientLogs();
+  event.reply('ws-clients', getWsClients());
 });
 
 ipcMain.on('check-for-update', () => {
