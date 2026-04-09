@@ -110,13 +110,15 @@
     // Expose drag state for other scripts
     window.__isDragging = function() { return _dragging; };
 
-    // Resize grip — visible handle in bottom-right corner
+    // Resize grip — inside the overlay panel, bottom-right corner
+    var panel = document.querySelector('.overlay-panel');
     var grip = document.createElement('div');
-    grip.style.cssText = 'position:fixed;bottom:0;right:0;width:14px;height:14px;cursor:nwse-resize;z-index:9999;opacity:0.3;transition:opacity 0.15s;';
+    grip.style.cssText = 'position:absolute;bottom:2px;right:2px;width:14px;height:14px;cursor:nwse-resize;z-index:9999;opacity:0.3;transition:opacity 0.15s;';
+    if (panel) panel.style.position = 'relative';
     grip.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14"><path d="M12 2L2 12M12 6L6 12M12 10L10 12" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-linecap="round"/></svg>';
     grip.addEventListener('mouseenter', function() { grip.style.opacity = '0.8'; });
     grip.addEventListener('mouseleave', function() { if (!_resizing) grip.style.opacity = '0.3'; });
-    document.body.appendChild(grip);
+    (panel || document.body).appendChild(grip);
 
     var _resizing = false, _resizeStartX = 0, _resizeStartY = 0, _startW = 0, _startH = 0, _aspectRatio = 1;
     grip.addEventListener('mousedown', function(e) {
