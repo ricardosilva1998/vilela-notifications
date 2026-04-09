@@ -110,39 +110,56 @@
     // Expose drag state for other scripts
     window.__isDragging = function() { return _dragging; };
 
-    // Resize grip — inside the overlay panel, bottom-right corner
+    // Scale controls — +/- buttons in bottom-right corner of panel
     var panel = document.querySelector('.overlay-panel');
-    var grip = document.createElement('div');
-    grip.style.cssText = 'position:absolute;bottom:2px;right:2px;width:14px;height:14px;cursor:nwse-resize;z-index:9999;opacity:0.3;transition:opacity 0.15s;';
     if (panel) panel.style.position = 'relative';
-    grip.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14"><path d="M12 2L2 12M12 6L6 12M12 10L10 12" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-linecap="round"/></svg>';
-    grip.addEventListener('mouseenter', function() { grip.style.opacity = '0.8'; });
-    grip.addEventListener('mouseleave', function() { if (!_resizing) grip.style.opacity = '0.3'; });
-    (panel || document.body).appendChild(grip);
+    var scaleBox = document.createElement('div');
+    scaleBox.style.cssText = 'position:absolute;bottom:2px;right:2px;display:flex;align-items:center;gap:2px;z-index:9999;opacity:0.25;transition:opacity 0.15s;';
+    scaleBox.addEventListener('mouseenter', function() { scaleBox.style.opacity = '0.9'; });
+    scaleBox.addEventListener('mouseleave', function() { scaleBox.style.opacity = '0.25'; });
 
-    var _resizing = false, _resizeStartX = 0, _resizeStartY = 0, _startW = 0, _startH = 0, _aspectRatio = 1;
-    grip.addEventListener('mousedown', function(e) {
-      if (e.button !== 0) return;
-      _resizing = true;
-      _resizeStartX = e.screenX;
-      _resizeStartY = e.screenY;
+    var btnStyle = 'width:16px;height:16px;border:none;border-radius:3px;background:rgba(255,255,255,0.15);color:#fff;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;';
+    var btnMinus = document.createElement('button');
+    btnMinus.style.cssText = btnStyle;
+    btnMinus.textContent = '−';
+    var btnPlus = document.createElement('button');
+    btnPlus.style.cssText = btnStyle;
+    btnPlus.textContent = '+';
+
+    scaleBox.appendChild(btnMinus);
+    scaleBox.appendChild(btnPlus);
+    (panel || document.body).appendChild(scaleBox);
+
+    // Scale works in 10% steps from the default size
+    var _baseSize = null;
+    function getBaseSize() {
+      if (!_baseSize) {
+        try {
+          var s = ipcRenderer.sendSync('get-window-size');
+          if (s) _baseSize = { w: s[0], h: s[1] };
+        } catch(e2) {}
+        if (!_baseSize) _baseSize = { w: window.outerWidth, h: window.outerHeight };
+      }
+      return _baseSize;
+    }
+
+    function scaleOverlay(direction) {
       try {
-        var size = ipcRenderer.sendSync('get-window-size');
-        if (size) { _startW = size[0]; _startH = size[1]; _aspectRatio = _startW / _startH; }
-      } catch(e2) { _startW = window.outerWidth; _startH = window.outerHeight; _aspectRatio = _startW / _startH; }
-      e.preventDefault();
-      e.stopPropagation();
-    });
-    document.addEventListener('mousemove', function(e) {
-      if (!_resizing) return;
-      var dx = e.screenX - _resizeStartX;
-      var newW = Math.max(150, _startW + dx);
-      var newH = Math.max(80, Math.round(newW / _aspectRatio));
-      ipcRenderer.send('resize-overlay-wh', newW, newH);
-    });
-    document.addEventListener('mouseup', function() {
-      if (_resizing) { _resizing = false; grip.style.opacity = '0.3'; }
-    });
+        var current = ipcRenderer.sendSync('get-window-size');
+        if (!current) return;
+        var base = getBaseSize();
+        var step = Math.round(base.w * 0.1); // 10% of base width
+        var stepH = Math.round(base.h * 0.1);
+        var newW = current[0] + (direction * step);
+        var newH = current[1] + (direction * stepH);
+        newW = Math.max(Math.round(base.w * 0.4), Math.min(Math.round(base.w * 2), newW)); // 40% to 200%
+        newH = Math.max(Math.round(base.h * 0.4), Math.min(Math.round(base.h * 2), newH));
+        ipcRenderer.send('resize-overlay-wh', newW, newH);
+      } catch(e2) {}
+    }
+
+    btnMinus.addEventListener('mousedown', function(e) { e.preventDefault(); e.stopPropagation(); scaleOverlay(-1); });
+    btnPlus.addEventListener('mousedown', function(e) { e.preventDefault(); e.stopPropagation(); scaleOverlay(1); });
 
   } catch(e) {}
 })();
