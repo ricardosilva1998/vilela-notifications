@@ -45,7 +45,7 @@ let settings = {};
 const OVERLAYS = [
   { id: 'standings', name: 'Standings', width: 900, height: 800 },
   { id: 'relative', name: 'Relative', width: 520, height: 500 },
-  { id: 'fuel', name: 'Fuel Calculator', width: 300, height: 320 },
+  { id: 'fuel', name: 'Fuel Calculator', width: 300, height: 370 },
   { id: 'wind', name: 'Wind Direction', width: 170, height: 210 },
   { id: 'proximity', name: 'Car Proximity', width: 180, height: 280 },
   { id: 'chat', name: 'Streaming Chat', width: 340, height: 500 },
