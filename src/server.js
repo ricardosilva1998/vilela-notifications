@@ -21,7 +21,7 @@ const app = express();
 // Middleware
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // Static files — no-cache for overlay assets so OBS gets fresh JS/CSS after deploy
 app.use(express.static(path.join(__dirname, '..', 'public'), {
