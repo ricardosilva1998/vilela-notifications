@@ -269,19 +269,28 @@
         const hasGT3 = classes.some(c => c.includes('GT3') || c === 'IMSA23');
         const hasLMP2 = classes.some(c => c.includes('LMP2') || c.includes('P217') || c.includes('Dallara'));
         const hasGTP = classes.some(c => c.includes('GTP') || c === 'Hypercar');
+        const hasGTE = classes.some(c => c.includes('GTE'));
+        const hasTCR = classes.some(c => c.includes('TCR'));
+        const hasPorsche = classes.some(c => c.includes('Porsche') || c === 'PCCR');
+        const hasMazda = classes.some(c => c.includes('MX') || c.includes('Mazda'));
         let raceTypeLabel = '';
         // Thresholds account for formation lap adding ~3-5 min to session time
-        // IMSA Sprint=35min(~38-40 total), IMSA Open=45min(~48-50 total)
         if (totalMin >= 300) raceTypeLabel = 'Global Endurance';
         else if (totalMin >= 120) raceTypeLabel = 'IMSA Endurance';
         else if (hasMulti && totalMin >= 42) raceTypeLabel = 'IMSA Open';
         else if (hasMulti) raceTypeLabel = 'IMSA Sprint';
         else if (hasGT3 && totalMin >= 37) raceTypeLabel = 'VRS Open';
         else if (hasGT3 && totalMin >= 22) raceTypeLabel = 'VRS Sprint';
+        else if (hasGT3) raceTypeLabel = 'Regionals';
         else if (hasLMP2) raceTypeLabel = 'LMP2 Sprint';
         else if (hasGTP) raceTypeLabel = 'Proto Sprint';
-        else if (totalMin >= 15) raceTypeLabel = 'Regionals';
-        else raceTypeLabel = 'Race';
+        else if (hasGTE && totalMin >= 30) raceTypeLabel = 'GTE Open';
+        else if (hasGTE) raceTypeLabel = 'GTE Sprint';
+        else if (hasTCR) raceTypeLabel = 'TCR Sprint';
+        else if (hasPorsche) raceTypeLabel = 'Porsche Cup';
+        else if (hasMazda) raceTypeLabel = 'MX-5';
+        else if (totalMin >= 30) raceTypeLabel = 'Open';
+        else raceTypeLabel = 'Sprint';
         const drivers = _standings.length;
         const timeLeft = data.sessionTimeRemain > 0 ? Math.round(data.sessionTimeRemain / 60) + 'min left' : '';
         recInfo.innerHTML = '<span class="rec-type">' + raceTypeLabel + '</span> · ' + drivers + ' drivers' + (timeLeft ? ' · ' + timeLeft : '');
