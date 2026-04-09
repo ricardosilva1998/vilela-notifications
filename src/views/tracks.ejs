@@ -202,16 +202,6 @@
         </div>
         <div class="import-spinner" id="import-spinner">Analyzing screenshot...</div>
         <div class="import-confirm" id="import-confirm">
-          <div class="import-controls" style="margin-bottom:12px;">
-            <div class="import-field">
-              <label>Car Class</label>
-              <select id="import-confirm-class"></select>
-            </div>
-            <div class="import-field">
-              <label>Race Type</label>
-              <select id="import-confirm-race-type"></select>
-            </div>
-          </div>
           <div class="import-confirm-grid" id="import-confirm-grid"></div>
           <div class="import-confirm-actions">
             <button class="btn-save-import" id="btn-save-import" onclick="saveImport()">Save to Database</button>
@@ -980,23 +970,7 @@
       }
     }
 
-    // Re-read category after auto-detect may have changed it
-    var finalCategory = document.getElementById('import-category').value;
-    var finalClass = userClass !== 'auto' ? userClass : (data.carClass || data.topCar || '');
-    var finalRaceType = userRaceType !== 'auto' ? userRaceType : (data.raceType || '');
-    var opts = IMPORT_OPTIONS[finalCategory] || IMPORT_OPTIONS.road;
-
-    // Populate class dropdown from detected/selected category
-    var classSelect = document.getElementById('import-confirm-class');
-    classSelect.innerHTML = opts.classes.filter(function(c) { return c !== 'auto'; }).map(function(c) {
-      return '<option value="' + c + '"' + (c === finalClass ? ' selected' : '') + '>' + c + '</option>';
-    }).join('');
-
-    // Populate race type dropdown
-    var raceSelect = document.getElementById('import-confirm-race-type');
-    raceSelect.innerHTML = opts.raceTypes.filter(function(r) { return r !== 'auto'; }).map(function(r) {
-      return '<option value="' + r + '"' + (r === finalRaceType ? ' selected' : '') + '>' + r + '</option>';
-    }).join('');
+    // Confirm dropdowns removed — using top panel selections directly
 
     // Populate values grid
     var grid = document.getElementById('import-confirm-grid');
@@ -1027,8 +1001,11 @@
   window.saveImport = function() {
     if (!importData) return;
     var trackName = document.getElementById('detail-name').textContent;
-    var carClass = document.getElementById('import-confirm-class').value;
-    var raceType = document.getElementById('import-confirm-race-type').value;
+    var carClass = document.getElementById('import-class').value;
+    var raceType = document.getElementById('import-race-type').value;
+    // If still auto, use detected values
+    if (carClass === 'auto') carClass = importData.carClass || importData.topCar || 'GT3';
+    if (raceType === 'auto') raceType = importData.raceType || 'Sprint';
     var btn = document.getElementById('btn-save-import');
     btn.disabled = true;
     btn.textContent = 'Saving...';
