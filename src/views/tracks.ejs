@@ -223,60 +223,82 @@
 
   const KNOWN_IRACING_TRACKS = [
     // Road Courses
-    'Adelaide Street Circuit', 'Algarve International Circuit', 'Autodromo Internacional do Algarve',
-    'Auto Club Speedway', 'Autodromo Internazionale del Mugello', 'Autodromo Enzo e Dino Ferrari',
-    'Autodromo Nazionale Monza', 'Autodromo Hermanos Rodriguez', 'Autodromo Jose Carlos Pace',
-    'Barber Motorsports Park', 'Brands Hatch Circuit', 'Cadwell Park Circuit',
-    'Canadian Tire Motorsport Park', 'Charlotte Motor Speedway', 'Chicago Street Course',
-    'Circuit de Barcelona-Catalunya', 'Circuit de Ledenon', 'Circuit de Nevers Magny-Cours',
-    'Circuit de Spa-Francorchamps', 'Circuit des 24 Heures du Mans', 'Circuit Gilles Villeneuve',
-    'Circuit of the Americas', 'Circuit Zandvoort', 'Circuit Zolder',
-    'Circuito de Jerez', 'Circuito de Navarra', 'Daytona International Speedway',
-    'Detroit Grand Prix at Belle Isle', 'Donington Park Racing Circuit', 'Fuji International Speedway',
-    'Hockenheimring Baden-Wurttemberg', 'Homestead Miami Speedway', 'Hungaroring',
-    'Indianapolis Motor Speedway', 'Knockhill Racing Circuit', 'Lime Rock Park',
-    'Long Beach Street Circuit', 'Miami International Autodrome', 'Mid-Ohio Sports Car Course',
-    'Misano World Circuit Marco Simoncelli', 'Mobility Resort Motegi', 'MotorLand Aragon',
-    'Motorsport Arena Oschersleben', 'Mount Panorama Circuit', 'Mount Washington Hillclimb',
-    'New Hampshire Motor Speedway', 'New Jersey Motorsports Park', 'Nurburgring Combined',
-    'Nurburgring Grand-Prix-Strecke', 'Nurburgring Nordschleife', 'Okayama International Circuit',
-    'Oran Park Raceway', 'Oulton Park Circuit', 'Phillip Island Circuit',
-    'Portland International Raceway', 'Red Bull Ring', 'Road America', 'Road Atlanta',
-    'Rudskogen Motorsenter', 'Sachsenring', 'Sandown International Motor Raceway',
-    'Sebring International Raceway', 'Shell V-Power Motorsport Park at The Bend',
-    'Silverstone Circuit', 'Snetterton Circuit', 'Sonoma Raceway',
-    'St. Petersburg Grand Prix', 'Summit Point Raceway', 'Suzuka International Racing Course',
-    'Thruxton Circuit', 'Tsukuba Circuit', 'Virginia International Raceway',
-    'Watkins Glen International', 'WeatherTech Raceway at Laguna Seca',
-    'Willow Springs International Raceway', 'Winton Motor Raceway',
-    'World Wide Technology Raceway',
-    // Ovals
-    'Bristol Motor Speedway', 'Centripetal Circuit', 'Chicagoland Speedway',
-    'Concord Speedway', 'Darlington Raceway', 'Dover Motor Speedway',
-    'EchoPark Speedway', 'Five Flags Speedway', 'Hickory Motor Speedway',
-    'Iowa Speedway', 'iRacing Superspeedway', 'Irwindale Speedway',
-    'Kansas Speedway', 'Kentucky Speedway', 'Kevin Harvick Kern Raceway',
-    'LA Coliseum Raceway', 'Langley Speedway', 'Lanier National Speedway',
-    'Las Vegas Motor Speedway', 'Lucas Oil Indianapolis Raceway Park',
-    'Martinsville Speedway', 'Michigan International Speedway', 'Myrtle Beach Speedway',
-    'Nashville Fairgrounds Speedway', 'Nashville Superspeedway',
-    'New Smyrna Speedway', 'North Wilkesboro Speedway', 'Oswego Speedway',
-    'Oxford Plains Speedway', 'Phoenix Raceway', 'Pocono Raceway',
-    'Richmond Raceway', 'Rockingham Speedway', 'Slinger Speedway',
-    'South Boston Speedway', 'Southern National Motorsports Park',
-    'Stafford Motor Speedway', 'Talladega Superspeedway', 'Texas Motor Speedway',
-    'The Bullring', 'The Milwaukee Mile', 'Thompson Speedway Motorsports Park',
-    'USA International Speedway',
+    { name: 'Adelaide Street Circuit', cat: 'road' }, { name: 'Algarve International Circuit', cat: 'road' },
+    { name: 'Autodromo Internacional do Algarve', cat: 'road' }, { name: 'Auto Club Speedway', cat: 'road' },
+    { name: 'Autodromo Internazionale del Mugello', cat: 'road' }, { name: 'Autodromo Enzo e Dino Ferrari', cat: 'road' },
+    { name: 'Autodromo Nazionale Monza', cat: 'road' }, { name: 'Autodromo Hermanos Rodriguez', cat: 'road' },
+    { name: 'Autodromo Jose Carlos Pace', cat: 'road' }, { name: 'Barber Motorsports Park', cat: 'road' },
+    { name: 'Brands Hatch Circuit', cat: 'road' }, { name: 'Cadwell Park Circuit', cat: 'road' },
+    { name: 'Canadian Tire Motorsport Park', cat: 'road' }, { name: 'Chicago Street Course', cat: 'road' },
+    { name: 'Circuit de Barcelona-Catalunya', cat: 'road' }, { name: 'Circuit de Ledenon', cat: 'road' },
+    { name: 'Circuit de Nevers Magny-Cours', cat: 'road' }, { name: 'Circuit de Spa-Francorchamps', cat: 'road' },
+    { name: 'Circuit des 24 Heures du Mans', cat: 'road' }, { name: 'Circuit Gilles Villeneuve', cat: 'road' },
+    { name: 'Circuit of the Americas', cat: 'road' }, { name: 'Circuit Zandvoort', cat: 'road' },
+    { name: 'Circuit Zolder', cat: 'road' }, { name: 'Circuito de Jerez', cat: 'road' },
+    { name: 'Circuito de Navarra', cat: 'road' }, { name: 'Detroit Grand Prix at Belle Isle', cat: 'road' },
+    { name: 'Donington Park Racing Circuit', cat: 'road' }, { name: 'Fuji International Speedway', cat: 'road' },
+    { name: 'Hockenheimring Baden-Wurttemberg', cat: 'road' }, { name: 'Hungaroring', cat: 'road' },
+    { name: 'Knockhill Racing Circuit', cat: 'road' }, { name: 'Lime Rock Park', cat: 'road' },
+    { name: 'Long Beach Street Circuit', cat: 'road' }, { name: 'Miami International Autodrome', cat: 'road' },
+    { name: 'Mid-Ohio Sports Car Course', cat: 'road' }, { name: 'Misano World Circuit', cat: 'road' },
+    { name: 'Mobility Resort Motegi', cat: 'road' }, { name: 'MotorLand Aragon', cat: 'road' },
+    { name: 'Motorsport Arena Oschersleben', cat: 'road' }, { name: 'Mount Panorama Circuit', cat: 'road' },
+    { name: 'Mount Washington Hillclimb', cat: 'road' }, { name: 'New Jersey Motorsports Park', cat: 'road' },
+    { name: 'Nurburgring Combined', cat: 'road' }, { name: 'Nurburgring Grand-Prix-Strecke', cat: 'road' },
+    { name: 'Nurburgring Nordschleife', cat: 'road' }, { name: 'Okayama International Circuit', cat: 'road' },
+    { name: 'Oran Park Raceway', cat: 'road' }, { name: 'Oulton Park Circuit', cat: 'road' },
+    { name: 'Phillip Island Circuit', cat: 'road' }, { name: 'Portland International Raceway', cat: 'road' },
+    { name: 'Red Bull Ring', cat: 'road' }, { name: 'Road America', cat: 'road' },
+    { name: 'Road Atlanta', cat: 'road' }, { name: 'Rudskogen Motorsenter', cat: 'road' },
+    { name: 'Sachsenring', cat: 'road' }, { name: 'Sandown International Motor Raceway', cat: 'road' },
+    { name: 'Sebring International Raceway', cat: 'road' }, { name: 'Shell V-Power Motorsport Park at The Bend', cat: 'road' },
+    { name: 'Silverstone Circuit', cat: 'road' }, { name: 'Snetterton Circuit', cat: 'road' },
+    { name: 'Sonoma Raceway', cat: 'road' }, { name: 'St. Petersburg Grand Prix', cat: 'road' },
+    { name: 'Summit Point Raceway', cat: 'road' }, { name: 'Suzuka International Racing Course', cat: 'road' },
+    { name: 'Thruxton Circuit', cat: 'road' }, { name: 'Tsukuba Circuit', cat: 'road' },
+    { name: 'Virginia International Raceway', cat: 'road' }, { name: 'Watkins Glen International', cat: 'road' },
+    { name: 'WeatherTech Raceway at Laguna Seca', cat: 'road' }, { name: 'Willow Springs International Raceway', cat: 'road' },
+    { name: 'Winton Motor Raceway', cat: 'road' }, { name: 'World Wide Technology Raceway', cat: 'road' },
+    // Oval / NASCAR
+    { name: 'Bristol Motor Speedway', cat: 'oval' }, { name: 'Centripetal Circuit', cat: 'oval' },
+    { name: 'Charlotte Motor Speedway', cat: 'oval' }, { name: 'Chicagoland Speedway', cat: 'oval' },
+    { name: 'Concord Speedway', cat: 'oval' }, { name: 'Darlington Raceway', cat: 'oval' },
+    { name: 'Daytona International Speedway', cat: 'oval' }, { name: 'Dover Motor Speedway', cat: 'oval' },
+    { name: 'EchoPark Speedway', cat: 'oval' }, { name: 'Five Flags Speedway', cat: 'oval' },
+    { name: 'Hickory Motor Speedway', cat: 'oval' }, { name: 'Homestead Miami Speedway', cat: 'oval' },
+    { name: 'Indianapolis Motor Speedway', cat: 'oval' }, { name: 'Iowa Speedway', cat: 'oval' },
+    { name: 'iRacing Superspeedway', cat: 'oval' }, { name: 'Irwindale Speedway', cat: 'oval' },
+    { name: 'Kansas Speedway', cat: 'oval' }, { name: 'Kentucky Speedway', cat: 'oval' },
+    { name: 'Kevin Harvick Kern Raceway', cat: 'oval' }, { name: 'LA Coliseum Raceway', cat: 'oval' },
+    { name: 'Langley Speedway', cat: 'oval' }, { name: 'Lanier National Speedway', cat: 'oval' },
+    { name: 'Las Vegas Motor Speedway', cat: 'oval' }, { name: 'Lucas Oil Indianapolis Raceway Park', cat: 'oval' },
+    { name: 'Martinsville Speedway', cat: 'oval' }, { name: 'Michigan International Speedway', cat: 'oval' },
+    { name: 'Myrtle Beach Speedway', cat: 'oval' }, { name: 'Nashville Fairgrounds Speedway', cat: 'oval' },
+    { name: 'Nashville Superspeedway', cat: 'oval' }, { name: 'New Hampshire Motor Speedway', cat: 'oval' },
+    { name: 'New Smyrna Speedway', cat: 'oval' }, { name: 'North Wilkesboro Speedway', cat: 'oval' },
+    { name: 'Oswego Speedway', cat: 'oval' }, { name: 'Oxford Plains Speedway', cat: 'oval' },
+    { name: 'Phoenix Raceway', cat: 'oval' }, { name: 'Pocono Raceway', cat: 'oval' },
+    { name: 'Richmond Raceway', cat: 'oval' }, { name: 'Rockingham Speedway', cat: 'oval' },
+    { name: 'Slinger Speedway', cat: 'oval' }, { name: 'South Boston Speedway', cat: 'oval' },
+    { name: 'Southern National Motorsports Park', cat: 'oval' }, { name: 'Stafford Motor Speedway', cat: 'oval' },
+    { name: 'Talladega Superspeedway', cat: 'oval' }, { name: 'Texas Motor Speedway', cat: 'oval' },
+    { name: 'The Bullring', cat: 'oval' }, { name: 'The Milwaukee Mile', cat: 'oval' },
+    { name: 'Thompson Speedway Motorsports Park', cat: 'oval' }, { name: 'USA International Speedway', cat: 'oval' },
     // Dirt Oval
-    'Cedar Lake Speedway', 'Chili Bowl', 'Eldora Speedway', 'Fairbury Speedway',
-    'Federated Auto Parts Raceway at I-55', 'Husets Speedway', 'Knoxville Raceway',
-    'Kokomo Speedway', 'Lernerville Speedway', 'Limaland Motorsports Park',
-    'Lincoln Speedway', 'Lucas Oil Speedway', 'Millbridge Speedway',
-    'Port Royal Speedway', 'The Dirt Track at Charlotte', 'Volusia Speedway Park',
-    'Weedsport Speedway', 'Wild West Motorsports Park', 'Williams Grove Speedway',
+    { name: 'Cedar Lake Speedway', cat: 'dirt_oval' }, { name: 'Chili Bowl', cat: 'dirt_oval' },
+    { name: 'Eldora Speedway', cat: 'dirt_oval' }, { name: 'Fairbury Speedway', cat: 'dirt_oval' },
+    { name: 'Federated Auto Parts Raceway at I-55', cat: 'dirt_oval' }, { name: 'Husets Speedway', cat: 'dirt_oval' },
+    { name: 'Knoxville Raceway', cat: 'dirt_oval' }, { name: 'Kokomo Speedway', cat: 'dirt_oval' },
+    { name: 'Lernerville Speedway', cat: 'dirt_oval' }, { name: 'Limaland Motorsports Park', cat: 'dirt_oval' },
+    { name: 'Lincoln Speedway', cat: 'dirt_oval' }, { name: 'Lucas Oil Speedway', cat: 'dirt_oval' },
+    { name: 'Millbridge Speedway', cat: 'dirt_oval' }, { name: 'Port Royal Speedway', cat: 'dirt_oval' },
+    { name: 'The Dirt Track at Charlotte', cat: 'dirt_oval' }, { name: 'Volusia Speedway Park', cat: 'dirt_oval' },
+    { name: 'Weedsport Speedway', cat: 'dirt_oval' }, { name: 'Wild West Motorsports Park', cat: 'dirt_oval' },
+    { name: 'Williams Grove Speedway', cat: 'dirt_oval' },
     // Dirt Road / Rallycross
-    'Bark River International Raceway', 'Crandon International Raceway',
-    'Daytona Rallycross', 'Firebird Motorsports Park', 'Lankebanen Hell RX',
+    { name: 'Bark River International Raceway', cat: 'dirt_road' }, { name: 'Crandon International Raceway', cat: 'dirt_road' },
+    { name: 'Daytona Rallycross', cat: 'dirt_road' }, { name: 'Firebird Motorsports Park', cat: 'dirt_road' },
+    { name: 'Lankebanen Hell RX', cat: 'dirt_road' },
   ];
 
   const RACE_TYPES_BY_CLASS = {
@@ -402,11 +424,11 @@
       return overlap.length >= 1 && (overlap.length >= 2 || overlap[0].length >= 6);
     }
     const missing = KNOWN_IRACING_TRACKS.filter(function(known) {
-      return !named.some(function(t) { return tracksMatch(t.track_name, known); });
+      return !named.some(function(t) { return tracksMatch(t.track_name, known.name); });
     });
 
     const filtered = named.filter(t => t.track_name.toLowerCase().includes(search));
-    const filteredMissing = missing.filter(n => n.toLowerCase().includes(search));
+    const filteredMissing = missing.filter(t => t.name.toLowerCase().includes(search));
 
     // Grid view
     let gridHtml = '';
@@ -426,12 +448,19 @@
         </div>
       </div>`;
     });
+    var catLabels = { road: 'Road', oval: 'Oval', dirt_oval: 'Dirt', dirt_road: 'Rallycross', formula: 'Formula' };
+    var catColors = { road: '#9146ff', oval: '#f7c948', dirt_oval: '#f97316', dirt_road: '#4ade80', formula: '#38bdf8' };
     filteredMissing.forEach(n => {
+      var catLabel = catLabels[n.cat] || 'Road';
+      var catColor = catColors[n.cat] || '#9146ff';
       gridHtml += `<div class="track-card missing">
         <div class="track-card-canvas" style="display:flex;align-items:center;justify-content:center;color:rgba(255,80,80,0.35);font-size:11px;">No data</div>
         <div class="track-card-body">
-          <div class="track-card-name" title="${n}">${n}</div>
-          <div class="track-card-missing">Upload IBT to add</div>
+          <div class="track-card-name" title="${n.name}">${n.name}</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <span style="font-size:9px;font-weight:700;color:${catColor};background:${catColor}15;padding:1px 6px;border-radius:4px;">${catLabel}</span>
+            <span class="track-card-missing">Upload IBT to add</span>
+          </div>
         </div>
       </div>`;
     });
@@ -452,7 +481,9 @@
       </tr>`;
     });
     filteredMissing.forEach(n => {
-      listHtml += `<tr class="missing"><td>${n}</td><td>--</td><td>--</td><td>--</td><td>0</td><td>0</td></tr>`;
+      var catLabel = catLabels[n.cat] || 'Road';
+      var catColor = catColors[n.cat] || '#9146ff';
+      listHtml += `<tr class="missing"><td>${n.name} <span style="font-size:9px;font-weight:700;color:${catColor};margin-left:6px;">${catLabel}</span></td><td>--</td><td>--</td><td>--</td><td>0</td><td>0</td></tr>`;
     });
     document.getElementById('tracks-list-body').innerHTML = listHtml;
 
