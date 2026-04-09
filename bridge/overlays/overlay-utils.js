@@ -130,18 +130,24 @@
       currentScale = pct;
       if (panel) {
         var factor = pct / 100;
-        // Lock panel to its natural content width before scaling
-        // so it doesn't shrink when the window is resized smaller
+        // Reset to measure natural size
         panel.style.transform = 'none';
         panel.style.width = 'auto';
+        panel.style.height = 'auto';
+        panel.style.overflow = 'visible';
+        // Force layout recalc
         var origW = panel.scrollWidth;
         var origH = panel.scrollHeight;
+        // Lock panel at natural size so it doesn't reflow when window resizes
         panel.style.width = origW + 'px';
+        panel.style.height = origH + 'px';
         panel.style.transform = 'scale(' + factor + ')';
         panel.style.transformOrigin = 'top left';
-        // Resize window to match scaled content
+        // Resize window to fit the scaled content (with small padding)
         try {
-          ipcRenderer.send('resize-overlay-wh', Math.round(origW * factor) + 2, Math.round(origH * factor) + 2);
+          var newW = Math.round(origW * factor) + 4;
+          var newH = Math.round(origH * factor) + 4;
+          ipcRenderer.send('resize-overlay-wh', newW, newH);
         } catch(e2) {}
       }
     }
