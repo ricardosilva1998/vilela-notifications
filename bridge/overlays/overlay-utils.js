@@ -130,16 +130,24 @@
       currentScale = pct;
       if (panel) {
         var factor = pct / 100;
+        // Lock panel to its natural content width before scaling
+        // so it doesn't shrink when the window is resized smaller
+        panel.style.transform = 'none';
+        panel.style.width = 'auto';
+        var origW = panel.scrollWidth;
+        var origH = panel.scrollHeight;
+        panel.style.width = origW + 'px';
         panel.style.transform = 'scale(' + factor + ')';
         panel.style.transformOrigin = 'top left';
         // Resize window to match scaled content
         try {
-          var origW = panel.offsetWidth;
-          var origH = panel.offsetHeight;
           ipcRenderer.send('resize-overlay-wh', Math.round(origW * factor) + 2, Math.round(origH * factor) + 2);
         } catch(e2) {}
       }
     }
+
+    // Expose current scale for overlays that do their own height resizing
+    window.__overlayScale = function() { return currentScale / 100; };
 
     if (currentScale !== 100) applyScale(currentScale);
 

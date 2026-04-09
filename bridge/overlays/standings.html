@@ -590,7 +590,8 @@
         if (panel) {
           try {
             const { ipcRenderer } = require('electron');
-            const neededH = Math.min(panel.scrollHeight + 4, screen.height - 100);
+            const scale = (typeof window.__overlayScale === 'function') ? window.__overlayScale() : 1;
+            const neededH = Math.min(Math.round(panel.scrollHeight * scale) + 4, screen.height - 100);
             ipcRenderer.send('resize-overlay-height', 'standings', neededH);
           } catch(e) {}
         }
