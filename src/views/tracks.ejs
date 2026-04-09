@@ -139,7 +139,7 @@
 
   <!-- Detail View -->
   <div class="track-detail" id="track-detail">
-    <button class="btn-back" onclick="showList()">&#8592; Back to tracks</button>
+    <button class="btn-back" onclick="goBack()">&#8592; Back</button>
     <div class="live-detail" id="detail-live-info" style="display:none;"></div>
     <div class="track-detail-header">
       <div class="track-detail-canvas"><canvas id="detail-canvas" width="400" height="320"></canvas></div>
@@ -556,6 +556,18 @@
     document.getElementById('tracks-list-view').style.display = 'block';
     history.pushState(null, '', '/tracks');
   }
+
+  function goBack() {
+    // If user came from dashboard, go back to it; otherwise show track list
+    if (document.referrer && document.referrer.includes('/dashboard')) {
+      window.location.href = document.referrer;
+    } else if (history.length > 1) {
+      history.back();
+    } else {
+      showList();
+    }
+  }
+  window.goBack = goBack;
 
   // ─── View toggle ───
   window.setView = function(view) {
