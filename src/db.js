@@ -817,6 +817,9 @@ try { db.exec('ALTER TABLE track_maps ADD COLUMN track_turns INTEGER'); } catch(
 try { db.exec('ALTER TABLE track_maps ADD COLUMN track_country TEXT'); } catch(e) {}
 try { db.exec('ALTER TABLE track_maps ADD COLUMN track_city TEXT'); } catch(e) {}
 
+// Migration: add top_car column to track_stats
+try { db.exec('ALTER TABLE track_stats ADD COLUMN top_car TEXT'); } catch(e) {}
+
 // --- Bridge Remote Logs ---
 db.exec(`
   CREATE TABLE IF NOT EXISTS bridge_logs (

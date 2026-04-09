@@ -506,7 +506,7 @@
     trackStats.forEach(s => { lookup[s.race_type] = s; });
 
     let html = '<table class="stats-table"><thead><tr>';
-    html += '<th>Race Type</th><th>Avg Lap</th><th>Avg Pit</th><th>Avg Qualify</th><th>Est. Laps</th><th>Avg SOF</th><th>Races</th><th>Avg Drivers</th>';
+    html += '<th>Race Type</th><th>Avg Lap</th><th>Avg Pit</th><th>Avg Qualify</th><th>Est. Laps</th><th>Avg SOF</th><th>Races</th><th>Avg Drivers</th><th>Top Car</th>';
     html += '</tr></thead><tbody>';
 
     raceTypes.forEach(rt => {
@@ -521,12 +521,13 @@
           <td>${formatSOF(s.avg_sof)}</td>
           <td>${s.race_count || 0}</td>
           <td>${s.avg_drivers > 0 ? Math.round(s.avg_drivers) : '--'}</td>
+          <td>${s.top_car || '--'}</td>
         </tr>`;
       } else {
         html += `<tr>
           <td style="color:rgba(255,255,255,0.25);font-family:inherit;">${rt}</td>
           <td class="dimmed">--</td><td class="dimmed">--</td><td class="dimmed">--</td>
-          <td class="dimmed">--</td><td class="dimmed">--</td><td class="dimmed">--</td><td class="dimmed">--</td>
+          <td class="dimmed">--</td><td class="dimmed">--</td><td class="dimmed">--</td><td class="dimmed">--</td><td class="dimmed">--</td>
         </tr>`;
       }
     });
@@ -543,6 +544,7 @@
           <td>${formatSOF(s.avg_sof)}</td>
           <td>${s.race_count || 0}</td>
           <td>${s.avg_drivers > 0 ? Math.round(s.avg_drivers) : '--'}</td>
+          <td>${s.top_car || '--'}</td>
         </tr>`;
       }
     });
@@ -809,6 +811,11 @@
         raceSession.results.forEach(function(r) { if (r.laps_complete > maxLaps) maxLaps = r.laps_complete; });
         if (maxLaps > 0) data.estLaps = maxLaps;
         data.driverCount = raceSession.results.length;
+        // Most used car
+        var carCounts = {};
+        raceSession.results.forEach(function(r) { if (r.car_name) carCounts[r.car_name] = (carCounts[r.car_name] || 0) + 1; });
+        var topCar = Object.keys(carCounts).sort(function(a,b) { return carCounts[b] - carCounts[a]; })[0];
+        if (topCar) data.topCar = topCar;
       }
 
       // Find QUALIFY session (type 4 = Lone Qualifying, type 5 = Open Qualifying)
@@ -917,6 +924,7 @@
       { key: 'avgSOF', label: 'SOF', format: function(v) { return v ? Math.round(v).toLocaleString() : '--'; } },
       { key: 'driverCount', label: 'Drivers', format: function(v) { return v || '--'; } },
       { key: 'estLaps', label: 'Laps', format: function(v) { return v || '--'; } },
+      { key: 'topCar', label: 'Top Car', format: function(v) { return v || '--'; } },
     ];
     fields.forEach(function(f) {
       var val = data[f.key];
@@ -949,6 +957,7 @@
       avgSOF: importData.avgSOF || 0,
       estLaps: importData.estLaps || 0,
       samples: importData.driverCount || 0,
+      topCar: importData.topCar || null,
     };
 
     fetch('/api/track-stats', {

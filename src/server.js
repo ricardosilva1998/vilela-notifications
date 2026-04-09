@@ -193,8 +193,8 @@ app.post('/api/track-stats', express.json(), (req, res) => {
     if (!trackName || !raceType || !stats) return res.status(400).json({ error: 'Missing fields' });
 
     const stmt = db.db.prepare(`
-      INSERT INTO track_stats (track_name, car_class, race_type, avg_lap_time, avg_pit_time, avg_qualify_time, avg_sof, est_laps, avg_drivers, race_count, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      INSERT INTO track_stats (track_name, car_class, race_type, avg_lap_time, avg_pit_time, avg_qualify_time, avg_sof, est_laps, avg_drivers, race_count, top_car, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
       ON CONFLICT(track_name, car_class, race_type) DO UPDATE SET
         avg_lap_time = (avg_lap_time * race_count + excluded.avg_lap_time) / (race_count + excluded.race_count),
         avg_pit_time = CASE WHEN excluded.avg_pit_time > 0
@@ -209,11 +209,12 @@ app.post('/api/track-stats', express.json(), (req, res) => {
           ELSE est_laps END,
         avg_drivers = (avg_drivers * race_count + excluded.avg_drivers) / (race_count + excluded.race_count),
         race_count = race_count + excluded.race_count,
+        top_car = COALESCE(excluded.top_car, top_car),
         updated_at = datetime('now')
     `);
 
     Object.entries(stats).forEach(([cls, data]) => {
-      stmt.run(trackName, cls, raceType, data.avgLapTime || 0, data.avgPitTime || 0, data.avgQualifyTime || 0, data.avgSOF || 0, data.estLaps || 0, data.samples || 0, 1);
+      stmt.run(trackName, cls, raceType, data.avgLapTime || 0, data.avgPitTime || 0, data.avgQualifyTime || 0, data.avgSOF || 0, data.estLaps || 0, data.samples || 0, 1, data.topCar || null);
     });
 
     res.json({ ok: true });
@@ -381,6 +382,7 @@ app.post('/api/track-stats/import-csv', express.json({ limit: '10mb' }), (req, r
         fastestLapTime: parseLapTime(fields[colIdx['Fastest Lap Time']] || ''),
         lapsComp: parseInt(fields[colIdx['Laps Comp']] || '0') || 0,
         carClass: fields[colIdx['Car Class']] || '',
+        car: fields[colIdx['Car']] || '',
       });
     }
 
@@ -432,6 +434,11 @@ app.post('/api/track-stats/import-csv', express.json({ limit: '10mb' }), (req, r
       ? validQualTimes.reduce((a, b) => a + b, 0) / validQualTimes.length
       : (validFastestLaps.length > 0 ? validFastestLaps.reduce((a, b) => a + b, 0) / validFastestLaps.length : null);
 
+    // Most used car — count occurrences
+    const carCounts = {};
+    drivers.forEach(d => { if (d.car) carCounts[d.car] = (carCounts[d.car] || 0) + 1; });
+    const topCar = Object.keys(carCounts).sort((a, b) => carCounts[b] - carCounts[a])[0] || null;
+
     const data = {
       carClass: (carClass && carClass !== 'auto') ? carClass : (detectedClass || null),
       raceType: (raceType && raceType !== 'auto') ? raceType : (detectedRaceType || null),
@@ -441,6 +448,7 @@ app.post('/api/track-stats/import-csv', express.json({ limit: '10mb' }), (req, r
       avgSOF: sof || null,
       driverCount: drivers.length,
       estLaps: maxLaps || null,
+      topCar,
     };
 
     res.json({ ok: true, data });
@@ -452,7 +460,7 @@ app.post('/api/track-stats/import-csv', express.json({ limit: '10mb' }), (req, r
 
 app.get('/api/track-stats', (req, res) => {
   try {
-    const rows = db.db.prepare('SELECT track_name, car_class, race_type, avg_lap_time, avg_pit_time, avg_qualify_time, avg_sof, est_laps, avg_drivers, race_count, updated_at FROM track_stats ORDER BY track_name, car_class, race_type').all();
+    const rows = db.db.prepare('SELECT track_name, car_class, race_type, avg_lap_time, avg_pit_time, avg_qualify_time, avg_sof, est_laps, avg_drivers, race_count, top_car, updated_at FROM track_stats ORDER BY track_name, car_class, race_type').all();
     res.json(rows);
   } catch(e) {
     res.status(500).json({ error: e.message });
@@ -461,7 +469,7 @@ app.get('/api/track-stats', (req, res) => {
 
 app.get('/api/track-stats/:trackName', (req, res) => {
   try {
-    const rows = db.db.prepare('SELECT car_class, race_type, avg_lap_time, avg_pit_time, avg_qualify_time, avg_sof, est_laps, avg_drivers, race_count, updated_at FROM track_stats WHERE track_name = ? ORDER BY car_class, race_type').all(req.params.trackName);
+    const rows = db.db.prepare('SELECT car_class, race_type, avg_lap_time, avg_pit_time, avg_qualify_time, avg_sof, est_laps, avg_drivers, race_count, top_car, updated_at FROM track_stats WHERE track_name = ? ORDER BY car_class, race_type').all(req.params.trackName);
     res.json(rows);
   } catch(e) {
     res.status(500).json({ error: e.message });

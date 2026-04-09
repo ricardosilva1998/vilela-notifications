@@ -135,6 +135,7 @@ const persistedDrivers = new Map();
 const cachedBestLaps = new Map(); // carIdx -> best lap time
 const cachedLastLaps = new Map(); // carIdx -> last lap time
 const cachedLapsCompleted = new Map(); // carIdx -> laps completed
+const cachedGapToLeader = new Map();   // carIdx -> { gap, poll } — smooths out estTime dropouts
 // Session results — lap data from YAML (more complete than real-time telemetry)
 const sessionResults = new Map(); // carIdx -> { bestLap, lastLap, lapsComplete }
 // Starting iRatings — captured once at session start for gain/loss display
@@ -216,9 +217,10 @@ function collectAndUploadTrackStats(track, standingsData, pitDeltas, sofByClassD
   standingsData.forEach(s => {
     const cls = canonicalClass(s.carClass);
     if (!cls) return;
-    if (!classSummary[cls]) classSummary[cls] = { bestLaps: [], drivers: 0 };
+    if (!classSummary[cls]) classSummary[cls] = { bestLaps: [], drivers: 0, cars: {} };
     classSummary[cls].drivers++;
     if (s.bestLap > 0) classSummary[cls].bestLaps.push(s.bestLap);
+    if (s.carMake) classSummary[cls].cars[s.carMake] = (classSummary[cls].cars[s.carMake] || 0) + 1;
   });
 
   // Detect series from class count + race duration
@@ -283,6 +285,8 @@ function collectAndUploadTrackStats(track, standingsData, pitDeltas, sofByClassD
     }
     const raceType = getRaceType(cls);
     if (!statsByRaceType[raceType]) statsByRaceType[raceType] = {};
+    // Most used car in this class
+    const topCar = Object.keys(data.cars).sort((a, b) => data.cars[b] - data.cars[a])[0] || null;
     statsByRaceType[raceType][cls] = {
       avgLapTime: leaderBest,
       avgPitTime: pitDelta,
@@ -290,6 +294,7 @@ function collectAndUploadTrackStats(track, standingsData, pitDeltas, sofByClassD
       avgSOF: sofByClassData[Object.keys(sofByClassData).find(k => canonicalClass(k) === cls)] || 0,
       estLaps,
       samples: data.drivers,
+      topCar,
     };
   });
 
@@ -444,6 +449,7 @@ async function startTelemetry(onStatusChange) {
         cachedBestLaps.clear();
         cachedLastLaps.clear();
         cachedLapsCompleted.clear();
+        cachedGapToLeader.clear();
         sessionResults.clear();
         log('[Telemetry] Connected to iRacing!');
         broadcastToChannel('_all', { type: 'status', iracing: true });
@@ -517,6 +523,7 @@ async function startTelemetry(onStatusChange) {
               cachedBestLaps.clear();
               cachedLastLaps.clear();
               cachedLapsCompleted.clear();
+              cachedGapToLeader.clear();
               sessionResults.clear();
               persistedDrivers.clear();
               qualifyBestByClass = {};
@@ -1070,38 +1077,56 @@ async function startTelemetry(onStatusChange) {
           return b.lapDistPct - a.lapDistPct;
         });
 
-        // Calculate gap to class leader using multiple methods
-        const classLeaderData = {};
+        // Calculate gap to class leader by summing consecutive position gaps
+        // (P3 gap = gap P1→P2 + gap P2→P3) — same estTime logic as relative overlay
+        // Uses caching to smooth out estTime dropouts (iRacing only sends estTime for nearby cars)
+        const classBuckets = {};
         standings.forEach(s => {
-          if (!classLeaderData[s.carClass] && s.classPosition === 1) {
-            classLeaderData[s.carClass] = {
-              estTime: s.estTime || 0, laps: s.lapsCompleted || 0,
-              bestLap: s.bestLap || 0, lapDistPct: s.lapDistPct || 0,
-            };
-          }
+          if (!classBuckets[s.carClass]) classBuckets[s.carClass] = [];
+          classBuckets[s.carClass].push(s);
         });
-        standings.forEach(s => {
-          const leader = classLeaderData[s.carClass];
-          if (!leader || s.classPosition === 1) return;
-          // Method 1: estTime (most accurate when available)
-          if (leader.estTime > 0 && s.estTime > 0) {
-            s.gapToLeader = s.estTime - leader.estTime;
-          }
-          // Method 2: lap count + track position → time gap (works for all cars)
-          else if (leader.bestLap > 0) {
-            const leaderLaps = leader.laps || 0;
-            const driverLaps = s.lapsCompleted || 0;
-            const leaderPct = leader.lapDistPct || 0;
-            const driverPct = s.lapDistPct || 0;
-            // Fractional laps: laps completed + current track position
-            const leaderTotal = leaderLaps + leaderPct;
-            const driverTotal = driverLaps + driverPct;
-            const lapsBehind = leaderTotal - driverTotal;
-            if (lapsBehind > 0) {
-              s.gapToLeader = lapsBehind * leader.bestLap;
-            } else if (leader.bestLap > 0 && s.bestLap > 0) {
-              // Same fractional lap — use best lap diff
-              s.gapToLeader = s.bestLap - leader.bestLap;
+        Object.values(classBuckets).forEach(classDrivers => {
+          classDrivers.sort((a, b) => a.classPosition - b.classPosition);
+          let cumulativeGap = 0;
+          for (let i = 0; i < classDrivers.length; i++) {
+            const d = classDrivers[i];
+            if (i === 0) { d.gapToLeader = 0; continue; }
+            const prev = classDrivers[i - 1];
+            let pairGap = 0;
+            let gotFreshPair = false;
+            // Method 1: estTime difference between consecutive positions (same as relative)
+            if (d.estTime > 0 && prev.estTime > 0) {
+              pairGap = d.estTime - prev.estTime;
+              if (pairGap > 50) pairGap -= 100;
+              if (pairGap < -50) pairGap += 100;
+              if (pairGap < 0) pairGap = 0;
+              gotFreshPair = true;
+            }
+            // Method 2: lap/distance based
+            else if (prev.bestLap > 0) {
+              const prevTotal = (prev.lapsCompleted || 0) + (prev.lapDistPct || 0);
+              const currTotal = (d.lapsCompleted || 0) + (d.lapDistPct || 0);
+              const lapsBehind = prevTotal - currTotal;
+              if (lapsBehind > 0) {
+                pairGap = lapsBehind * prev.bestLap;
+                gotFreshPair = true;
+              }
+            }
+            if (pairGap > 0) cumulativeGap += pairGap;
+
+            const freshGap = cumulativeGap;
+            const cached = cachedGapToLeader.get(d.carIdx);
+            if (gotFreshPair && freshGap > 0) {
+              if (cached && cached.gap > 0) {
+                d.gapToLeader = freshGap * 0.7 + cached.gap * 0.3;
+              } else {
+                d.gapToLeader = freshGap;
+              }
+              cachedGapToLeader.set(d.carIdx, { gap: d.gapToLeader, poll: pollCount });
+            } else if (cached && cached.gap > 0) {
+              if ((pollCount - cached.poll) < 900) {
+                d.gapToLeader = cached.gap;
+              }
             }
           }
         });
