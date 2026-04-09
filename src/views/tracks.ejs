@@ -196,14 +196,25 @@
             </select>
           </div>
         </div>
-        <div class="import-dropzone" id="import-dropzone"
-          ondragover="event.preventDefault(); this.classList.add('dragover');"
-          ondragleave="this.classList.remove('dragover');"
-          ondrop="event.preventDefault(); this.classList.remove('dragover'); handleImportDrop(event);"
-          onclick="document.getElementById('import-file-input').click();">
-          <input type="file" id="import-file-input" accept="image/*,.json,.csv" style="display:none" onchange="handleImportFile(this.files[0])">
-          <div class="import-dropzone-text">Drop file here or click to browse</div>
-          <div class="import-dropzone-hint">Screenshot (PNG/JPG) · JSON · CSV from Garage61</div>
+        <div style="display:flex;gap:12px;margin-bottom:12px;" id="import-dropzones">
+          <div class="import-dropzone" id="import-dropzone" style="flex:1;"
+            ondragover="event.preventDefault(); this.classList.add('dragover');"
+            ondragleave="this.classList.remove('dragover');"
+            ondrop="event.preventDefault(); this.classList.remove('dragover'); handleImportDrop(event);"
+            onclick="document.getElementById('import-file-input').click();">
+            <input type="file" id="import-file-input" accept="image/*,.json,.csv" style="display:none" onchange="handleImportFile(this.files[0])">
+            <div class="import-dropzone-text">Race Results</div>
+            <div class="import-dropzone-hint">iRacing JSON · CSV · Screenshot</div>
+          </div>
+          <div class="import-dropzone" style="flex:1;"
+            ondragover="event.preventDefault(); this.classList.add('dragover');"
+            ondragleave="this.classList.remove('dragover');"
+            ondrop="event.preventDefault(); this.classList.remove('dragover'); handleQualDrop(event);"
+            onclick="document.getElementById('import-qual-input').click();">
+            <input type="file" id="import-qual-input" accept=".json,.csv" style="display:none" onchange="handleQualFile(this.files[0])">
+            <div class="import-dropzone-text">Qualifying (optional)</div>
+            <div class="import-dropzone-hint">Separate qualify JSON/CSV if needed</div>
+          </div>
         </div>
         <div class="import-spinner" id="import-spinner">Analyzing screenshot...</div>
         <div class="import-confirm" id="import-confirm">
@@ -568,11 +579,53 @@
     panel.classList.toggle('open');
   };
 
+  var pendingQualData = null; // store qualify data to merge with race
+
   function handleImportDrop(e) {
     var file = e.dataTransfer.files[0];
     if (file) handleImportFile(file);
   }
   window.handleImportDrop = handleImportDrop;
+
+  function handleQualDrop(e) {
+    var file = e.dataTransfer.files[0];
+    if (file) handleQualFile(file);
+  }
+  window.handleQualDrop = handleQualDrop;
+
+  window.handleQualFile = function(file) {
+    if (!file) return;
+    var ext = file.name.split('.').pop().toLowerCase();
+    var reader = new FileReader();
+    reader.onload = function() {
+      try {
+        var carClass = document.getElementById('import-class').value;
+        var raceType = document.getElementById('import-race-type').value;
+        var data;
+        if (ext === 'json') {
+          var json = JSON.parse(reader.result);
+          data = parseImportJSON(json, carClass, raceType);
+        } else if (ext === 'csv') {
+          data = parseImportCSV(reader.result, carClass, raceType);
+        }
+        if (data && data.avgQualifyTime) {
+          pendingQualData = data;
+          document.getElementById('import-error').textContent = '';
+          // Visual feedback
+          event.target.closest('.import-dropzone').style.borderColor = '#3ecf8e';
+          event.target.closest('.import-dropzone').querySelector('.import-dropzone-text').textContent = '✓ Qualify loaded';
+        } else if (data && data.avgLapTime) {
+          // Qualify file has lap times but not tagged as qualify — use avgLapTime as qualify
+          pendingQualData = { avgQualifyTime: data.avgLapTime };
+          event.target.closest('.import-dropzone').style.borderColor = '#3ecf8e';
+          event.target.closest('.import-dropzone').querySelector('.import-dropzone-text').textContent = '✓ Qualify loaded';
+        }
+      } catch(e) {
+        document.getElementById('import-error').textContent = 'Qualify parse error: ' + e.message;
+      }
+    };
+    reader.readAsText(file);
+  };
 
   window.handleImportFile = function(file) {
     if (!file) return;
@@ -653,13 +706,59 @@
     }
   };
 
-  // Parse JSON import — expects { avgLapTime, avgPitTime, avgSOF, ... } or Garage61 format
+  // Parse JSON import — supports iRacing event result format + direct format
   function parseImportJSON(json, carClass, raceType) {
     // Direct format: { avgLapTime: 92.5, avgPitTime: 28.3, ... }
     if (json.avgLapTime !== undefined) return json;
-    // Garage61 format: look for race summary data
+
     var data = { carClass: carClass, raceType: raceType };
-    // Try common Garage61 JSON fields
+
+    // iRacing event result format (type: "event_result")
+    if (json.type === 'event_result' && json.data) {
+      var d = json.data;
+      // SOF from car_classes
+      if (d.car_classes && d.car_classes.length) {
+        data.avgSOF = d.car_classes[0].strength_of_field || d.event_strength_of_field;
+        data.driverCount = d.car_classes[0].num_entries || d.num_drivers;
+      }
+      data.estLaps = d.event_laps_complete || 0;
+
+      // Find RACE session results
+      var raceSession = (d.session_results || []).find(function(s) { return s.simsession_type === 6; });
+      if (raceSession && raceSession.results && raceSession.results.length) {
+        // Average of best lap times (in tenths of ms → divide by 10000 for seconds)
+        var bestLaps = raceSession.results
+          .map(function(r) { return r.best_lap_time; })
+          .filter(function(t) { return t && t > 0; });
+        if (bestLaps.length) {
+          data.avgLapTime = (bestLaps.reduce(function(a,b){return a+b;},0) / bestLaps.length) / 10000;
+        }
+        // Leader's best lap
+        var leader = raceSession.results.find(function(r) { return r.finish_position_in_class === 0; });
+        if (leader && leader.best_lap_time > 0) {
+          data.leaderBestLap = leader.best_lap_time / 10000;
+        }
+        data.driverCount = raceSession.results.length;
+      }
+
+      // Find QUALIFY session
+      var qualSession = (d.session_results || []).find(function(s) { return s.simsession_type === 4 || s.simsession_type === 5; });
+      if (qualSession && qualSession.results && qualSession.results.length) {
+        var qualLaps = qualSession.results
+          .map(function(r) { return r.best_lap_time; })
+          .filter(function(t) { return t && t > 0; });
+        if (qualLaps.length) {
+          data.avgQualifyTime = (qualLaps.reduce(function(a,b){return a+b;},0) / qualLaps.length) / 10000;
+        }
+      }
+
+      // Series name for auto-detecting race type
+      if (d.series_name) data._seriesName = d.series_name;
+
+      return data;
+    }
+
+    // Garage61 / generic format
     if (json.results && Array.isArray(json.results)) {
       var laps = json.results.map(function(r) { return r.bestLapTime || r.best_lap || r.fastestLap; }).filter(function(t) { return t && t > 0; });
       if (laps.length) data.avgLapTime = laps.reduce(function(a,b){return a+b;},0) / laps.length;
@@ -721,6 +820,11 @@
   }
 
   function showImportConfirm(data) {
+    // Merge pending qualify data
+    if (pendingQualData && pendingQualData.avgQualifyTime && !data.avgQualifyTime) {
+      data.avgQualifyTime = pendingQualData.avgQualifyTime;
+    }
+    pendingQualData = null;
     // Populate class dropdown
     var classOpts = ['GTP','LMP2','GT3','LMP3','GT4','GTE','TCR','Porsche Cup','BMW M2','Toyota','Mazda'];
     var classSelect = document.getElementById('import-confirm-class');
