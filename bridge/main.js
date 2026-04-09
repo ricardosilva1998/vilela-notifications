@@ -524,6 +524,23 @@ ipcMain.on('resize-overlay', (event, overlayId, width, height) => {
   }
 });
 
+// Resize from overlay grip (aspect-ratio locked)
+ipcMain.on('resize-overlay-wh', (event, w, h) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win && !win.isDestroyed()) win.setSize(Math.round(w), Math.round(h));
+});
+
+// Get current window size (sync)
+ipcMain.on('get-window-size', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win && !win.isDestroyed()) {
+    const s = win.getSize();
+    event.returnValue = s;
+  } else {
+    event.returnValue = null;
+  }
+});
+
 ipcMain.on('toggle-autohide', (event, enabled) => {
   autoHideOverlays = enabled;
   persistSettings();
@@ -538,6 +555,16 @@ ipcMain.on('save-overlay-settings', (event, overlayId, overlaySettings) => {
     const bounds = overlayWindows[overlayId].getBounds();
     overlaySettings.posX = String(bounds.x);
     overlaySettings.posY = String(bounds.y);
+    // Apply width/height if user set them
+    const w = parseInt(overlaySettings.width);
+    const h = parseInt(overlaySettings.height);
+    if (w > 0 && h > 0) {
+      overlayWindows[overlayId].setSize(w, h);
+    } else if (w > 0) {
+      overlayWindows[overlayId].setSize(w, bounds.height);
+    } else if (h > 0) {
+      overlayWindows[overlayId].setSize(bounds.width, h);
+    }
     settings.overlayCustom[overlayId] = overlaySettings;
   }
 

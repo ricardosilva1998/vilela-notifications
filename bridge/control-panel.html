@@ -774,9 +774,17 @@
       ],
     };
 
-    // Add showHeader toggle to all overlays
+    // Add shared settings to all overlays
     Object.keys(CUSTOMIZE_FIELDS).forEach(function(id) {
       CUSTOMIZE_FIELDS[id].unshift({ key: 'showHeader', label: 'Show header bar', type: 'checkbox', default: true });
+      // Add width/height before posX/posY
+      var posIdx = CUSTOMIZE_FIELDS[id].findIndex(function(f) { return f.key === 'posX'; });
+      if (posIdx >= 0) {
+        CUSTOMIZE_FIELDS[id].splice(posIdx, 0,
+          { key: 'width', label: 'Width (px)', type: 'number', default: '', min: 100, max: 3000, placeholder: 'Auto' },
+          { key: 'height', label: 'Height (px)', type: 'number', default: '', min: 50, max: 2000, placeholder: 'Auto' }
+        );
+      }
     });
 
     // Migrate old column keys to new ones

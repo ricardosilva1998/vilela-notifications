@@ -110,5 +110,37 @@
     // Expose drag state for other scripts
     window.__isDragging = function() { return _dragging; };
 
+    // Resize grip — visible handle in bottom-right corner
+    var grip = document.createElement('div');
+    grip.style.cssText = 'position:fixed;bottom:0;right:0;width:14px;height:14px;cursor:nwse-resize;z-index:9999;opacity:0.3;transition:opacity 0.15s;';
+    grip.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14"><path d="M12 2L2 12M12 6L6 12M12 10L10 12" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-linecap="round"/></svg>';
+    grip.addEventListener('mouseenter', function() { grip.style.opacity = '0.8'; });
+    grip.addEventListener('mouseleave', function() { if (!_resizing) grip.style.opacity = '0.3'; });
+    document.body.appendChild(grip);
+
+    var _resizing = false, _resizeStartX = 0, _resizeStartY = 0, _startW = 0, _startH = 0, _aspectRatio = 1;
+    grip.addEventListener('mousedown', function(e) {
+      if (e.button !== 0) return;
+      _resizing = true;
+      _resizeStartX = e.screenX;
+      _resizeStartY = e.screenY;
+      try {
+        var size = ipcRenderer.sendSync('get-window-size');
+        if (size) { _startW = size[0]; _startH = size[1]; _aspectRatio = _startW / _startH; }
+      } catch(e2) { _startW = window.outerWidth; _startH = window.outerHeight; _aspectRatio = _startW / _startH; }
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!_resizing) return;
+      var dx = e.screenX - _resizeStartX;
+      var newW = Math.max(150, _startW + dx);
+      var newH = Math.max(80, Math.round(newW / _aspectRatio));
+      ipcRenderer.send('resize-overlay-wh', newW, newH);
+    });
+    document.addEventListener('mouseup', function() {
+      if (_resizing) { _resizing = false; grip.style.opacity = '0.3'; }
+    });
+
   } catch(e) {}
 })();
