@@ -111,8 +111,8 @@
     const dataHandlers = {};
 
     function connectBridge(channels) {
-      log('[Fuel] Connecting to', BRIDGE_URL);
-      try { ws = new WebSocket(BRIDGE_URL); } catch(e) { log('[Fuel] WS constructor error:', e.message); setTimeout(() => connectBridge(channels), 3000); return; }
+      log('[Fuel] Connecting to ' + BRIDGE_URL);
+      try { ws = new WebSocket(BRIDGE_URL); } catch(e) { log('[Fuel] WS error: ' + e.message); setTimeout(() => connectBridge(channels), 3000); return; }
       ws.onopen = () => {
         log('[Fuel] WebSocket connected');
         bridgeConnected = true;
@@ -123,7 +123,7 @@
         try {
           const msg = JSON.parse(event.data);
           if (msg.type === 'bridge-connected') { log('[Fuel] Bridge confirmed'); bridgeConnected = true; updateConnectionStatus(); } else if (msg.type === 'status') {
-            log('[Fuel] iRacing status:', msg.iracing);
+            log('[Fuel] iRacing: ' + msg.iracing);
             iracingConnected = msg.iracing;
             updateConnectionStatus();
           } else if (msg.type === 'data' && dataHandlers[msg.channel]) {
@@ -253,10 +253,10 @@
 
       // Fuel save: potential savings per lap (avg - min usage)
       const saveEl = document.getElementById('fuel-save');
-      const avgUsage = data.avgPerLap || 0;
-      const minUsage = data.minUsage || 0;
-      if (avgUsage > 0 && minUsage > 0 && avgUsage > minUsage) {
-        const savePotential = avgUsage - minUsage;
+      const avgUsage = avgPerLap || 0;
+      const minUse = minUsage || 0;
+      if (avgUsage > 0 && minUse > 0 && avgUsage > minUse) {
+        const savePotential = avgUsage - minUse;
         saveEl.textContent = savePotential.toFixed(3) + ' L/lap';
         saveEl.style.color = '#38bdf8';
       } else {
