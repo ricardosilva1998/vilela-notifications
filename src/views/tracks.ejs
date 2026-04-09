@@ -923,18 +923,24 @@
     if (pendingQualData && pendingQualData.avgQualifyTime) {
       data.avgQualifyTime = pendingQualData.avgQualifyTime;
     }
-    // Populate class dropdown
-    var classOpts = ['GTP','LMP2','GT3','LMP3','GT4','GTE','TCR','Porsche Cup','BMW M2','Toyota','Mazda'];
+    // Use the category/class/raceType the user already selected in the import panel
+    var userCategory = document.getElementById('import-category').value;
+    var userClass = document.getElementById('import-class').value;
+    var userRaceType = document.getElementById('import-race-type').value;
+    var opts = IMPORT_OPTIONS[userCategory] || IMPORT_OPTIONS.road;
+
+    // Populate class dropdown from current category
     var classSelect = document.getElementById('import-confirm-class');
-    classSelect.innerHTML = classOpts.map(function(c) {
-      return '<option value="' + c + '"' + (c === data.carClass ? ' selected' : '') + '>' + c + '</option>';
+    classSelect.innerHTML = opts.classes.filter(function(c) { return c !== 'auto'; }).map(function(c) {
+      var selected = (userClass !== 'auto' && c === userClass) || (userClass === 'auto' && c === data.carClass);
+      return '<option value="' + c + '"' + (selected ? ' selected' : '') + '>' + c + '</option>';
     }).join('');
 
-    // Populate race type dropdown
-    var raceOpts = ['Sprint','Open','Endurance','Regionals','VRS Sprint','VRS Open','IMSA Sprint','IMSA Open','IMSA Endurance','Global Endurance','LMP2 Sprint','Proto Sprint'];
+    // Populate race type dropdown from current category
     var raceSelect = document.getElementById('import-confirm-race-type');
-    raceSelect.innerHTML = raceOpts.map(function(r) {
-      return '<option value="' + r + '"' + (r === data.raceType ? ' selected' : '') + '>' + r + '</option>';
+    raceSelect.innerHTML = opts.raceTypes.filter(function(r) { return r !== 'auto'; }).map(function(r) {
+      var selected = (userRaceType !== 'auto' && r === userRaceType) || (userRaceType === 'auto' && r === data.raceType);
+      return '<option value="' + r + '"' + (selected ? ' selected' : '') + '>' + r + '</option>';
     }).join('');
 
     // Populate values grid
