@@ -855,10 +855,10 @@ function timeAgo(dateStr) {
   return d + 'd ago';
 }
 
-// Auto-load bridge users when admin visits the tab
+// Auto-load bridge users on page load (admin only)
 (function() {
-  var tab = document.querySelector('[data-irtab="bridgeusers"]');
-  if (tab) setTimeout(fetchBridgeUsers, 600);
+  var container = document.getElementById('bridge-users-container');
+  if (container) fetchBridgeUsers();
 })();
 </script>
 
