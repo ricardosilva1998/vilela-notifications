@@ -230,8 +230,9 @@
     const BRIDGE_URL = 'ws://localhost:9100';
     let ws = null;
     function connectBridge() {
-      try { ws = new WebSocket(BRIDGE_URL); } catch(e) { setTimeout(connectBridge, 3000); return; }
-      ws.onopen = () => { ws.send(JSON.stringify({ type: 'subscribe', channels: ['standings'] })); };
+      log('[VoiceChat] Connecting to ' + BRIDGE_URL);
+      try { ws = new WebSocket(BRIDGE_URL); } catch(e) { log('[VoiceChat] WS error: ' + e.message); setTimeout(connectBridge, 3000); return; }
+      ws.onopen = () => { log('[VoiceChat] Connected'); ws.send(JSON.stringify({ type: 'subscribe', channels: ['standings'] })); };
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
@@ -240,8 +241,8 @@
           }
         } catch(e) {}
       };
-      ws.onclose = () => { setTimeout(connectBridge, 3000); };
-      ws.onerror = () => { ws.close(); };
+      ws.onclose = () => { log('[VoiceChat] Disconnected'); setTimeout(connectBridge, 3000); };
+      ws.onerror = () => { log('[VoiceChat] WS error'); ws.close(); };
     }
     connectBridge();
 

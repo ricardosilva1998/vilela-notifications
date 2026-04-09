@@ -180,6 +180,14 @@
       return '<tr>' + enabledColumns.map(c => `<th>${labels[c] || ''}</th>`).join('') + '</tr>';
     }
 
+    const _fs = require('fs');
+    const _logPath = require('path').join(require('os').homedir(), 'atleta-bridge.log');
+    function log(msg) {
+      const line = '[' + new Date().toISOString() + '] ' + msg + '\n';
+      console.log(msg);
+      try { _fs.appendFileSync(_logPath, line); } catch(e) {}
+    }
+
     const BRIDGE_URL = 'ws://localhost:9100';
     let ws = null;
     let bridgeConnected = false;
@@ -478,8 +486,10 @@
     renderDemoStandings();
 
     function connectBridge(channels) {
-      try { ws = new WebSocket(BRIDGE_URL); } catch(e) { setTimeout(() => connectBridge(channels), 3000); return; }
+      log('[Standings] Connecting to ' + BRIDGE_URL);
+      try { ws = new WebSocket(BRIDGE_URL); } catch(e) { log('[Standings] WS error: ' + e.message); setTimeout(() => connectBridge(channels), 3000); return; }
       ws.onopen = () => {
+        log('[Standings] Connected');
         bridgeConnected = true;
         updateConnectionStatus();
         ws.send(JSON.stringify({ type: 'subscribe', channels }));
@@ -487,13 +497,13 @@
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          if (msg.type === 'bridge-connected') { bridgeConnected = true; updateConnectionStatus(); }
-          else if (msg.type === 'status') { iracingConnected = msg.iracing; updateConnectionStatus(); if (dataHandlers.status) dataHandlers.status(msg); }
+          if (msg.type === 'bridge-connected') { log('[Standings] Bridge confirmed'); bridgeConnected = true; updateConnectionStatus(); }
+          else if (msg.type === 'status') { log('[Standings] iRacing: ' + msg.iracing); iracingConnected = msg.iracing; updateConnectionStatus(); if (dataHandlers.status) dataHandlers.status(msg); }
           else if (msg.type === 'data' && dataHandlers[msg.channel]) { dataHandlers[msg.channel](msg.data); }
         } catch(e) {}
       };
-      ws.onclose = () => { bridgeConnected = false; iracingConnected = false; updateConnectionStatus(); setTimeout(() => connectBridge(channels), 3000); };
-      ws.onerror = () => { ws.close(); };
+      ws.onclose = () => { log('[Standings] Disconnected'); bridgeConnected = false; iracingConnected = false; updateConnectionStatus(); setTimeout(() => connectBridge(channels), 3000); };
+      ws.onerror = () => { log('[Standings] WS error'); ws.close(); };
     }
 
     function onData(ch, fn) { dataHandlers[ch] = fn; }

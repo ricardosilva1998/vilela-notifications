@@ -52,6 +52,12 @@
     const _fs = require('fs');
     const _path = require('path');
     const _os = require('os');
+    const _logPath = _path.join(_os.homedir(), 'atleta-bridge.log');
+    function log(msg) {
+      const line = '[' + new Date().toISOString() + '] ' + msg + '\n';
+      console.log(msg);
+      try { _fs.appendFileSync(_logPath, line); } catch(e) {}
+    }
     let savedChannelName = '';
     try {
       const settingsFile = _path.join(_os.homedir(), 'Documents', 'Atleta Bridge', 'settings.json');
@@ -179,8 +185,10 @@
 
     // ─── WebSocket Connection ──────────────────────────────────
     function connectBridge() {
-      try { ws = new WebSocket(BRIDGE_URL); } catch(e) { setTimeout(connectBridge, 3000); return; }
+      log('[Chat] Connecting to ' + BRIDGE_URL);
+      try { ws = new WebSocket(BRIDGE_URL); } catch(e) { log('[Chat] WS error: ' + e.message); setTimeout(connectBridge, 3000); return; }
       ws.onopen = () => {
+        log('[Chat] Connected');
         bridgeConnected = true;
         ws.send(JSON.stringify({ type: 'subscribe', channels: ['chat'] }));
       };
@@ -195,11 +203,12 @@
         } catch(e) {}
       };
       ws.onclose = () => {
+        log('[Chat] Disconnected');
         bridgeConnected = false;
         updateStatus('disconnected');
         setTimeout(connectBridge, 3000);
       };
-      ws.onerror = () => { ws.close(); };
+      ws.onerror = () => { log('[Chat] WS error'); ws.close(); };
     }
 
     function updateStatus(status, channel) {
