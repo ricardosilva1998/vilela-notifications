@@ -347,14 +347,23 @@
     });
 
     // Merge known tracks (missing ones)
-    const existingLower = named.map(t => t.track_name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+    function cleanTrackName(n) {
+      return n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+    function getSignificantWords(s) {
+      return cleanTrackName(s).split(' ').filter(function(w) { return w.length >= 4; });
+    }
+    function tracksMatch(a, b) {
+      var cleanA = cleanTrackName(a), cleanB = cleanTrackName(b);
+      if (cleanA === cleanB) return true;
+      if (cleanA.includes(cleanB) || cleanB.includes(cleanA)) return true;
+      // Word overlap: if 2+ significant words (4+ chars) match, it's the same track
+      var wordsA = getSignificantWords(a), wordsB = getSignificantWords(b);
+      var overlap = wordsA.filter(function(w) { return wordsB.indexOf(w) >= 0; });
+      return overlap.length >= 1 && (overlap.length >= 2 || overlap[0].length >= 6);
+    }
     const missing = KNOWN_IRACING_TRACKS.filter(function(known) {
-      var knownClean = known.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      // Check exact match, substring match, or first-word match
-      return !existingLower.some(function(db) {
-        return db === knownClean || db.includes(knownClean) || knownClean.includes(db)
-          || db.split(' ')[0] === knownClean.split(' ')[0] && db.split(' ').length > 1 && knownClean.split(' ').length > 1;
-      });
+      return !named.some(function(t) { return tracksMatch(t.track_name, known); });
     });
 
     const filtered = named.filter(t => t.track_name.toLowerCase().includes(search));
