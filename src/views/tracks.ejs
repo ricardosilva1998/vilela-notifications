@@ -411,17 +411,18 @@
     function cleanTrackName(n) {
       return n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
     }
+    var GENERIC_WORDS = ['circuit','speedway','international','motor','park','raceway','ring','grand','prix','motorsport','motorsports','track','road','national'];
     function getSignificantWords(s) {
-      return cleanTrackName(s).split(' ').filter(function(w) { return w.length >= 4; });
+      return cleanTrackName(s).split(' ').filter(function(w) { return w.length >= 4 && GENERIC_WORDS.indexOf(w) < 0; });
     }
     function tracksMatch(a, b) {
       var cleanA = cleanTrackName(a), cleanB = cleanTrackName(b);
       if (cleanA === cleanB) return true;
       if (cleanA.includes(cleanB) || cleanB.includes(cleanA)) return true;
-      // Word overlap: if 2+ significant words (4+ chars) match, it's the same track
+      // Word overlap: need 1+ specific word (not generic) of 5+ chars matching
       var wordsA = getSignificantWords(a), wordsB = getSignificantWords(b);
-      var overlap = wordsA.filter(function(w) { return wordsB.indexOf(w) >= 0; });
-      return overlap.length >= 1 && (overlap.length >= 2 || overlap[0].length >= 6);
+      var overlap = wordsA.filter(function(w) { return wordsB.some(function(w2) { return w === w2; }); });
+      return overlap.length >= 1 && overlap.some(function(w) { return w.length >= 5; });
     }
     const missing = KNOWN_IRACING_TRACKS.filter(function(known) {
       return !named.some(function(t) { return tracksMatch(t.track_name, known.name); });
