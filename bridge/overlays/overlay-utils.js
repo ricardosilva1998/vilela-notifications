@@ -125,71 +125,23 @@
       }
     } catch(e) {}
 
-    // Wrap panel in a scale container so buttons stay outside the transform
-    var scaleWrap = document.createElement('div');
-    scaleWrap.style.cssText = 'position:relative;display:inline-block;';
-    if (panel && panel.parentNode) {
-      panel.parentNode.insertBefore(scaleWrap, panel);
-      scaleWrap.appendChild(panel);
-    }
-
+    // Apply CSS scale — controlled via settings panel Scale dropdown
     function applyScale(pct) {
       currentScale = pct;
       if (panel) {
         var factor = pct / 100;
         panel.style.transform = 'scale(' + factor + ')';
         panel.style.transformOrigin = 'top left';
-        // Resize window to match scaled content size
+        // Resize window to match scaled content
         try {
           var origW = panel.offsetWidth;
           var origH = panel.offsetHeight;
-          var newW = Math.round(origW * factor);
-          var newH = Math.round(origH * factor);
-          scaleWrap.style.width = newW + 'px';
-          scaleWrap.style.height = newH + 'px';
-          ipcRenderer.send('resize-overlay-wh', newW + 2, newH + 22);
-          // Reposition buttons after scale
-          setTimeout(function() { positionButtons(); }, 50);
+          ipcRenderer.send('resize-overlay-wh', Math.round(origW * factor) + 2, Math.round(origH * factor) + 2);
         } catch(e2) {}
       }
     }
 
-    // +/- buttons — positioned absolutely on the body, repositioned after scale
-    var scaleBox = document.createElement('div');
-    scaleBox.style.cssText = 'position:fixed;display:flex;align-items:center;gap:2px;z-index:9999;opacity:0.2;transition:opacity 0.15s;pointer-events:auto;';
-    scaleBox.addEventListener('mouseenter', function() { scaleBox.style.opacity = '0.9'; });
-    scaleBox.addEventListener('mouseleave', function() { scaleBox.style.opacity = '0.2'; });
-
-    var btnStyle = 'width:18px;height:18px;border:none;border-radius:3px;background:rgba(255,255,255,0.15);color:#fff;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;';
-    var btnMinus = document.createElement('button');
-    btnMinus.style.cssText = btnStyle;
-    btnMinus.textContent = '−';
-    var btnPlus = document.createElement('button');
-    btnPlus.style.cssText = btnStyle;
-    btnPlus.textContent = '+';
-    scaleBox.appendChild(btnMinus);
-    scaleBox.appendChild(btnPlus);
-    document.body.appendChild(scaleBox);
-
-    function positionButtons() {
-      // Place buttons at the visual bottom-right of the scaled panel
-      var rect = scaleWrap.getBoundingClientRect();
-      scaleBox.style.left = (rect.right - 42) + 'px';
-      scaleBox.style.top = (rect.bottom - 22) + 'px';
-    }
-
     if (currentScale !== 100) applyScale(currentScale);
-    setTimeout(positionButtons, 100);
-    window.addEventListener('resize', positionButtons);
-
-    btnMinus.addEventListener('mousedown', function(e) {
-      e.preventDefault(); e.stopPropagation();
-      applyScale(Math.max(40, currentScale - 10));
-    });
-    btnPlus.addEventListener('mousedown', function(e) {
-      e.preventDefault(); e.stopPropagation();
-      applyScale(Math.min(200, currentScale + 10));
-    });
 
   } catch(e) {}
 })();
