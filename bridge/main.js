@@ -364,7 +364,14 @@ function createOverlayWindow(overlayId) {
   const display = screen.getPrimaryDisplay();
   const { width: screenW } = display.workAreaSize;
 
-  // Scale is applied via CSS transform in overlay-utils.js
+  // Apply custom width/height from settings
+  if (settings.overlayCustom && settings.overlayCustom[overlayId]) {
+    const cw = parseInt(settings.overlayCustom[overlayId].width);
+    const ch = parseInt(settings.overlayCustom[overlayId].height);
+    if (cw > 0) config.width = cw;
+    if (ch > 0) config.height = ch;
+  }
+
   // Trackmap: always square, size from settings, ignore saved bounds
   if (overlayId === 'trackmap') {
     if (settings.overlayCustom && settings.overlayCustom.trackmap) {
@@ -556,7 +563,12 @@ ipcMain.on('save-overlay-settings', (event, overlayId, overlaySettings) => {
     const bounds = overlayWindows[overlayId].getBounds();
     overlaySettings.posX = String(bounds.x);
     overlaySettings.posY = String(bounds.y);
-    // Scale is applied via CSS transform in overlay-utils.js (reads from settings)
+    // Apply width/height if user set them
+    const setW = parseInt(overlaySettings.width);
+    const setH = parseInt(overlaySettings.height);
+    if (setW > 0 || setH > 0) {
+      overlayWindows[overlayId].setSize(setW > 0 ? setW : bounds.width, setH > 0 ? setH : bounds.height);
+    }
     settings.overlayCustom[overlayId] = overlaySettings;
   }
 

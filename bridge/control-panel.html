@@ -803,15 +803,15 @@
       if (extracted.maxMyClass) fields.push(extracted.maxMyClass);
       if (extracted.maxOtherClasses) fields.push(extracted.maxOtherClasses);
 
-      // Section 2: Size & Position (at end)
+      // Section 2: Size & Position (at end — always present on all overlays)
       fields.push(
-        { key: '_section_size', type: 'section', label: 'Size & Position' }
-      );
-      if (extracted.fontSize) fields.push(extracted.fontSize);
-      if (extracted.rowHeight) fields.push(extracted.rowHeight);
-      fields.push(
+        { key: '_section_size', type: 'section', label: 'Size & Position' },
+        extracted.fontSize || { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 6, max: 24 },
+        extracted.rowHeight || { key: 'rowHeight', label: 'Row height (px)', type: 'number', default: '24', min: 14, max: 48 },
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
-        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 }
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
+        { key: 'width', label: 'Width (px)', type: 'number', default: '', min: 50, max: 3000 },
+        { key: 'height', label: 'Height (px)', type: 'number', default: '', min: 50, max: 2000 }
       );
     });
 
