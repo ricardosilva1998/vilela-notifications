@@ -110,13 +110,43 @@
     // Expose drag state for other scripts
     window.__isDragging = function() { return _dragging; };
 
-    // Scale controls — +/- buttons in bottom-right corner of panel
+    // CSS scale — shrinks/grows everything uniformly (text, rows, columns)
+    // Keeps exact layout and aspect ratio, just renders smaller/larger
     var panel = document.querySelector('.overlay-panel');
     if (panel) panel.style.position = 'relative';
+
+    // Apply saved scale from settings
+    var currentScale = 100;
+    try {
+      if (overlayId && fs.existsSync(settingsFile)) {
+        var allSettings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+        var s = (allSettings.overlayCustom && allSettings.overlayCustom[overlayId]) || {};
+        if (s.scale) currentScale = parseInt(s.scale) || 100;
+      }
+    } catch(e) {}
+
+    function applyScale(pct) {
+      currentScale = pct;
+      if (panel) {
+        var factor = pct / 100;
+        panel.style.transform = 'scale(' + factor + ')';
+        panel.style.transformOrigin = 'top left';
+        // Resize window to match scaled content
+        try {
+          var origW = panel.scrollWidth;
+          var origH = panel.scrollHeight;
+          ipcRenderer.send('resize-overlay-wh', Math.round(origW * factor) + 2, Math.round(origH * factor) + 2);
+        } catch(e2) {}
+      }
+    }
+
+    if (currentScale !== 100) applyScale(currentScale);
+
+    // +/- buttons on overlay
     var scaleBox = document.createElement('div');
-    scaleBox.style.cssText = 'position:absolute;bottom:2px;right:2px;display:flex;align-items:center;gap:2px;z-index:9999;opacity:0.25;transition:opacity 0.15s;';
+    scaleBox.style.cssText = 'position:fixed;bottom:2px;right:2px;display:flex;align-items:center;gap:2px;z-index:9999;opacity:0.2;transition:opacity 0.15s;';
     scaleBox.addEventListener('mouseenter', function() { scaleBox.style.opacity = '0.9'; });
-    scaleBox.addEventListener('mouseleave', function() { scaleBox.style.opacity = '0.25'; });
+    scaleBox.addEventListener('mouseleave', function() { scaleBox.style.opacity = '0.2'; });
 
     var btnStyle = 'width:16px;height:16px;border:none;border-radius:3px;background:rgba(255,255,255,0.15);color:#fff;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;';
     var btnMinus = document.createElement('button');
@@ -125,41 +155,18 @@
     var btnPlus = document.createElement('button');
     btnPlus.style.cssText = btnStyle;
     btnPlus.textContent = '+';
-
     scaleBox.appendChild(btnMinus);
     scaleBox.appendChild(btnPlus);
-    (panel || document.body).appendChild(scaleBox);
+    document.body.appendChild(scaleBox);
 
-    // Scale works in 10% steps from the default size
-    var _baseSize = null;
-    function getBaseSize() {
-      if (!_baseSize) {
-        try {
-          var s = ipcRenderer.sendSync('get-window-size');
-          if (s) _baseSize = { w: s[0], h: s[1] };
-        } catch(e2) {}
-        if (!_baseSize) _baseSize = { w: window.outerWidth, h: window.outerHeight };
-      }
-      return _baseSize;
-    }
-
-    function scaleOverlay(direction) {
-      try {
-        var current = ipcRenderer.sendSync('get-window-size');
-        if (!current) return;
-        var base = getBaseSize();
-        var step = Math.round(base.w * 0.1); // 10% of base width
-        var stepH = Math.round(base.h * 0.1);
-        var newW = current[0] + (direction * step);
-        var newH = current[1] + (direction * stepH);
-        newW = Math.max(Math.round(base.w * 0.4), Math.min(Math.round(base.w * 2), newW)); // 40% to 200%
-        newH = Math.max(Math.round(base.h * 0.4), Math.min(Math.round(base.h * 2), newH));
-        ipcRenderer.send('resize-overlay-wh', newW, newH);
-      } catch(e2) {}
-    }
-
-    btnMinus.addEventListener('mousedown', function(e) { e.preventDefault(); e.stopPropagation(); scaleOverlay(-1); });
-    btnPlus.addEventListener('mousedown', function(e) { e.preventDefault(); e.stopPropagation(); scaleOverlay(1); });
+    btnMinus.addEventListener('mousedown', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      applyScale(Math.max(40, currentScale - 10));
+    });
+    btnPlus.addEventListener('mousedown', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      applyScale(Math.min(200, currentScale + 10));
+    });
 
   } catch(e) {}
 })();
