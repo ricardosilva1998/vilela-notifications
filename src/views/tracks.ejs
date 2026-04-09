@@ -608,17 +608,14 @@
         } else if (ext === 'csv') {
           data = parseImportCSV(reader.result, carClass, raceType);
         }
+        var qualZone = document.getElementById('import-qual-input').closest('.import-dropzone');
         if (data && data.avgQualifyTime) {
           pendingQualData = data;
           document.getElementById('import-error').textContent = '';
-          // Visual feedback
-          event.target.closest('.import-dropzone').style.borderColor = '#3ecf8e';
-          event.target.closest('.import-dropzone').querySelector('.import-dropzone-text').textContent = '✓ Qualify loaded';
+          if (qualZone) { qualZone.style.borderColor = '#3ecf8e'; qualZone.querySelector('.import-dropzone-text').textContent = '✓ Qualify loaded'; }
         } else if (data && data.avgLapTime) {
-          // Qualify file has lap times but not tagged as qualify — use avgLapTime as qualify
           pendingQualData = { avgQualifyTime: data.avgLapTime };
-          event.target.closest('.import-dropzone').style.borderColor = '#3ecf8e';
-          event.target.closest('.import-dropzone').querySelector('.import-dropzone-text').textContent = '✓ Qualify loaded';
+          if (qualZone) { qualZone.style.borderColor = '#3ecf8e'; qualZone.querySelector('.import-dropzone-text').textContent = '✓ Qualify loaded'; }
         }
       } catch(e) {
         document.getElementById('import-error').textContent = 'Qualify parse error: ' + e.message;
