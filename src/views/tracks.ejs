@@ -992,10 +992,9 @@
     document.getElementById('import-confirm').classList.add('active');
     document.getElementById('import-message').innerHTML = '';
 
-    // Disable save if class or race type is missing
+    // Enable save button
     var btn = document.getElementById('btn-save-import');
-    btn.disabled = !data.carClass || !data.raceType;
-    classSelect.onchange = raceSelect.onchange = function() { btn.disabled = false; };
+    btn.disabled = false;
   }
 
   window.saveImport = function() {
