@@ -819,6 +819,8 @@ try { db.exec('ALTER TABLE track_maps ADD COLUMN track_city TEXT'); } catch(e) {
 
 // Migration: add top_car column to track_stats
 try { db.exec('ALTER TABLE track_stats ADD COLUMN top_car TEXT'); } catch(e) {}
+// Migration: add category column (road/formula/oval/dirt_oval/dirt_road) — existing data = road
+try { db.exec("ALTER TABLE track_stats ADD COLUMN category TEXT DEFAULT 'road'"); } catch(e) {}
 
 // --- Bridge Remote Logs ---
 db.exec(`

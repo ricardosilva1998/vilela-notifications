@@ -165,8 +165,9 @@
             <select id="import-category" onchange="updateImportOptions()">
               <option value="road">Road</option>
               <option value="formula">Formula</option>
-              <option value="nascar">NASCAR</option>
-              <option value="dirt">Dirt Road</option>
+              <option value="oval">Oval / NASCAR</option>
+              <option value="dirt_oval">Dirt Oval</option>
+              <option value="dirt_road">Dirt Road / Rallycross</option>
             </select>
           </div>
           <div class="import-field">
@@ -578,35 +579,32 @@
 
   var IMPORT_OPTIONS = {
     road: {
-      classes: ['auto', 'GTP', 'LMP2', 'GT3', 'LMP3', 'GT4', 'GTE', 'TCR', 'Porsche Cup', 'BMW M2', 'Toyota', 'Mazda'],
-      raceTypes: ['auto', 'Sprint', 'Open', 'Endurance', 'Regionals', 'VRS Sprint', 'VRS Open', 'IMSA Sprint', 'IMSA Open', 'IMSA Endurance', 'Global Endurance', 'LMP2 Sprint', 'Proto Sprint'],
+      classes: ['auto', 'GTP', 'LMP1', 'LMP2', 'LMP3', 'GT3', 'GT4', 'GT1', 'GTE', 'TCR', 'Porsche Cup', 'BMW M2', 'Toyota', 'Mazda', 'Spec Racer Ford', 'Radical', 'Cadillac CTS-V', 'V8 Supercars', 'Kia Optima', 'Ford FR500S'],
+      raceTypes: ['auto', 'Regionals', 'VRS Sprint', 'VRS Open', 'IMSA Sprint', 'IMSA Open', 'IMSA Endurance', 'Global Endurance', 'LMP2 Sprint', 'Proto Sprint', 'Sprint', 'Open', 'Endurance'],
     },
     formula: {
-      classes: ['auto', 'Formula A', 'Formula B', 'IndyCar', 'Lotus 79', 'Formula C', 'Formula 4', 'Formula Vee', 'Formula 1600'],
+      classes: ['auto', 'Formula A', 'Formula B', 'IndyCar', 'Dallara F3', 'FR 2.0', 'FR 3.5', 'Indy Pro 2000', 'Skip Barber', 'Lotus 49', 'Lotus 79', 'McLaren MP4-30', 'Formula Vee', 'Formula 1600', 'USF 2000', 'Formula 4'],
       raceTypes: ['auto', 'Sprint', 'Open', 'Endurance'],
     },
-    nascar: null,
-    dirt: null,
+    oval: {
+      classes: ['auto', 'NASCAR Cup', 'NASCAR Xfinity', 'NASCAR Trucks', 'ARCA', 'Super Late Model', 'SK Modified', 'Whelen Modified', 'Street Stock', 'Legends', 'Silver Crown', 'Sprint Car', 'SRX'],
+      raceTypes: ['auto', 'Sprint', 'Open', 'Endurance'],
+    },
+    dirt_oval: {
+      classes: ['auto', 'Dirt Late Model Super', 'Dirt Late Model Pro', 'Dirt Late Model Limited', 'Dirt Sprint 410', 'Dirt Sprint 360', 'Dirt Sprint 305', 'Dirt Sprint 410 NW', 'Dirt Sprint 360 NW', 'Dirt UMP Modified', 'Dirt Midget', 'Dirt Street Stock', 'Dirt Legends'],
+      raceTypes: ['auto', 'Sprint', 'Open', 'Endurance'],
+    },
+    dirt_road: {
+      classes: ['auto', 'Rallycross', 'Cross Car', 'Pro 2 Lite', 'Pro 2', 'Pro 4'],
+      raceTypes: ['auto', 'Sprint', 'Open', 'Endurance'],
+    },
   };
 
   window.updateImportOptions = function() {
     var cat = document.getElementById('import-category').value;
-    var opts = IMPORT_OPTIONS[cat];
+    var opts = IMPORT_OPTIONS[cat] || IMPORT_OPTIONS.road;
     var classEl = document.getElementById('import-class');
     var typeEl = document.getElementById('import-race-type');
-    var dropzones = document.getElementById('import-dropzones');
-    var comingSoon = document.getElementById('import-coming-soon');
-
-    if (!opts) {
-      classEl.innerHTML = '';
-      typeEl.innerHTML = '';
-      if (dropzones) dropzones.style.display = 'none';
-      comingSoon.style.display = 'block';
-      return;
-    }
-
-    comingSoon.style.display = 'none';
-    if (dropzones) dropzones.style.display = 'flex';
     classEl.innerHTML = opts.classes.map(function(c) {
       return '<option value="' + (c === 'auto' ? 'auto' : c) + '">' + (c === 'auto' ? 'Auto-detect' : c) + '</option>';
     }).join('');

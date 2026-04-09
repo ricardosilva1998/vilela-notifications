@@ -180,23 +180,101 @@ const pitEntryTimes = new Map(); // carIdx -> Date.now() when entered pit
 const pitLapMap = new Map(); // carIdx -> lapsCompleted when they entered pit
 const driverLastLapPoll = new Map(); // carIdx -> { laps, poll } — last time lapsCompleted changed
 
-// Canonical class mapping for track stats
+// Canonical class mapping for track stats — all iRacing car classes
 const CLASS_MAP = {
+  // Road — Sports Car / GT / Prototype
   'GTP': 'GTP', 'Hypercar': 'GTP', 'GTP 2025': 'GTP',
   'LMP2': 'LMP2', 'Dallara P217': 'LMP2', 'LMP2 2025': 'LMP2',
+  'LMP1 Class': 'LMP1', 'LMP1': 'LMP1',
   'GT3': 'GT3', 'GT3 2025': 'GT3', 'GT3 Class': 'GT3', 'IMSA23': 'GT3', 'IMSA GT3': 'GT3',
   'GT4': 'GT4', 'GT4 Class': 'GT4', 'GT4 2025': 'GT4',
+  'GT1 Class': 'GT1', 'GT1': 'GT1',
+  'GTE': 'GTE', 'GTE 2025': 'GTE', 'GTE Class': 'GTE',
   'LMP3': 'LMP3', 'LMP3 2025': 'LMP3',
-  'MX5': 'Mazda', 'Mazda MX-5': 'Mazda', 'MX-5': 'Mazda', 'Global Mazda MX-5': 'Mazda',
   'TCR': 'TCR', 'TCR 2025': 'TCR',
   'PCCR': 'Porsche Cup', 'Porsche 992': 'Porsche Cup', 'Porsche Cup': 'Porsche Cup', 'Porsche 911 GT3 Cup': 'Porsche Cup',
   'BMW M2 CS': 'BMW M2', 'BMW M2': 'BMW M2',
   'Toyota GR86': 'Toyota', 'GR86': 'Toyota',
-  'GTE': 'GTE', 'GTE 2025': 'GTE',
+  'MX5': 'Mazda', 'Mazda MX-5': 'Mazda', 'MX-5': 'Mazda', 'Global Mazda MX-5': 'Mazda', 'Mazda MX-5 Cup': 'Mazda', 'Mazda MX-5 Cup 2016': 'Mazda',
+  'Spec Racer Ford': 'Spec Racer Ford',
+  'Radical SR8': 'Radical', 'Radical SR10': 'Radical', 'Radical': 'Radical',
+  'Cadillac CTS-VR': 'Cadillac CTS-V', 'Cadillac CTS-V': 'Cadillac CTS-V',
+  'V8Supercars': 'V8 Supercars', 'V8 Supercars': 'V8 Supercars',
+  'Kia Optima': 'Kia Optima',
+  'Ford Mustang FR500S': 'Ford FR500S',
+  // Formula
+  'Formula A': 'Formula A',
+  'Formula B': 'Formula B',
+  'Dallara F3': 'Dallara F3',
+  'Dallara IndyCar': 'IndyCar', 'Dallara IR18': 'IndyCar', 'Dallara DW12': 'IndyCar', 'IR18': 'IndyCar',
+  'Formula Renault 2.0': 'FR 2.0', 'Formula Renault 3.5': 'FR 3.5',
+  'Pro Mazda': 'Indy Pro 2000',
+  'Skip Barber Race Series': 'Skip Barber', 'Skip Barber': 'Skip Barber',
+  'Lotus 49': 'Lotus 49', 'Lotus 79': 'Lotus 79',
+  'McLaren MP4-30': 'McLaren MP4-30',
+  'Formula Vee': 'Formula Vee',
+  'Ray FF1600': 'Formula 1600', 'Formula 1600': 'Formula 1600',
+  'USF 2000': 'USF 2000',
+  'FIA F4': 'Formula 4',
+  // Oval / NASCAR
+  'Sprint Cup': 'NASCAR Cup', 'NASCAR Cup': 'NASCAR Cup',
+  'Xfinity Series': 'NASCAR Xfinity', 'NASCAR Xfinity': 'NASCAR Xfinity',
+  'Camping World Series': 'NASCAR Trucks', 'NASCAR Trucks': 'NASCAR Trucks',
+  'K&N Series': 'ARCA', 'ARCA': 'ARCA',
+  'Super Late Model': 'Super Late Model',
+  'SK Modified': 'SK Modified',
+  'Whelen Modified': 'Whelen Modified',
+  'Street Stock': 'Street Stock',
+  'Legends': 'Legends',
+  'Silver Crown': 'Silver Crown',
+  'Sprint Car': 'Sprint Car',
+  'SRX': 'SRX',
+  // Dirt Oval
+  'Dirt Street Stock': 'Dirt Street Stock',
+  'Dirt Legends': 'Dirt Legends',
+  'Dirt Late Model - Limited': 'Dirt Late Model Limited',
+  'Dirt Late Model - Pro': 'Dirt Late Model Pro',
+  'Dirt Late Model - Super': 'Dirt Late Model Super',
+  'Dirt UMP Modified': 'Dirt UMP Modified',
+  'Dirt Midget': 'Dirt Midget',
+  'Dirt SprintCar - 305': 'Dirt Sprint 305',
+  'Dirt SprintCar - 360': 'Dirt Sprint 360',
+  'Dirt SprintCar - 360wingless': 'Dirt Sprint 360 NW',
+  'Dirt Sprintcar - 410': 'Dirt Sprint 410',
+  'Dirt SprintCar - 410wingless': 'Dirt Sprint 410 NW',
+  // Dirt Road / Rallycross
+  'Rallycross': 'Rallycross',
+  'FIA Cross Car': 'Cross Car',
+  'Pro 2 Lite': 'Pro 2 Lite', 'Pro 2': 'Pro 2', 'Pro 4': 'Pro 4',
 };
+
+// Class → category mapping
+const CLASS_CATEGORY = {
+  'GTP': 'road', 'LMP2': 'road', 'LMP1': 'road', 'GT3': 'road', 'GT4': 'road', 'GT1': 'road', 'GTE': 'road', 'LMP3': 'road',
+  'TCR': 'road', 'Porsche Cup': 'road', 'BMW M2': 'road', 'Toyota': 'road', 'Mazda': 'road',
+  'Spec Racer Ford': 'road', 'Radical': 'road', 'Cadillac CTS-V': 'road', 'V8 Supercars': 'road', 'Kia Optima': 'road', 'Ford FR500S': 'road',
+  'Formula A': 'formula', 'Formula B': 'formula', 'Dallara F3': 'formula', 'IndyCar': 'formula',
+  'FR 2.0': 'formula', 'FR 3.5': 'formula', 'Indy Pro 2000': 'formula', 'Skip Barber': 'formula',
+  'Lotus 49': 'formula', 'Lotus 79': 'formula', 'McLaren MP4-30': 'formula',
+  'Formula Vee': 'formula', 'Formula 1600': 'formula', 'USF 2000': 'formula', 'Formula 4': 'formula',
+  'NASCAR Cup': 'oval', 'NASCAR Xfinity': 'oval', 'NASCAR Trucks': 'oval', 'ARCA': 'oval',
+  'Super Late Model': 'oval', 'SK Modified': 'oval', 'Whelen Modified': 'oval', 'Street Stock': 'oval',
+  'Legends': 'oval', 'Silver Crown': 'oval', 'Sprint Car': 'oval', 'SRX': 'oval',
+  'Dirt Street Stock': 'dirt_oval', 'Dirt Legends': 'dirt_oval',
+  'Dirt Late Model Limited': 'dirt_oval', 'Dirt Late Model Pro': 'dirt_oval', 'Dirt Late Model Super': 'dirt_oval',
+  'Dirt UMP Modified': 'dirt_oval', 'Dirt Midget': 'dirt_oval',
+  'Dirt Sprint 305': 'dirt_oval', 'Dirt Sprint 360': 'dirt_oval', 'Dirt Sprint 360 NW': 'dirt_oval',
+  'Dirt Sprint 410': 'dirt_oval', 'Dirt Sprint 410 NW': 'dirt_oval',
+  'Rallycross': 'dirt_road', 'Cross Car': 'dirt_road', 'Pro 2 Lite': 'dirt_road', 'Pro 2': 'dirt_road', 'Pro 4': 'dirt_road',
+};
+
 function canonicalClass(shortName) {
   if (!shortName) return null;
   return CLASS_MAP[shortName] || CLASS_MAP[shortName.trim()] || null;
+}
+
+function classCategory(canonicalName) {
+  return CLASS_CATEGORY[canonicalName] || 'road';
 }
 
 const TRACK_STATS_URL = 'https://atletanotifications.com/api/track-stats';
@@ -284,6 +362,7 @@ function collectAndUploadTrackStats(track, standingsData, pitDeltas, sofByClassD
       estLaps = parseFloat((effectiveTime / leaderBest).toFixed(2));
     }
     const raceType = getRaceType(cls);
+    const category = classCategory(cls);
     if (!statsByRaceType[raceType]) statsByRaceType[raceType] = {};
     // Most used car in this class
     const topCar = Object.keys(data.cars).sort((a, b) => data.cars[b] - data.cars[a])[0] || null;
@@ -295,6 +374,7 @@ function collectAndUploadTrackStats(track, standingsData, pitDeltas, sofByClassD
       estLaps,
       samples: data.drivers,
       topCar,
+      category,
     };
   });
 
