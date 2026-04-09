@@ -202,11 +202,12 @@
       const carsWouldPass = [];
       for (const driver of classmates) {
         if (driver.carIdx === focused.carIdx) continue;
-        if (driver.classPosition <= currentPos) continue; // car ahead or same pos
-        // Gap: prefer gapToLeader difference, fallback to estTime difference
+        if (driver.classPosition <= 0 || driver.classPosition <= currentPos) continue; // car ahead, same pos, or no position data
+        // Gap: require BOTH cars to have valid gapToLeader for subtraction to be meaningful
         let gapBetween = 0;
-        if (focusGap > 0 || (driver.gapToLeader || 0) > 0) {
-          gapBetween = Math.abs((driver.gapToLeader || 0) - focusGap);
+        const driverGap = driver.gapToLeader || 0;
+        if (focusGap > 0 && driverGap > 0) {
+          gapBetween = Math.abs(driverGap - focusGap);
         } else if (focused.estTime > 0 && driver.estTime > 0) {
           gapBetween = Math.abs(driver.estTime - focused.estTime);
         }
@@ -332,5 +333,6 @@
       });
     } catch(e) {}
   </script>
+<script src="overlay-utils.js"></script>
 </body>
 </html>
