@@ -774,6 +774,11 @@
       ],
     };
 
+    // Add showHeader toggle to all overlays
+    Object.keys(CUSTOMIZE_FIELDS).forEach(function(id) {
+      CUSTOMIZE_FIELDS[id].unshift({ key: 'showHeader', label: 'Show header bar', type: 'checkbox', default: true });
+    });
+
     // Migrate old column keys to new ones
     const COL_KEY_MIGRATION = { position: 'pos', carNumber: 'number', driverName: 'name', bestLap: 'best', lastLap: 'last' };
     function migrateColKey(k) { return COL_KEY_MIGRATION[k] || k; }
