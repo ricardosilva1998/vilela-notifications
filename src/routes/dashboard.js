@@ -1324,7 +1324,7 @@ router.post('/youtube-chatbot/disconnect', (req, res) => {
 // --- Report an Issue ---
 
 router.get('/report', (req, res) => {
-  res.render('report-issue', { streamer: req.streamer, msg: req.query.msg });
+  res.render('report-issue', { streamer: req.streamer });
 });
 
 router.post('/report', (req, res) => {
@@ -1332,17 +1332,77 @@ router.post('/report', (req, res) => {
   const description = (req.body.description || '').trim();
 
   if (!subject || !description) {
-    return res.redirect('/dashboard/report?msg=missing_fields');
+    return res.status(400).json({ ok: false, error: 'missing_fields' });
   }
 
-  db.createIssue(
+  const issueId = db.createIssue(
     req.streamer.id,
     req.streamer.discord_display_name || req.streamer.discord_username,
     subject,
     description
   );
-  console.log(`[Dashboard] Issue reported by ${req.streamer.discord_username}: ${subject}`);
-  res.redirect('/dashboard/report?msg=submitted');
+  console.log(`[Dashboard] Issue #${issueId} reported by ${req.streamer.discord_username}: ${subject}`);
+  res.json({ ok: true, issueId });
+});
+
+// Upload screenshot for an issue (raw body, same pattern as sponsors/avatars)
+router.post('/report/:id/screenshot', (req, res) => {
+  const issueId = parseInt(req.params.id);
+  const issue = db.getIssueById(issueId);
+  if (!issue || issue.streamer_id !== req.streamer.id) {
+    return res.status(404).json({ ok: false, error: 'not_found' });
+  }
+
+  // Check max 3 screenshots
+  const existing = issue.screenshots ? issue.screenshots.split(',').filter(Boolean) : [];
+  if (existing.length >= 3) {
+    return res.status(400).json({ ok: false, error: 'max_screenshots' });
+  }
+
+  const chunks = [];
+  req.on('data', chunk => chunks.push(chunk));
+  req.on('end', () => {
+    const buf = Buffer.concat(chunks);
+    if (buf.length > 5 * 1024 * 1024) {
+      return res.status(400).json({ ok: false, error: 'file_too_large' });
+    }
+
+    const issueDir = path.join(__dirname, '..', '..', 'data', 'issues', String(issueId));
+    if (!fs.existsSync(issueDir)) fs.mkdirSync(issueDir, { recursive: true });
+
+    const ext = (req.query.ext || 'png').replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'png';
+    const filename = `shot_${Date.now()}.${ext}`;
+    fs.writeFileSync(path.join(issueDir, filename), buf);
+
+    existing.push(filename);
+    db.updateIssueScreenshots(issueId, existing.join(','));
+    res.json({ ok: true, filename });
+  });
+});
+
+// Trigger AI analysis for an issue
+router.post('/report/:id/analyze', (req, res) => {
+  const issueId = parseInt(req.params.id);
+  const issue = db.getIssueById(issueId);
+  if (!issue || issue.streamer_id !== req.streamer.id) {
+    return res.status(404).json({ ok: false, error: 'not_found' });
+  }
+
+  const config = require('../config');
+  if (!config.anthropic.apiKey) {
+    console.log('[Dashboard] Skipping AI analysis — no ANTHROPIC_API_KEY');
+    return res.json({ ok: true, status: 'skipped' });
+  }
+
+  db.updateIssueAgentStatus(issueId, 'analyzing');
+  res.json({ ok: true, status: 'analyzing' });
+
+  // Fire async — don't await
+  const { analyzeIssue } = require('../services/agentTriage');
+  analyzeIssue(issueId).catch(err => {
+    console.error(`[AgentTriage] Error analyzing issue #${issueId}:`, err.message);
+    db.updateIssueAnalysis(issueId, JSON.stringify({ error: err.message }), 'error');
+  });
 });
 
 // --- Sponsor Rotation (replaces Timed Notifications) ---
