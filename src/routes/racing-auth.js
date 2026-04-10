@@ -45,7 +45,7 @@ router.post('/signup', express.json(), express.urlencoded({ extended: true }), a
     res.cookie('session', sid, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
 
     if (req.is('json')) return res.json({ ok: true, id: userId, username });
-    res.redirect('/racing/dashboard');
+    res.redirect('/racing');
   } catch(e) {
     console.error('[Racing Signup]', e.message);
     if (req.is('json')) return res.status(500).json({ error: 'Signup failed' });
@@ -77,7 +77,7 @@ router.post('/login', express.urlencoded({ extended: true }), async (req, res) =
     }
 
     res.cookie('session', sid, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
-    res.redirect('/racing/dashboard');
+    res.redirect('/racing');
   } catch(e) {
     console.error('[Racing Login]', e.message);
     res.redirect('/racing?error=' + encodeURIComponent('Login failed'));

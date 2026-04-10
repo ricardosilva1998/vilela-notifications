@@ -1,26 +1,65 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
+const db = require('../db');
 const router = express.Router();
 
+// /racing — landing (if not logged in) or dashboard (if logged in)
 router.get('/', (req, res) => {
-  if (req.racingUser) return res.redirect('/racing/dashboard');
+  if (req.racingUser) {
+    // Logged in — show dashboard with user's sessions
+    const bridgeId = req.racingUser.bridge_id || '';
+    const sessions = db.getSessionsByTrack ? [] : []; // all tracks
+    // Get recent sessions across all tracks
+    let recentSessions = [];
+    try {
+      const stmt = db.db ? null : null; // fallback
+      // Query recent sessions for this user (by bridge_id or racing_user_id)
+      recentSessions = db.getRecentSessionsByUser ? db.getRecentSessionsByUser(req.racingUser.id, bridgeId, 20) : [];
+    } catch(e) {}
+    return res.render('racing-dashboard', {
+      streamer: req.streamer || null,
+      racingUser: req.racingUser,
+      sessions: recentSessions,
+    });
+  }
   res.render('racing-landing', { streamer: req.streamer || null, racingUser: null, error: req.query.error || null });
 });
 
 router.get('/signup', (req, res) => {
+  if (req.racingUser) return res.redirect('/racing');
   res.render('racing-signup', { streamer: req.streamer || null, racingUser: null, error: req.query.error || null });
 });
 
+// Redirect old URL
+router.get('/dashboard', (req, res) => res.redirect('/racing'));
+
+// Auth wall — everything below requires Racing login
 router.use((req, res, next) => {
   if (!req.racingUser) return res.redirect('/racing');
   next();
 });
 
-router.get('/dashboard', (req, res) => {
-  res.render('racing-dashboard', { streamer: req.streamer || null, racingUser: req.racingUser });
-});
-
 router.get('/account', (req, res) => {
   res.render('racing-account', { streamer: req.streamer || null, racingUser: req.racingUser, msg: req.query.msg || null, error: req.query.error || null });
+});
+
+// Change password
+router.post('/account/password', express.urlencoded({ extended: true }), async (req, res) => {
+  try {
+    const { current_password, new_password, confirm_password } = req.body;
+    if (!current_password || !new_password) return res.redirect('/racing/account?error=All fields required');
+    if (new_password !== confirm_password) return res.redirect('/racing/account?error=Passwords do not match');
+    if (new_password.length < 6) return res.redirect('/racing/account?error=Password must be at least 6 characters');
+
+    const valid = await bcrypt.compare(current_password, req.racingUser.password_hash);
+    if (!valid) return res.redirect('/racing/account?error=Current password is incorrect');
+
+    const hash = await bcrypt.hash(new_password, 10);
+    db.updateRacingPassword(req.racingUser.id, hash);
+    res.redirect('/racing/account?msg=Password updated');
+  } catch(e) {
+    res.redirect('/racing/account?error=Failed to update password');
+  }
 });
 
 module.exports = router;

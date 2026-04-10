@@ -3357,6 +3357,17 @@ function getSessionsByTrack(trackName, bridgeId, limit, offset) {
   return _getSessionsByTrack.all({ track_name: trackName, bridge_id: bridgeId || '', limit: limit || 50, offset: offset || 0 });
 }
 
+const _getRecentSessionsByUser = db.prepare(`
+  SELECT s.*, (SELECT COUNT(*) FROM session_laps WHERE session_id = s.id) as actual_laps
+  FROM racing_sessions s
+  WHERE s.racing_user_id = @racing_user_id OR s.bridge_id = @bridge_id
+  ORDER BY s.created_at DESC
+  LIMIT @limit
+`);
+function getRecentSessionsByUser(racingUserId, bridgeId, limit) {
+  return _getRecentSessionsByUser.all({ racing_user_id: racingUserId || 0, bridge_id: bridgeId || '', limit: limit || 20 });
+}
+
 function getRacingSessionById(id) {
   return _getSessionById.get({ id });
 }
@@ -3622,6 +3633,7 @@ module.exports = {
   cleanupOldBridgeBugReports,
   insertSession,
   getSessionsByTrack,
+  getRecentSessionsByUser,
   getRacingSessionById,
   getSessionByShareToken,
   getSessionLaps,
