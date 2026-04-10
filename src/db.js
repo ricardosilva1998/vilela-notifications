@@ -822,6 +822,67 @@ try { db.exec('ALTER TABLE track_stats ADD COLUMN top_car TEXT'); } catch(e) {}
 // Migration: add category column (road/formula/oval/dirt_oval/dirt_road) — existing data = road
 try { db.exec("ALTER TABLE track_stats ADD COLUMN category TEXT DEFAULT 'road'"); } catch(e) {}
 
+// ── Normalize race_type values (merge old snake_case → proper names) ──
+try {
+  const raceTypeMap = {
+    'vrs_open': 'VRS Open',
+    'vrs_sprint': 'VRS Sprint',
+    'imsa_open': 'IMSA Open',
+    'imsa_sprint': 'IMSA Sprint',
+    'lmp2_sprint': 'LMP2 Sprint',
+    'prototype_sprint': 'Proto Sprint',
+    'regionals': 'Regionals',
+    'sprint': 'Sprint',
+  };
+  const allStats = db.prepare('SELECT * FROM track_stats').all();
+  const oldRows = allStats.filter(r => raceTypeMap[r.race_type]);
+  if (oldRows.length > 0) {
+    console.log('[DB] Normalizing ' + oldRows.length + ' race_type values...');
+    const mergeStmt = db.prepare(`
+      INSERT INTO track_stats (track_name, car_class, race_type, avg_lap_time, avg_pit_time, avg_qualify_time, avg_sof, est_laps, avg_drivers, race_count, top_car, category)
+      VALUES (@track_name, @car_class, @race_type, @avg_lap_time, @avg_pit_time, @avg_qualify_time, @avg_sof, @est_laps, @avg_drivers, @race_count, @top_car, @category)
+      ON CONFLICT(track_name, car_class, race_type) DO UPDATE SET
+        avg_lap_time = CASE WHEN excluded.race_count > 0 AND track_stats.race_count > 0
+          THEN (track_stats.avg_lap_time * track_stats.race_count + excluded.avg_lap_time * excluded.race_count) / (track_stats.race_count + excluded.race_count)
+          ELSE COALESCE(NULLIF(excluded.avg_lap_time, 0), track_stats.avg_lap_time) END,
+        avg_pit_time = CASE WHEN excluded.avg_pit_time > 0 AND track_stats.avg_pit_time > 0
+          THEN (track_stats.avg_pit_time * track_stats.race_count + excluded.avg_pit_time * excluded.race_count) / (track_stats.race_count + excluded.race_count)
+          ELSE COALESCE(NULLIF(excluded.avg_pit_time, 0), track_stats.avg_pit_time) END,
+        avg_qualify_time = CASE WHEN excluded.avg_qualify_time > 0 AND track_stats.avg_qualify_time > 0
+          THEN (track_stats.avg_qualify_time * track_stats.race_count + excluded.avg_qualify_time * excluded.race_count) / (track_stats.race_count + excluded.race_count)
+          ELSE COALESCE(NULLIF(excluded.avg_qualify_time, 0), track_stats.avg_qualify_time) END,
+        avg_sof = CASE WHEN excluded.avg_sof > 0 AND track_stats.avg_sof > 0
+          THEN (track_stats.avg_sof * track_stats.race_count + excluded.avg_sof * excluded.race_count) / (track_stats.race_count + excluded.race_count)
+          ELSE COALESCE(NULLIF(excluded.avg_sof, 0), track_stats.avg_sof) END,
+        est_laps = CASE WHEN excluded.est_laps > 0 AND track_stats.est_laps > 0
+          THEN (track_stats.est_laps * track_stats.race_count + excluded.est_laps * excluded.race_count) / (track_stats.race_count + excluded.race_count)
+          ELSE COALESCE(NULLIF(excluded.est_laps, 0), track_stats.est_laps) END,
+        avg_drivers = CASE WHEN excluded.avg_drivers > 0 AND track_stats.avg_drivers > 0
+          THEN (track_stats.avg_drivers * track_stats.race_count + excluded.avg_drivers * excluded.race_count) / (track_stats.race_count + excluded.race_count)
+          ELSE COALESCE(NULLIF(excluded.avg_drivers, 0), track_stats.avg_drivers) END,
+        race_count = track_stats.race_count + excluded.race_count,
+        top_car = COALESCE(NULLIF(excluded.top_car, ''), track_stats.top_car)
+    `);
+    const deleteStmt = db.prepare('DELETE FROM track_stats WHERE id = ?');
+    const txn = db.transaction(() => {
+      for (const row of oldRows) {
+        const newType = raceTypeMap[row.race_type];
+        mergeStmt.run({
+          track_name: row.track_name, car_class: row.car_class, race_type: newType,
+          avg_lap_time: row.avg_lap_time || 0, avg_pit_time: row.avg_pit_time || 0,
+          avg_qualify_time: row.avg_qualify_time || 0, avg_sof: row.avg_sof || 0,
+          est_laps: row.est_laps || 0, avg_drivers: row.avg_drivers || 0,
+          race_count: row.race_count || 0, top_car: row.top_car || '',
+          category: row.category || 'road',
+        });
+        deleteStmt.run(row.id);
+      }
+    });
+    txn();
+    console.log('[DB] Normalized ' + oldRows.length + ' race_type values');
+  }
+} catch(e) { console.error('[DB] race_type normalization error:', e.message); }
+
 // ── Session data tables (session capture pipeline) ──────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS racing_sessions (
