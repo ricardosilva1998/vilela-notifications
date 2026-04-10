@@ -21,6 +21,7 @@
     .stats-table th {
       font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
       color: rgba(255,255,255,0.3); padding: 5px 6px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.06);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .stats-table th:first-child { text-align: left; width: 90px; }
     .stats-table td {
@@ -164,7 +165,7 @@
       });
 
       let html = '<table class="stats-table"><thead><tr>';
-      html += '<th>Class</th><th>Avg Lap</th><th>Best Lap</th><th>Est. Laps</th><th>Pit Time</th><th>SOF</th><th>OT</th><th>#</th>';
+      html += '<th>Class</th><th>Avg</th><th>Best</th><th>Est.</th><th>Pit</th><th>SOF</th><th>OT</th><th>#</th>';
       html += '</tr></thead><tbody>';
 
       classNames.forEach(cls => {
@@ -304,59 +305,7 @@
 
     connectBridge(['standings', 'session']);
 
-    // ─── Drag support ──────────────────────────────────────
-    try {
-      const { ipcRenderer } = require('electron');
-      ipcRenderer.on('lock-state', (event, locked) => {
-        document.body.style.pointerEvents = locked ? 'none' : 'auto';
-      });
-      let _dragging = false, _dragStartX = 0, _dragStartY = 0;
-      const dragHeader = document.querySelector('.overlay-header');
-      if (dragHeader) {
-        dragHeader.style.cursor = 'move';
-        dragHeader.addEventListener('mousedown', (e) => {
-          if (e.button !== 0) return;
-          _dragging = true;
-          _dragStartX = e.screenX;
-          _dragStartY = e.screenY;
-          e.preventDefault();
-        });
-      }
-      document.addEventListener('mousemove', (e) => {
-        if (!_dragging) return;
-        const dx = e.screenX - _dragStartX;
-        const dy = e.screenY - _dragStartY;
-        _dragStartX = e.screenX;
-        _dragStartY = e.screenY;
-        ipcRenderer.send('drag-overlay', dx, dy);
-      });
-      document.addEventListener('mouseup', () => { _dragging = false; });
-      document.addEventListener('mouseleave', () => { _dragging = false; });
-
-      // Click-through: transparent areas pass clicks through, visible panel captures them
-      let _mouseOverPanel = false;
-      document.addEventListener('mousemove', (e) => {
-        if (_dragging) return;
-        const panel = document.querySelector('.overlay-panel');
-        if (!panel) return;
-        const r = panel.getBoundingClientRect();
-        const over = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
-        if (over && !_mouseOverPanel) {
-          _mouseOverPanel = true;
-          ipcRenderer.send('set-ignore-mouse', false);
-        } else if (!over && _mouseOverPanel) {
-          _mouseOverPanel = false;
-          ipcRenderer.send('set-ignore-mouse', true);
-        }
-      });
-      document.addEventListener('mouseleave', () => {
-        if (_dragging) return;
-        if (_mouseOverPanel) {
-          _mouseOverPanel = false;
-          ipcRenderer.send('set-ignore-mouse', true);
-        }
-      });
-    } catch(e) {}
+    // Drag + click-through handled by overlay-utils.js
   </script>
 <script src="overlay-utils.js"></script>
 </body>
