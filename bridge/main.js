@@ -22,6 +22,7 @@ const { startTelemetry, stopTelemetry } = require('./telemetry');
 const { load: loadSettings, save: saveSettings } = require('./settings');
 const { startVoiceInput, stopVoiceInput, setVoiceChatWindow } = require('./voiceInput');
 const { connectToChannel: connectTwitchChat, disconnect: disconnectTwitchChat } = require('./twitchChat');
+const sessionRecorder = require('./sessionRecorder');
 
 // Auto-updater
 let autoUpdater;
@@ -685,6 +686,7 @@ ipcMain.on('install-update', async () => {
 
 app.on('window-all-closed', () => {});
 app.on('before-quit', () => {
+  sessionRecorder.flush(); // Upload any in-progress session
   persistSettings(); // save with current overlays still open
   quitting = true;   // prevent closeOverlayWindow from overwriting with empty list
   Object.keys(overlayWindows).forEach(closeOverlayWindow);
