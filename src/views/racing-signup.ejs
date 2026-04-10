@@ -7,6 +7,15 @@
     <input name="password" type="password" placeholder="Password (min 6 chars)" required minlength="6" style="padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:14px;">
     <input name="confirm_password" type="password" placeholder="Confirm Password" required style="padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:14px;">
     <input name="iracing_name" type="text" placeholder="iRacing Name (optional)" style="padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:14px;">
+
+    <div style="margin-top:4px;">
+      <a href="#" onclick="document.getElementById('bridge-section').style.display='block';this.style.display='none';return false;" style="font-size:12px;color:#3ecf8e;">I already have Atleta Bridge installed</a>
+      <div id="bridge-section" style="display:none;margin-top:8px;">
+        <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;text-align:left;">Enter your Bridge ID to link your existing session data. Find it in Bridge &rarr; Settings &rarr; About.</p>
+        <input name="bridge_id" type="text" placeholder="Bridge ID (e.g. a1b2c3d4-...)" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:13px;font-family:monospace;">
+      </div>
+    </div>
+
     <button type="submit" class="btn" style="padding:10px;background:#3ecf8e;color:#000;font-weight:700;border:none;border-radius:8px;cursor:pointer;font-size:14px;">Create Account</button>
   </form>
   <p style="margin-top:16px;font-size:13px;color:var(--text-secondary);">Already have an account? <a href="/racing" style="color:#3ecf8e;">Login</a></p>
