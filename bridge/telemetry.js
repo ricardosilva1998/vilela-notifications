@@ -315,32 +315,33 @@ function collectAndUploadTrackStats(track, standingsData, pitDeltas, sofByClassD
   // IMSA Sprint=35min(~38-40 total), IMSA Open=45min(~48-50 total), VRS Open=40min(~43-45 total)
   function getRaceType(cls) {
     if (cls === 'GT3') {
-      if (totalMinutes >= 300) return 'global_endurance';
-      if (totalMinutes >= 120) return 'imsa_endurance';
-      if (hasMulticlass && totalMinutes >= 42) return 'imsa_open';
-      if (!hasMulticlass && totalMinutes >= 37) return 'vrs_open';
-      if (hasMulticlass) return 'imsa_sprint';
-      if (!hasMulticlass && totalMinutes >= 22) return 'vrs_sprint';
-      return 'regionals';
+      if (totalMinutes >= 300) return 'Global Endurance';
+      if (hasMulticlass && totalMinutes >= 120) return 'IMSA Endurance';
+      if (!hasMulticlass && totalMinutes >= 120) return 'VRS Endurance';
+      if (hasMulticlass && totalMinutes >= 42) return 'IMSA Open';
+      if (!hasMulticlass && totalMinutes >= 37) return 'VRS Open';
+      if (hasMulticlass) return 'IMSA Sprint';
+      if (!hasMulticlass && totalMinutes >= 22) return 'VRS Sprint';
+      return 'Regionals';
     }
     if (cls === 'LMP2') {
-      if (totalMinutes >= 300) return 'global_endurance';
-      if (totalMinutes >= 120) return 'imsa_endurance';
-      if (hasMulticlass && totalMinutes >= 42) return 'imsa_open';
-      if (hasMulticlass) return 'imsa_sprint';
-      return 'lmp2_sprint';
+      if (totalMinutes >= 300) return 'Global Endurance';
+      if (totalMinutes >= 120) return 'IMSA Endurance';
+      if (hasMulticlass && totalMinutes >= 42) return 'IMSA Open';
+      if (hasMulticlass) return 'IMSA Sprint';
+      return 'LMP2 Sprint';
     }
     if (cls === 'GTP') {
-      if (totalMinutes >= 300) return 'global_endurance';
-      if (totalMinutes >= 120) return 'imsa_endurance';
-      if (totalMinutes >= 42) return 'imsa_open';
-      if (totalMinutes >= 30) return 'imsa_sprint';
-      return 'prototype_sprint';
+      if (totalMinutes >= 300) return 'Global Endurance';
+      if (totalMinutes >= 120) return 'IMSA Endurance';
+      if (totalMinutes >= 42) return 'IMSA Open';
+      if (totalMinutes >= 30) return 'IMSA Sprint';
+      return 'Proto Sprint';
     }
     // Other classes: simple sprint/open/endurance
-    if (totalMinutes >= 120) return 'endurance';
-    if (totalMinutes >= 30) return 'open';
-    return 'sprint';
+    if (totalMinutes >= 120) return 'Endurance';
+    if (totalMinutes >= 30) return 'Open';
+    return 'Sprint';
   }
 
   // Find overall leader pace (fastest class)
