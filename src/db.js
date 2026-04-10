@@ -893,6 +893,26 @@ try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_users_streamer ON racing_us
 try { db.exec('ALTER TABLE racing_sessions ADD COLUMN racing_user_id INTEGER'); } catch(e) {}
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_sessions_user ON racing_sessions(racing_user_id)'); } catch(e) {}
 
+// Migrate sessions table: add racing_user_id + make streamer_id nullable
+try {
+  const sessionCols = db.prepare("PRAGMA table_info(sessions)").all();
+  const hasRacingCol = sessionCols.find(c => c.name === 'racing_user_id');
+  if (!hasRacingCol) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS sessions_new (
+        sid TEXT PRIMARY KEY,
+        streamer_id INTEGER,
+        racing_user_id INTEGER,
+        expires_at INTEGER NOT NULL
+      );
+      INSERT INTO sessions_new (sid, streamer_id, expires_at) SELECT sid, streamer_id, expires_at FROM sessions;
+      DROP TABLE sessions;
+      ALTER TABLE sessions_new RENAME TO sessions;
+    `);
+    console.log('[DB] Migrated sessions table: added racing_user_id, made streamer_id nullable');
+  }
+} catch(e) { console.error('[DB] Sessions migration error:', e.message); }
+
 // --- Bridge Remote Logs ---
 db.exec(`
   CREATE TABLE IF NOT EXISTS bridge_logs (
