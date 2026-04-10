@@ -1,5 +1,6 @@
 <%- include('header', { title: 'Racing Account', streamer: streamer }) %>
 <div style="padding:24px 0;max-width:480px;">
+  <a href="/racing" style="color:var(--accent);font-size:13px;text-decoration:none;display:inline-block;margin-bottom:8px;">&larr; Racing</a>
   <h1 style="font-size:28px;font-weight:800;margin-bottom:24px;">Account Settings</h1>
   <% if (msg) { %><div style="color:#3ecf8e;background:rgba(62,207,142,0.1);padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;"><%= msg %></div><% } %>
   <% if (error) { %><div style="color:#f04438;background:rgba(240,68,56,0.1);padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;"><%= error %></div><% } %>
