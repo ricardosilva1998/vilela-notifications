@@ -222,8 +222,7 @@
       const dirEl = document.getElementById('wind-dir');
 
       if (windDirection !== undefined) {
-        // iRacing WindDir = direction wind blows TOWARDS. Add 180° to get where it comes FROM.
-        const windDeg = (windDirection * 180 / Math.PI + 180) % 360;
+        const windDeg = windDirection * 180 / Math.PI;
         const carDeg = (carHeading || 0) * 180 / Math.PI;
         targetAngle = ((windDeg - carDeg) + 360) % 360;
         lastWindDeg = windDeg;

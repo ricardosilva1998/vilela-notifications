@@ -330,8 +330,7 @@
 
     onData('wind', data => {
       if (!data) return;
-      // iRacing WindDir = direction wind blows TOWARDS. Add PI to get source direction.
-      windDir = (data.windDirection || 0) + Math.PI;
+      windDir = data.windDirection || 0;
       windSpeed = data.windSpeed || 0;
     });
 

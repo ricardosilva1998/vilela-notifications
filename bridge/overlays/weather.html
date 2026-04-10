@@ -213,8 +213,7 @@
     }
 
     function angleToCompass(rad) {
-      // iRacing WindDir = direction wind blows TOWARDS. Add 180° to get source direction.
-      const deg = ((rad * 180 / Math.PI) + 180 + 360) % 360;
+      const deg = ((rad * 180 / Math.PI) + 360) % 360;
       const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
       return dirs[Math.round(deg / 45) % 8];
     }
