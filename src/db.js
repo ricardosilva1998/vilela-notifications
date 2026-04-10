@@ -890,7 +890,8 @@ db.exec(`
 `);
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_users_bridge ON racing_users(bridge_id)'); } catch(e) {}
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_users_streamer ON racing_users(streamer_id)'); } catch(e) {}
-try { db.exec('ALTER TABLE sessions ADD COLUMN racing_user_id INTEGER'); } catch(e) {}
+try { db.exec('ALTER TABLE racing_sessions ADD COLUMN racing_user_id INTEGER'); } catch(e) {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_sessions_user ON racing_sessions(racing_user_id)'); } catch(e) {}
 
 // --- Bridge Remote Logs ---
 db.exec(`
@@ -3270,8 +3271,8 @@ function cleanupOldBridgeBugReports() {
 // ── Session data queries ────────────────────────────────────────────
 
 const _insertSession = db.prepare(`
-  INSERT INTO racing_sessions (bridge_id, iracing_name, track_name, car_class, car_name, session_type, race_type, is_public, share_token, conditions, sof, finish_position, irating_change, driver_count, best_lap_time, lap_count)
-  VALUES (@bridge_id, @iracing_name, @track_name, @car_class, @car_name, @session_type, @race_type, @is_public, @share_token, @conditions, @sof, @finish_position, @irating_change, @driver_count, @best_lap_time, @lap_count)
+  INSERT INTO racing_sessions (bridge_id, iracing_name, track_name, car_class, car_name, session_type, race_type, is_public, share_token, conditions, sof, finish_position, irating_change, driver_count, best_lap_time, lap_count, racing_user_id)
+  VALUES (@bridge_id, @iracing_name, @track_name, @car_class, @car_name, @session_type, @race_type, @is_public, @share_token, @conditions, @sof, @finish_position, @irating_change, @driver_count, @best_lap_time, @lap_count, @racing_user_id)
 `);
 
 const _insertSessionLap = db.prepare(`

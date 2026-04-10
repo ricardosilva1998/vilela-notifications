@@ -229,6 +229,36 @@
       font-size: 10px; color: #8b8a9e; line-height: 1.5; white-space: pre-wrap; word-break: break-all;
     }
 
+    /* ─── Account panel ───────────────────────────────────── */
+    .account-card {
+      background: #141520; border: 1px solid rgba(255,255,255,0.06); border-radius: 10px;
+      padding: 20px; margin-bottom: 16px;
+    }
+    .account-card-title { font-size: 12px; font-weight: 700; color: #e8e6f0; margin-bottom: 4px; }
+    .account-card-sub { font-size: 11px; color: #5c5b6e; margin-bottom: 16px; }
+    .account-field { margin-bottom: 12px; }
+    .account-field label { display: block; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: #5c5b6e; margin-bottom: 4px; }
+    .account-field input {
+      width: 100%; padding: 7px 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px; color: #e8e6f0; font-size: 11px; outline: none; transition: border-color 0.15s;
+    }
+    .account-field input:focus { border-color: rgba(145,70,255,0.5); }
+    .account-submit {
+      width: 100%; padding: 8px; border-radius: 6px; border: none; background: #9146ff;
+      color: #fff; font-size: 11px; font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+    }
+    .account-submit:hover { opacity: 0.85; }
+    .account-submit:disabled { opacity: 0.4; cursor: default; }
+    .account-error { margin-top: 10px; padding: 7px 10px; background: rgba(240,68,56,0.1); border: 1px solid rgba(240,68,56,0.3); border-radius: 6px; font-size: 11px; color: #f04438; display: none; }
+    .account-linked { text-align: center; }
+    .account-linked-icon { font-size: 36px; margin-bottom: 10px; }
+    .account-linked-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(62,207,142,0.12); border: 1px solid rgba(62,207,142,0.3); border-radius: 20px; padding: 3px 10px; font-size: 10px; font-weight: 600; color: #3ecf8e; margin-bottom: 14px; }
+    .account-linked-badge::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #3ecf8e; }
+    .account-info-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .account-info-row:last-child { border-bottom: none; }
+    .account-info-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: #5c5b6e; }
+    .account-info-value { font-size: 11px; color: #e8e6f0; font-weight: 600; }
+
     /* ─── About panel ─────────────────────────────────────── */
     .about-card {
       background: #141520; border: 1px solid rgba(255,255,255,0.06); border-radius: 10px;
@@ -335,6 +365,10 @@
       </div>
       <div class="sidebar-spacer"></div>
       <div class="sidebar-divider"></div>
+      <div class="sidebar-item" data-panel="account" onclick="navigateTo('account')">
+        <svg style="width:14px;height:14px;flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Account
+      </div>
       <div class="sidebar-item" data-panel="updates" onclick="navigateTo('updates')">
         <span class="sidebar-icon">&#128259;</span> Updates
       </div>
@@ -394,6 +428,57 @@
       <div class="content-panel" id="panel-lapcompare"></div>
       <div class="content-panel" id="panel-livestats"></div>
       <div class="content-panel" id="panel-pittimer"></div>
+
+      <!-- ═══ ACCOUNT PANEL ═══ -->
+      <div class="content-panel" id="panel-account">
+
+        <!-- Signup form (shown when no account linked) -->
+        <div id="account-signup-section">
+          <div class="account-card">
+            <div class="account-card-title">Create Racing Account</div>
+            <div class="account-card-sub">Sign up at atletanotifications.com to save your lap data online and access the Racing dashboard.</div>
+            <div class="account-field">
+              <label>Username</label>
+              <input type="text" id="account-username" placeholder="your_username" autocomplete="off" />
+            </div>
+            <div class="account-field">
+              <label>iRacing Name</label>
+              <input type="text" id="account-iracing-name" placeholder="Your Name" autocomplete="off" />
+            </div>
+            <div class="account-field">
+              <label>Password</label>
+              <input type="password" id="account-password" placeholder="••••••••" autocomplete="new-password" />
+            </div>
+            <div class="account-field">
+              <label>Confirm Password</label>
+              <input type="password" id="account-confirm" placeholder="••••••••" autocomplete="new-password" />
+            </div>
+            <button class="account-submit" id="account-submit-btn" onclick="createRacingAccount()">Create Account</button>
+            <div class="account-error" id="account-error"></div>
+          </div>
+        </div>
+
+        <!-- Linked state (shown when account exists) -->
+        <div id="account-linked-section" style="display:none;">
+          <div class="account-card">
+            <div class="account-linked">
+              <div class="account-linked-icon">&#127937;</div>
+              <div class="account-linked-badge">Account linked</div>
+              <div style="background:rgba(255,255,255,0.03); border-radius:8px; padding:10px 12px; text-align:left;">
+                <div class="account-info-row">
+                  <div class="account-info-label">Username</div>
+                  <div class="account-info-value" id="account-display-username">—</div>
+                </div>
+                <div class="account-info-row">
+                  <div class="account-info-label">iRacing Name</div>
+                  <div class="account-info-value" id="account-display-iracing">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
 
       <!-- ═══ UPDATES PANEL ═══ -->
       <div class="content-panel" id="panel-updates">
@@ -1656,6 +1741,94 @@
     } catch(e) {
       console.error('[Control Panel] Failed to load settings:', e.message);
       document.getElementById('bridge-id-display').textContent = 'Error loading ID';
+    }
+
+    // ─── Account Panel ───────────────────────────────────────
+    function initAccountPanel() {
+      try {
+        const s = require('./settings').load();
+        if (s.racingUsername) {
+          // Account already linked — show linked state
+          document.getElementById('account-signup-section').style.display = 'none';
+          document.getElementById('account-linked-section').style.display = 'block';
+          document.getElementById('account-display-username').textContent = s.racingUsername;
+          document.getElementById('account-display-iracing').textContent = s.iracingName || '—';
+        } else {
+          // Pre-fill iRacing name if available
+          if (s.iracingName) {
+            document.getElementById('account-iracing-name').value = s.iracingName;
+          }
+        }
+      } catch(e) {
+        console.error('[Account Panel] Failed to load settings:', e.message);
+      }
+    }
+    initAccountPanel();
+
+    async function createRacingAccount() {
+      const username = document.getElementById('account-username').value.trim();
+      const iracingName = document.getElementById('account-iracing-name').value.trim();
+      const password = document.getElementById('account-password').value;
+      const confirm = document.getElementById('account-confirm').value;
+      const errorEl = document.getElementById('account-error');
+      const btn = document.getElementById('account-submit-btn');
+
+      errorEl.style.display = 'none';
+
+      if (!username || !password || !confirm) {
+        errorEl.textContent = 'Please fill in all fields.';
+        errorEl.style.display = 'block';
+        return;
+      }
+      if (password !== confirm) {
+        errorEl.textContent = 'Passwords do not match.';
+        errorEl.style.display = 'block';
+        return;
+      }
+      if (password.length < 6) {
+        errorEl.textContent = 'Password must be at least 6 characters.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      let bridgeId = '';
+      try {
+        const s = require('./settings').load();
+        bridgeId = s.bridgeId || '';
+      } catch(e) {}
+
+      btn.disabled = true;
+      btn.textContent = 'Creating...';
+
+      try {
+        const res = await fetch('https://atletanotifications.com/racing/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, iracing_name: iracingName, bridge_id: bridgeId }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          // Save to settings
+          const settingsMod = require('./settings');
+          const s = settingsMod.load();
+          s.racingUsername = username;
+          settingsMod.save(s);
+          // Show linked state
+          document.getElementById('account-signup-section').style.display = 'none';
+          document.getElementById('account-linked-section').style.display = 'block';
+          document.getElementById('account-display-username').textContent = username;
+          document.getElementById('account-display-iracing').textContent = iracingName || '—';
+        } else {
+          errorEl.textContent = data.error || 'Signup failed. Please try again.';
+          errorEl.style.display = 'block';
+        }
+      } catch(e) {
+        errorEl.textContent = 'Network error. Check your internet connection.';
+        errorEl.style.display = 'block';
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Create Account';
     }
 
     // ─── Logs ────────────────────────────────────────────────

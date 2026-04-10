@@ -616,6 +616,13 @@ app.post('/api/session', express.json({ limit: '10mb' }), (req, res) => {
     if (!session.track_name || !session.car_class || !session.session_type) {
       return res.status(400).json({ error: 'Missing session fields' });
     }
+    // Look up racing user from bridge_id
+    let racingUserId = null;
+    if (bridge_id) {
+      const ru = db.getRacingUserByBridgeId(bridge_id);
+      if (ru) racingUserId = ru.id;
+    }
+
     const shareToken = crypto.randomBytes(9).toString('base64url');
     const sessionId = db.insertSession({
       bridge_id,
@@ -634,6 +641,7 @@ app.post('/api/session', express.json({ limit: '10mb' }), (req, res) => {
       driver_count: session.driver_count || null,
       best_lap_time: session.best_lap_time || null,
       lap_count: session.lap_count || laps.length,
+      racing_user_id: racingUserId,
     }, laps.map(l => ({
       lap_number: l.lap_number,
       lap_time: l.lap_time,
