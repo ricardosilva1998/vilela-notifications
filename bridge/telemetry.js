@@ -616,7 +616,7 @@ async function startTelemetry(onStatusChange) {
             // Start new session recording
             try {
               const newSessionType = sessionInfo?.Sessions?.[sessionNum]?.SessionType || '';
-              const sessionTypes = { Practice: 'practice', 'Lone Qualify': 'qualify', 'Open Qualify': 'qualify', Race: 'race' };
+              const sessionTypes = { Practice: 'practice', 'Offline Testing': 'practice', 'Lone Qualify': 'qualify', 'Open Qualify': 'qualify', Race: 'race' };
               const sType = sessionTypes[newSessionType] || (newSessionType.toLowerCase().includes('qualify') ? 'qualify' : newSessionType.toLowerCase().includes('race') ? 'race' : 'practice');
               const playerDriver = drivers.find(d => d.CarIdx === playerCarIdx);
               const _airTemp = ir.get(VARS.AIR_TEMP)?.[0] || 0;
