@@ -12,6 +12,7 @@
   "dependencies": {
     "@emiliosp/node-iracing-sdk": "^1.0.10",
     "electron-updater": "^6.1.0",
+    "pako": "^2.1.0",
     "tmi.js": "^1.8.5",
     "uiohook-napi": "^1.5.5",
     "ws": "^8.16.0"
