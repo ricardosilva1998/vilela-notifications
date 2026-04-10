@@ -185,28 +185,26 @@
 
     <!-- Section Tabs: Stats / Practice / Race -->
     <div class="section-tabs">
-      <div class="section-tab tab-stats active" onclick="switchSection('stats')">Stats</div>
-      <div class="section-tab tab-practice" onclick="switchSection('practice')">Practice</div>
+      <div class="section-tab tab-practice active" onclick="switchSection('practice')">Practice</div>
       <div class="section-tab tab-race" onclick="switchSection('race')">Race</div>
     </div>
 
-    <!-- Stats Section (existing) -->
-    <div class="section-content active" id="section-stats">
-      <div class="class-tabs" id="class-tabs"></div>
-      <div id="class-stats-content"></div>
-    </div>
-
     <!-- Practice Section -->
-    <div class="section-content" id="section-practice">
+    <div class="section-content active" id="section-practice">
       <div class="session-list" id="practice-sessions">
         <div class="session-empty">Loading practice sessions...</div>
       </div>
     </div>
 
-    <!-- Race Section -->
+    <!-- Race Section — includes class tabs + race type stats + session list -->
     <div class="section-content" id="section-race">
-      <div class="session-list" id="race-sessions">
-        <div class="session-empty">Loading race sessions...</div>
+      <div class="class-tabs" id="class-tabs"></div>
+      <div id="class-stats-content"></div>
+      <div style="margin-top:20px;">
+        <h3 style="font-size:14px;font-weight:700;color:rgba(255,255,255,0.5);margin-bottom:12px;">Recent Race Sessions</h3>
+        <div class="session-list" id="race-sessions">
+          <div class="session-empty">Loading race sessions...</div>
+        </div>
       </div>
     </div>
   </div>
@@ -572,13 +570,14 @@
     document.getElementById('detail-name').textContent = trackName;
     _currentDetailTrack = trackName;
     _sessionsLoaded = false;
-    _currentSection = 'stats';
+    _currentSection = 'practice';
     document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
-    document.querySelector('.tab-stats').classList.add('active');
+    document.querySelector('.tab-practice').classList.add('active');
     document.querySelectorAll('.section-content').forEach(c => c.classList.remove('active'));
-    document.getElementById('section-stats').classList.add('active');
-    document.getElementById('practice-sessions').innerHTML = '<div class="session-empty">Click to load practice sessions</div>';
-    document.getElementById('race-sessions').innerHTML = '<div class="session-empty">Click to load race sessions</div>';
+    document.getElementById('section-practice').classList.add('active');
+    document.getElementById('practice-sessions').innerHTML = '<div class="session-empty">Loading practice sessions...</div>';
+    document.getElementById('race-sessions').innerHTML = '<div class="session-empty">Loading race sessions...</div>';
+    loadSessions(trackName);
     const loc = track ? [track.track_city, track.track_country].filter(Boolean).join(', ') : '';
     document.getElementById('detail-location').textContent = loc || 'Location unknown';
 
