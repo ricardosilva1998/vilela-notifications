@@ -123,6 +123,18 @@ router.post('/issues/:id', requireAdmin, (req, res) => {
   res.redirect('/admin/dashboard?tab=issues&msg=updated');
 });
 
+// Auto-fix an issue using AI-generated patch
+router.post('/issues/:id/fix', requireAdmin, async (req, res) => {
+  try {
+    const { fixIssue } = require('../services/autoFix');
+    const result = await fixIssue(parseInt(req.params.id));
+    res.json(result);
+  } catch (err) {
+    console.error(`[Admin] Auto-fix failed for issue #${req.params.id}:`, err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // --- Testing Tools ---
 
 const { getUserId, getClips, getVideos, getFollowerCount, getStream } = require('../services/twitch');
