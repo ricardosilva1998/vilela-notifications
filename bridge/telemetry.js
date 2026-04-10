@@ -594,6 +594,31 @@ async function startTelemetry(onStatusChange) {
         // === Session change detection ===
         try {
           const sessionNum = ir.get(VARS.SESSION_NUM)?.[0] ?? -1;
+
+          // First session detection — start recording (no cleanup needed)
+          if (sessionNum >= 0 && lastSessionNum === -1) {
+            try {
+              const si = ir.getSessionInfo('SessionInfo');
+              const firstType = si?.Sessions?.[sessionNum]?.SessionType || '';
+              const sessionTypes = { Practice: 'practice', 'Offline Testing': 'practice', 'Lone Qualify': 'qualify', 'Open Qualify': 'qualify', Race: 'race' };
+              const sType = sessionTypes[firstType] || (firstType.toLowerCase().includes('qualify') ? 'qualify' : firstType.toLowerCase().includes('race') ? 'race' : 'practice');
+              const playerDriver = drivers.find(d => d.CarIdx === playerCarIdx);
+              const _at = ir.get(VARS.AIR_TEMP)?.[0] || 0;
+              const _tt = ir.get(VARS.TRACK_TEMP)?.[0] || 0;
+              const _hu = (ir.get(VARS.RELATIVE_HUMIDITY)?.[0] || 0) * 100;
+              const _wi = ir.getSessionInfo('WeekendInfo');
+              sessionRecorder.setIdentity(playerIRacingName || '');
+              sessionRecorder.onSessionStart(
+                sessionNum, trackName,
+                playerDriver?.CarClassShortName || '',
+                playerDriver?.CarScreenNameShort || playerDriver?.CarScreenName || '',
+                sType,
+                { airTemp: _at, trackTemp: _tt, humidity: _hu, skies: _wi?.TrackSkies || '', windSpeed: ir.get(VARS.WIND_VEL)?.[0] || 0 },
+                0, 0
+              );
+            } catch(e) {}
+          }
+
           if (sessionNum !== lastSessionNum && lastSessionNum >= 0) {
             const sessionInfo = ir.getSessionInfo('SessionInfo');
             const prevType = sessionInfo?.Sessions?.[lastSessionNum]?.SessionType || '';
