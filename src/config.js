@@ -46,6 +46,13 @@ module.exports = {
         : 'https://api-m.sandbox.paypal.com';
     },
   },
+  anthropic: {
+    apiKey: process.env.ANTHROPIC_API_KEY || '',
+  },
+  github: {
+    token: process.env.GITHUB_TOKEN || '',
+    repo: process.env.GITHUB_REPO || '',
+  },
   features: {
     youtube: true,
   },
