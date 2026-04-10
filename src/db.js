@@ -822,6 +822,60 @@ try { db.exec('ALTER TABLE track_stats ADD COLUMN top_car TEXT'); } catch(e) {}
 // Migration: add category column (road/formula/oval/dirt_oval/dirt_road) — existing data = road
 try { db.exec("ALTER TABLE track_stats ADD COLUMN category TEXT DEFAULT 'road'"); } catch(e) {}
 
+// ── Session data tables (session capture pipeline) ──────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS racing_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bridge_id TEXT NOT NULL,
+    iracing_name TEXT NOT NULL,
+    track_name TEXT NOT NULL,
+    car_class TEXT NOT NULL,
+    car_name TEXT NOT NULL,
+    session_type TEXT NOT NULL,
+    race_type TEXT,
+    is_public INTEGER DEFAULT 0,
+    share_token TEXT,
+    conditions TEXT,
+    sof INTEGER,
+    finish_position INTEGER,
+    irating_change INTEGER,
+    driver_count INTEGER,
+    best_lap_time REAL,
+    lap_count INTEGER,
+    created_at DATETIME DEFAULT (datetime('now'))
+  )
+`);
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_sessions_track ON racing_sessions(track_name)'); } catch(e) {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_sessions_bridge ON racing_sessions(bridge_id)'); } catch(e) {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_sessions_share ON racing_sessions(share_token)'); } catch(e) {}
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS session_laps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL REFERENCES racing_sessions(id) ON DELETE CASCADE,
+    lap_number INTEGER NOT NULL,
+    lap_time REAL NOT NULL,
+    sector_times TEXT,
+    fuel_used REAL,
+    air_temp REAL,
+    track_temp REAL,
+    is_pit_lap INTEGER DEFAULT 0,
+    position INTEGER,
+    incidents INTEGER,
+    is_valid INTEGER DEFAULT 1
+  )
+`);
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_session_laps_session ON session_laps(session_id)'); } catch(e) {}
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS lap_telemetry (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    lap_id INTEGER NOT NULL REFERENCES session_laps(id) ON DELETE CASCADE,
+    data TEXT NOT NULL
+  )
+`);
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_lap_telemetry_lap ON lap_telemetry(lap_id)'); } catch(e) {}
+
 // --- Bridge Remote Logs ---
 db.exec(`
   CREATE TABLE IF NOT EXISTS bridge_logs (
@@ -3197,6 +3251,100 @@ function cleanupOldBridgeBugReports() {
   if (result.changes > 0) console.log(`[DB] Cleaned up ${result.changes} old dismissed bug reports`);
 }
 
+// ── Session data queries ────────────────────────────────────────────
+
+const _insertSession = db.prepare(`
+  INSERT INTO racing_sessions (bridge_id, iracing_name, track_name, car_class, car_name, session_type, race_type, is_public, share_token, conditions, sof, finish_position, irating_change, driver_count, best_lap_time, lap_count)
+  VALUES (@bridge_id, @iracing_name, @track_name, @car_class, @car_name, @session_type, @race_type, @is_public, @share_token, @conditions, @sof, @finish_position, @irating_change, @driver_count, @best_lap_time, @lap_count)
+`);
+
+const _insertSessionLap = db.prepare(`
+  INSERT INTO session_laps (session_id, lap_number, lap_time, sector_times, fuel_used, air_temp, track_temp, is_pit_lap, position, incidents, is_valid)
+  VALUES (@session_id, @lap_number, @lap_time, @sector_times, @fuel_used, @air_temp, @track_temp, @is_pit_lap, @position, @incidents, @is_valid)
+`);
+
+const _insertLapTelemetry = db.prepare(`
+  INSERT INTO lap_telemetry (lap_id, data) VALUES (@lap_id, @data)
+`);
+
+const _getSessionsByTrack = db.prepare(`
+  SELECT s.*, (SELECT COUNT(*) FROM session_laps WHERE session_id = s.id) as actual_laps
+  FROM racing_sessions s
+  WHERE s.track_name = @track_name AND (s.bridge_id = @bridge_id OR s.is_public = 1)
+  ORDER BY s.created_at DESC
+  LIMIT @limit OFFSET @offset
+`);
+
+const _getSessionById = db.prepare(`
+  SELECT * FROM racing_sessions WHERE id = @id
+`);
+
+const _getSessionByShareToken = db.prepare(`
+  SELECT * FROM racing_sessions WHERE share_token = @token
+`);
+
+const _getSessionLaps = db.prepare(`
+  SELECT * FROM session_laps WHERE session_id = @session_id ORDER BY lap_number ASC
+`);
+
+const _getLapTelemetry = db.prepare(`
+  SELECT data FROM lap_telemetry WHERE lap_id = @lap_id
+`);
+
+const _updateSessionPublic = db.prepare(`
+  UPDATE racing_sessions SET is_public = @is_public WHERE id = @id AND bridge_id = @bridge_id
+`);
+
+const _deleteRacingSession = db.prepare(`
+  DELETE FROM racing_sessions WHERE id = @id AND bridge_id = @bridge_id
+`);
+
+function insertSession(session, laps, telemetry) {
+  const txn = db.transaction(() => {
+    const result = _insertSession.run(session);
+    const sessionId = result.lastInsertRowid;
+    for (const lap of laps) {
+      const lapResult = _insertSessionLap.run({ ...lap, session_id: sessionId });
+      const lapId = lapResult.lastInsertRowid;
+      const tel = telemetry.find(t => t.lap_number === lap.lap_number);
+      if (tel && tel.data) {
+        _insertLapTelemetry.run({ lap_id: lapId, data: tel.data });
+      }
+    }
+    return sessionId;
+  });
+  return txn();
+}
+
+function getSessionsByTrack(trackName, bridgeId, limit, offset) {
+  return _getSessionsByTrack.all({ track_name: trackName, bridge_id: bridgeId || '', limit: limit || 50, offset: offset || 0 });
+}
+
+function getRacingSessionById(id) {
+  return _getSessionById.get({ id });
+}
+
+function getSessionByShareToken(token) {
+  return _getSessionByShareToken.get({ token });
+}
+
+function getSessionLaps(sessionId) {
+  return _getSessionLaps.all({ session_id: sessionId });
+}
+
+function getLapTelemetry(lapId) {
+  const row = _getLapTelemetry.get({ lap_id: lapId });
+  return row ? row.data : null;
+}
+
+function updateSessionPublic(id, bridgeId, isPublic) {
+  return _updateSessionPublic.run({ id, bridge_id: bridgeId, is_public: isPublic ? 1 : 0 });
+}
+
+function deleteRacingSession(id, bridgeId) {
+  return _deleteRacingSession.run({ id, bridge_id: bridgeId });
+}
+
 module.exports = {
   db,
   getStreamerByDiscordId,
@@ -3410,6 +3558,14 @@ module.exports = {
   getBridgeBugReports,
   updateBridgeBugReportStatus,
   cleanupOldBridgeBugReports,
+  insertSession,
+  getSessionsByTrack,
+  getRacingSessionById,
+  getSessionByShareToken,
+  getSessionLaps,
+  getLapTelemetry,
+  updateSessionPublic,
+  deleteRacingSession,
   closeDb() { db.close(); },
   backup(dest) { return db.backup(dest); },
 };
