@@ -63,6 +63,26 @@
           <a href="/auth/login" class="btn btn-discord" style="padding:8px 16px;font-size:13px;">Link Discord</a>
         <% } %>
       </div>
+      <div class="card" style="padding:20px;">
+        <h3 style="font-size:14px;margin-bottom:12px;">Twitch Link</h3>
+        <% if (streamer && streamer.twitch_username) { %>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:32px;height:32px;border-radius:50%;background:rgba(145,70,255,0.15);display:flex;align-items:center;justify-content:center;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#9146ff"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
+            </div>
+            <div>
+              <p style="font-size:13px;color:#9146ff;font-weight:600;"><%= streamer.twitch_display_name || streamer.twitch_username %></p>
+              <p style="font-size:11px;color:var(--text-muted);">Linked</p>
+            </div>
+          </div>
+        <% } else { %>
+          <p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;">Connect your Twitch account.</p>
+          <a href="/auth/twitch" style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:#9146ff;color:#fff;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
+            Connect Twitch
+          </a>
+        <% } %>
+      </div>
     </div>
   </div>
 </div>
