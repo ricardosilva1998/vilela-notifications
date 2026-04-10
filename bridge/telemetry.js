@@ -148,8 +148,10 @@ const startingClassPositions = new Map(); // carIdx -> class position at race st
 const prevClassPositions = new Map(); // carIdx -> { classPosition, carClass }
 const overtakesByClass = {};          // className -> count
 
-// Session recorder — last lap detection
+// Session recorder — last lap detection + deferred start
 let _recorderLastLap = 0;
+let _recorderNeedsStart = -1; // session num waiting to start recording
+let _recorderSessionStarted = false;
 
 // Pit time tracking — measure time lost per pit stop per class
 const pitTracking = new Map(); // carIdx -> { wasPitting, bestLapSnapshot, lapsSnapshot, waitingForLap, referenceLap }
@@ -595,28 +597,10 @@ async function startTelemetry(onStatusChange) {
         try {
           const sessionNum = ir.get(VARS.SESSION_NUM)?.[0] ?? -1;
 
-          // First session detection — start recording (no cleanup needed)
-          if (sessionNum >= 0 && lastSessionNum === -1) {
-            try {
-              const si = ir.getSessionInfo('SessionInfo');
-              const firstType = si?.Sessions?.[sessionNum]?.SessionType || '';
-              const sessionTypes = { Practice: 'practice', 'Offline Testing': 'practice', 'Lone Qualify': 'qualify', 'Open Qualify': 'qualify', Race: 'race' };
-              const sType = sessionTypes[firstType] || (firstType.toLowerCase().includes('qualify') ? 'qualify' : firstType.toLowerCase().includes('race') ? 'race' : 'practice');
-              const playerDriver = drivers.find(d => d.CarIdx === playerCarIdx);
-              const _at = ir.get(VARS.AIR_TEMP)?.[0] || 0;
-              const _tt = ir.get(VARS.TRACK_TEMP)?.[0] || 0;
-              const _hu = (ir.get(VARS.RELATIVE_HUMIDITY)?.[0] || 0) * 100;
-              const _wi = ir.getSessionInfo('WeekendInfo');
-              sessionRecorder.setIdentity(playerIRacingName || '');
-              sessionRecorder.onSessionStart(
-                sessionNum, trackName,
-                playerDriver?.CarClassShortName || '',
-                playerDriver?.CarScreenNameShort || playerDriver?.CarScreenName || '',
-                sType,
-                { airTemp: _at, trackTemp: _tt, humidity: _hu, skies: _wi?.TrackSkies || '', windSpeed: ir.get(VARS.WIND_VEL)?.[0] || 0 },
-                0, 0
-              );
-            } catch(e) {}
+          // First session detection — defer until track/driver data is loaded
+          if (sessionNum >= 0 && lastSessionNum === -1 && !_recorderSessionStarted) {
+            // Mark that we need to start recording, but wait for data
+            _recorderNeedsStart = sessionNum;
           }
 
           if (sessionNum !== lastSessionNum && lastSessionNum >= 0) {
@@ -664,6 +648,8 @@ async function startTelemetry(onStatusChange) {
             } catch(e) {}
 
             _recorderLastLap = 0;
+            _recorderSessionStarted = true; // session change handler already called onSessionStart
+            _recorderNeedsStart = -1;
 
             // Always clear pit data on session change (qualify pit lane doesn't count as race pit)
             pitStopCounts.clear();
@@ -1315,6 +1301,29 @@ async function startTelemetry(onStatusChange) {
         // Persist standings and SOF for use at session-change time
         lastStandings = standings;
         lastSofByClass = sofByClass;
+
+        // Deferred session recorder start — fires once trackName + driver data is available
+        if (_recorderNeedsStart >= 0 && !_recorderSessionStarted && trackName && standings.length > 0) {
+          try {
+            const si = ir.getSessionInfo('SessionInfo');
+            const sType_raw = si?.Sessions?.[_recorderNeedsStart]?.SessionType || '';
+            const _stMap = { Practice: 'practice', 'Offline Testing': 'practice', 'Lone Qualify': 'qualify', 'Open Qualify': 'qualify', Race: 'race' };
+            const sType = _stMap[sType_raw] || (sType_raw.toLowerCase().includes('qualify') ? 'qualify' : sType_raw.toLowerCase().includes('race') ? 'race' : 'practice');
+            const playerDriver = drivers.find(d => d.CarIdx === playerCarIdx);
+            sessionRecorder.setIdentity(playerIRacingName || '');
+            sessionRecorder.onSessionStart(
+              _recorderNeedsStart, trackName,
+              playerDriver?.CarClassShortName || '',
+              playerDriver?.CarScreenNameShort || playerDriver?.CarScreenName || '',
+              sType,
+              { airTemp: airTemp, trackTemp: trackTemp, humidity: humidity, skies: skies || '', windSpeed: windSpeed || 0 },
+              sofByClass && playerDriver ? (sofByClass[playerDriver.CarClassShortName] || 0) : 0,
+              standings.length
+            );
+            _recorderSessionStarted = true;
+            _recorderNeedsStart = -1;
+          } catch(e) {}
+        }
 
         // Detect player lap completion for session recorder
         try {
