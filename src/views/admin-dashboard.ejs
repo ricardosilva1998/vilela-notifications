@@ -183,7 +183,67 @@
             <%= issue.status %>
           </span>
         </div>
-        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;"><%= issue.description %></p>
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; white-space: pre-wrap;"><%= issue.description %></p>
+
+        <%/* --- Screenshots --- */ %>
+        <% if (issue.screenshots) { %>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+            <% for (const shot of issue.screenshots.split(',').filter(Boolean)) { %>
+              <a href="/issues-files/<%= issue.id %>/<%= shot %>" target="_blank" style="display: block; width: 100px; height: 75px; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border);">
+                <img src="/issues-files/<%= issue.id %>/<%= shot %>" style="width: 100%; height: 100%; object-fit: cover;" loading="lazy">
+              </a>
+            <% } %>
+          </div>
+        <% } %>
+
+        <%/* --- AI Analysis --- */ %>
+        <% if (issue.agent_status === 'analyzing') { %>
+          <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 12px; border-left: 3px solid var(--warning);">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 14px; height: 14px; border: 2px solid var(--warning); border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+              <span style="font-size: 12px; color: var(--warning);">AI is analyzing this issue...</span>
+            </div>
+          </div>
+        <% } else if (issue.agent_status === 'done' && issue.agent_analysis) { %>
+          <% const analysis = JSON.parse(issue.agent_analysis); %>
+          <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 12px; border-left: 3px solid <%= analysis.can_fix ? 'var(--success)' : 'var(--text-muted)' %>;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">AI Analysis</div>
+              <span style="font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 600;
+                background: <%= analysis.confidence === 'high' ? 'var(--success-bg)' : analysis.confidence === 'medium' ? 'var(--warning-bg)' : '#e74c3c33' %>;
+                color: <%= analysis.confidence === 'high' ? 'var(--success)' : analysis.confidence === 'medium' ? 'var(--warning)' : '#e74c3c' %>;">
+                <%= analysis.confidence %> confidence
+              </span>
+            </div>
+            <p style="font-size: 13px; color: var(--text-primary); margin-bottom: 6px; font-weight: 500;"><%= analysis.summary %></p>
+            <details style="margin-bottom: 8px;">
+              <summary style="font-size: 12px; color: var(--accent); cursor: pointer;">Root cause details</summary>
+              <p style="font-size: 12px; color: var(--text-secondary); margin-top: 6px; white-space: pre-wrap;"><%= analysis.root_cause %></p>
+              <% if (analysis.notes) { %>
+                <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px;"><strong>Notes:</strong> <%= analysis.notes %></p>
+              <% } %>
+              <% if (analysis.patch && analysis.patch.length > 0) { %>
+                <div style="margin-top: 8px;">
+                  <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Files to patch:</div>
+                  <% for (const p of analysis.patch) { %>
+                    <code style="font-size: 11px; background: var(--bg-elevated); padding: 2px 6px; border-radius: 3px; margin-right: 4px;"><%= p.file %></code>
+                  <% } %>
+                </div>
+              <% } %>
+            </details>
+            <% if (analysis.can_fix) { %>
+              <button onclick="fixIssue(<%= issue.id %>, this)" class="btn btn-primary" style="padding: 6px 16px; font-size: 12px;">
+                Fix It &amp; Create PR
+              </button>
+            <% } %>
+          </div>
+        <% } else if (issue.agent_status === 'error' && issue.agent_analysis) { %>
+          <div style="background: #e74c3c11; border-radius: var(--radius-sm); padding: 10px; margin-bottom: 12px; border-left: 3px solid #e74c3c;">
+            <div style="font-size: 11px; color: #e74c3c; font-weight: 600;">AI Analysis Error</div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;"><%= JSON.parse(issue.agent_analysis).error || 'Unknown error' %></p>
+          </div>
+        <% } %>
+
         <% if (issue.admin_reply) { %>
           <div style="background: var(--bg-base); border-radius: var(--radius-sm); padding: 10px; margin-bottom: 10px; border-left: 3px solid var(--accent);">
             <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 4px;">Admin Reply</div>
@@ -391,9 +451,40 @@
   }
   adminTabs.forEach(function(t) { t.addEventListener('click', function() { switchAdminTab(t.dataset.tab); }); });
   switchAdminTab('<%= activeTab || "stats" %>');
+
+  async function fixIssue(issueId, btn) {
+    if (!confirm('Apply the AI-generated fix and create a PR?')) return;
+    btn.disabled = true;
+    btn.textContent = 'Applying fix...';
+    try {
+      const res = await fetch(`/admin/issues/${issueId}/fix`, { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        btn.textContent = 'PR Created!';
+        btn.style.background = 'var(--success)';
+        if (data.pr_url) {
+          const link = document.createElement('a');
+          link.href = data.pr_url;
+          link.target = '_blank';
+          link.textContent = 'View PR';
+          link.style.cssText = 'margin-left: 8px; color: var(--accent); font-size: 12px;';
+          btn.parentNode.appendChild(link);
+        }
+      } else {
+        alert('Fix failed: ' + (data.error || 'Unknown error'));
+        btn.disabled = false;
+        btn.textContent = 'Fix It & Create PR';
+      }
+    } catch (err) {
+      alert('Fix failed: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'Fix It & Create PR';
+    }
+  }
 </script>
 
 <style>
+  @keyframes spin { to { transform: rotate(360deg); } }
   @media (max-width: 640px) {
     div[style*="grid-template-columns: repeat(4, 1fr)"] { grid-template-columns: repeat(2, 1fr) !important; }
     div[style*="grid-template-columns: repeat(3, 1fr)"] { grid-template-columns: 1fr !important; }
