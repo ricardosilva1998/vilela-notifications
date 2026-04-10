@@ -586,16 +586,25 @@
         <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
         Streamer
       </a>
-      <a href="<%= (typeof racingUser !== 'undefined' && racingUser) ? '/racing' : '/racing' %>" class="sidebar-link">
+      <a href="/racing" class="sidebar-link">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2c4 4 6 8 6 14H6c0-6 2-10 6-14z"/><path d="M8 16h8"/><line x1="12" y1="2" x2="12" y2="8"/></svg>
         Racing
       </a>
-
       <% if (typeof racingUser !== 'undefined' && racingUser) { %>
-        <a href="/tracks" class="sidebar-link">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="17" rx="9" ry="4"/><path d="M3 17V7a9 4 0 0 1 18 0v10"/></svg>
+        <a href="/tracks" class="sidebar-link" style="padding-left:34px;font-size:12px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
           Track Database
         </a>
+        <a href="/racing/account" class="sidebar-link" style="padding-left:34px;font-size:12px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Account
+        </a>
+        <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+        <a href="/racing/admin" class="sidebar-link" style="padding-left:34px;font-size:12px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Admin
+        </a>
+        <% } %>
       <% } %>
 
       <a href="/tutorial" class="sidebar-link">
