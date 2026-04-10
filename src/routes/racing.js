@@ -59,6 +59,20 @@ router.post('/account/profile', express.urlencoded({ extended: true }), (req, re
   res.redirect('/racing/account?msg=Profile updated');
 });
 
+// Upload avatar (base64 data URL)
+router.post('/account/avatar', express.json({ limit: '2mb' }), (req, res) => {
+  try {
+    const { avatar } = req.body;
+    if (!avatar || !avatar.startsWith('data:image/')) return res.status(400).json({ error: 'Invalid image' });
+    // Limit to 500KB base64
+    if (avatar.length > 700000) return res.status(400).json({ error: 'Image too large (max 500KB)' });
+    db.updateRacingAvatar(req.racingUser.id, avatar);
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: 'Failed to upload avatar' });
+  }
+});
+
 // Change password
 router.post('/account/password', express.urlencoded({ extended: true }), async (req, res) => {
   try {

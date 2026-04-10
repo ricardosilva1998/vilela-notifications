@@ -967,6 +967,7 @@ db.exec(`
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_users_bridge ON racing_users(bridge_id)'); } catch(e) {}
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_users_streamer ON racing_users(streamer_id)'); } catch(e) {}
 try { db.exec('ALTER TABLE racing_users ADD COLUMN display_name TEXT'); } catch(e) {}
+try { db.exec('ALTER TABLE racing_users ADD COLUMN avatar TEXT'); } catch(e) {}
 try { db.exec('ALTER TABLE racing_sessions ADD COLUMN racing_user_id INTEGER'); } catch(e) {}
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_sessions_user ON racing_sessions(racing_user_id)'); } catch(e) {}
 
@@ -3556,6 +3557,8 @@ function linkRacingUserToStreamer(racingUserId, streamerId) { return _linkRacing
 function updateRacingPassword(id, passwordHash) { return _updateRacingPassword.run({ id, password_hash: passwordHash }); }
 function updateRacingIracingName(id, iracingName) { return _updateRacingIracingName.run({ id, iracing_name: iracingName }); }
 function updateRacingProfile(id, displayName, iracingName) { return _updateRacingProfile.run({ id, display_name: displayName || null, iracing_name: iracingName || null }); }
+const _updateRacingAvatar = db.prepare('UPDATE racing_users SET avatar = @avatar WHERE id = @id');
+function updateRacingAvatar(id, avatar) { return _updateRacingAvatar.run({ id, avatar }); }
 function createRacingSession(sid, racingUserId, expiresAt) { return _createRacingSession.run(sid, racingUserId, expiresAt); }
 function createLinkedSession(sid, streamerId, racingUserId, expiresAt) { return _createLinkedSession.run(sid, streamerId, racingUserId, expiresAt); }
 
@@ -3796,6 +3799,7 @@ module.exports = {
   updateRacingPassword,
   updateRacingIracingName,
   updateRacingProfile,
+  updateRacingAvatar,
   createRacingSession,
   createLinkedSession,
   closeDb() { db.close(); },
