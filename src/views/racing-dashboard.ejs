@@ -1,0 +1,16 @@
+<%- include('header', { title: 'Racing Dashboard', streamer: streamer }) %>
+<div style="padding:24px 0;">
+  <h1 style="font-size:28px;font-weight:800;margin-bottom:8px;">Racing Dashboard</h1>
+  <p style="color:var(--text-secondary);margin-bottom:24px;">Welcome, <strong><%= racingUser.username %></strong><%= racingUser.iracing_name ? ' (' + racingUser.iracing_name + ')' : '' %></p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;">
+    <a href="/tracks" class="card" style="padding:20px;text-decoration:none;color:inherit;">
+      <h3 style="font-size:15px;margin-bottom:6px;">Track Database</h3>
+      <p style="color:var(--text-secondary);font-size:13px;">Browse tracks, view statistics, and session history</p>
+    </a>
+    <a href="/racing/account" class="card" style="padding:20px;text-decoration:none;color:inherit;">
+      <h3 style="font-size:15px;margin-bottom:6px;">Account Settings</h3>
+      <p style="color:var(--text-secondary);font-size:13px;">Change password, link Discord, update iRacing name</p>
+    </a>
+  </div>
+</div>
+<%- include('footer') %>

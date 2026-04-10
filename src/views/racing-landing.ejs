@@ -1,0 +1,13 @@
+<%- include('header', { title: 'Racing — Atleta', streamer: streamer }) %>
+<div style="text-align:center;padding:48px 0;">
+  <h1 style="font-size:32px;font-weight:800;margin-bottom:12px;">Racing</h1>
+  <p style="color:var(--text-secondary);margin-bottom:24px;">iRacing telemetry, session history & lap comparison</p>
+  <% if (error) { %><div style="color:#f04438;background:rgba(240,68,56,0.1);padding:10px 16px;border-radius:8px;margin:0 auto 16px;max-width:360px;font-size:13px;"><%= error %></div><% } %>
+  <form method="POST" action="/racing/auth/login" style="max-width:320px;margin:0 auto;display:flex;flex-direction:column;gap:12px;">
+    <input name="username" type="text" placeholder="Username" required style="padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:14px;">
+    <input name="password" type="password" placeholder="Password" required style="padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:14px;">
+    <button type="submit" class="btn" style="padding:10px;background:#3ecf8e;color:#000;font-weight:700;border:none;border-radius:8px;cursor:pointer;font-size:14px;">Login</button>
+  </form>
+  <p style="margin-top:16px;font-size:13px;color:var(--text-secondary);">Don't have an account? <a href="/racing/signup" style="color:#3ecf8e;">Sign up</a></p>
+</div>
+<%- include('footer') %>

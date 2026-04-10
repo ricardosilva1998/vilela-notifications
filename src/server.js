@@ -45,15 +45,32 @@ app.use('/vtuber-models', express.static(path.join(__dirname, '..', 'data', 'vtu
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Session middleware — attach streamer to request if logged in
+// Session middleware — attach streamer AND/OR racingUser to request
 app.use((req, res, next) => {
   const sid = req.cookies?.session;
   if (sid) {
     const session = db.getSession(sid);
     if (session) {
-      req.streamer = db.getStreamerById(session.streamer_id);
+      if (session.streamer_id) {
+        req.streamer = db.getStreamerById(session.streamer_id);
+      }
+      if (session.racing_user_id) {
+        req.racingUser = db.getRacingUserById(session.racing_user_id);
+      }
     }
   }
+
+  // Cross-load linked accounts
+  if (req.streamer && !req.racingUser) {
+    const linked = db.getRacingUserByStreamerId(req.streamer.id);
+    if (linked) req.racingUser = linked;
+  }
+  if (req.racingUser && req.racingUser.streamer_id && !req.streamer) {
+    req.streamer = db.getStreamerById(req.racingUser.streamer_id);
+  }
+
+  res.locals.streamer = req.streamer || null;
+  res.locals.racingUser = req.racingUser || null;
   res.locals.streamerTier = req.streamer ? db.getStreamerTier(req.streamer.id) : 'free';
   res.locals.isAdmin = req.streamer ? db.isAdmin(req.streamer.id) : false;
   res.locals.features = config.features;
@@ -71,7 +88,8 @@ app.use((req, res, next) => {
 // Routes
 app.get('/', (req, res) => {
   if (req.streamer) return res.redirect('/dashboard');
-  res.render('login', { streamer: null });
+  if (req.racingUser) return res.redirect('/racing/dashboard');
+  res.render('login', { streamer: null, racingUser: null });
 });
 
 app.get('/tutorial', (req, res) => {
@@ -96,6 +114,16 @@ app.use('/dashboard', dashboardRoutes);
 // app.use('/dashboard/custom-overlays', customOverlayRoutes); // DISABLED for now
 app.use('/payment', paymentRoutes);
 app.use('/tip', tipRoutes);
+
+const racingAuthRoutes = require('./routes/racing-auth');
+const racingRoutes = require('./routes/racing');
+app.use('/racing/auth', racingAuthRoutes);
+app.use('/racing', racingRoutes);
+
+app.get('/streamer', (req, res) => {
+  if (req.streamer) return res.redirect('/dashboard');
+  res.render('streamer-landing', { streamer: null, racingUser: null });
+});
 // Public Bridge API (no auth) — BEFORE /api auth middleware
 app.get('/api/bridge/config', (req, res) => {
   res.json({ openaiKey: process.env.OPENAI_API_KEY || '' });

@@ -1,0 +1,30 @@
+<%- include('header', { title: 'Racing Account', streamer: streamer }) %>
+<div style="padding:24px 0;max-width:480px;">
+  <h1 style="font-size:28px;font-weight:800;margin-bottom:24px;">Account Settings</h1>
+  <% if (msg) { %><div style="color:#3ecf8e;background:rgba(62,207,142,0.1);padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;"><%= msg %></div><% } %>
+  <% if (error) { %><div style="color:#f04438;background:rgba(240,68,56,0.1);padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;"><%= error %></div><% } %>
+  <div class="card" style="padding:20px;margin-bottom:16px;">
+    <h3 style="font-size:14px;margin-bottom:12px;">Profile</h3>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Username: <strong><%= racingUser.username %></strong></p>
+    <p style="font-size:13px;color:var(--text-secondary);">iRacing Name: <strong><%= racingUser.iracing_name || 'Not set' %></strong></p>
+  </div>
+  <div class="card" style="padding:20px;margin-bottom:16px;">
+    <h3 style="font-size:14px;margin-bottom:12px;">Change Password</h3>
+    <form method="POST" action="/racing/account/password" style="display:flex;flex-direction:column;gap:10px;">
+      <input name="current_password" type="password" placeholder="Current Password" required style="padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:13px;">
+      <input name="new_password" type="password" placeholder="New Password" required minlength="6" style="padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:13px;">
+      <input name="confirm_password" type="password" placeholder="Confirm New Password" required style="padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:13px;">
+      <button type="submit" class="btn btn-secondary" style="padding:8px;font-size:13px;">Update Password</button>
+    </form>
+  </div>
+  <div class="card" style="padding:20px;">
+    <h3 style="font-size:14px;margin-bottom:12px;">Discord Link</h3>
+    <% if (streamer) { %>
+      <p style="font-size:13px;color:#3ecf8e;">Linked to <strong><%= streamer.discord_display_name || streamer.discord_username %></strong></p>
+    <% } else { %>
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;">Link your Discord account to access Streamer features too.</p>
+      <a href="/auth/login" class="btn btn-discord" style="padding:8px 16px;font-size:13px;">Link Discord</a>
+    <% } %>
+  </div>
+</div>
+<%- include('footer') %>
