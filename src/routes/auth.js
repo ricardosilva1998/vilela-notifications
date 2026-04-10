@@ -71,7 +71,19 @@ router.get('/login/callback', async (req, res) => {
     const sid = crypto.randomUUID();
     const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
     db.createSession(sid, streamer.id, expiresAt);
-    res.cookie('session', sid, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
+    res.cookie('session', sid, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
+
+    // Link Racing account if one is already logged in
+    if (req.racingUser && !req.racingUser.streamer_id) {
+      db.linkRacingUserToStreamer(req.racingUser.id, streamer.id);
+      // Replace with a linked session
+      db.deleteSession(sid);
+      const linkedSid = crypto.randomBytes(32).toString('hex');
+      db.createLinkedSession(linkedSid, streamer.id, req.racingUser.id, expiresAt);
+      res.cookie('session', linkedSid, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
+      console.log(`[Auth] Discord login: ${user.username} (${user.id}) — linked to Racing user ${req.racingUser.id}`);
+      return res.redirect('/racing/account?msg=' + encodeURIComponent('Discord account linked!'));
+    }
 
     console.log(`[Auth] Discord login: ${user.username} (${user.id})`);
     res.redirect('/dashboard');

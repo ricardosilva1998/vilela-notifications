@@ -742,14 +742,14 @@ app.delete('/api/session/:id', (req, res) => {
   }
 });
 
-// Track Database page
+// Track Database page — accessible to streamers and racing users
 app.get('/tracks', (req, res) => {
-  if (!req.streamer) return res.redirect('/');
-  res.render('tracks', { streamer: req.streamer, t: res.locals.t });
+  if (!req.streamer && !req.racingUser) return res.redirect('/racing');
+  res.render('tracks', { streamer: req.streamer || null, racingUser: req.racingUser || null, t: res.locals.t });
 });
 app.get('/tracks/:trackName', (req, res) => {
-  if (!req.streamer) return res.redirect('/');
-  res.render('tracks', { streamer: req.streamer, t: res.locals.t });
+  if (!req.streamer && !req.racingUser) return res.redirect('/racing');
+  res.render('tracks', { streamer: req.streamer || null, racingUser: req.racingUser || null, t: res.locals.t });
 });
 
 app.use('/api', apiRoutes);
