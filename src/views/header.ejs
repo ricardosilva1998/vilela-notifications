@@ -649,8 +649,9 @@
     <div class="nav-right">
       <% if (typeof streamer !== 'undefined' && streamer) { %>
         <a href="/dashboard/account" class="nav-user-link">
-          <% if (streamer.discord_avatar) { %>
-            <img src="<%= streamer.discord_avatar %>" alt="" class="nav-avatar">
+          <% const navAvatarUrl = streamer.profile_picture ? '/avatars/' + streamer.id + '/' + streamer.profile_picture : streamer.discord_avatar; %>
+          <% if (navAvatarUrl) { %>
+            <img src="<%= navAvatarUrl %>" alt="" class="nav-avatar" style="object-fit: cover;">
           <% } else { %>
             <div class="nav-avatar" style="background: var(--accent); display: flex; align-items: center; justify-content: center; color: white; font-family: var(--font-display); font-weight: 700; font-size: 13px;"><%= (streamer.discord_display_name || streamer.discord_username || '?').charAt(0).toUpperCase() %></div>
           <% } %>

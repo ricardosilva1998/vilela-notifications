@@ -1095,6 +1095,17 @@ function upsertStreamerDiscord(discordUserId, discordUsername, discordDisplayNam
   return _upsertStreamerDiscord.get(discordUserId, discordUsername, discordDisplayName, discordAvatar);
 }
 
+const _updateProfilePicture = db.prepare('UPDATE streamers SET profile_picture = ? WHERE id = ?');
+const _clearProfilePicture = db.prepare('UPDATE streamers SET profile_picture = NULL WHERE id = ?');
+
+function updateProfilePicture(streamerId, filename) {
+  _updateProfilePicture.run(filename, streamerId);
+}
+
+function clearProfilePicture(streamerId) {
+  _clearProfilePicture.run(streamerId);
+}
+
 function linkTwitch(streamerId, twitchUserId, twitchUsername, twitchDisplayName) {
   _clearOldTwitchLink.run(twitchUserId); // clear if another streamer had this Twitch linked
   _linkTwitch.run(twitchUserId, twitchUsername, twitchDisplayName, streamerId);
@@ -3012,6 +3023,15 @@ try {
   }
 } catch {}
 
+// Migration: Add profile_picture column to streamers
+try {
+  const cols = db.pragma('table_info(streamers)').map(c => c.name);
+  if (!cols.includes('profile_picture')) {
+    db.exec('ALTER TABLE streamers ADD COLUMN profile_picture TEXT');
+    console.log('[DB] Added profile_picture column to streamers');
+  }
+} catch {}
+
 // Cleanup: Remove old bundled VTuber models that were renamed
 try { db.prepare("DELETE FROM vtuber_models WHERE is_bundled = 1 AND filename IN ('AvatarSample_A.vrm', 'AvatarSample_B.vrm')").run(); } catch(e) {}
 
@@ -3541,6 +3561,8 @@ module.exports = {
   getStreamerById,
   getAllStreamers,
   upsertStreamerDiscord,
+  updateProfilePicture,
+  clearProfilePicture,
   linkTwitch,
   updateStreamerBroadcasterTokens,
   updateStreamerYoutube,

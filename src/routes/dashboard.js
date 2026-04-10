@@ -79,6 +79,50 @@ router.get('/account', (req, res) => {
   });
 });
 
+// Upload profile picture (raw body)
+router.post('/account/avatar', (req, res) => {
+  const allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+  const ext = (req.query.ext || 'png').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  if (!allowed.includes(ext)) return res.status(400).json({ ok: false, error: 'Invalid file type' });
+
+  const chunks = [];
+  req.on('data', chunk => chunks.push(chunk));
+  req.on('end', () => {
+    const buf = Buffer.concat(chunks);
+    if (buf.length > 2 * 1024 * 1024) return res.status(400).json({ ok: false, error: 'File too large (max 2MB)' });
+    if (buf.length === 0) return res.status(400).json({ ok: false, error: 'Empty file' });
+
+    const streamerId = req.streamer.id;
+    const avatarDir = path.join(__dirname, '..', '..', 'data', 'avatars', String(streamerId));
+    if (!fs.existsSync(avatarDir)) fs.mkdirSync(avatarDir, { recursive: true });
+
+    // Delete previous avatar file if exists
+    if (req.streamer.profile_picture) {
+      const old = path.join(avatarDir, req.streamer.profile_picture);
+      if (fs.existsSync(old)) fs.unlinkSync(old);
+    }
+
+    const filename = `avatar_${Date.now()}.${ext}`;
+    fs.writeFileSync(path.join(avatarDir, filename), buf);
+    db.updateProfilePicture(streamerId, filename);
+    console.log(`[Dashboard] ${req.streamer.discord_username} uploaded profile picture: ${filename}`);
+    res.json({ ok: true, url: `/avatars/${streamerId}/${filename}` });
+  });
+});
+
+// Remove profile picture
+router.delete('/account/avatar', (req, res) => {
+  const streamerId = req.streamer.id;
+  if (req.streamer.profile_picture) {
+    const avatarDir = path.join(__dirname, '..', '..', 'data', 'avatars', String(streamerId));
+    const old = path.join(avatarDir, req.streamer.profile_picture);
+    if (fs.existsSync(old)) fs.unlinkSync(old);
+    db.clearProfilePicture(streamerId);
+    console.log(`[Dashboard] ${req.streamer.discord_username} removed profile picture`);
+  }
+  res.json({ ok: true });
+});
+
 // Save YouTube API key
 router.post('/account/youtube-api-key', (req, res) => {
   const apiKey = (req.body.youtube_api_key || '').trim();

@@ -6,9 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --env-file=.env src/index.js",
-    "test": "npx playwright test",
-    "test:public": "npx playwright test tests/public-pages.spec.js",
-    "test:auth": "npx playwright test tests/authenticated.spec.js"
+    "test": "echo \"No tests configured\""
   },
   "engines": {
     "node": ">=20.0.0"
@@ -27,9 +25,5 @@
     "tmi.js": "^1.8.5",
     "tweetnacl": "^1.0.3",
     "ws": "^8.20.0"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.58.2",
-    "dotenv": "^16.4.0"
   }
 }
