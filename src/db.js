@@ -876,6 +876,22 @@ db.exec(`
 `);
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_lap_telemetry_lap ON lap_telemetry(lap_id)'); } catch(e) {}
 
+// ── Racing users (standalone auth, no Discord required) ─────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS racing_users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    password_hash TEXT NOT NULL,
+    iracing_name TEXT,
+    bridge_id TEXT,
+    streamer_id INTEGER,
+    created_at DATETIME DEFAULT (datetime('now'))
+  )
+`);
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_users_bridge ON racing_users(bridge_id)'); } catch(e) {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_users_streamer ON racing_users(streamer_id)'); } catch(e) {}
+try { db.exec('ALTER TABLE sessions ADD COLUMN racing_user_id INTEGER'); } catch(e) {}
+
 // --- Bridge Remote Logs ---
 db.exec(`
   CREATE TABLE IF NOT EXISTS bridge_logs (
@@ -3345,6 +3361,31 @@ function deleteRacingSession(id, bridgeId) {
   return _deleteRacingSession.run({ id, bridge_id: bridgeId });
 }
 
+// ── Racing users queries ────────────────────────────────────────────
+const _insertRacingUser = db.prepare(`INSERT INTO racing_users (username, password_hash, iracing_name, bridge_id) VALUES (@username, @password_hash, @iracing_name, @bridge_id)`);
+const _getRacingUserByUsername = db.prepare(`SELECT * FROM racing_users WHERE username = @username COLLATE NOCASE`);
+const _getRacingUserById = db.prepare(`SELECT * FROM racing_users WHERE id = @id`);
+const _getRacingUserByBridgeId = db.prepare(`SELECT * FROM racing_users WHERE bridge_id = @bridge_id`);
+const _getRacingUserByStreamerId = db.prepare(`SELECT * FROM racing_users WHERE streamer_id = @streamer_id`);
+const _linkRacingUserToStreamer = db.prepare(`UPDATE racing_users SET streamer_id = @streamer_id WHERE id = @id`);
+const _updateRacingPassword = db.prepare(`UPDATE racing_users SET password_hash = @password_hash WHERE id = @id`);
+const _updateRacingIracingName = db.prepare(`UPDATE racing_users SET iracing_name = @iracing_name WHERE id = @id`);
+const _createRacingSession = db.prepare(`INSERT INTO sessions (sid, racing_user_id, expires_at) VALUES (?, ?, ?)`);
+const _createLinkedSession = db.prepare(`INSERT INTO sessions (sid, streamer_id, racing_user_id, expires_at) VALUES (?, ?, ?, ?)`);
+
+function createRacingUser(username, passwordHash, iracingName, bridgeId) {
+  return _insertRacingUser.run({ username, password_hash: passwordHash, iracing_name: iracingName || null, bridge_id: bridgeId || null });
+}
+function getRacingUserByUsername(username) { return _getRacingUserByUsername.get({ username }); }
+function getRacingUserById(id) { return _getRacingUserById.get({ id }); }
+function getRacingUserByBridgeId(bridgeId) { return _getRacingUserByBridgeId.get({ bridge_id: bridgeId }); }
+function getRacingUserByStreamerId(streamerId) { return _getRacingUserByStreamerId.get({ streamer_id: streamerId }); }
+function linkRacingUserToStreamer(racingUserId, streamerId) { return _linkRacingUserToStreamer.run({ id: racingUserId, streamer_id: streamerId }); }
+function updateRacingPassword(id, passwordHash) { return _updateRacingPassword.run({ id, password_hash: passwordHash }); }
+function updateRacingIracingName(id, iracingName) { return _updateRacingIracingName.run({ id, iracing_name: iracingName }); }
+function createRacingSession(sid, racingUserId, expiresAt) { return _createRacingSession.run(sid, racingUserId, expiresAt); }
+function createLinkedSession(sid, streamerId, racingUserId, expiresAt) { return _createLinkedSession.run(sid, streamerId, racingUserId, expiresAt); }
+
 module.exports = {
   db,
   getStreamerByDiscordId,
@@ -3566,6 +3607,16 @@ module.exports = {
   getLapTelemetry,
   updateSessionPublic,
   deleteRacingSession,
+  createRacingUser,
+  getRacingUserByUsername,
+  getRacingUserById,
+  getRacingUserByBridgeId,
+  getRacingUserByStreamerId,
+  linkRacingUserToStreamer,
+  updateRacingPassword,
+  updateRacingIracingName,
+  createRacingSession,
+  createLinkedSession,
   closeDb() { db.close(); },
   backup(dest) { return db.backup(dest); },
 };
