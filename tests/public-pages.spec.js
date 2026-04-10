@@ -2,33 +2,37 @@ const { test, expect } = require('@playwright/test');
 
 test.describe('Public Pages', () => {
 
-  test('Landing page loads with feature cards and CTA buttons', async ({ page }) => {
+  test('Landing page loads with product cards and CTA buttons', async ({ page }) => {
     await page.goto('/');
 
     // Title and tagline
     await expect(page).toHaveTitle(/Atleta/);
     await expect(page.locator('h1')).toBeVisible();
 
-    // Feature cards
+    // Two product cards (Streamer + Racing)
     const cards = page.locator('.card');
-    await expect(cards).toHaveCount(4);
+    await expect(cards).toHaveCount(2);
 
-    // CTA buttons
+    // CTA button
     await expect(page.getByText('How It Works')).toBeVisible();
-    await expect(page.getByText('Get Started with Discord')).toBeVisible();
 
     // Nav bar
     await expect(page.locator('.nav-brand')).toBeVisible();
-    await expect(page.getByText('Login')).toBeVisible();
   });
 
-  test('Landing page has correct feature descriptions', async ({ page }) => {
+  test('Landing page has Streamer and Racing product cards', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page.getByRole('heading', { name: 'Live Alerts' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Clips & Recaps' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'YouTube' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Community' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Streamer' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Racing' })).toBeVisible();
+
+    // Streamer card links to /streamer
+    const streamerCard = page.locator('a[href="/streamer"]');
+    await expect(streamerCard).toBeVisible();
+
+    // Racing card links to /racing
+    const racingCard = page.locator('a[href="/racing"]');
+    await expect(racingCard).toBeVisible();
   });
 
   test('Pricing page loads with 4 tier cards', async ({ page }) => {
@@ -96,29 +100,26 @@ test.describe('Public Pages', () => {
     await expect(sidebar).not.toHaveClass(/active/);
   });
 
-  test('Login button redirects to Discord OAuth', async ({ page }) => {
-    await page.goto('/');
+  test('Streamer landing page has Discord login', async ({ page }) => {
+    await page.goto('/streamer');
 
-    const [response] = await Promise.all([
-      page.waitForNavigation({ waitUntil: 'commit' }),
-      page.getByText('Get Started with Discord').click(),
-    ]);
+    await expect(page.getByRole('heading', { name: /Streamer/i })).toBeVisible();
+    await expect(page.getByText('Login with Discord')).toBeVisible();
+  });
 
-    // Should redirect to Discord OAuth
-    expect(page.url()).toContain('discord.com');
+  test('Racing landing page has login form', async ({ page }) => {
+    await page.goto('/racing');
+
+    await expect(page.getByRole('heading', { name: /Racing/i })).toBeVisible();
+    await expect(page.locator('input[name="username"]')).toBeVisible();
+    await expect(page.locator('input[name="password"]')).toBeVisible();
+    await expect(page.getByText('Sign up')).toBeVisible();
   });
 
   test('Sidebar links navigate correctly', async ({ page }) => {
     await page.goto('/');
 
     // Open sidebar
-    await page.locator('.hamburger').click();
-
-    // Click donate link
-    await page.locator('.sidebar-link', { hasText: 'Buy me a coffee' }).click();
-    await expect(page).toHaveURL(/donate/);
-
-    // Open sidebar again
     await page.locator('.hamburger').click();
 
     // Click setup guide
