@@ -49,6 +49,7 @@ async function connectToChannel(channel) {
         message,
         color: tags.color || null,
         badges: tags.badges || {},
+        emotes: tags.emotes || null,
         roomId: tags['room-id'] || null,
       }});
     });

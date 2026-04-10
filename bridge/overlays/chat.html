@@ -155,9 +155,51 @@
       console.log('[Emotes] Total loaded: ' + emoteMap.size);
     }
 
-    function replaceEmotes(text) {
+    // Replace Twitch native emotes using emote IDs + positions from tags.emotes
+    // Format: { emoteId: ['start-end', ...], ... }
+    function replaceTwitchEmotes(text, twitchEmotes) {
+      if (!twitchEmotes) return null;
+      // Build list of replacements sorted by position (descending to replace from end first)
+      const replacements = [];
+      for (const [emoteId, positions] of Object.entries(twitchEmotes)) {
+        for (const pos of positions) {
+          const [start, end] = pos.split('-').map(Number);
+          replacements.push({ start, end, emoteId });
+        }
+      }
+      if (replacements.length === 0) return null;
+      replacements.sort((a, b) => b.start - a.start);
+
+      let result = text;
+      for (const r of replacements) {
+        const emoteName = result.substring(r.start, r.end + 1);
+        const img = '<img class="chat-emote" src="https://static-cdn.jtvnw.net/emoticons/v2/' + r.emoteId + '/default/dark/1.0" alt="' + escapeHtml(emoteName) + '" title="' + escapeHtml(emoteName) + '">';
+        result = result.substring(0, r.start) + '\x00EMOTE' + replacements.indexOf(r) + '\x00' + result.substring(r.end + 1);
+        replacements[replacements.indexOf(r)]._img = img;
+      }
+      // Now escape HTML on the non-emote parts and restore emote images
+      const parts = result.split('\x00');
+      return parts.map(p => {
+        const emoteMatch = p.match(/^EMOTE(\d+)$/);
+        if (emoteMatch) return replacements[parseInt(emoteMatch[1])]._img;
+        // Check 7TV/BTTV emotes on remaining words
+        if (emoteMap.size > 0) {
+          return p.split(' ').map(word => {
+            const url = emoteMap.get(word);
+            if (url) return '<img class="chat-emote" src="' + url + '" alt="' + escapeHtml(word) + '" title="' + escapeHtml(word) + '">';
+            return escapeHtml(word);
+          }).join(' ');
+        }
+        return escapeHtml(p);
+      }).join('');
+    }
+
+    function replaceEmotes(text, twitchEmotes) {
+      // Try Twitch native emotes first
+      const twitchResult = replaceTwitchEmotes(text, twitchEmotes);
+      if (twitchResult) return twitchResult;
+      // Fallback to 7TV/BTTV only
       if (!emotesLoaded || emoteMap.size === 0) return escapeHtml(text);
-      // Split by spaces, replace matching words with emote images
       return text.split(' ').map(word => {
         const url = emoteMap.get(word);
         if (url) return '<img class="chat-emote" src="' + url + '" alt="' + escapeHtml(word) + '" title="' + escapeHtml(word) + '">';
@@ -253,7 +295,7 @@
 
       const color = data.color || '#' + Math.floor(Math.random() * 0xFFFFFF).toString(16).padStart(6, '0');
       const badgeHtml = renderBadges(data.badges);
-      const messageHtml = replaceEmotes(data.message);
+      const messageHtml = replaceEmotes(data.message, data.emotes);
 
       msg.innerHTML = badgeHtml +
         '<span class="chat-author" style="color:' + escapeHtml(color) + ';">' + escapeHtml(data.username) + '</span>' +
