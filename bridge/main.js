@@ -215,9 +215,15 @@ function startBridge() {
 
   showControlWindow();
 
-  // Restore enabled overlays from settings
+  // Restore enabled overlays from settings (hidden if autoHide is on — shown when iRacing connects)
   if (settings.enabledOverlays && Array.isArray(settings.enabledOverlays)) {
     settings.enabledOverlays.forEach(id => createOverlayWindow(id));
+    // Hide all overlays initially when autoHide is on (iRacing isn't connected yet)
+    if (autoHideOverlays) {
+      setTimeout(() => {
+        Object.values(overlayWindows).forEach(w => { if (w && !w.isDestroyed()) w.hide(); });
+      }, 200);
+    }
   }
 
   // Restore session backup after update (if exists)
@@ -292,10 +298,13 @@ function startBridge() {
     autoUpdater.on('error', (err) => {
       console.log('[Updater] Error:', err.message);
     });
-    // Check for updates after 5 seconds
+    // Check for updates after 5 seconds, then every 60 seconds
     setTimeout(() => {
       try { autoUpdater.checkForUpdates(); } catch(e) {}
     }, 5000);
+    setInterval(() => {
+      try { autoUpdater.checkForUpdates(); } catch(e) {}
+    }, 60000);
   }
 
   console.log('[Bridge] Started');
@@ -389,12 +398,12 @@ function showControlWindow() {
   }
 
   controlWindow = new BrowserWindow({
-    width: 800,
-    height: 650,
+    width: 1000,
+    height: 750,
     resizable: true,
-    maximizable: false,
-    minWidth: 700,
-    minHeight: 550,
+    maximizable: true,
+    minWidth: 800,
+    minHeight: 600,
     title: 'Atleta Bridge',
     icon: path.join(process.resourcesPath || __dirname, 'atleta.ico'),
     backgroundColor: '#0c0d14',
