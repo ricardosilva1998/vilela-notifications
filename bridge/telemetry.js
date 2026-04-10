@@ -19,6 +19,7 @@ const { broadcastToChannel, getClientInfo, getSelectedCarIdx, resetSelectedCar }
 const { switchCamera } = require('./keyboardSim');
 const settings = require('./settings');
 const { extractTrackFromIBT, geoKeyFromSessionInfo, loadCachedTrackByGeo, saveCachedTrackByGeo } = require('./trackExtractor');
+const sessionRecorder = require('./sessionRecorder');
 
 // Fuel tracking
 let fuelHistory = [];
@@ -146,6 +147,9 @@ const startingClassPositions = new Map(); // carIdx -> class position at race st
 // Overtake tracking — count position gains per class (server-side so all clients share data)
 const prevClassPositions = new Map(); // carIdx -> { classPosition, carClass }
 const overtakesByClass = {};          // className -> count
+
+// Session recorder — last lap detection
+let _recorderLastLap = 0;
 
 // Pit time tracking — measure time lost per pit stop per class
 const pitTracking = new Map(); // carIdx -> { wasPitting, bestLapSnapshot, lapsSnapshot, waitingForLap, referenceLap }
@@ -564,6 +568,7 @@ async function startTelemetry(onStatusChange) {
                 collectAndUploadTrackStats(trackName, lastStandings, classPitDeltas, lastSofByClass, qualifyBestByClass, raceSessionTotalTime);
               }
             } catch(e) {}
+            try { sessionRecorder.onSessionEnd(); } catch(e) {}
             connected = false;
             log('[Telemetry] Disconnected during poll');
             broadcastToChannel('_all', { type: 'status', iracing: false });
@@ -575,6 +580,15 @@ async function startTelemetry(onStatusChange) {
 
         ir.refreshSharedMemory();
         pollCount++;
+
+        // Init session recorder on first poll
+        if (pollCount === 1) {
+          try {
+            const settingsJs = require('./settings');
+            const s = settingsJs.load();
+            sessionRecorder.init(s.bridgeId || '');
+          } catch(e) {}
+        }
 
         // === Session change detection ===
         try {
@@ -588,6 +602,43 @@ async function startTelemetry(onStatusChange) {
             if (prevType.toLowerCase().includes('race') && lastStandings.length > 0) {
               collectAndUploadTrackStats(trackName, lastStandings, classPitDeltas, lastSofByClass, qualifyBestByClass, raceSessionTotalTime);
             }
+
+            // End previous session recording
+            try {
+              const prevPlayer = lastStandings.find(s => s.isPlayer);
+              sessionRecorder.onSessionEnd(
+                prevPlayer ? prevPlayer.classPosition : null,
+                prevPlayer ? (prevPlayer.iRating - prevPlayer.startIRating) : null
+              );
+            } catch(e) {}
+
+            // Start new session recording
+            try {
+              const newSessionType = sessionInfo?.Sessions?.[sessionNum]?.SessionType || '';
+              const sessionTypes = { Practice: 'practice', 'Lone Qualify': 'qualify', 'Open Qualify': 'qualify', Race: 'race' };
+              const sType = sessionTypes[newSessionType] || (newSessionType.toLowerCase().includes('qualify') ? 'qualify' : newSessionType.toLowerCase().includes('race') ? 'race' : 'practice');
+              const playerDriver = drivers.find(d => d.CarIdx === playerCarIdx);
+              const _airTemp = ir.get(VARS.AIR_TEMP)?.[0] || 0;
+              const _trackTemp = ir.get(VARS.TRACK_TEMP)?.[0] || 0;
+              const _humidity = (ir.get(VARS.RELATIVE_HUMIDITY)?.[0] || 0) * 100;
+              const _wi = ir.getSessionInfo('WeekendInfo');
+              const _skies = _wi?.TrackSkies || '';
+              const _windSpeed = ir.get(VARS.WIND_VEL)?.[0] || 0;
+              sessionRecorder.setIdentity(playerIRacingName || '');
+              sessionRecorder.onSessionStart(
+                sessionNum,
+                trackName,
+                playerDriver?.CarClassShortName || '',
+                playerDriver?.CarScreenNameShort || playerDriver?.CarScreenName || '',
+                sType,
+                { airTemp: _airTemp, trackTemp: _trackTemp, humidity: _humidity, skies: _skies, windSpeed: _windSpeed },
+                lastSofByClass && playerDriver ? (lastSofByClass[playerDriver.CarClassShortName] || 0) : 0,
+                lastStandings.length
+              );
+            } catch(e) {}
+
+            _recorderLastLap = 0;
+
             // Always clear pit data on session change (qualify pit lane doesn't count as race pit)
             pitStopCounts.clear();
             driverPitDeltas.clear();
@@ -829,6 +880,16 @@ async function startTelemetry(onStatusChange) {
           throttle, brake, clutch, steer, gear, speed,
         }});
 
+        // Feed session recorder (samples internally at 10Hz)
+        sessionRecorder.poll({
+          throttle,
+          brake,
+          speed,
+          gear,
+          steer,
+          lapDistPct: (ir.get(VARS.CAR_IDX_LAP_DIST_PCT) || [])[playerCarIdx] || 0,
+        });
+
         // === Wind === (broadcast moved after focusCarIdx is determined, see below)
 
         // === Proximity ===
@@ -906,6 +967,10 @@ async function startTelemetry(onStatusChange) {
           if (totalTime > 300) { // at least 5 min total to be a real race
             raceSessionTotalTime = totalTime;
             log('[Session] Race total time: ' + (totalTime / 60).toFixed(1) + ' min');
+            // Set race type for session recorder
+            const totalMin = totalTime / 60;
+            const raceType = totalMin >= 120 ? 'endurance' : totalMin >= 30 ? 'open' : 'sprint';
+            sessionRecorder.setRaceType(raceType);
           }
         }
 
@@ -1224,6 +1289,25 @@ async function startTelemetry(onStatusChange) {
         // Persist standings and SOF for use at session-change time
         lastStandings = standings;
         lastSofByClass = sofByClass;
+
+        // Detect player lap completion for session recorder
+        try {
+          const playerStanding = standings.find(s => s.isPlayer);
+          if (playerStanding && playerStanding.lastLap > 0 && playerStanding.lastLap !== _recorderLastLap) {
+            _recorderLastLap = playerStanding.lastLap;
+            sessionRecorder.onLapComplete({
+              lapNumber: playerStanding.lapsCompleted,
+              lapTime: playerStanding.lastLap,
+              sectorTimes: null,
+              position: playerStanding.classPosition,
+              incidents: incidentCount,
+              inPit: playerStanding.inPit,
+              fuelLevel: fuelLevel,
+              airTemp: airTemp,
+              trackTemp: trackTemp,
+            });
+          }
+        } catch(e) {}
 
         // Send live session heartbeat to server every ~30s (300 polls)
         if (pollCount % 300 === 10 && trackName) {
