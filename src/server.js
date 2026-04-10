@@ -38,6 +38,8 @@ app.use('/overlay/sounds', express.static(path.join(__dirname, '..', 'data', 'so
 app.use('/sponsors', express.static(path.join(__dirname, '..', 'data', 'sponsors')));
 // Serve uploaded avatars from persistent data volume
 app.use('/avatars', express.static(path.join(__dirname, '..', 'data', 'avatars')));
+// Serve issue screenshots from persistent data volume
+app.use('/issues-files', express.static(path.join(__dirname, '..', 'data', 'issues')));
 // Serve custom VTuber models from persistent data volume
 app.use('/vtuber-models', express.static(path.join(__dirname, '..', 'data', 'vtuber-models')));
 // Serve custom overlay uploads from persistent data volume — DISABLED for now
