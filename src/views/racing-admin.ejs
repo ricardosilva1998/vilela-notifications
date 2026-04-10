@@ -22,9 +22,13 @@
         </thead>
         <tbody>
           <% racingUsers.forEach(function(u) { %>
+            <% var bridgeData = u.bridge_id ? bridgeUsers.find(function(b) { return b.bridge_id === u.bridge_id; }) : null; %>
+            <% var userOnline = bridgeData && (Date.now() - new Date(bridgeData.last_seen + 'Z').getTime()) < 2 * 60 * 1000; %>
             <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
               <td style="padding:10px 14px;color:var(--text-muted);font-size:11px;"><%= u.id %></td>
-              <td style="padding:10px 14px;font-weight:600;"><%= u.username %></td>
+              <td style="padding:10px 14px;font-weight:600;">
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:<%= userOnline ? '#3ecf8e' : 'rgba(255,255,255,0.1)' %>;vertical-align:middle;<%= userOnline ? 'box-shadow:0 0 6px rgba(62,207,142,0.4);' : '' %>"></span><%= u.username %>
+              </td>
               <td style="padding:10px 14px;color:var(--text-secondary);"><%= u.iracing_name || '—' %></td>
               <td style="padding:10px 14px;font-family:monospace;font-size:11px;color:var(--text-muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="<%= u.bridge_id || '' %>"><%= u.bridge_id ? u.bridge_id.substring(0, 12) + '...' : '—' %></td>
               <td style="padding:10px 14px;">
@@ -57,10 +61,15 @@
         </thead>
         <tbody>
           <% bridgeUsers.forEach(function(b) { %>
+            <% var isOnline = (Date.now() - new Date(b.last_seen + 'Z').getTime()) < 2 * 60 * 1000; %>
             <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
               <td style="padding:10px 14px;font-family:monospace;font-size:11px;color:var(--text-muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="<%= b.bridge_id %>"><%= b.bridge_id.substring(0, 12) %>...</td>
-              <td style="padding:10px 14px;font-weight:600;"><%= b.iracing_name || '—' %></td>
-              <td style="padding:10px 14px;color:var(--text-muted);font-size:11px;"><%= new Date(b.last_seen).toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) %></td>
+              <td style="padding:10px 14px;font-weight:600;">
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:<%= isOnline ? '#3ecf8e' : 'rgba(255,255,255,0.1)' %>;vertical-align:middle;<%= isOnline ? 'box-shadow:0 0 6px rgba(62,207,142,0.4);' : '' %>"></span><%= b.iracing_name || '—' %>
+              </td>
+              <td style="padding:10px 14px;color:var(--text-muted);font-size:11px;">
+                <% if (isOnline) { %><span style="color:#3ecf8e;font-weight:600;">Online</span><% } else { %><%= new Date(b.last_seen).toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) %><% } %>
+              </td>
               <td style="padding:10px 14px;">
                 <% var linked = racingUsers.find(function(u) { return u.bridge_id === b.bridge_id; }); %>
                 <% if (linked) { %>
