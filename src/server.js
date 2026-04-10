@@ -83,6 +83,7 @@ app.use((req, res, next) => {
   res.locals.lang = lang;
   res.locals.SUPPORTED_LANGS = SUPPORTED_LANGS;
   res.locals.t = (key, params) => t(lang, key, params);
+  res.locals.currentPath = req.path;
 
   next();
 });

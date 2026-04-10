@@ -966,6 +966,7 @@ db.exec(`
 `);
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_users_bridge ON racing_users(bridge_id)'); } catch(e) {}
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_users_streamer ON racing_users(streamer_id)'); } catch(e) {}
+try { db.exec('ALTER TABLE racing_users ADD COLUMN display_name TEXT'); } catch(e) {}
 try { db.exec('ALTER TABLE racing_sessions ADD COLUMN racing_user_id INTEGER'); } catch(e) {}
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_sessions_user ON racing_sessions(racing_user_id)'); } catch(e) {}
 
@@ -1095,8 +1096,8 @@ function upsertStreamerDiscord(discordUserId, discordUsername, discordDisplayNam
   return _upsertStreamerDiscord.get(discordUserId, discordUsername, discordDisplayName, discordAvatar);
 }
 
-const _updateProfilePicture = db.prepare('UPDATE streamers SET profile_picture = ? WHERE id = ?');
-const _clearProfilePicture = db.prepare('UPDATE streamers SET profile_picture = NULL WHERE id = ?');
+// profile_picture prepared statements are initialized after migration (see below)
+let _updateProfilePicture, _clearProfilePicture;
 
 function updateProfilePicture(streamerId, filename) {
   _updateProfilePicture.run(filename, streamerId);
@@ -3031,6 +3032,8 @@ try {
     console.log('[DB] Added profile_picture column to streamers');
   }
 } catch {}
+_updateProfilePicture = db.prepare('UPDATE streamers SET profile_picture = ? WHERE id = ?');
+_clearProfilePicture = db.prepare('UPDATE streamers SET profile_picture = NULL WHERE id = ?');
 
 // Cleanup: Remove old bundled VTuber models that were renamed
 try { db.prepare("DELETE FROM vtuber_models WHERE is_bundled = 1 AND filename IN ('AvatarSample_A.vrm', 'AvatarSample_B.vrm')").run(); } catch(e) {}
@@ -3538,6 +3541,7 @@ const _getRacingUserByStreamerId = db.prepare(`SELECT * FROM racing_users WHERE 
 const _linkRacingUserToStreamer = db.prepare(`UPDATE racing_users SET streamer_id = @streamer_id WHERE id = @id`);
 const _updateRacingPassword = db.prepare(`UPDATE racing_users SET password_hash = @password_hash WHERE id = @id`);
 const _updateRacingIracingName = db.prepare(`UPDATE racing_users SET iracing_name = @iracing_name WHERE id = @id`);
+const _updateRacingProfile = db.prepare(`UPDATE racing_users SET display_name = @display_name, iracing_name = @iracing_name WHERE id = @id`);
 const _createRacingSession = db.prepare(`INSERT INTO sessions (sid, racing_user_id, expires_at) VALUES (?, ?, ?)`);
 const _createLinkedSession = db.prepare(`INSERT INTO sessions (sid, streamer_id, racing_user_id, expires_at) VALUES (?, ?, ?, ?)`);
 
@@ -3551,6 +3555,7 @@ function getRacingUserByStreamerId(streamerId) { return _getRacingUserByStreamer
 function linkRacingUserToStreamer(racingUserId, streamerId) { return _linkRacingUserToStreamer.run({ id: racingUserId, streamer_id: streamerId }); }
 function updateRacingPassword(id, passwordHash) { return _updateRacingPassword.run({ id, password_hash: passwordHash }); }
 function updateRacingIracingName(id, iracingName) { return _updateRacingIracingName.run({ id, iracing_name: iracingName }); }
+function updateRacingProfile(id, displayName, iracingName) { return _updateRacingProfile.run({ id, display_name: displayName || null, iracing_name: iracingName || null }); }
 function createRacingSession(sid, racingUserId, expiresAt) { return _createRacingSession.run(sid, racingUserId, expiresAt); }
 function createLinkedSession(sid, streamerId, racingUserId, expiresAt) { return _createLinkedSession.run(sid, streamerId, racingUserId, expiresAt); }
 
@@ -3790,6 +3795,7 @@ module.exports = {
   linkRacingUserToStreamer,
   updateRacingPassword,
   updateRacingIracingName,
+  updateRacingProfile,
   createRacingSession,
   createLinkedSession,
   closeDb() { db.close(); },

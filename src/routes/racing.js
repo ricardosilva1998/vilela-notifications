@@ -51,6 +51,14 @@ router.get('/admin', (req, res) => {
   res.render('racing-admin', { streamer: req.streamer || null, racingUser: req.racingUser, racingUsers, bridgeUsers });
 });
 
+// Update profile
+router.post('/account/profile', express.urlencoded({ extended: true }), (req, res) => {
+  const displayName = (req.body.display_name || '').trim().slice(0, 32);
+  const iracingName = (req.body.iracing_name || '').trim().slice(0, 64);
+  db.updateRacingProfile(req.racingUser.id, displayName || null, iracingName || null);
+  res.redirect('/racing/account?msg=Profile updated');
+});
+
 // Change password
 router.post('/account/password', express.urlencoded({ extended: true }), async (req, res) => {
   try {
