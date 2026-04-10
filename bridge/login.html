@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Atleta Bridge — Login</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0c0d14; color: #e8e6f0; font-family: 'Segoe UI', -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+
+    .login-container { width: 100%; max-width: 380px; padding: 24px; }
+
+    .logo { text-align: center; margin-bottom: 32px; }
+    .logo h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
+    .logo h1 span { background: linear-gradient(135deg, #3ecf8e, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .logo p { color: rgba(255,255,255,0.4); font-size: 13px; margin-top: 6px; }
+
+    .tabs { display: flex; gap: 2px; margin-bottom: 20px; background: rgba(255,255,255,0.04); border-radius: 8px; padding: 3px; }
+    .tab { flex: 1; text-align: center; padding: 8px; font-size: 13px; font-weight: 600; border-radius: 6px; cursor: pointer; color: rgba(255,255,255,0.4); transition: all 0.2s; }
+    .tab.active { background: rgba(62,207,142,0.15); color: #3ecf8e; }
+    .tab:hover:not(.active) { color: rgba(255,255,255,0.7); }
+
+    .form-group { display: flex; flex-direction: column; gap: 10px; }
+    .form-group input { padding: 11px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color: #e8e6f0; font-size: 14px; outline: none; transition: border-color 0.2s; }
+    .form-group input:focus { border-color: rgba(62,207,142,0.4); }
+    .form-group input::placeholder { color: rgba(255,255,255,0.25); }
+
+    .btn-submit { width: 100%; padding: 11px; background: #3ecf8e; color: #000; font-weight: 700; font-size: 14px; border: none; border-radius: 8px; cursor: pointer; transition: background 0.2s; margin-top: 4px; }
+    .btn-submit:hover { background: #34b87d; }
+    .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .error { color: #f04438; background: rgba(240,68,56,0.1); padding: 10px 14px; border-radius: 8px; font-size: 12px; margin-bottom: 12px; display: none; }
+    .error.show { display: block; }
+
+    .info { color: rgba(255,255,255,0.35); font-size: 11px; text-align: center; margin-top: 12px; line-height: 1.5; }
+    .info a { color: #3ecf8e; text-decoration: none; }
+
+    .bridge-id-note { font-size: 11px; color: rgba(255,255,255,0.25); margin-top: 4px; padding: 0 2px; }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .loading { display: none; align-items: center; justify-content: center; gap: 8px; padding: 20px; color: rgba(255,255,255,0.5); font-size: 13px; }
+    .loading.show { display: flex; }
+    .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.1); border-top-color: #3ecf8e; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="logo">
+      <h1>Atleta <span>Racing</span></h1>
+      <p>iRacing telemetry, session history & lap comparison</p>
+    </div>
+
+    <div class="error" id="error"></div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="showPanel('login')">Login</div>
+      <div class="tab" onclick="showPanel('register')">Create Account</div>
+    </div>
+
+    <!-- Login Panel -->
+    <div class="panel active" id="panel-login">
+      <div class="form-group">
+        <input type="text" id="login-username" placeholder="Username" autofocus>
+        <input type="password" id="login-password" placeholder="Password">
+        <button class="btn-submit" onclick="doLogin()">Login</button>
+      </div>
+    </div>
+
+    <!-- Register Panel -->
+    <div class="panel" id="panel-register">
+      <div class="form-group">
+        <input type="text" id="reg-username" placeholder="Username">
+        <input type="password" id="reg-password" placeholder="Password (min 6 chars)">
+        <input type="password" id="reg-confirm" placeholder="Confirm Password">
+        <input type="text" id="reg-iracing" placeholder="iRacing Name (optional)">
+        <div class="bridge-id-note">Your Bridge ID will be linked automatically</div>
+        <button class="btn-submit" onclick="doRegister()">Create Account</button>
+      </div>
+    </div>
+
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <span>Connecting...</span>
+    </div>
+
+    <div class="info">
+      You can also create an account at<br><a href="#" onclick="require('electron').shell.openExternal('https://atletanotifications.com/racing');return false;">atletanotifications.com/racing</a>
+    </div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    const https = require('https');
+    const http = require('http');
+
+    const API_BASE = 'https://atletanotifications.com';
+    let bridgeId = '';
+    let iracingName = '';
+
+    // Get bridge ID from main process
+    ipcRenderer.on('init-login', (event, data) => {
+      bridgeId = data.bridgeId || '';
+      iracingName = data.iracingName || '';
+      if (iracingName) {
+        document.getElementById('reg-iracing').value = iracingName;
+      }
+
+      // Check if this bridge_id already has an account
+      if (bridgeId) {
+        checkExistingAccount();
+      }
+    });
+
+    function checkExistingAccount() {
+      // Try to find if a racing account already exists for this bridge_id
+      // If so, just show login tab with a note
+    }
+
+    function showPanel(name) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('panel-' + name).classList.add('active');
+      event.target.classList.add('active');
+      hideError();
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('error');
+      el.textContent = msg;
+      el.classList.add('show');
+    }
+    function hideError() {
+      document.getElementById('error').classList.remove('show');
+    }
+
+    function setLoading(on) {
+      document.getElementById('loading').classList.toggle('show', on);
+      document.querySelectorAll('.btn-submit').forEach(b => b.disabled = on);
+    }
+
+    function apiRequest(path, body) {
+      return new Promise((resolve, reject) => {
+        const data = JSON.stringify(body);
+        const url = new URL(API_BASE + path);
+        const mod = url.protocol === 'https:' ? https : http;
+        const req = mod.request({
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) },
+          timeout: 15000,
+        }, (res) => {
+          let body = '';
+          res.on('data', c => body += c);
+          res.on('end', () => {
+            try {
+              const json = JSON.parse(body);
+              if (res.statusCode === 200) resolve(json);
+              else reject(new Error(json.error || 'Request failed'));
+            } catch(e) { reject(new Error('Invalid response')); }
+          });
+        });
+        req.on('error', e => reject(e));
+        req.on('timeout', () => { req.destroy(); reject(new Error('Connection timeout')); });
+        req.write(data);
+        req.end();
+      });
+    }
+
+    async function doLogin() {
+      hideError();
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
+      if (!username || !password) return showError('Username and password required');
+
+      setLoading(true);
+      try {
+        // Use the signup endpoint with existing credentials to verify
+        // Actually we need a login endpoint that returns JSON
+        const res = await apiRequest('/racing/auth/login-api', { username, password, bridge_id: bridgeId });
+        ipcRenderer.send('login-success', { username: res.username || username, userId: res.id, bridgeId });
+      } catch(e) {
+        showError(e.message || 'Login failed');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function doRegister() {
+      hideError();
+      const username = document.getElementById('reg-username').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const confirm = document.getElementById('reg-confirm').value;
+      const iracingInput = document.getElementById('reg-iracing').value.trim();
+
+      if (!username || !password) return showError('Username and password required');
+      if (username.length < 3 || username.length > 30) return showError('Username must be 3-30 characters');
+      if (!/^[a-zA-Z0-9_.-]+$/.test(username)) return showError('Username: letters, numbers, dots, dashes, underscores only');
+      if (password.length < 6) return showError('Password must be at least 6 characters');
+      if (password !== confirm) return showError('Passwords do not match');
+
+      setLoading(true);
+      try {
+        const res = await apiRequest('/racing/auth/signup', {
+          username, password, iracing_name: iracingInput || iracingName, bridge_id: bridgeId,
+        });
+        ipcRenderer.send('login-success', { username: res.username || username, userId: res.id, bridgeId });
+      } catch(e) {
+        showError(e.message || 'Registration failed');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // Enter key submits
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        if (document.getElementById('panel-login').classList.contains('active')) doLogin();
+        else doRegister();
+      }
+    });
+  </script>
+</body>
+</html>

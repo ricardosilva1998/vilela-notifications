@@ -84,6 +84,30 @@ router.post('/login', express.urlencoded({ extended: true }), async (req, res) =
   }
 });
 
+// POST /racing/auth/login-api — JSON login for Bridge app
+router.post('/login-api', express.json(), async (req, res) => {
+  try {
+    const { username, password, bridge_id } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+
+    const user = db.getRacingUserByUsername(username);
+    if (!user) return res.status(401).json({ error: 'Invalid username or password' });
+
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid) return res.status(401).json({ error: 'Invalid username or password' });
+
+    // Link bridge_id if provided and not already linked
+    if (bridge_id && !user.bridge_id) {
+      try { db.prepare('UPDATE racing_users SET bridge_id = ? WHERE id = ?').run(bridge_id, user.id); } catch(e) {}
+    }
+
+    res.json({ ok: true, id: user.id, username: user.username });
+  } catch(e) {
+    console.error('[Racing Login API]', e.message);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
 // GET /racing/auth/logout
 router.get('/logout', (req, res) => {
   const sid = req.cookies?.session;

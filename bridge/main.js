@@ -96,8 +96,61 @@ app.on('ready', () => {
   // Load persisted settings
   settings = loadSettings();
   if (settings.autoHideOverlays !== undefined) autoHideOverlays = settings.autoHideOverlays;
-  // Lock feature removed
 
+  // Check if user is logged in — show login screen if not
+  if (!settings.racingUsername) {
+    showLoginWindow();
+    return;
+  }
+
+  // User is authenticated — start normally
+  startBridge();
+});
+
+// Handle login success from login window
+ipcMain.on('login-success', (event, data) => {
+  settings.racingUsername = data.username;
+  settings.racingUserId = data.userId;
+  if (data.bridgeId) settings.bridgeId = data.bridgeId;
+  saveSettings(settings);
+
+  // Close login window and start the app
+  if (loginWindow && !loginWindow.isDestroyed()) {
+    loginWindow.close();
+    loginWindow = null;
+  }
+  startBridge();
+});
+
+let loginWindow = null;
+
+function showLoginWindow() {
+  loginWindow = new BrowserWindow({
+    width: 440,
+    height: 520,
+    resizable: false,
+    maximizable: false,
+    title: 'Atleta Bridge — Login',
+    icon: path.join(process.resourcesPath || __dirname, 'atleta.ico'),
+    backgroundColor: '#0c0d14',
+    webPreferences: { nodeIntegration: true, contextIsolation: false },
+  });
+  loginWindow.setMenuBarVisibility(false);
+  loginWindow.loadFile(path.join(__dirname, 'login.html'));
+  loginWindow.webContents.on('did-finish-load', () => {
+    loginWindow.webContents.send('init-login', {
+      bridgeId: settings.bridgeId || '',
+      iracingName: settings.iracingName || '',
+    });
+  });
+  loginWindow.on('closed', () => {
+    loginWindow = null;
+    // If user closed login without logging in, quit
+    if (!settings.racingUsername) app.quit();
+  });
+}
+
+function startBridge() {
   // Load app icon
   try {
     const iconPaths = [
@@ -303,7 +356,7 @@ app.on('ready', () => {
   setInterval(uploadLogs, 60000);
   // Upload initial logs after 10s
   setTimeout(uploadLogs, 10000);
-});
+}
 
 function persistSettings() {
   if (quitting) return;
