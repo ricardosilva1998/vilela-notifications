@@ -3440,6 +3440,10 @@ const _getRecentSessionsByUser = db.prepare(`
   ORDER BY s.created_at DESC
   LIMIT @limit
 `);
+function getAllRacingUsers() {
+  return db.prepare('SELECT * FROM racing_users ORDER BY created_at DESC').all();
+}
+
 function getRecentSessionsByUser(racingUserId, bridgeId, limit) {
   return _getRecentSessionsByUser.all({ racing_user_id: racingUserId || 0, bridge_id: bridgeId || '', limit: limit || 20 });
 }
@@ -3709,6 +3713,7 @@ module.exports = {
   cleanupOldBridgeBugReports,
   insertSession,
   getSessionsByTrack,
+  getAllRacingUsers,
   getRecentSessionsByUser,
   getRacingSessionById,
   getSessionByShareToken,

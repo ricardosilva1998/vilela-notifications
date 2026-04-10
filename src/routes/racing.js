@@ -43,6 +43,14 @@ router.get('/account', (req, res) => {
   res.render('racing-account', { streamer: req.streamer || null, racingUser: req.racingUser, msg: req.query.msg || null, error: req.query.error || null });
 });
 
+// Admin — Racing accounts + Bridge users
+router.get('/admin', (req, res) => {
+  if (!res.locals.isAdmin) return res.redirect('/racing');
+  const racingUsers = db.getAllRacingUsers();
+  const bridgeUsers = db.getBridgeUserStats();
+  res.render('racing-admin', { streamer: req.streamer || null, racingUser: req.racingUser, racingUsers, bridgeUsers });
+});
+
 // Change password
 router.post('/account/password', express.urlencoded({ extended: true }), async (req, res) => {
   try {
