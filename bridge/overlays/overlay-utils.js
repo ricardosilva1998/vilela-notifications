@@ -113,7 +113,6 @@
     // CSS scale — shrinks/grows everything uniformly (text, rows, columns)
     // Keeps exact layout and aspect ratio, just renders smaller/larger
     var panel = document.querySelector('.overlay-panel');
-    if (panel) panel.style.position = 'relative';
 
     // Apply saved scale from settings
     var currentScale = 100;
@@ -125,37 +124,52 @@
       }
     } catch(e) {}
 
+    // Sync window size to panel content (called on scale change and content resize)
+    var _lastW = 0, _lastH = 0;
+    function syncWindowSize() {
+      if (!panel || currentScale === 100) return;
+      var factor = currentScale / 100;
+      var w = panel.scrollWidth;
+      var h = panel.scrollHeight;
+      var newW = Math.round(w * factor) + 4;
+      var newH = Math.round(h * factor) + 4;
+      if (newW !== _lastW || newH !== _lastH) {
+        _lastW = newW; _lastH = newH;
+        try { ipcRenderer.send('resize-overlay-wh', newW, newH); } catch(e2) {}
+      }
+    }
+
     // Apply CSS scale — controlled via settings panel Scale dropdown
     function applyScale(pct) {
       currentScale = pct;
       if (panel) {
+        if (pct === 100) {
+          panel.style.transform = '';
+          panel.style.transformOrigin = '';
+          panel.style.overflow = '';
+          return;
+        }
         var factor = pct / 100;
-        // Reset to measure natural size
-        panel.style.transform = 'none';
-        panel.style.width = 'auto';
-        panel.style.height = 'auto';
+        // Don't lock width/height — let panel grow with content
         panel.style.overflow = 'visible';
-        // Force layout recalc
-        var origW = panel.scrollWidth;
-        var origH = panel.scrollHeight;
-        // Lock panel at natural size so it doesn't reflow when window resizes
-        panel.style.width = origW + 'px';
-        panel.style.height = origH + 'px';
         panel.style.transform = 'scale(' + factor + ')';
         panel.style.transformOrigin = 'top left';
-        // Resize window to fit the scaled content (with small padding)
-        try {
-          var newW = Math.round(origW * factor) + 4;
-          var newH = Math.round(origH * factor) + 4;
-          ipcRenderer.send('resize-overlay-wh', newW, newH);
-        } catch(e2) {}
+        syncWindowSize();
       }
     }
 
     // Expose current scale for overlays that do their own height resizing
     window.__overlayScale = function() { return currentScale / 100; };
 
-    if (currentScale !== 100) applyScale(currentScale);
+    if (currentScale !== 100) {
+      applyScale(currentScale);
+      // Re-sync window when content changes (data arrives, rows added, etc.)
+      if (typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver(syncWindowSize).observe(panel);
+      } else {
+        setInterval(syncWindowSize, 500);
+      }
+    }
 
   } catch(e) {}
 })();

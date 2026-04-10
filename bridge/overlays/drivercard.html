@@ -225,55 +225,7 @@
 
     connectBridge(['standings']);
 
-    // Drag support
-    try {
-      const { ipcRenderer } = require('electron');
-      ipcRenderer.on('lock-state', () => {});
-      let _dragging = false, _dragStartX = 0, _dragStartY = 0;
-      const dragHeader = document.querySelector('.overlay-header');
-      if (dragHeader) {
-        dragHeader.style.cursor = 'move';
-        dragHeader.addEventListener('mousedown', (e) => {
-          if (e.button !== 0) return;
-          _dragging = true;
-          _dragStartX = e.screenX;
-          _dragStartY = e.screenY;
-          e.preventDefault();
-        });
-      }
-      document.addEventListener('mousemove', (e) => {
-        if (!_dragging) return;
-        ipcRenderer.send('drag-overlay', e.screenX - _dragStartX, e.screenY - _dragStartY);
-        _dragStartX = e.screenX;
-        _dragStartY = e.screenY;
-      });
-      document.addEventListener('mouseup', () => { _dragging = false; });
-      document.addEventListener('mouseleave', () => { _dragging = false; });
-
-      // Click-through: transparent areas pass clicks through, visible panel captures them
-      let _mouseOverPanel = false;
-      document.addEventListener('mousemove', (e) => {
-        if (_dragging) return;
-        const panel = document.querySelector('.overlay-panel');
-        if (!panel) return;
-        const r = panel.getBoundingClientRect();
-        const over = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
-        if (over && !_mouseOverPanel) {
-          _mouseOverPanel = true;
-          ipcRenderer.send('set-ignore-mouse', false);
-        } else if (!over && _mouseOverPanel) {
-          _mouseOverPanel = false;
-          ipcRenderer.send('set-ignore-mouse', true);
-        }
-      });
-      document.addEventListener('mouseleave', () => {
-        if (_dragging) return;
-        if (_mouseOverPanel) {
-          _mouseOverPanel = false;
-          ipcRenderer.send('set-ignore-mouse', true);
-        }
-      });
-    } catch(e) {}
+    // Drag + click-through handled by overlay-utils.js
   </script>
 <script src="overlay-utils.js"></script>
 </body>
