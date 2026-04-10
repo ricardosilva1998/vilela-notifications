@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= typeof title !== 'undefined' ? title : 'Atleta' %></title>
   <link rel="icon" type="image/png" href="/app-icon/honest_graphic-running-athlete-9715727.png">
-  <meta property="og:title" content="Atleta — Streamers Helper">
+  <meta property="og:title" content="Atleta — Personal Helper">
   <meta property="og:description" content="Free all-in-one streaming toolkit — Discord notifications, OBS overlays, Twitch & YouTube chatbots, and moderation for streamers.">
   <meta property="og:image" content="/app-icon/honest_graphic-running-athlete-9715727.png">
   <meta property="og:type" content="website">
@@ -587,25 +587,9 @@
         Streamer
       </a>
       <a href="/racing" class="sidebar-link">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2c4 4 6 8 6 14H6c0-6 2-10 6-14z"/><path d="M8 16h8"/><line x1="12" y1="2" x2="12" y2="8"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="M5 15H3v-2l2-4h4l3-3h4l2 3h3v4h-2"/><path d="M5 15h4m2 0h2m2 0h4"/></svg>
         Racing
       </a>
-      <% if (typeof racingUser !== 'undefined' && racingUser) { %>
-        <a href="/tracks" class="sidebar-link" style="padding-left:34px;font-size:12px;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-          Track Database
-        </a>
-        <a href="/racing/account" class="sidebar-link" style="padding-left:34px;font-size:12px;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          Account
-        </a>
-        <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
-        <a href="/racing/admin" class="sidebar-link" style="padding-left:34px;font-size:12px;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          Admin
-        </a>
-        <% } %>
-      <% } %>
 
       <a href="/tutorial" class="sidebar-link">
         <svg viewBox="0 0 24 24"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>
@@ -635,7 +619,7 @@
       <% } %>
     </div>
     <div class="sidebar-footer">
-      Atleta Streamers Helper
+      Atleta Personal Helper
     </div>
   </div>
 
@@ -647,7 +631,15 @@
       <a href="/" class="nav-brand"><img src="/app-icon/honest_graphic-running-athlete-9715727.png" alt="">Atleta</a>
     </div>
     <div class="nav-right">
-      <% if (typeof streamer !== 'undefined' && streamer) { %>
+      <% const _isRacingPage = typeof currentPath !== 'undefined' && currentPath && (currentPath.startsWith('/racing') || currentPath.startsWith('/tracks')); %>
+      <% if (_isRacingPage && typeof racingUser !== 'undefined' && racingUser) { %>
+        <a href="/racing/account" class="nav-user-link">
+          <div class="nav-avatar" style="background: #3ecf8e; display: flex; align-items: center; justify-content: center; color: white; font-family: var(--font-display); font-weight: 700; font-size: 13px;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+          </div>
+          <span class="nav-username"><%= racingUser.display_name || racingUser.username %></span>
+        </a>
+      <% } else if (typeof streamer !== 'undefined' && streamer) { %>
         <a href="/dashboard/account" class="nav-user-link">
           <% const navAvatarUrl = streamer.profile_picture ? '/avatars/' + streamer.id + '/' + streamer.profile_picture : streamer.discord_avatar; %>
           <% if (navAvatarUrl) { %>
@@ -662,7 +654,7 @@
           <div class="nav-avatar" style="background: #3ecf8e; display: flex; align-items: center; justify-content: center; color: white; font-family: var(--font-display); font-weight: 700; font-size: 13px;">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
           </div>
-          <span class="nav-username"><%= racingUser.username %></span>
+          <span class="nav-username"><%= racingUser.display_name || racingUser.username %></span>
         </a>
       <% } %>
     </div>
