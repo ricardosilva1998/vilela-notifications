@@ -1003,6 +1003,11 @@ db.exec(`
 db.exec(`CREATE INDEX IF NOT EXISTS idx_bridge_logs_lookup ON bridge_logs (bridge_id, created_at)`);
 try { db.exec('ALTER TABLE bridge_logs ADD COLUMN iracing_name TEXT'); } catch(e) {}
 
+// --- Issues: screenshots + AI triage columns ---
+try { db.exec("ALTER TABLE issues ADD COLUMN screenshots TEXT"); } catch(e) {}
+try { db.exec("ALTER TABLE issues ADD COLUMN agent_analysis TEXT"); } catch(e) {}
+try { db.exec("ALTER TABLE issues ADD COLUMN agent_status TEXT"); } catch(e) {}
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS bridge_bug_reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2351,7 +2356,8 @@ const _getIssueById = db.prepare('SELECT * FROM issues WHERE id = ?');
 const _updateIssueStatus = db.prepare('UPDATE issues SET status = ?, admin_reply = ?, updated_at = datetime(\'now\') WHERE id = ?');
 
 function createIssue(streamerId, discordUsername, subject, description) {
-  return _createIssue.run(streamerId, discordUsername, subject, description);
+  const result = _createIssue.run(streamerId, discordUsername, subject, description);
+  return result.lastInsertRowid;
 }
 
 function getAllIssues() {
@@ -2364,6 +2370,22 @@ function getIssueById(id) {
 
 function updateIssueStatus(id, status, adminReply) {
   _updateIssueStatus.run(status, adminReply || null, id);
+}
+
+const _updateIssueScreenshots = db.prepare('UPDATE issues SET screenshots = ? WHERE id = ?');
+const _updateIssueAnalysis = db.prepare('UPDATE issues SET agent_analysis = ?, agent_status = ? WHERE id = ?');
+const _updateIssueAgentStatus = db.prepare('UPDATE issues SET agent_status = ? WHERE id = ?');
+
+function updateIssueScreenshots(id, screenshots) {
+  _updateIssueScreenshots.run(screenshots, id);
+}
+
+function updateIssueAnalysis(id, analysis, status) {
+  _updateIssueAnalysis.run(analysis, status, id);
+}
+
+function updateIssueAgentStatus(id, status) {
+  _updateIssueAgentStatus.run(status, id);
 }
 
 // --- Feedback ---
@@ -3614,6 +3636,9 @@ module.exports = {
   getAllIssues,
   getIssueById,
   updateIssueStatus,
+  updateIssueScreenshots,
+  updateIssueAnalysis,
+  updateIssueAgentStatus,
   getSubscription,
   getStreamerTier,
   createSubscription,
