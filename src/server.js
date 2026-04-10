@@ -87,9 +87,7 @@ app.use((req, res, next) => {
 
 // Routes
 app.get('/', (req, res) => {
-  if (req.streamer) return res.redirect('/dashboard');
-  if (req.racingUser) return res.redirect('/racing');
-  res.render('login', { streamer: null, racingUser: null });
+  res.render('login', { streamer: req.streamer || null, racingUser: req.racingUser || null });
 });
 
 app.get('/tutorial', (req, res) => {
