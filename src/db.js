@@ -832,10 +832,23 @@ try {
     'lmp2_sprint': 'LMP2 Sprint',
     'prototype_sprint': 'Proto Sprint',
     'regionals': 'Regionals',
-    'sprint': 'Sprint',
+    'sprint': 'VRS Sprint', // GT3 "Sprint" is always VRS Sprint
   };
+  // Also merge properly-cased "Sprint" into VRS Sprint for GT3 classes
+  const gt3ClassNames = ['GT3', 'GT3 2025', 'GT3 2020', 'IMSA23'];
   const allStats = db.prepare('SELECT * FROM track_stats').all();
-  const oldRows = allStats.filter(r => raceTypeMap[r.race_type]);
+  const oldRows = allStats.filter(r => {
+    if (raceTypeMap[r.race_type]) return true;
+    // Merge "Sprint" → "VRS Sprint" for GT3 classes
+    if (r.race_type === 'Sprint' && gt3ClassNames.some(c => r.car_class.includes(c) || r.car_class === c)) return true;
+    return false;
+  });
+  // For GT3 Sprint → VRS Sprint, add to map dynamically
+  oldRows.forEach(r => {
+    if (r.race_type === 'Sprint' && gt3ClassNames.some(c => r.car_class.includes(c) || r.car_class === c)) {
+      // Will be handled as VRS Sprint
+    }
+  });
   if (oldRows.length > 0) {
     console.log('[DB] Normalizing ' + oldRows.length + ' race_type values...');
     const mergeStmt = db.prepare(`
@@ -866,7 +879,9 @@ try {
     const deleteStmt = db.prepare('DELETE FROM track_stats WHERE id = ?');
     const txn = db.transaction(() => {
       for (const row of oldRows) {
-        const newType = raceTypeMap[row.race_type];
+        let newType = raceTypeMap[row.race_type];
+        // GT3 "Sprint" → "VRS Sprint"
+        if (!newType && row.race_type === 'Sprint') newType = 'VRS Sprint';
         mergeStmt.run({
           track_name: row.track_name, car_class: row.car_class, race_type: newType,
           avg_lap_time: row.avg_lap_time || 0, avg_pit_time: row.avg_pit_time || 0,
