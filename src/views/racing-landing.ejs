@@ -9,5 +9,19 @@
     <button type="submit" class="btn" style="padding:10px;background:#3ecf8e;color:#000;font-weight:700;border:none;border-radius:8px;cursor:pointer;font-size:14px;">Login</button>
   </form>
   <p style="margin-top:16px;font-size:13px;color:var(--text-secondary);">Don't have an account? <a href="/racing/signup" style="color:#3ecf8e;">Sign up</a></p>
+
+  <div style="max-width:320px;margin:20px auto 0;">
+    <a href="#" onclick="document.getElementById('bridge-login-section').style.display='block';this.style.display='none';return false;" style="font-size:12px;color:#3ecf8e;">I already have Atleta Bridge installed</a>
+    <div id="bridge-login-section" style="display:none;margin-top:12px;text-align:left;">
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Enter your Bridge ID to create an account linked to your existing data. Find it in Bridge &rarr; About tab.</p>
+      <form method="POST" action="/racing/auth/signup" style="display:flex;flex-direction:column;gap:10px;">
+        <input name="bridge_id" type="text" placeholder="Bridge ID (e.g. a1b2c3d4-...)" required style="padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:13px;font-family:monospace;">
+        <input name="username" type="text" placeholder="Choose a username" required minlength="3" maxlength="30" pattern="[a-zA-Z0-9_.-]+" style="padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:14px;">
+        <input name="password" type="password" placeholder="Choose a password (min 6 chars)" required minlength="6" style="padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:14px;">
+        <input name="iracing_name" type="text" placeholder="iRacing Name (optional)" style="padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:14px;">
+        <button type="submit" class="btn" style="padding:10px;background:#3ecf8e;color:#000;font-weight:700;border:none;border-radius:8px;cursor:pointer;font-size:14px;">Create Account & Link Bridge</button>
+      </form>
+    </div>
+  </div>
 </div>
 <%- include('footer') %>
