@@ -1,6 +1,7 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const crypto = require('crypto');
 const config = require('./config');
 const db = require('./db');
 const { t, SUPPORTED_LANGS } = require('./i18n');
@@ -575,6 +576,142 @@ app.patch('/api/bridge-bug-reports/:id', (req, res) => {
     db.updateBridgeBugReportStatus(req.params.id, bridgeId, status);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Session upload & query API (public — must be before /api auth middleware)
+app.post('/api/session', express.json({ limit: '10mb' }), (req, res) => {
+  try {
+    const { bridge_id, iracing_name, session, laps, telemetry } = req.body;
+    if (!bridge_id || !iracing_name || !session || !laps) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    if (!session.track_name || !session.car_class || !session.session_type) {
+      return res.status(400).json({ error: 'Missing session fields' });
+    }
+    const shareToken = crypto.randomBytes(9).toString('base64url');
+    const sessionId = db.insertSession({
+      bridge_id,
+      iracing_name,
+      track_name: session.track_name,
+      car_class: session.car_class,
+      car_name: session.car_name || '',
+      session_type: session.session_type,
+      race_type: session.race_type || null,
+      is_public: 0,
+      share_token: shareToken,
+      conditions: session.conditions ? JSON.stringify(session.conditions) : null,
+      sof: session.sof || null,
+      finish_position: session.finish_position || null,
+      irating_change: session.irating_change || null,
+      driver_count: session.driver_count || null,
+      best_lap_time: session.best_lap_time || null,
+      lap_count: session.lap_count || laps.length,
+    }, laps.map(l => ({
+      lap_number: l.lap_number,
+      lap_time: l.lap_time,
+      sector_times: l.sector_times ? JSON.stringify(l.sector_times) : null,
+      fuel_used: l.fuel_used || null,
+      air_temp: l.air_temp || null,
+      track_temp: l.track_temp || null,
+      is_pit_lap: l.is_pit_lap ? 1 : 0,
+      position: l.position || null,
+      incidents: l.incidents || null,
+      is_valid: l.is_valid !== false ? 1 : 0,
+    })), telemetry || []);
+
+    res.json({ id: sessionId, share_token: shareToken });
+  } catch(e) {
+    console.error('[Session Upload]', e.message);
+    res.status(500).json({ error: 'Failed to store session' });
+  }
+});
+
+app.get('/api/sessions/:trackName', (req, res) => {
+  try {
+    const bridgeId = req.query.bridge_id || '';
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+    const sessions = db.getSessionsByTrack(req.params.trackName, bridgeId, limit, offset);
+    res.json(sessions);
+  } catch(e) {
+    console.error('[Sessions Query]', e.message);
+    res.status(500).json({ error: 'Query failed' });
+  }
+});
+
+// NOTE: share route must come before :id route to avoid "share" being captured as an id
+app.get('/api/session/share/:token', (req, res) => {
+  try {
+    const session = db.getSessionByShareToken(req.params.token);
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    const laps = db.getSessionLaps(session.id);
+    res.json({ session, laps });
+  } catch(e) {
+    console.error('[Session Share]', e.message);
+    res.status(500).json({ error: 'Query failed' });
+  }
+});
+
+app.get('/api/session/:id', (req, res) => {
+  try {
+    const session = db.getRacingSessionById(parseInt(req.params.id));
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    const bridgeId = req.query.bridge_id || '';
+    const token = req.query.token || '';
+    if (session.bridge_id !== bridgeId && !session.is_public && session.share_token !== token) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    const laps = db.getSessionLaps(session.id);
+    res.json({ session, laps });
+  } catch(e) {
+    console.error('[Session Detail]', e.message);
+    res.status(500).json({ error: 'Query failed' });
+  }
+});
+
+app.get('/api/session/:id/telemetry/:lapId', (req, res) => {
+  try {
+    const session = db.getRacingSessionById(parseInt(req.params.id));
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    const bridgeId = req.query.bridge_id || '';
+    const token = req.query.token || '';
+    if (session.bridge_id !== bridgeId && !session.is_public && session.share_token !== token) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    const data = db.getLapTelemetry(parseInt(req.params.lapId));
+    if (!data) return res.status(404).json({ error: 'Telemetry not found' });
+    res.json({ data });
+  } catch(e) {
+    console.error('[Telemetry]', e.message);
+    res.status(500).json({ error: 'Query failed' });
+  }
+});
+
+app.patch('/api/session/:id', express.json(), (req, res) => {
+  try {
+    const bridgeId = req.query.bridge_id || req.body.bridge_id;
+    if (!bridgeId) return res.status(400).json({ error: 'bridge_id required' });
+    if (req.body.is_public !== undefined) {
+      db.updateSessionPublic(parseInt(req.params.id), bridgeId, req.body.is_public);
+    }
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('[Session Update]', e.message);
+    res.status(500).json({ error: 'Update failed' });
+  }
+});
+
+app.delete('/api/session/:id', (req, res) => {
+  try {
+    const bridgeId = req.query.bridge_id;
+    if (!bridgeId) return res.status(400).json({ error: 'bridge_id required' });
+    const result = db.deleteRacingSession(parseInt(req.params.id), bridgeId);
+    if (result.changes === 0) return res.status(404).json({ error: 'Session not found or not owned' });
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('[Session Delete]', e.message);
+    res.status(500).json({ error: 'Delete failed' });
+  }
 });
 
 // Track Database page
