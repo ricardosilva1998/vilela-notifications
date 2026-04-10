@@ -72,13 +72,39 @@
   .stats-table td.dimmed { color: rgba(255,255,255,0.15); }
   .stats-table tr:last-child td { border-bottom: none; }
 
-  /* Import Section */
-  .import-section { margin-top: 24px; }
+  /* Section Tabs (Stats / Practice / Race) */
+  .section-tabs { display: flex; gap: 2px; margin-bottom: 16px; }
+  .section-tab { padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 8px 8px 0 0; transition: all 0.15s; border: 1px solid transparent; border-bottom: none; }
+  .section-tab.tab-stats { color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.03); }
+  .section-tab.tab-stats.active { color: var(--accent); background: rgba(145,70,255,0.08); border-color: rgba(145,70,255,0.2); }
+  .section-tab.tab-practice { color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.03); }
+  .section-tab.tab-practice.active { color: #3ecf8e; background: rgba(62,207,142,0.08); border-color: rgba(62,207,142,0.2); }
+  .section-tab.tab-race { color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.03); }
+  .section-tab.tab-race.active { color: #f7c948; background: rgba(247,201,72,0.08); border-color: rgba(247,201,72,0.2); }
+  .section-content { display: none; }
+  .section-content.active { display: block; }
+
+  /* Session list */
+  .session-list { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; overflow: hidden; }
+  .session-row { display: grid; grid-template-columns: 140px 1fr 100px 60px 60px; gap: 8px; padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 12px; color: rgba(255,255,255,0.6); cursor: pointer; transition: background 0.1s; }
+  .session-row:hover { background: rgba(255,255,255,0.03); }
+  .session-row:last-child { border-bottom: none; }
+  .session-header { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.03); cursor: default; }
+  .session-header:hover { background: rgba(255,255,255,0.03); }
+  .session-best { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: #f7c948; }
+  .session-empty { padding: 24px; text-align: center; color: rgba(255,255,255,0.25); font-size: 13px; }
+
+  /* Import Modal */
+  .import-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; }
+  .import-modal-overlay.open { display: flex; }
+  .import-modal { background: var(--bg-card, #13141c); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 24px; width: 90%; max-width: 600px; max-height: 85vh; overflow-y: auto; position: relative; }
+  .import-modal-close { position: absolute; top: 12px; right: 16px; background: none; border: none; color: rgba(255,255,255,0.4); font-size: 20px; cursor: pointer; }
+  .import-modal-close:hover { color: #fff; }
+
+  /* Import button */
   .import-toggle { background: none; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 8px 16px; color: rgba(255,255,255,0.6); font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
   .import-toggle:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
   .import-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; }
-  .import-panel { display: none; margin-top: 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; }
-  .import-panel.open { display: block; }
   .import-controls { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: flex-end; }
   .import-field { display: flex; flex-direction: column; gap: 4px; }
   .import-field label { font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
@@ -139,7 +165,13 @@
 
   <!-- Detail View -->
   <div class="track-detail" id="track-detail">
-    <button class="btn-back" onclick="goBack()">&#8592; Back</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <button class="btn-back" onclick="goBack()">&#8592; Back</button>
+      <button class="import-toggle" onclick="openImportModal()">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Import Race Data
+      </button>
+    </div>
     <div class="live-detail" id="detail-live-info" style="display:none;"></div>
     <div class="track-detail-header">
       <div class="track-detail-canvas"><canvas id="detail-canvas" width="400" height="320"></canvas></div>
@@ -149,16 +181,41 @@
         <div class="track-detail-stats" id="detail-stats"></div>
       </div>
     </div>
-    <div class="class-tabs" id="class-tabs"></div>
-    <div id="class-stats-content"></div>
 
-    <!-- Screenshot Import -->
-    <div class="import-section">
-      <button class="import-toggle" onclick="toggleImport()">
-        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        Import Race Data
-      </button>
-      <div class="import-panel" id="import-panel">
+    <!-- Section Tabs: Stats / Practice / Race -->
+    <div class="section-tabs">
+      <div class="section-tab tab-stats active" onclick="switchSection('stats')">Stats</div>
+      <div class="section-tab tab-practice" onclick="switchSection('practice')">Practice</div>
+      <div class="section-tab tab-race" onclick="switchSection('race')">Race</div>
+    </div>
+
+    <!-- Stats Section (existing) -->
+    <div class="section-content active" id="section-stats">
+      <div class="class-tabs" id="class-tabs"></div>
+      <div id="class-stats-content"></div>
+    </div>
+
+    <!-- Practice Section -->
+    <div class="section-content" id="section-practice">
+      <div class="session-list" id="practice-sessions">
+        <div class="session-empty">Loading practice sessions...</div>
+      </div>
+    </div>
+
+    <!-- Race Section -->
+    <div class="section-content" id="section-race">
+      <div class="session-list" id="race-sessions">
+        <div class="session-empty">Loading race sessions...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Modal -->
+  <div class="import-modal-overlay" id="import-modal" onclick="if(event.target===this)closeImportModal()">
+    <div class="import-modal">
+      <button class="import-modal-close" onclick="closeImportModal()">&times;</button>
+      <h3 style="margin-bottom:16px;font-size:16px;">Import Race Data</h3>
+      <div class="import-panel" id="import-panel" style="display:block;margin-top:0;border:none;padding:0;background:none;">
         <div class="import-controls">
           <div class="import-field">
             <label>Category</label>
@@ -512,6 +569,15 @@
 
     const track = allTracks.find(t => t.track_name === trackName);
     document.getElementById('detail-name').textContent = trackName;
+    _currentDetailTrack = trackName;
+    _sessionsLoaded = false;
+    _currentSection = 'stats';
+    document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('.tab-stats').classList.add('active');
+    document.querySelectorAll('.section-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('section-stats').classList.add('active');
+    document.getElementById('practice-sessions').innerHTML = '<div class="session-empty">Click to load practice sessions</div>';
+    document.getElementById('race-sessions').innerHTML = '<div class="session-empty">Click to load race sessions</div>';
     const loc = track ? [track.track_city, track.track_country].filter(Boolean).join(', ') : '';
     document.getElementById('detail-location').textContent = loc || 'Location unknown';
 
@@ -631,6 +697,76 @@
     }
   }
   window.goBack = goBack;
+
+  // ─── Section tabs (Stats / Practice / Race) ───
+  let _currentSection = 'stats';
+  let _sessionsLoaded = false;
+  let _currentDetailTrack = '';
+
+  window.switchSection = function(section) {
+    _currentSection = section;
+    document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('.tab-' + section).classList.add('active');
+    document.querySelectorAll('.section-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('section-' + section).classList.add('active');
+    if ((section === 'practice' || section === 'race') && !_sessionsLoaded) {
+      loadSessions(_currentDetailTrack);
+    }
+  };
+
+  function loadSessions(trackName) {
+    _sessionsLoaded = true;
+    const bridgeId = '<%= (typeof racingUser !== "undefined" && racingUser && racingUser.bridge_id) ? racingUser.bridge_id : "" %>';
+    fetch('/api/sessions/' + encodeURIComponent(trackName) + '?bridge_id=' + encodeURIComponent(bridgeId))
+      .then(r => r.json())
+      .then(sessions => {
+        const practice = sessions.filter(s => s.session_type === 'practice');
+        const race = sessions.filter(s => s.session_type === 'race' || s.session_type === 'qualify');
+        renderSessionList('practice-sessions', practice, 'No practice sessions recorded yet');
+        renderSessionList('race-sessions', race, 'No race sessions recorded yet');
+      })
+      .catch(() => {
+        document.getElementById('practice-sessions').innerHTML = '<div class="session-empty">Failed to load sessions</div>';
+        document.getElementById('race-sessions').innerHTML = '<div class="session-empty">Failed to load sessions</div>';
+      });
+  }
+
+  function renderSessionList(containerId, sessions, emptyMsg) {
+    const el = document.getElementById(containerId);
+    if (!sessions.length) { el.innerHTML = '<div class="session-empty">' + emptyMsg + '</div>'; return; }
+    let html = '<div class="session-row session-header"><span>Date</span><span>Car</span><span style="text-align:right;">Best Lap</span><span style="text-align:right;">Laps</span><span style="text-align:center;">Type</span></div>';
+    sessions.forEach(s => {
+      const d = new Date(s.created_at);
+      const date = d.toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+      const best = s.best_lap_time > 0 ? formatLapTime(s.best_lap_time) : '--';
+      const laps = s.actual_laps || s.lap_count || 0;
+      const typeLabel = s.race_type || s.session_type;
+      const typeColor = s.session_type === 'practice' ? '#3ecf8e' : s.session_type === 'qualify' ? '#f7c948' : '#b18cff';
+      html += '<div class="session-row" onclick="window.open(\'/api/session/' + s.id + '?bridge_id=' + encodeURIComponent(s.bridge_id || '') + '\',\'_blank\')">';
+      html += '<span>' + date + '</span>';
+      html += '<span style="color:#e8e6f0;">' + (s.car_name || s.car_class) + '</span>';
+      html += '<span class="session-best" style="text-align:right;">' + best + '</span>';
+      html += '<span style="text-align:right;">' + laps + '</span>';
+      html += '<span style="text-align:center;font-size:10px;color:' + typeColor + ';font-weight:600;">' + typeLabel + '</span>';
+      html += '</div>';
+    });
+    el.innerHTML = html;
+  }
+
+  function formatLapTime(t) {
+    if (!t || t <= 0) return '--';
+    var m = Math.floor(t / 60);
+    var s = (t % 60).toFixed(3);
+    return m > 0 ? m + ':' + s.padStart(6, '0') : s;
+  }
+
+  // ─── Import Modal ───
+  window.openImportModal = function() {
+    document.getElementById('import-modal').classList.add('open');
+  };
+  window.closeImportModal = function() {
+    document.getElementById('import-modal').classList.remove('open');
+  };
 
   // ─── View toggle ───
   window.setView = function(view) {
