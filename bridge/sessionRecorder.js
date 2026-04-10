@@ -7,7 +7,7 @@ const pako = require('pako');
 const https = require('https');
 const http = require('http');
 
-const UPLOAD_URL = 'https://atletanotifications.com/api/session';
+const API_BASE = 'https://atletanotifications.com';
 const PENDING_FILE = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'pending-sessions.json');
 const LOG_PATH = path.join(os.homedir(), 'atleta-bridge.log');
 
@@ -32,17 +32,24 @@ let _currentLapSamples = [];
 let _lastLapNumber = -1;
 let _pollCount = 0;
 
-let _laps = [];
-let _telemetryBuffers = [];
+// Server session ID (set after first upload)
+let _serverSessionId = null;
+let _sessionCreating = false;
 
+// Context tracked per lap
 let _lapStartFuel = 0;
 let _lapAirTemp = 0;
 let _lapTrackTemp = 0;
 
+// Session-level context
 let _conditions = {};
 let _sof = 0;
 let _driverCount = 0;
 let _bestLapTime = 0;
+let _lapCount = 0;
+
+// Queue for laps waiting to be uploaded (while session is being created)
+let _pendingLaps = [];
 
 // ── Public API ──────────────────────────────────────────────────────
 
@@ -71,8 +78,9 @@ function poll(data) {
 }
 
 function onSessionStart(sessionNum, trackName, carClass, carName, sessionType, conditions, sof, driverCount) {
-  if (_recording && _laps.length > 0) {
-    finalizeAndUpload();
+  // If we were recording, finalize the previous session
+  if (_recording && _serverSessionId) {
+    finishSession();
   }
 
   _sessionNum = sessionNum;
@@ -85,11 +93,13 @@ function onSessionStart(sessionNum, trackName, carClass, carName, sessionType, c
   _sof = sof || 0;
   _driverCount = driverCount || 0;
   _bestLapTime = 0;
-  _laps = [];
-  _telemetryBuffers = [];
+  _lapCount = 0;
   _currentLapSamples = [];
   _lastLapNumber = -1;
   _pollCount = 0;
+  _serverSessionId = null;
+  _sessionCreating = false;
+  _pendingLaps = [];
   _recording = true;
 
   log('Session started: ' + sessionType + ' at ' + trackName + ' in ' + carClass + ' (' + carName + ')');
@@ -124,39 +134,42 @@ function onLapComplete(lapData) {
     incidents: lapData.incidents || null,
     is_valid: isValid,
   };
-  _laps.push(lap);
 
-  if (_currentLapSamples.length > 0) {
-    _telemetryBuffers.push({
-      lap_number: lapData.lapNumber,
-      samples: _currentLapSamples,
-    });
-    log('Lap ' + lapData.lapNumber + ': ' + lapData.lapTime.toFixed(3) + 's' + (isValid ? '' : ' (invalid)') + ' — ' + _currentLapSamples.length + ' telemetry samples');
-  }
+  const telemetryData = _currentLapSamples.length > 0 ? compressTelemetry(_currentLapSamples) : null;
+  const sampleCount = _currentLapSamples.length;
 
+  _lapCount++;
   _currentLapSamples = [];
   _lastLapNumber = lapData.lapNumber;
   _lapStartFuel = lapData.fuelLevel;
   _lapAirTemp = lapData.airTemp || 0;
   _lapTrackTemp = lapData.trackTemp || 0;
+
+  log('Lap ' + lapData.lapNumber + ': ' + lapData.lapTime.toFixed(3) + 's' + (isValid ? '' : ' (invalid)') + ' — ' + sampleCount + ' telemetry samples');
+
+  // Progressive upload: create session on first lap, then append
+  if (!_serverSessionId && !_sessionCreating) {
+    _sessionCreating = true;
+    _pendingLaps.push({ lap, telemetry: telemetryData });
+    createSessionOnServer(lap, telemetryData);
+  } else if (_serverSessionId) {
+    appendLapToServer(_serverSessionId, lap, telemetryData);
+  } else {
+    // Session is being created, queue this lap
+    _pendingLaps.push({ lap, telemetry: telemetryData });
+  }
 }
 
 function onSessionEnd(finishPosition, iratingChange) {
   if (!_recording) return;
   _recording = false;
-
-  if (_laps.length === 0) {
-    log('Session ended with no laps — skipping upload');
-    return;
-  }
-
-  finalizeAndUpload(finishPosition, iratingChange);
+  finishSession(finishPosition, iratingChange);
 }
 
 function flush() {
-  if (_recording && _laps.length > 0) {
+  if (_recording) {
     _recording = false;
-    finalizeAndUpload();
+    finishSession();
   }
 }
 
@@ -166,7 +179,7 @@ function setRaceType(raceType) {
 
 // ── Internal ────────────────────────────────────────────────────────
 
-function finalizeAndUpload(finishPosition, iratingChange) {
+function createSessionOnServer(firstLap, telemetryData) {
   const payload = {
     bridge_id: _bridgeId,
     iracing_name: _iracingName,
@@ -178,27 +191,67 @@ function finalizeAndUpload(finishPosition, iratingChange) {
       race_type: _raceType || null,
       conditions: _conditions,
       sof: _sof || null,
-      finish_position: finishPosition || null,
-      irating_change: iratingChange || null,
+      finish_position: null,
+      irating_change: null,
       driver_count: _driverCount || null,
-      best_lap_time: _bestLapTime || null,
-      lap_count: _laps.length,
+      best_lap_time: firstLap.lap_time || null,
+      lap_count: 1,
     },
-    laps: _laps,
-    telemetry: _telemetryBuffers.map(t => ({
-      lap_number: t.lap_number,
-      data: compressTelemetry(t.samples),
-    })),
+    laps: [firstLap],
+    telemetry: telemetryData ? [{ lap_number: firstLap.lap_number, data: telemetryData }] : [],
   };
 
-  log('Finalizing session: ' + _laps.length + ' laps, ' + _telemetryBuffers.length + ' with telemetry');
+  log('Creating session on server...');
+  apiRequest('/api/session', payload, (err, data) => {
+    if (err) {
+      log('Failed to create session: ' + err.message);
+      _sessionCreating = false;
+      // Save full session as pending for retry
+      savePending(payload);
+      return;
+    }
+    _serverSessionId = data.id;
+    _sessionCreating = false;
+    log('Session created: id=' + data.id + ' token=' + data.share_token);
 
-  _laps = [];
-  _telemetryBuffers = [];
-  _currentLapSamples = [];
+    // Upload any laps that were queued while creating
+    if (_pendingLaps.length > 1) {
+      // Skip first (already sent), upload the rest
+      for (let i = 1; i < _pendingLaps.length; i++) {
+        appendLapToServer(_serverSessionId, _pendingLaps[i].lap, _pendingLaps[i].telemetry);
+      }
+    }
+    _pendingLaps = [];
+  });
+}
+
+function appendLapToServer(sessionId, lap, telemetryData) {
+  const payload = { lap, telemetry: telemetryData || null };
+  apiRequest('/api/session/' + sessionId + '/lap', payload, (err) => {
+    if (err) {
+      log('Failed to append lap ' + lap.lap_number + ': ' + err.message);
+    } else {
+      log('Lap ' + lap.lap_number + ' uploaded to session ' + sessionId);
+    }
+  });
+}
+
+function finishSession(finishPosition, iratingChange) {
+  if (_serverSessionId) {
+    const payload = {
+      finish_position: finishPosition || null,
+      irating_change: iratingChange || null,
+      best_lap_time: _bestLapTime || null,
+    };
+    apiRequest('/api/session/' + _serverSessionId + '/finish', payload, (err) => {
+      if (err) log('Failed to finalize session: ' + err.message);
+      else log('Session ' + _serverSessionId + ' finalized');
+    });
+  }
+  _serverSessionId = null;
+  _pendingLaps = [];
   _bestLapTime = 0;
-
-  uploadSession(payload);
+  _lapCount = 0;
 }
 
 function compressTelemetry(samples) {
@@ -212,41 +265,33 @@ function compressTelemetry(samples) {
   }
 }
 
-function uploadSession(payload) {
-  const jsonStr = JSON.stringify(payload);
-  const url = new URL(UPLOAD_URL);
+function apiRequest(path, body, callback) {
+  const jsonStr = JSON.stringify(body);
+  const url = new URL(API_BASE + path);
   const mod = url.protocol === 'https:' ? https : http;
 
   const options = {
     hostname: url.hostname,
     port: url.port || (url.protocol === 'https:' ? 443 : 80),
     path: url.pathname,
-    method: 'POST',
+    method: path.includes('/finish') ? 'PATCH' : 'POST',
     headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(jsonStr) },
-    timeout: 30000,
+    timeout: 15000,
   };
 
   const req = mod.request(options, (res) => {
     let body = '';
     res.on('data', c => body += c);
     res.on('end', () => {
-      if (res.statusCode === 200) {
-        log('Session uploaded successfully: ' + body);
-      } else {
-        log('Upload failed (HTTP ' + res.statusCode + '): ' + body);
-        savePending(payload);
-      }
+      try {
+        const json = JSON.parse(body);
+        if (res.statusCode === 200) callback(null, json);
+        else callback(new Error(json.error || 'HTTP ' + res.statusCode));
+      } catch(e) { callback(new Error('Invalid response')); }
     });
   });
-  req.on('error', (e) => {
-    log('Upload error: ' + e.message);
-    savePending(payload);
-  });
-  req.on('timeout', () => {
-    log('Upload timeout');
-    req.destroy();
-    savePending(payload);
-  });
+  req.on('error', (e) => callback(e));
+  req.on('timeout', () => { req.destroy(); callback(new Error('Timeout')); });
   req.write(jsonStr);
   req.end();
 }
@@ -273,7 +318,12 @@ function retryPendingUploads() {
     if (!pending.length) return;
     log('Retrying ' + pending.length + ' pending session uploads');
     fs.writeFileSync(PENDING_FILE, '[]');
-    pending.forEach(p => uploadSession(p));
+    pending.forEach(p => {
+      apiRequest('/api/session', p, (err, data) => {
+        if (err) { log('Retry failed: ' + err.message); savePending(p); }
+        else log('Retry successful: session ' + data.id);
+      });
+    });
   } catch(e) {
     log('Retry error: ' + e.message);
   }

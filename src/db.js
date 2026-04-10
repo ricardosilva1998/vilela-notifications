@@ -3429,6 +3429,42 @@ function insertSession(session, laps, telemetry) {
   return txn();
 }
 
+// Insert a single lap + optional telemetry (for progressive upload)
+function insertSingleLap(sessionId, lap, telemetryData) {
+  const txn = db.transaction(() => {
+    const lapResult = _insertSessionLap.run({ ...lap, session_id: sessionId });
+    const lapId = lapResult.lastInsertRowid;
+    if (telemetryData) {
+      _insertLapTelemetry.run({ lap_id: lapId, data: telemetryData });
+    }
+    return lapId;
+  });
+  return txn();
+}
+
+// Update session best_lap_time and lap_count after appending a lap
+const _updateSessionLapStats = db.prepare(`
+  UPDATE racing_sessions SET
+    lap_count = (SELECT COUNT(*) FROM session_laps WHERE session_id = @id),
+    best_lap_time = CASE WHEN @lap_time > 0 AND (@lap_time < best_lap_time OR best_lap_time IS NULL OR best_lap_time = 0) THEN @lap_time ELSE best_lap_time END
+  WHERE id = @id
+`);
+function updateSessionLapStats(sessionId, lapTime) {
+  return _updateSessionLapStats.run({ id: sessionId, lap_time: lapTime || 0 });
+}
+
+// Update session with final race results
+const _updateSessionFinish = db.prepare(`
+  UPDATE racing_sessions SET
+    finish_position = COALESCE(@finish_position, finish_position),
+    irating_change = COALESCE(@irating_change, irating_change),
+    best_lap_time = CASE WHEN @best_lap_time > 0 THEN @best_lap_time ELSE best_lap_time END
+  WHERE id = @id
+`);
+function updateSessionFinish(sessionId, finishPosition, iratingChange, bestLapTime) {
+  return _updateSessionFinish.run({ id: sessionId, finish_position: finishPosition || null, irating_change: iratingChange || null, best_lap_time: bestLapTime || null });
+}
+
 function getSessionsByTrack(trackName, bridgeId, limit, offset) {
   return _getSessionsByTrack.all({ track_name: trackName, bridge_id: bridgeId || '', limit: limit || 50, offset: offset || 0 });
 }
@@ -3713,6 +3749,9 @@ module.exports = {
   cleanupOldBridgeBugReports,
   insertSession,
   getSessionsByTrack,
+  insertSingleLap,
+  updateSessionLapStats,
+  updateSessionFinish,
   getAllRacingUsers,
   getRecentSessionsByUser,
   getRacingSessionById,

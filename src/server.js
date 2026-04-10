@@ -723,6 +723,51 @@ app.get('/api/session/:id/telemetry/:lapId', (req, res) => {
   }
 });
 
+// Append a single lap to an existing session (progressive upload)
+app.post('/api/session/:id/lap', express.json({ limit: '5mb' }), (req, res) => {
+  try {
+    const sessionId = parseInt(req.params.id);
+    const session = db.getRacingSessionById(sessionId);
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    const { lap, telemetry } = req.body;
+    if (!lap || !lap.lap_number || !lap.lap_time) return res.status(400).json({ error: 'Missing lap data' });
+
+    const lapResult = db.insertSingleLap(sessionId, {
+      lap_number: lap.lap_number,
+      lap_time: lap.lap_time,
+      sector_times: lap.sector_times ? JSON.stringify(lap.sector_times) : null,
+      fuel_used: lap.fuel_used || null,
+      air_temp: lap.air_temp || null,
+      track_temp: lap.track_temp || null,
+      is_pit_lap: lap.is_pit_lap ? 1 : 0,
+      position: lap.position || null,
+      incidents: lap.incidents || null,
+      is_valid: lap.is_valid !== false ? 1 : 0,
+    }, telemetry || null);
+
+    // Update session best lap and lap count
+    db.updateSessionLapStats(sessionId, lap.lap_time);
+
+    res.json({ ok: true, lap_id: lapResult });
+  } catch(e) {
+    console.error('[Session Lap Append]', e.message);
+    res.status(500).json({ error: 'Failed to append lap' });
+  }
+});
+
+// Update session with final stats (position, iRating change)
+app.patch('/api/session/:id/finish', express.json(), (req, res) => {
+  try {
+    const sessionId = parseInt(req.params.id);
+    const { finish_position, irating_change, best_lap_time } = req.body;
+    db.updateSessionFinish(sessionId, finish_position, irating_change, best_lap_time);
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('[Session Finish]', e.message);
+    res.status(500).json({ error: 'Failed to update session' });
+  }
+});
+
 app.patch('/api/session/:id', express.json(), (req, res) => {
   try {
     const bridgeId = req.query.bridge_id || req.body.bridge_id;
