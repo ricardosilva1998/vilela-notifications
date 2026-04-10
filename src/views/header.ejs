@@ -582,34 +582,19 @@
     <div class="sidebar-nav">
       <div class="sidebar-section"><%= t('nav.navigation') %></div>
 
+      <a href="<%= (typeof streamer !== 'undefined' && streamer) ? '/dashboard' : '/streamer' %>" class="sidebar-link">
+        <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+        Streamer
+      </a>
+      <a href="<%= (typeof racingUser !== 'undefined' && racingUser) ? '/racing/dashboard' : '/racing' %>" class="sidebar-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2c4 4 6 8 6 14H6c0-6 2-10 6-14z"/><path d="M8 16h8"/><line x1="12" y1="2" x2="12" y2="8"/></svg>
+        Racing
+      </a>
+
       <% if (typeof racingUser !== 'undefined' && racingUser) { %>
-        <a href="/racing/dashboard" class="sidebar-link">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2c4 4 6 8 6 14H6c0-6 2-10 6-14z"/><path d="M8 16h8"/><line x1="12" y1="2" x2="12" y2="8"/></svg>
-          Racing
-        </a>
         <a href="/tracks" class="sidebar-link">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="17" rx="9" ry="4"/><path d="M3 17V7a9 4 0 0 1 18 0v10"/></svg>
           Track Database
-        </a>
-        <a href="/racing/account" class="sidebar-link">
-          <svg viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
-          Account
-        </a>
-      <% } %>
-
-      <% if ((typeof racingUser !== 'undefined' && racingUser) && (typeof streamer !== 'undefined' && streamer)) { %>
-        <div class="sidebar-divider"></div>
-      <% } %>
-
-      <% if (typeof streamer !== 'undefined' && streamer) { %>
-        <a href="/dashboard" class="sidebar-link">
-          <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
-          Streamer
-        </a>
-      <% } else if (!(typeof racingUser !== 'undefined' && racingUser)) { %>
-        <a href="/dashboard" class="sidebar-link">
-          <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
-          Streamer
         </a>
       <% } %>
 
