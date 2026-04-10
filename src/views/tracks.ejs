@@ -735,23 +735,92 @@
     const el = document.getElementById(containerId);
     if (!sessions.length) { el.innerHTML = '<div class="session-empty">' + emptyMsg + '</div>'; return; }
     let html = '<div class="session-row session-header"><span>Date</span><span>Car</span><span style="text-align:right;">Best Lap</span><span style="text-align:right;">Laps</span><span style="text-align:center;">Type</span></div>';
-    sessions.forEach(s => {
+    sessions.forEach((s, idx) => {
       const d = new Date(s.created_at);
       const date = d.toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
       const best = s.best_lap_time > 0 ? formatLapTime(s.best_lap_time) : '--';
       const laps = s.actual_laps || s.lap_count || 0;
       const typeLabel = s.race_type || s.session_type;
       const typeColor = s.session_type === 'practice' ? '#3ecf8e' : s.session_type === 'qualify' ? '#f7c948' : '#b18cff';
-      html += '<div class="session-row" onclick="window.open(\'/api/session/' + s.id + '?bridge_id=' + encodeURIComponent(s.bridge_id || '') + '\',\'_blank\')">';
+      const rowId = containerId + '-row-' + idx;
+      const detailId = containerId + '-detail-' + idx;
+      html += '<div class="session-row" onclick="toggleSessionDetail(\'' + detailId + '\',' + s.id + ',\'' + (s.bridge_id || '') + '\')" style="cursor:pointer;">';
       html += '<span>' + date + '</span>';
       html += '<span style="color:#e8e6f0;">' + (s.car_name || s.car_class) + '</span>';
       html += '<span class="session-best" style="text-align:right;">' + best + '</span>';
       html += '<span style="text-align:right;">' + laps + '</span>';
       html += '<span style="text-align:center;font-size:10px;color:' + typeColor + ';font-weight:600;">' + typeLabel + '</span>';
       html += '</div>';
+      // Expandable detail area
+      html += '<div id="' + detailId + '" style="display:none;padding:12px 14px;background:rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.06);">';
+      html += '<div style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;">Loading laps...</div>';
+      html += '</div>';
     });
     el.innerHTML = html;
   }
+
+  window.toggleSessionDetail = function(detailId, sessionId, bridgeId) {
+    const el = document.getElementById(detailId);
+    if (!el) return;
+    if (el.style.display !== 'none') {
+      el.style.display = 'none';
+      return;
+    }
+    el.style.display = 'block';
+    // Already loaded?
+    if (el.dataset.loaded) return;
+    el.dataset.loaded = '1';
+    const token = bridgeId ? '?bridge_id=' + encodeURIComponent(bridgeId) : '';
+    fetch('/api/session/' + sessionId + token)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.laps || !data.laps.length) {
+          el.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;">No lap data</div>';
+          return;
+        }
+        const s = data.session || {};
+        let conditions = '';
+        try { const c = typeof s.conditions === 'string' ? JSON.parse(s.conditions) : s.conditions; if (c) conditions = (c.airTemp ? Math.round(c.airTemp) + '°C' : '') + (c.skies ? ' ' + c.skies : ''); } catch(e) {}
+
+        let html = '';
+        // Session summary
+        html += '<div style="display:flex;gap:16px;margin-bottom:12px;font-size:11px;color:rgba(255,255,255,0.5);flex-wrap:wrap;">';
+        if (s.iracing_name) html += '<span>Driver: <b style="color:#e8e6f0;">' + s.iracing_name + '</b></span>';
+        if (conditions) html += '<span>Conditions: <b style="color:#e8e6f0;">' + conditions + '</b></span>';
+        if (s.sof) html += '<span>SOF: <b style="color:#e8e6f0;">' + (s.sof >= 1000 ? (s.sof/1000).toFixed(1) + 'k' : s.sof) + '</b></span>';
+        if (s.finish_position) html += '<span>Finished: <b style="color:#e8e6f0;">P' + s.finish_position + '</b></span>';
+        if (s.irating_change) html += '<span>iR: <b style="color:' + (s.irating_change > 0 ? '#3ecf8e' : '#f04438') + ';">' + (s.irating_change > 0 ? '+' : '') + s.irating_change + '</b></span>';
+        html += '</div>';
+
+        // Lap table
+        html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+        html += '<tr style="color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.06);">';
+        html += '<td style="padding:4px 8px;">LAP</td><td style="padding:4px 8px;text-align:right;">TIME</td><td style="padding:4px 8px;text-align:right;">DELTA</td><td style="padding:4px 8px;text-align:right;">FUEL</td><td style="padding:4px 8px;text-align:right;">TEMP</td>';
+        html += '</tr>';
+
+        const bestTime = Math.min(...data.laps.filter(l => l.is_valid && l.lap_time > 0).map(l => l.lap_time));
+        data.laps.forEach(l => {
+          const isBest = l.lap_time === bestTime && l.is_valid;
+          const delta = l.is_valid && l.lap_time > 0 && bestTime > 0 ? (l.lap_time - bestTime) : null;
+          const dimmed = !l.is_valid ? 'color:rgba(255,255,255,0.2);' : '';
+          html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.03);' + dimmed + '">';
+          html += '<td style="padding:5px 8px;' + (isBest ? 'color:#9146ff;font-weight:700;' : '') + '">' + l.lap_number + '</td>';
+          html += '<td style="padding:5px 8px;text-align:right;font-family:monospace;' + (isBest ? 'color:#9146ff;font-weight:700;' : '') + '">' + formatLapTime(l.lap_time) + '</td>';
+          html += '<td style="padding:5px 8px;text-align:right;font-family:monospace;">';
+          if (isBest) html += '<span style="color:#9146ff;">BEST</span>';
+          else if (!l.is_valid) html += '<span style="color:rgba(255,255,255,0.2);">' + (l.is_pit_lap ? 'PIT' : 'OUT') + '</span>';
+          else if (delta !== null) html += '<span style="color:#f04438;">+' + delta.toFixed(3) + '</span>';
+          else html += '--';
+          html += '</td>';
+          html += '<td style="padding:5px 8px;text-align:right;font-family:monospace;">' + (l.fuel_used ? l.fuel_used.toFixed(1) + 'L' : '--') + '</td>';
+          html += '<td style="padding:5px 8px;text-align:right;">' + (l.track_temp ? Math.round(l.track_temp) + '°C' : '--') + '</td>';
+          html += '</tr>';
+        });
+        html += '</table>';
+        el.innerHTML = html;
+      })
+      .catch(() => { el.innerHTML = '<div style="font-size:11px;color:#f04438;text-align:center;">Failed to load laps</div>'; });
+  };
 
   function formatLapTime(t) {
     if (!t || t <= 0) return '--';
