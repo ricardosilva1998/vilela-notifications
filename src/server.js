@@ -107,6 +107,21 @@ app.use((req, res, next) => {
   res.locals.isAdmin = req.streamer ? db.isAdmin(req.streamer.id) : false;
   res.locals.features = config.features;
 
+  // Notifications for racing users (team invites, etc.)
+  if (req.racingUser) {
+    const pendingInvites = db.getPendingInvitesForUser(req.racingUser.id);
+    res.locals.notifications = pendingInvites.map(inv => ({
+      id: inv.id,
+      type: 'team_invite',
+      title: 'Team invite',
+      message: inv.invited_by_name + ' invited you to ' + inv.team_name,
+      team_name: inv.team_name,
+      time: inv.created_at,
+    }));
+  } else {
+    res.locals.notifications = [];
+  }
+
   // i18n
   const lang = SUPPORTED_LANGS.includes(req.cookies?.lang) ? req.cookies.lang : 'en';
   req.lang = lang;
@@ -169,10 +184,14 @@ app.get('/api/bridge/config', (req, res) => {
 // Spotify now playing — for Bridge overlay (polls every 3-5s)
 app.get('/api/bridge/spotify', async (req, res) => {
   try {
-    // Find streamer: from racingUser link or direct streamer session
+    // Find streamer: from session cookie, racingUser link, or bridge_id query param
     let streamer = req.streamer;
     if (!streamer && req.racingUser && req.racingUser.streamer_id) {
       streamer = db.getStreamerById(req.racingUser.streamer_id);
+    }
+    if (!streamer && req.query.bridge_id) {
+      const ru = db.getRacingUserByBridgeId(req.query.bridge_id);
+      if (ru && ru.streamer_id) streamer = db.getStreamerById(ru.streamer_id);
     }
     if (!streamer || !streamer.spotify_access_token) {
       return res.json({ status: 'not_connected' });
@@ -191,6 +210,10 @@ app.post('/api/bridge/spotify/control', express.json(), async (req, res) => {
     let streamer = req.streamer;
     if (!streamer && req.racingUser && req.racingUser.streamer_id) {
       streamer = db.getStreamerById(req.racingUser.streamer_id);
+    }
+    if (!streamer && req.body.bridge_id) {
+      const ru = db.getRacingUserByBridgeId(req.body.bridge_id);
+      if (ru && ru.streamer_id) streamer = db.getStreamerById(ru.streamer_id);
     }
     if (!streamer || !streamer.spotify_access_token) return res.json({ ok: false });
 

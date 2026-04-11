@@ -67,7 +67,16 @@
       }
     } catch(e) {}
 
-    const API_URL = 'https://atletanotifications.com/api/bridge/spotify';
+    // Get bridge_id from settings for API auth
+    let _bridgeId = '';
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const os = require('os');
+      const sf = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'settings.json');
+      if (fs.existsSync(sf)) { _bridgeId = JSON.parse(fs.readFileSync(sf, 'utf8')).bridgeId || ''; }
+    } catch(e) {}
+    const API_URL = 'https://atletanotifications.com/api/bridge/spotify?bridge_id=' + encodeURIComponent(_bridgeId);
     let _lastTrack = '';
     let _playing = false;
     let _progressMs = 0;
@@ -167,7 +176,7 @@
       fetch('https://atletanotifications.com/api/bridge/spotify/control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, bridge_id: _bridgeId }),
       }).catch(() => {});
       // Optimistic UI update
       if (action === 'pause') { _playing = false; }
