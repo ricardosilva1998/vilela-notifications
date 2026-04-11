@@ -301,8 +301,8 @@
       const classColor = d.carClassColor || '#fff';
       const carBrand = d.carMake || '';
       const disconnCls = d.disconnected ? ' disconnected' : '';
-      // Lap difference indicator: blue = lapped (behind), red = lap ahead
-      const lapColor = lapDiff > 0 ? '#38bdf8' : (lapDiff < 0 ? '#f04438' : '');
+      // Lap difference indicator: red = lap ahead (lapping you), blue = lap behind (being lapped)
+      const lapColor = lapDiff > 0 ? '#f04438' : (lapDiff < 0 ? '#38bdf8' : '');
 
       const numCell = `<span style="background:${classColor};color:#000;padding:1px 4px;border-radius:3px;font-size:${fsSmall}px;font-weight:800;font-family:'JetBrains Mono',monospace;">${d.carNumber || ''}</span>`;
       const licCell = licStr
