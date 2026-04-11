@@ -4,7 +4,8 @@ const WebSocket = require('ws');
 const settings = require('./settings');
 
 const SERVER_URL = 'wss://atletanotifications.com/ws/bridge';
-const RECONNECT_DELAY = 5000;
+const RECONNECT_BASE = 5000;
+const RECONNECT_MAX = 60000;
 const HEARTBEAT_INTERVAL = 30000;
 
 let ws = null;
@@ -12,6 +13,7 @@ let reconnectTimer = null;
 let heartbeatTimer = null;
 let isConnected = false;
 let enabled = false;
+let reconnectDelay = RECONNECT_BASE;
 
 function start() {
   const s = settings.load();
@@ -62,6 +64,7 @@ function connect() {
 
     if (msg.type === 'auth-ok') {
       isConnected = true;
+      reconnectDelay = RECONNECT_BASE; // Reset on successful auth
       console.log('[Pitwall Uplink] Authenticated (team:', msg.teamId + ')');
       startHeartbeat();
     } else if (msg.type === 'auth-error') {
@@ -89,11 +92,12 @@ function connect() {
 
 function scheduleReconnect() {
   if (reconnectTimer) return;
-  console.log('[Pitwall Uplink] Reconnecting in', RECONNECT_DELAY / 1000, 's...');
+  console.log('[Pitwall Uplink] Reconnecting in', Math.round(reconnectDelay / 1000), 's...');
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
     connect();
-  }, RECONNECT_DELAY);
+  }, reconnectDelay);
+  reconnectDelay = Math.min(reconnectDelay * 1.5, RECONNECT_MAX);
 }
 
 function startHeartbeat() {

@@ -45,6 +45,27 @@ function init(httpServer) {
   bridgeWss.on('connection', handleBridgeConnection);
   pitwallWss.on('connection', handlePitwallConnection);
 
+  // Server-side ping/pong heartbeat — detect dead connections
+  setInterval(() => {
+    const now = Date.now();
+    bridgeWss.clients.forEach(ws => {
+      if (ws._pitwallLastPong && now - ws._pitwallLastPong > 60000) {
+        ws.terminate();
+        return;
+      }
+      ws._pitwallLastPong = ws._pitwallLastPong || now;
+      try { ws.ping(); } catch {}
+    });
+    pitwallWss.clients.forEach(ws => {
+      if (ws._pitwallLastPong && now - ws._pitwallLastPong > 60000) {
+        ws.terminate();
+        return;
+      }
+      ws._pitwallLastPong = ws._pitwallLastPong || now;
+      try { ws.ping(); } catch {}
+    });
+  }, 30000);
+
   console.log('[Pitwall] WebSocket relay initialized (/ws/bridge, /ws/pitwall)');
 }
 
@@ -52,6 +73,8 @@ function init(httpServer) {
 function handleBridgeConnection(ws) {
   let authed = false;
   let userId = null;
+  ws._pitwallLastPong = Date.now();
+  ws.on('pong', () => { ws._pitwallLastPong = Date.now(); });
 
   // Auth timeout
   const authTimer = setTimeout(() => {
@@ -97,6 +120,12 @@ function handleBridgeConnection(ws) {
           ws.close();
         }
       }
+      return;
+    }
+
+    // Heartbeat ping from Bridge
+    if (msg.type === 'ping') {
+      trySend(ws, { type: 'pong' });
       return;
     }
 
@@ -146,6 +175,9 @@ function handleBridgeConnection(ws) {
 
 // ── Pitwall Viewer Connection ─────────────────────────────────────
 function handlePitwallConnection(ws, req) {
+  ws._pitwallLastPong = Date.now();
+  ws.on('pong', () => { ws._pitwallLastPong = Date.now(); });
+
   // Auth via session cookie
   const sid = parseSessionCookie(req);
   if (!sid) {
