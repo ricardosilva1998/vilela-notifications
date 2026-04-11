@@ -23,10 +23,14 @@
     "express-rate-limit": "^8.3.2",
     "fast-xml-parser": "^5.5.8",
     "helmet": "^8.1.0",
+    "nodemailer": "^8.0.5",
     "opusscript": "^0.0.8",
     "socket.io-client": "^2.5.0",
     "tmi.js": "^1.8.5",
     "tweetnacl": "^1.0.3",
     "ws": "^8.20.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
   }
 }

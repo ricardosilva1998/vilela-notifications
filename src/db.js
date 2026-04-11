@@ -971,6 +971,18 @@ try { db.exec('ALTER TABLE racing_users ADD COLUMN avatar TEXT'); } catch(e) {}
 try { db.exec('ALTER TABLE racing_users ADD COLUMN login_attempts INTEGER DEFAULT 0'); } catch(e) {}
 try { db.exec('ALTER TABLE racing_users ADD COLUMN locked_until INTEGER'); } catch(e) {}
 try { db.exec('ALTER TABLE racing_users ADD COLUMN pitwall_token TEXT'); } catch(e) {}
+try { db.exec('ALTER TABLE racing_users ADD COLUMN email TEXT'); } catch(e) {}
+// Password reset tokens
+db.exec(`
+  CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    expires_at INTEGER NOT NULL,
+    used INTEGER DEFAULT 0,
+    created_at INTEGER DEFAULT (unixepoch() * 1000)
+  )
+`);
 // Auth activity log — tracks all login/signup attempts for spam detection
 db.exec(`
   CREATE TABLE IF NOT EXISTS auth_log (

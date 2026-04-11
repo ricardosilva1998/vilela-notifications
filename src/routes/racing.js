@@ -158,7 +158,9 @@ router.post('/admin/bridge-update', express.urlencoded({ extended: true }), (req
 router.post('/account/profile', express.urlencoded({ extended: true }), (req, res) => {
   const displayName = (req.body.display_name || '').trim().slice(0, 32);
   const iracingName = (req.body.iracing_name || '').trim().slice(0, 64);
+  const email = (req.body.email || '').trim().slice(0, 120);
   db.updateRacingProfile(req.racingUser.id, displayName || null, iracingName || null);
+  try { db.db.prepare('UPDATE racing_users SET email = ? WHERE id = ?').run(email || null, req.racingUser.id); } catch(e) {}
   res.redirect('/racing/account?msg=Profile updated');
 });
 

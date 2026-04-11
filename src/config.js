@@ -53,6 +53,11 @@ module.exports = {
     token: process.env.GITHUB_TOKEN || '',
     repo: process.env.GITHUB_REPO || '',
   },
+  email: {
+    user: process.env.EMAIL_USER || '',
+    pass: process.env.EMAIL_PASS || '',
+    from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@atletanotifications.com',
+  },
   features: {
     youtube: true,
   },
