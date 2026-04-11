@@ -430,17 +430,20 @@
   // ─── Load data ───
   async function loadData() {
     try {
-      const [tracksRes, statsRes] = await Promise.all([
+      const [tracksRes, statsRes, liveRes] = await Promise.all([
         fetch('/api/track-maps'),
         fetch('/api/track-stats'),
+        fetch('/api/live-session').catch(() => null),
       ]);
       allTracks = await tracksRes.json();
       allStats = await statsRes.json();
+      try { liveSession = liveRes ? await liveRes.json() : null; } catch(e) { liveSession = null; }
     } catch(e) { console.error('Failed to load track data:', e); }
 
     // Apply initial view
     setView(currentView);
     renderTracks();
+    updateLiveBadges();
 
     // Check URL for detail view
     const pathMatch = window.location.pathname.match(/^\/tracks\/(.+)/);
