@@ -3754,6 +3754,13 @@ const _deleteTeam = db.prepare('DELETE FROM teams WHERE id = ?');
 const _getTeamByInviteCode = db.prepare('SELECT * FROM teams WHERE invite_code = ?');
 const _hasPendingInvite = db.prepare("SELECT id FROM team_invites WHERE team_id = ? AND invited_user_id = ? AND status = 'pending'");
 const _countTeamMembers = db.prepare('SELECT COUNT(*) AS count FROM team_members WHERE team_id = ?');
+const _getTeamMemberships = db.prepare(`
+  SELECT tm.*, t.name AS team_name, t.owner_id, t.invite_code
+  FROM team_members tm JOIN teams t ON tm.team_id = t.id
+  WHERE tm.user_id = ?
+  ORDER BY tm.joined_at ASC
+`);
+const _countUserTeams = db.prepare('SELECT COUNT(*) AS count FROM team_members WHERE user_id = ?');
 
 function createTeam(name, ownerId) {
   const code = require('crypto').randomBytes(4).toString('hex');
@@ -3767,6 +3774,14 @@ function createTeam(name, ownerId) {
 
 function getTeamForUser(userId) {
   return _getTeamMembership.get(userId) || null;
+}
+
+function getTeamsForUser(userId) {
+  return _getTeamMemberships.all(userId);
+}
+
+function countTeamsForUser(userId) {
+  return _countUserTeams.get(userId).count;
 }
 
 function getTeamMembers(teamId) {
@@ -3795,8 +3810,8 @@ function acceptTeamInvite(inviteId) {
   const txn = db.transaction(() => {
     const invite = _getTeamInviteById.get(inviteId);
     if (!invite || invite.status !== 'pending') return false;
-    const existing = _getTeamMembership.get(invite.invited_user_id);
-    if (existing) return false;
+    const teamCount = _countUserTeams.get(invite.invited_user_id).count;
+    if (teamCount >= 5) return false;
     _updateTeamInviteStatus.run('accepted', inviteId);
     _insertTeamMember.run(invite.team_id, invite.invited_user_id, 'member');
     return true;
@@ -3820,8 +3835,8 @@ function joinTeamByCode(code, userId) {
   const txn = db.transaction(() => {
     const team = _getTeamByInviteCode.get(code);
     if (!team) return null;
-    const existing = _getTeamMembership.get(userId);
-    if (existing) return null;
+    const teamCount = _countUserTeams.get(userId).count;
+    if (teamCount >= 5) return null;
     _insertTeamMember.run(team.id, userId, 'member');
     return team;
   });
@@ -4190,6 +4205,8 @@ module.exports = {
   lockRacingAccount,
   createTeam,
   getTeamForUser,
+  getTeamsForUser,
+  countTeamsForUser,
   getTeamMembers,
   getPendingInvitesForUser,
   getPendingInvitesForTeam,
