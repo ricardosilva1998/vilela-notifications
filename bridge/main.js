@@ -85,15 +85,14 @@ app.on('second-instance', () => {
 app.setAppUserModelId('com.atleta.bridge');
 
 app.on('ready', () => {
-  // Grant microphone permission for Web Speech API in overlays
+  // Only grant permissions that are actually needed
+  const ALLOWED_PERMISSIONS = ['media', 'microphone', 'clipboard-read', 'clipboard-sanitized-write'];
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-    if (permission === 'media' || permission === 'microphone') {
-      callback(true);
-    } else {
-      callback(true); // allow all permissions for local files
-    }
+    callback(ALLOWED_PERMISSIONS.includes(permission));
   });
-  session.defaultSession.setPermissionCheckHandler(() => true);
+  session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
+    return ALLOWED_PERMISSIONS.includes(permission);
+  });
 
   // Load persisted settings
   settings = loadSettings();
