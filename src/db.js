@@ -3589,6 +3589,13 @@ function updateRacingIracingName(id, iracingName) { return _updateRacingIracingN
 function updateRacingProfile(id, displayName, iracingName) { return _updateRacingProfile.run({ id, display_name: displayName || null, iracing_name: iracingName || null }); }
 const _updateRacingAvatar = db.prepare('UPDATE racing_users SET avatar = @avatar WHERE id = @id');
 function updateRacingAvatar(id, avatar) { return _updateRacingAvatar.run({ id, avatar }); }
+function deleteRacingUser(id) {
+  const txn = db.transaction(() => {
+    db.prepare('DELETE FROM sessions WHERE racing_user_id = ?').run(id);
+    db.prepare('DELETE FROM racing_users WHERE id = ?').run(id);
+  });
+  return txn();
+}
 function createRacingSession(sid, racingUserId, expiresAt) { return _createRacingSession.run(sid, racingUserId, expiresAt); }
 function createLinkedSession(sid, streamerId, racingUserId, expiresAt) { return _createLinkedSession.run(sid, streamerId, racingUserId, expiresAt); }
 
@@ -3849,6 +3856,7 @@ module.exports = {
   updateRacingIracingName,
   updateRacingProfile,
   updateRacingAvatar,
+  deleteRacingUser,
   createRacingSession,
   createLinkedSession,
   recordFailedLogin,

@@ -57,6 +57,17 @@ router.post('/admin/unlock/:id', (req, res) => {
   res.redirect('/racing/admin');
 });
 
+router.post('/admin/delete/:id', (req, res) => {
+  if (!res.locals.isAdmin) return res.redirect('/racing');
+  const userId = parseInt(req.params.id);
+  // Don't allow deleting your own account
+  if (req.racingUser && req.racingUser.id === userId) {
+    return res.redirect('/racing/admin');
+  }
+  db.deleteRacingUser(userId);
+  res.redirect('/racing/admin');
+});
+
 // Update profile
 router.post('/account/profile', express.urlencoded({ extended: true }), (req, res) => {
   const displayName = (req.body.display_name || '').trim().slice(0, 32);
