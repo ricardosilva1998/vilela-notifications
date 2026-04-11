@@ -48,15 +48,14 @@
               </td>
               <td style="padding:10px 14px;color:var(--text-muted);font-size:11px;"><%= new Date(u.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) %></td>
               <td style="padding:10px 14px;">
-                <% if (u.locked_until && u.locked_until > Date.now()) { %>
-                  <form method="POST" action="/racing/admin/unlock/<%= u.id %>" style="display:inline;">
-                    <button type="submit" style="background:#f04438;color:white;border:none;border-radius:4px;padding:3px 8px;font-size:10px;font-weight:600;cursor:pointer;">Locked — Unlock</button>
-                  </form>
-                <% } else if (u.login_attempts > 0) { %>
-                  <span style="font-size:10px;color:var(--text-muted);"><%= u.login_attempts %> failed</span>
-                <% } else { %>
-                  <span style="font-size:10px;color:var(--text-muted);">—</span>
-                <% } %>
+                <% var isLocked = u.locked_until && u.locked_until > Date.now(); %>
+                <form method="POST" action="/racing/admin/<%= isLocked ? 'unlock' : 'lock' %>/<%= u.id %>" style="display:inline;" title="<%= isLocked ? 'Account locked — click to unlock' : (u.login_attempts > 0 ? u.login_attempts + ' failed attempts' : 'Account OK') %>">
+                  <label style="position:relative;display:inline-block;width:28px;height:16px;cursor:pointer;">
+                    <input type="checkbox" <%= isLocked ? 'checked' : '' %> onchange="this.form.submit()" style="display:none;">
+                    <span style="position:absolute;inset:0;border-radius:8px;background:<%= isLocked ? '#f04438' : 'rgba(255,255,255,0.1)' %>;transition:background 0.2s;"></span>
+                    <span style="position:absolute;top:2px;left:<%= isLocked ? '14px' : '2px' %>;width:12px;height:12px;border-radius:50%;background:white;transition:left 0.2s;"></span>
+                  </label>
+                </form>
               </td>
               <td style="padding:10px 14px;">
                 <form method="POST" action="/racing/admin/delete/<%= u.id %>" style="display:inline;" onsubmit="return confirm('Delete account @<%= u.username %>? This cannot be undone.');">

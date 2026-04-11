@@ -57,6 +57,12 @@ router.post('/admin/unlock/:id', (req, res) => {
   res.redirect('/racing/admin');
 });
 
+router.post('/admin/lock/:id', (req, res) => {
+  if (!res.locals.isAdmin) return res.redirect('/racing');
+  db.lockRacingAccount(parseInt(req.params.id));
+  res.redirect('/racing/admin');
+});
+
 router.post('/admin/delete/:id', (req, res) => {
   if (!res.locals.isAdmin) return res.redirect('/racing');
   const userId = parseInt(req.params.id);

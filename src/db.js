@@ -3613,6 +3613,10 @@ function recordFailedLogin(userId) {
 function resetLoginAttempts(userId) { _resetLoginAttempts.run(userId); }
 function isAccountLocked(user) { return user.locked_until && user.locked_until > Date.now(); }
 function unlockRacingAccount(userId) { _resetLoginAttempts.run(userId); }
+function lockRacingAccount(userId) {
+  // Lock for 24 hours
+  db.prepare('UPDATE racing_users SET locked_until = ?, login_attempts = 99 WHERE id = ?').run(Date.now() + 24 * 60 * 60 * 1000, userId);
+}
 
 module.exports = {
   db,
@@ -3863,6 +3867,7 @@ module.exports = {
   resetLoginAttempts,
   isAccountLocked,
   unlockRacingAccount,
+  lockRacingAccount,
   closeDb() { db.close(); },
   backup(dest) { return db.backup(dest); },
 };
