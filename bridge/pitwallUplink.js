@@ -14,6 +14,11 @@ let heartbeatTimer = null;
 let isConnected = false;
 let enabled = false;
 let reconnectDelay = RECONNECT_BASE;
+let availableTeams = [];    // Teams returned by server on auth
+let broadcastTeamIds = [];  // Teams user chose to broadcast to
+
+// Callback for control panel to update UI
+let onTeamsUpdated = null;
 
 function start() {
   const s = settings.load();
@@ -22,6 +27,7 @@ function start() {
     return;
   }
   enabled = true;
+  broadcastTeamIds = s.pitwallBroadcastTeamIds || [];
   connect();
 }
 
@@ -64,15 +70,30 @@ function connect() {
 
     if (msg.type === 'auth-ok') {
       isConnected = true;
-      reconnectDelay = RECONNECT_BASE; // Reset on successful auth
-      console.log('[Pitwall Uplink] Authenticated (team:', msg.teamId + ')');
+      reconnectDelay = RECONNECT_BASE;
+      availableTeams = msg.teams || [];
+      console.log('[Pitwall Uplink] Authenticated (' + availableTeams.length + ' teams)');
       startHeartbeat();
+
+      // Filter saved broadcast teams to only valid ones
+      const validIds = new Set(availableTeams.map(t => t.id));
+      broadcastTeamIds = broadcastTeamIds.filter(id => validIds.has(id));
+
+      // Send saved broadcast selection
+      if (broadcastTeamIds.length > 0) {
+        trySend({ type: 'set-teams', teamIds: broadcastTeamIds });
+      }
+
+      if (onTeamsUpdated) onTeamsUpdated(availableTeams, broadcastTeamIds);
     } else if (msg.type === 'auth-error') {
       console.error('[Pitwall Uplink] Auth failed:', msg.reason);
       isConnected = false;
       ws.close();
+    } else if (msg.type === 'teams-updated') {
+      broadcastTeamIds = msg.teamIds || [];
+      if (onTeamsUpdated) onTeamsUpdated(availableTeams, broadcastTeamIds);
     } else if (msg.type === 'pong') {
-      // Heartbeat response — connection alive
+      // Heartbeat response
     }
   });
 
@@ -107,10 +128,21 @@ function startHeartbeat() {
   }, HEARTBEAT_INTERVAL);
 }
 
-// Called by telemetry.js to send data to the server
 function sendTelemetry(channel, data) {
   if (!isConnected) return;
   trySend({ type: 'telemetry', channel, data });
+}
+
+function setBroadcastTeams(teamIds) {
+  broadcastTeamIds = teamIds;
+  // Persist to settings
+  const s = settings.load();
+  s.pitwallBroadcastTeamIds = teamIds;
+  settings.save(s);
+  // Send to server
+  if (isConnected) {
+    trySend({ type: 'set-teams', teamIds });
+  }
 }
 
 function trySend(data) {
@@ -123,4 +155,16 @@ function getStatus() {
   return isConnected ? 'connected' : (enabled ? 'disconnected' : 'disabled');
 }
 
-module.exports = { start, stop, sendTelemetry, getStatus };
+function getAvailableTeams() {
+  return availableTeams;
+}
+
+function getBroadcastTeamIds() {
+  return broadcastTeamIds;
+}
+
+function setOnTeamsUpdated(cb) {
+  onTeamsUpdated = cb;
+}
+
+module.exports = { start, stop, sendTelemetry, setBroadcastTeams, getStatus, getAvailableTeams, getBroadcastTeamIds, setOnTeamsUpdated };
