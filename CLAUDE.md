@@ -1,6 +1,10 @@
-# Atleta Streamers Helper
+# Atleta Personal Helper
 
-Self-service streaming toolkit. Monitors Twitch (live streams, clips, recaps, milestones), YouTube (videos, shorts, livestreams — currently disabled via `features.youtube` flag), and provides welcome messages, subscriber role sync, and weekly digests. Includes chatbots for Twitch and YouTube with customizable thank-you messages, custom commands, 13 built-in fun commands, and chat moderation. OBS overlay with racing-themed animated notification banners, a visual overlay builder with advanced theme editor, and multiple card animations. PayPal donation system with direct-to-streamer payments and overlay alerts. Spotify integration for `!song` commands. Streamers configure everything through a web dashboard at `atletanotifications.com` with platform-tabbed layout, tab persistence, and multi-language support. Includes a standalone **Atleta Bridge** Electron desktop app for iRacing with real-time telemetry overlays (standings, relative, fuel, wind, proximity, track map, driver card, session laps, weather, race duration, voice chat) and voice-to-chat messaging.
+Two-product platform: **Streamer** (Twitch/YouTube/Discord tools) and **Racing** (iRacing telemetry & analysis). Each has its own auth system and dedicated landing page. Accounts are optionally linkable.
+
+**Streamer:** Monitors Twitch (live streams, clips, recaps, milestones), YouTube (videos, shorts, livestreams — currently disabled via `features.youtube` flag), and provides welcome messages, subscriber role sync, and weekly digests. Includes chatbots for Twitch and YouTube with customizable thank-you messages, custom commands, 13 built-in fun commands, and chat moderation. OBS overlay with racing-themed animated notification banners, a visual overlay builder with advanced theme editor, and multiple card animations. PayPal donation system with direct-to-streamer payments and overlay alerts. Spotify integration for `!song` commands. Streamers configure everything through a web dashboard at `atletanotifications.com`. Requires Discord OAuth login.
+
+**Racing:** Standalone username/password auth (no Discord required). **Atleta Bridge** Electron desktop app for iRacing with real-time telemetry overlays (standings, relative, fuel, wind, proximity, track map, driver card, session laps, weather, race duration, voice chat, live stats, pit strategy, pit timer, lap compare) and voice-to-chat messaging. Session capture pipeline records per-lap data + 10Hz telemetry traces during practice/qualify/race sessions and uploads progressively to the server. Track database page with Practice/Race tabs, session history with expandable lap details. Bridge requires Racing account login on startup.
 
 ## Tech Stack
 
@@ -13,7 +17,8 @@ Self-service streaming toolkit. Monitors Twitch (live streams, clips, recaps, mi
 - **i18n:** Custom JSON-based translation system (7 languages)
 - **Deployment:** Docker on Railway with persistent volume at `/app/data`
 - **Testing:** Playwright E2E tests, run via pre-push git hook (must pass before push)
-- **iRacing Bridge:** Electron 28, @emiliosp/node-iracing-sdk (koffi FFI), ws (WebSocket), uiohook-napi (global input hooks), electron-updater, electron-builder (NSIS installer)
+- **Auth:** Discord OAuth (Streamer), bcryptjs username/password (Racing), linkable accounts
+- **iRacing Bridge:** Electron 28, @emiliosp/node-iracing-sdk (koffi FFI), ws (WebSocket), pako (gzip), uiohook-napi (global input hooks), electron-updater, electron-builder (NSIS installer)
 
 ## Commands
 
@@ -58,7 +63,9 @@ src/
 │   ├── timedNotifications.js # Sponsor image rotation — cycles enabled sponsors per-streamer, emits to overlay + chat
 │   └── overlayBus.js     # EventEmitter singleton — routes events to overlay SSE + chat
 ├── routes/
-│   ├── auth.js           # Discord + Twitch + YouTube + Spotify OAuth flows
+│   ├── auth.js           # Discord + Twitch + YouTube + Spotify OAuth flows + Racing account linking
+│   ├── racing-auth.js    # Racing standalone auth — signup, login, logout, login-api (Bridge)
+│   ├── racing.js         # Racing dashboard, account settings, admin, avatar upload
 │   ├── overlay.js        # OBS overlay SSE endpoint + overlay HTML page + custom designs
 │   ├── customOverlays.js # Custom overlays CRUD, SSE, file upload (DISABLED — commented out in server.js/overlay.js)
 │   ├── dashboard.js      # Dashboard, account, guild config (tabbed), stats, channel CRUD, overlay config, chatbot config, overlay builder, YouTube chatbot, sound management, sponsor upload/settings, donation settings, built-in commands
@@ -69,7 +76,14 @@ src/
 └── views/
     ├── header.ejs        # Global layout — nav, sidebar, CSS design system, JS utilities
     ├── footer.ejs        # Closing tags
-    ├── login.ejs         # Landing page with feature cards
+    ├── login.ejs         # Homepage with two product cards (Streamer + Racing)
+    ├── streamer-landing.ejs # Streamer product landing with Discord login
+    ├── racing-landing.ejs   # Racing product landing with login/signup forms
+    ├── racing-signup.ejs    # Racing account signup form
+    ├── racing-dashboard.ejs # Racing home — quick links + session history
+    ├── racing-account.ejs   # Racing account settings — avatar, profile, password, Discord/Twitch links
+    ├── racing-admin.ejs     # Racing admin — user accounts, online status, unregistered bridges
+    ├── tracks.ejs           # Track database — grid/list + detail with Practice/Race tabs
     ├── dashboard.ejs     # Platform-tabbed dashboard (Discord | Twitch | YouTube | Kick | iRacing | Admin)
     ├── account.ejs       # User profile, metrics charts, subscription, language, logout
     ├── guild-config.ejs  # Tabbed UI: Twitch | YouTube | Discord | iRacing (coming soon) | Settings
@@ -108,15 +122,17 @@ data/
 ├── sounds/               # Uploaded custom alert sounds (persistent, survives deploys)
 └── sponsors/             # Uploaded sponsor images for rotation (persistent, survives deploys)
 bridge/                     # Atleta Bridge — Electron desktop app for iRacing
-├── main.js               # Electron main process — tray, control panel, overlay windows, IPC, camera switch
-├── telemetry.js           # iRacing telemetry reader — standings, relative, fuel, wind, session info, iRating estimation
+├── main.js               # Electron main process — tray, login window, control panel, overlay windows, IPC, camera switch
+├── login.html            # Racing account login/signup screen (shown on startup if not authenticated)
+├── telemetry.js           # iRacing telemetry reader — standings, relative, fuel, wind, session info, iRating estimation, session recorder integration
+├── sessionRecorder.js     # Session capture — buffers 10Hz telemetry per lap, progressive upload to server
 ├── websocket.js           # WebSocket server (ws://localhost:9100) — per-client channel subscriptions, driver selection
 ├── settings.js            # Persistent settings in ~/Documents/Atleta Bridge/settings.json
 ├── keyboardSim.js         # Windows keyboard sim + iRacing camera switch via broadcast messages
 ├── voiceInput.js          # Global hotkey hooks (uiohook-napi), IPC coordination for voice chat
-├── control-panel.html     # Sidebar-based settings — per-overlay tabs (General/Header/Content), updates, logs
+├── control-panel.html     # Sidebar-based settings — per-overlay tabs (General/Header/Content), account, updates, logs
 ├── installer.nsh          # Custom NSIS script to kill running app before install
-├── package.json           # Electron 28, ws, @emiliosp/node-iracing-sdk, uiohook-napi, electron-updater
+├── package.json           # Electron 28, ws, pako, @emiliosp/node-iracing-sdk, uiohook-napi, electron-updater
 └── overlays/
     ├── standings.html     # Race standings — class-grouped, configurable columns/header, iRating gain, per-class SOF
     ├── relative.html      # Relative gaps — configurable columns/header, focusCar centering
@@ -131,7 +147,15 @@ bridge/                     # Atleta Bridge — Electron desktop app for iRacing
     ├── weather.html       # Weather — animated sun/rain/clouds/fog, temps, humidity, wind, sky condition
     ├── chat.html          # Streaming chat — Twitch channel overlay
     ├── voicechat.html     # Voice chat — Whisper API transcription, push-to-talk, gamepad support
+    ├── overlay-utils.js   # Shared overlay utilities — header toggle, drag, click-through, CSS scale (single source for all overlays)
     └── helmets/           # Racing helmet PNG icons (2 styles) for driver card
+├── tests/                  # Overlay UI/UX test infrastructure
+│   ├── serve.js           # Test server — serves overlays with mocked Node.js APIs + mock WebSocket
+│   ├── mock-data.js       # Realistic mock data for all WebSocket channels (4 scenarios)
+│   ├── overlays.spec.js   # Playwright tests — bounds, scales, fonts, headers (496 tests)
+│   ├── playground.html    # Interactive visual playground for manual overlay testing
+│   ├── gallery.js         # Screenshot gallery server for reviewing test results
+│   └── playwright.config.js # Separate Playwright config for bridge tests
 ```
 
 ## Key Architecture
@@ -151,14 +175,19 @@ bridge/                     # Atleta Bridge — Electron desktop app for iRacing
 - **Donations (PayPal):** Streamers configure their PayPal email in `/dashboard/donations`. Public tip page at `/tip/:username` uses PayPal Checkout API with `payee: { email_address }` — money goes directly to the streamer's PayPal. On successful capture, fires overlay alert + chatbot message. Donation details (donor, message, amount, currency) stored in cookies during PayPal redirect. Donation messages shown on separate line below amount in overlay card. Event logged to `overlay_events` table. Legacy donate page at `/donate` (Buy me a coffee).
 - **Overlay Event Logging:** All overlay events (follows, subs, bits, donations, raids) logged to `overlay_events` table. 7-day stats shown on Twitch tab dashboard card. 30-day retention with auto-cleanup.
 - **Activity Feed:** Stream Recaps, Milestone Celebrations, Weekly Highlights — all free
-- **Auth flows:** Discord OAuth login → Twitch linking → broadcaster auth (EventSub scopes) → bot account (global env var) → YouTube OAuth (streamer account for live detection) → Spotify OAuth (streamer account for !song)
+- **Dual Auth System:** Two independent auth systems: Discord OAuth (Streamer product) and username/password with bcrypt (Racing product). Session middleware loads both `req.streamer` and `req.racingUser`, cross-loading linked accounts. Sessions table has both `streamer_id` and `racing_user_id` columns (nullable). Racing accounts stored in `racing_users` table with username (case-insensitive), password_hash, iracing_name, bridge_id, avatar (base64), display_name. Account linking: Racing → Discord via OAuth callback detection, or Discord → Racing. Linked accounts see both product sections in sidebar.
+- **Racing Auth Routes:** `/racing/auth/signup` (form + JSON for Bridge), `/racing/auth/login` (form redirect), `/racing/auth/login-api` (JSON for Bridge app), `/racing/auth/logout`. Bridge login screen (`bridge/login.html`) shown on startup if `settings.racingUsername` is not set. Login rate limiting with account locking.
+- **Homepage:** `/` always shows two product cards (Streamer + Racing), no redirect. `/streamer` = Streamer landing with Discord login. `/racing` = Racing dashboard (if logged in) or login form (if not).
+- **Auth flows (Streamer):** Discord OAuth login → Twitch linking → broadcaster auth (EventSub scopes) → bot account (global env var) → YouTube OAuth (streamer account for live detection) → Spotify OAuth (streamer account for !song)
+- **Session Capture Pipeline:** Bridge's `sessionRecorder.js` captures per-lap data + 10Hz telemetry traces during P/Q/R/Offline Testing sessions. Progressive upload: session created on first lap (`POST /api/session`), each subsequent lap appended immediately (`POST /api/session/:id/lap`), session finalized on end (`PATCH /api/session/:id/finish`). Telemetry stored as gzip-compressed JSON arrays (pako) in `lap_telemetry` table. DB tables: `racing_sessions` (session metadata, privacy, share tokens), `session_laps` (per-lap data), `lap_telemetry` (compressed traces). Failed uploads queued to `pending-sessions.json` and retried on next startup.
+- **Track Database Page:** Standalone page at `/tracks` (accessible to both Streamer and Racing users). Grid/list view of all tracks. Detail page with Practice/Race tabs. Practice tab shows recorded practice sessions. Race tab shows class-based race type statistics + recorded race sessions. Sessions expandable inline to show lap details (time, delta, fuel, temp). Import Race Data via modal popup (JSON/CSV/screenshot). 152 known iRacing tracks with category tags.
 - **YouTube Shorts:** Detected via YouTube Data API duration check (≤60s), separate notification format
 - **User feedback:** Star rating + message on account page, visible in admin Feedback tab
 - **Admin panel:** Accessible via Admin tab on dashboard (admin-only), tabbed UI with Stats/Users/Issues/Feedback/Discounts/Testing
 - **Custom Overlays (DISABLED):** Template-based scene banners, info bars, and custom alerts controlled via chat commands. Code exists (`customOverlays.js`, `scenes.js`, `bar.js`, `custom-alerts.js`, `custom-overlays.ejs`) but all integrations are commented out in `server.js`, `overlay.js`, `twitchChat.js`, `dashboard.ejs`, `overlay-builder.ejs`, `overlay-config.ejs`, and `overlay.css`. DB table `custom_overlays` exists. Re-enable by uncommenting the marked sections.
 - **Sponsor Overlay (separate source):** Sponsors have their own OBS browser source at `/overlay/sponsors/TOKEN` via `sponsors.js`, independent from the main alert overlay.
 - **iRacing Bridge (Electron Desktop App):** Standalone Windows app (`bridge/`) that reads iRacing telemetry via `@emiliosp/node-iracing-sdk` (koffi FFI to shared memory) and displays transparent always-on-top overlays. WebSocket server on port 9100 with channel-based subscriptions (fuel 10Hz, wind 10Hz, proximity 10Hz, standings 1Hz, relative 2Hz, trackmap 2Hz). Overlays: Standings (class-grouped, configurable columns/header, estimated iRating gain/loss, per-class SOF, per-class max cars), Relative (configurable columns/header, focusCar centering, behind-closest-first order), Fuel Calculator (avg/lap, laps of fuel, fuel to finish for timed AND lap races, session time estimation), Wind Direction (km/h or mph, configurable colors, follows focused driver heading), Track Map (square canvas, wind chevron arrow, focused driver green highlight), Driver Inputs (toggleable: trace graph, pedal bars, gear, speed, steering wheel), Race Duration (time remaining, estimated laps with multiclass awareness + pit stop time deduction), Driver Card (focused driver: helmet icon, country flag, name, position, iRating change, class badge, best/last lap), Session Laps (all laps with P/Q/R session tags, fastest in purple, delta to best), Weather (animated sun/rain/clouds/fog based on humidity/precipitation, track time, temps, wind), Stream Chat, Voice Chat (Whisper API, push-to-talk, gamepad). Overlays are frameless, transparent, `alwaysOnTop: 'screen-saver'` with 2-second re-assert interval. Draggable via IPC-based mouse handling (mousedown/mousemove on header → `drag-overlay` IPC). Position configurable via X/Y settings with live preview. Settings persisted to `~/Documents/Atleta Bridge/settings.json`. Auto-updater via `electron-updater` with Windows system notifications. Proper semver versioning. Built with GitHub Actions (`.github/workflows/build-bridge.yml`) producing NSIS Windows installer. Version from `package.json` (no auto-increment).
-- **Bridge Control Panel:** Sidebar-based settings window (800x650). Sidebar: Overview + per-overlay tabs + Updates/Logs/About. Each overlay tab has sub-tabs (General/Header/Content for standings/relative). Column drag-to-reorder with toggle switches. Session header items configurable. Font size scales all elements proportionally. Row height configurable. Position X/Y with live move preview. "Settings saved!" toast. Proximity marked "Coming Soon".
+- **Bridge Control Panel:** Sidebar-based settings window (1000x750, maximizable). Sidebar (170px): Overview + per-overlay tabs grouped by Race/Car/Track/Stream + Account/Updates/Logs/About. Each overlay tab has sub-tabs (General/Header/Content for standings/relative). Column drag-to-reorder with toggle switches. Session header items configurable. Font size scales all elements proportionally. Row height configurable. Position X/Y with live move preview. "Settings saved!" toast. Proximity marked "Coming Soon".
 - **Bridge Driver Selection:** Click a driver row in standings → iRacing camera switches to them via broadcast message API (`IRSDK_BROADCASTMSG` / `CamSwitchNum`). Standings/relative highlight follows selection (green for spectated, purple for player). Track map shows focused driver as green dot. Wind overlay uses focused driver's estimated heading. Selection resets when iRacing camera changes (2s grace period) or player enters car.
 - **Bridge Session Management:** Detects session changes via `SESSION_NUM`. Clears cached data on practice→qualify transitions. Keeps data on qualify→race. Excludes spectators (`IsSpectator`) and pace cars from standings. Session laps overlay clears on session number change.
 - **Bridge Pit Time Tracking:** Measures pit stop time loss per class by detecting `CAR_IDX_ON_PIT_ROAD` transitions. When a driver exits pit and completes the pit lap, delta = pitLapTime - bestLap. Running average per class with 5-120s sanity bounds. Persisted per track to `~/Documents/Atleta Bridge/pittimes.json` — accumulates over time, loaded on session start so future races at the same track have historical pit data.
@@ -228,6 +257,26 @@ Optional:
 - Bridge control panel fetches release notes from GitHub Releases API (hardcoded array as fallback)
 - `keyboardSim.js` also handles iRacing camera switching via `RegisterWindowMessageA('IRSDK_BROADCASTMSG')` + `SendNotifyMessageA`/`PostMessageA` with `HWND_BROADCAST`
 - Track map API endpoints (`GET /api/track-maps`, `GET /api/track-map/:name`, `POST /api/track-map`) are public — placed BEFORE the `/api` auth middleware in `server.js`
+- Session data API endpoints (`POST /api/session`, `POST /api/session/:id/lap`, `PATCH /api/session/:id/finish`, `GET /api/sessions/:trackName`, `GET /api/session/:id`, `GET /api/session/share/:token`) are public — placed BEFORE auth middleware
+- Racing auth endpoints (`/racing/auth/*`) are public. Racing dashboard routes (`/racing/*` except `/` and `/signup`) require `req.racingUser`
+- `racing_users` table uses `COLLATE NOCASE` for username (case-insensitive login)
+- `racing_sessions` table is separate from web auth `sessions` table. Query functions: `getRacingSessionById` (not `getSessionById`), `deleteRacingSession` (not `deleteSession`) to avoid collision with web auth session functions
+- Bridge overlay drag/click-through: ALL overlays use `overlay-utils.js` as single source. No inline drag/click-through handlers in overlay HTML files.
+- Bridge overlay scale: `applyScale()` in overlay-utils.js uses CSS `transform: scale()` + `overflow: visible` without locking dimensions. ResizeObserver re-syncs window size when content changes.
+- Bridge auto-updater checks every 60 seconds (not just on startup)
+- Bridge overlays hidden on startup when autoHide is on (shown when iRacing connects)
+- iRacing WindDir from SDK is the SOURCE direction (N = wind coming FROM north). No flip needed in overlays.
+- Race types use proper case: `VRS Sprint`, `VRS Open`, `VRS Endurance`, `IMSA Sprint`, `IMSA Open`, `IMSA Endurance`, `Global Endurance`, `Regionals`, `LMP2 Sprint`, `Proto Sprint`. DB migration normalizes old snake_case on startup.
+- Bridge telemetry `getRaceType()` returns proper case directly (no snake_case)
+
+## Bridge Overlay Testing
+
+Automated UI/UX test infrastructure in `bridge/tests/`:
+- `node bridge/tests/serve.js` — test server that serves overlays with mocked Node.js APIs (require, electron, fs) + mock WebSocket for data injection. Each overlay rendered at its real Electron window dimensions from `main.js` OVERLAYS array.
+- `node bridge/tests/gallery.js` — screenshot gallery server at `http://localhost:9401` with filterable grid view
+- `cd bridge/tests && npx playwright test --config=playwright.config.js` — 496 automated tests across 14 overlays (trackmap excluded — canvas with aspect-ratio:1)
+- Tests cover: bounds at 6 scales × 3 scenarios, 4 font sizes, header toggle × 3 scales, 6 stress combos, data rendering, scale visibility
+- `bridge/tests/playground.html` — interactive visual playground with all overlays in a grid
 
 ## Overlay Consistency Rule
 
