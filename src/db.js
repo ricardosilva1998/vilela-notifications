@@ -3623,11 +3623,12 @@ function recordFailedLogin(userId) {
   _recordFailedLogin.run(userId);
   const user = _getRacingUserById.get({ id: userId });
   if (user && user.login_attempts >= 5) {
-    _lockAccount.run(Date.now() + 15 * 60 * 1000, userId); // 15 min lockout
+    // Permanent lock — only admin can unlock from the admin panel
+    _lockAccount.run(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000, userId);
   }
 }
 function resetLoginAttempts(userId) { _resetLoginAttempts.run(userId); }
-function isAccountLocked(user) { return user.locked_until && user.locked_until > Date.now(); }
+function isAccountLocked(user) { return !!(user.locked_until && user.locked_until > Date.now()); }
 function unlockRacingAccount(userId) { _resetLoginAttempts.run(userId); }
 // Auth logging
 const _insertAuthLog = db.prepare(`INSERT INTO auth_log (action, username, ip, success, reason, user_agent) VALUES (@action, @username, @ip, @success, @reason, @user_agent)`);
@@ -3661,8 +3662,8 @@ function getRecentAuthLog(limit) {
 try { db.exec("DELETE FROM auth_log WHERE created_at < datetime('now', '-7 days')"); } catch(e) {}
 
 function lockRacingAccount(userId) {
-  // Lock for 24 hours
-  db.prepare('UPDATE racing_users SET locked_until = ?, login_attempts = 99 WHERE id = ?').run(Date.now() + 24 * 60 * 60 * 1000, userId);
+  // Permanent lock — only admin can unlock
+  db.prepare('UPDATE racing_users SET locked_until = ?, login_attempts = 99 WHERE id = ?').run(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000, userId);
 }
 
 module.exports = {
