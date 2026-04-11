@@ -189,7 +189,7 @@ app.get('/api/bridge/spotify', async (req, res) => {
     if (!streamer && req.racingUser && req.racingUser.streamer_id) {
       streamer = db.getStreamerById(req.racingUser.streamer_id);
     }
-    if (!streamer && req.query.bridge_id) {
+    if (!streamer && req.query.bridge_id && /^[a-f0-9-]{20,}$/i.test(req.query.bridge_id)) {
       const ru = db.getRacingUserByBridgeId(req.query.bridge_id);
       if (ru && ru.streamer_id) streamer = db.getStreamerById(ru.streamer_id);
     }
@@ -211,7 +211,7 @@ app.post('/api/bridge/spotify/control', express.json(), async (req, res) => {
     if (!streamer && req.racingUser && req.racingUser.streamer_id) {
       streamer = db.getStreamerById(req.racingUser.streamer_id);
     }
-    if (!streamer && req.body.bridge_id) {
+    if (!streamer && req.body.bridge_id && /^[a-f0-9-]{20,}$/i.test(req.body.bridge_id)) {
       const ru = db.getRacingUserByBridgeId(req.body.bridge_id);
       if (ru && ru.streamer_id) streamer = db.getStreamerById(ru.streamer_id);
     }

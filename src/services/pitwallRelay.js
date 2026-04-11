@@ -258,12 +258,19 @@ function handlePitwallConnection(ws, req) {
     } else if (msg.type === 'subscribe' && Array.isArray(msg.channels)) {
       viewer.channels = new Set(msg.channels);
       if (msg.driverId !== undefined) {
+        // Validate driver is in viewer's team
+        const driverBridge = activeBridges.get(msg.driverId);
+        if (driverBridge && viewer.teamId && driverBridge.teamIds && driverBridge.teamIds.has(viewer.teamId)) {
+          viewer.watchingDriverId = msg.driverId;
+          sendCachedData(ws, viewer);
+        }
+      }
+    } else if (msg.type === 'view-driver' && msg.driverId !== undefined) {
+      const driverBridge = activeBridges.get(msg.driverId);
+      if (driverBridge && viewer.teamId && driverBridge.teamIds && driverBridge.teamIds.has(viewer.teamId)) {
         viewer.watchingDriverId = msg.driverId;
         sendCachedData(ws, viewer);
       }
-    } else if (msg.type === 'view-driver' && msg.driverId !== undefined) {
-      viewer.watchingDriverId = msg.driverId;
-      sendCachedData(ws, viewer);
     }
   });
 

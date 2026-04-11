@@ -3763,7 +3763,7 @@ const _getTeamMemberships = db.prepare(`
 const _countUserTeams = db.prepare('SELECT COUNT(*) AS count FROM team_members WHERE user_id = ?');
 
 function createTeam(name, ownerId) {
-  const code = require('crypto').randomBytes(4).toString('hex');
+  const code = require('crypto').randomBytes(16).toString('base64url');
   const txn = db.transaction(() => {
     const result = _insertTeam.run(name, ownerId, code);
     _insertTeamMember.run(result.lastInsertRowid, ownerId, 'owner');

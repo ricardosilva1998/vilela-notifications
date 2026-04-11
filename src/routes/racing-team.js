@@ -183,13 +183,19 @@ router.get('/join/:code', (req, res) => {
   res.redirect('/racing/teams?msg=' + encodeURIComponent('Joined ' + team.name + '!'));
 });
 
-// GET /racing/teams/search?q=...
+// GET /racing/teams/search?q=... (rate limited: 10 per minute per user)
+const _searchCounts = new Map();
+setInterval(() => _searchCounts.clear(), 60000);
 router.get('/search', (req, res) => {
+  const uid = req.racingUser.id;
+  const count = (_searchCounts.get(uid) || 0) + 1;
+  _searchCounts.set(uid, count);
+  if (count > 10) return res.status(429).json({ error: 'Too many searches, try again in a minute' });
   const q = (req.query.q || '').trim();
   if (q.length < 2) return res.json([]);
   const results = db.searchRacingUsers(q)
     .filter(u => u.id !== req.racingUser.id)
-    .map(u => ({ username: u.username, display_name: u.display_name, iracing_name: u.iracing_name }));
+    .map(u => ({ username: u.username, display_name: u.display_name }));
   res.json(results);
 });
 
