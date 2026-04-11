@@ -78,6 +78,7 @@ router.post('/invite', (req, res) => {
   if (!result) {
     return res.redirect('/racing/team?error=' + encodeURIComponent('Invite already pending'));
   }
+  db.createNotification(target.id, 'team_invite', 'Team invite', req.racingUser.username + ' invited you to ' + membership.team_name, '/racing/team', 'team_invite', result);
   res.redirect('/racing/team?msg=' + encodeURIComponent('Invite sent to ' + target.username));
 });
 
@@ -91,6 +92,12 @@ router.post('/invite/:id/accept', (req, res) => {
   if (!ok) {
     return res.redirect('/racing/team?error=' + encodeURIComponent('Could not accept invite — you may already be in a team'));
   }
+  // Remove the invite notification + notify team
+  db.dismissNotificationByAction('team_invite', invite.id, req.racingUser.id);
+  const membership = db.getTeamForUser(req.racingUser.id);
+  if (membership) {
+    db.notifyTeamMembers(membership.team_id, req.racingUser.id, 'team_join', 'Teammate joined', req.racingUser.username + ' joined the team', '/racing/team');
+  }
   res.redirect('/racing/team?msg=' + encodeURIComponent('Welcome to the team!'));
 });
 
@@ -101,6 +108,7 @@ router.post('/invite/:id/decline', (req, res) => {
     return res.redirect('/racing/team?error=' + encodeURIComponent('Invalid invite'));
   }
   db.declineTeamInvite(invite.id);
+  db.dismissNotificationByAction('team_invite', invite.id, req.racingUser.id);
   res.redirect('/racing/team?msg=' + encodeURIComponent('Invite declined'));
 });
 
@@ -114,7 +122,12 @@ router.post('/kick/:userId', (req, res) => {
   if (targetId === req.racingUser.id) {
     return res.redirect('/racing/team?error=' + encodeURIComponent('Cannot remove yourself — use delete team'));
   }
+  const kickedUser = db.getRacingUserById(targetId);
   db.removeTeamMember(membership.team_id, targetId);
+  if (kickedUser) {
+    db.createNotification(targetId, 'team_leave', 'Removed from team', 'You were removed from ' + membership.team_name, '/racing/team', null, null);
+    db.notifyTeamMembers(membership.team_id, targetId, 'team_leave', 'Teammate left', kickedUser.username + ' was removed from the team', '/racing/team');
+  }
   res.redirect('/racing/team?msg=' + encodeURIComponent('Member removed'));
 });
 
@@ -127,6 +140,7 @@ router.post('/leave', (req, res) => {
   if (membership.role === 'owner') {
     return res.redirect('/racing/team?error=' + encodeURIComponent('Owner cannot leave — delete the team or transfer ownership'));
   }
+  db.notifyTeamMembers(membership.team_id, req.racingUser.id, 'team_leave', 'Teammate left', req.racingUser.username + ' left the team', '/racing/team');
   db.removeTeamMember(membership.team_id, req.racingUser.id);
   res.redirect('/racing/team?msg=' + encodeURIComponent('You left the team'));
 });
@@ -151,6 +165,7 @@ router.get('/join/:code', (req, res) => {
   if (!team) {
     return res.redirect('/racing/team?error=' + encodeURIComponent('Invalid invite code or you are already in a team'));
   }
+  db.notifyTeamMembers(team.id, req.racingUser.id, 'team_join', 'Teammate joined', req.racingUser.username + ' joined the team', '/racing/team');
   res.redirect('/racing/team?msg=' + encodeURIComponent('Joined ' + team.name + '!'));
 });
 

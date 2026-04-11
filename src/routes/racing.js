@@ -54,6 +54,24 @@ router.get('/pitwall', (req, res) => {
   });
 });
 
+// Notification actions
+router.post('/notifications/:id/dismiss', (req, res) => {
+  db.dismissNotification(parseInt(req.params.id), req.racingUser.id);
+  if (req.is('json') || req.xhr) return res.json({ ok: true });
+  res.redirect('back');
+});
+
+router.post('/notifications/dismiss-all', (req, res) => {
+  db.dismissAllNotifications(req.racingUser.id);
+  if (req.is('json') || req.xhr) return res.json({ ok: true });
+  res.redirect('back');
+});
+
+router.post('/notifications/:id/read', (req, res) => {
+  db.markNotificationRead(parseInt(req.params.id), req.racingUser.id);
+  res.json({ ok: true });
+});
+
 // Admin — Racing accounts + Bridge users
 router.get('/admin', (req, res) => {
   if (!res.locals.isAdmin) return res.redirect('/racing');
@@ -85,6 +103,26 @@ router.post('/admin/delete/:id', (req, res) => {
   }
   db.deleteRacingUser(userId);
   res.redirect('/racing/admin');
+});
+
+// Admin — Announcements & Bridge updates
+router.post('/admin/announcement', express.urlencoded({ extended: true }), (req, res) => {
+  if (!res.locals.isAdmin) return res.redirect('/racing');
+  const title = (req.body.title || '').trim();
+  const message = (req.body.message || '').trim();
+  const link = (req.body.link || '').trim() || null;
+  if (!title || !message) return res.redirect('/racing/admin?error=' + encodeURIComponent('Title and message required'));
+  const count = db.createNotificationForAllUsers('announcement', title, message, link);
+  res.redirect('/racing/admin?msg=' + encodeURIComponent('Announcement sent to ' + count + ' users'));
+});
+
+router.post('/admin/bridge-update', express.urlencoded({ extended: true }), (req, res) => {
+  if (!res.locals.isAdmin) return res.redirect('/racing');
+  const version = (req.body.version || '').trim();
+  if (!version) return res.redirect('/racing/admin?error=' + encodeURIComponent('Version required'));
+  const message = (req.body.message || '').trim() || 'Atleta Bridge v' + version + ' is available — update in the app';
+  const count = db.createNotificationForBridgeUsers('bridge_update', 'Bridge update', message, null);
+  res.redirect('/racing/admin?msg=' + encodeURIComponent('Bridge update notification sent to ' + count + ' users'));
 });
 
 // Update profile

@@ -883,6 +883,32 @@ app.patch('/api/session/:id/finish', express.json(), (req, res) => {
     const sessionId = parseInt(req.params.id);
     const { finish_position, irating_change, best_lap_time } = req.body;
     db.updateSessionFinish(sessionId, finish_position, irating_change, best_lap_time);
+
+    // Notifications for race results + iRating milestones
+    try {
+      const session = db.getRacingSessionById(sessionId);
+      if (session && session.session_type === 'race') {
+        const user = session.bridge_id ? db.getRacingUserByBridgeId(session.bridge_id) : null;
+        if (user) {
+          // Race result notification
+          const pos = finish_position ? 'P' + finish_position : '';
+          const ir = irating_change ? (irating_change > 0 ? ' (+' + irating_change + ' iR)' : ' (' + irating_change + ' iR)') : '';
+          const raceType = session.race_type ? ' — ' + session.race_type : '';
+          db.createNotification(user.id, 'race_result', 'Race result', pos + ' at ' + session.track_name + raceType + ir, '/api/session/' + sessionId + '?bridge_id=' + session.bridge_id, null, null);
+
+          // iRating milestone check
+          if (irating_change && irating_change > 0) {
+            const milestones = [1000, 1500, 2000, 2500, 3000, 3500, 4000, 5000];
+            // We don't have cumulative iRating stored, but we can check if the change crosses a threshold
+            // The Bridge sends irating_change as the delta. We'd need current iRating to check milestones.
+            // For now, skip — this requires Bridge to send current_irating in the finish payload.
+          }
+        }
+      }
+    } catch(notifErr) {
+      console.error('[Session Finish Notification]', notifErr.message);
+    }
+
     res.json({ ok: true });
   } catch(e) {
     console.error('[Session Finish]', e.message);
@@ -896,6 +922,22 @@ app.patch('/api/session/:id', express.json(), (req, res) => {
     if (!bridgeId) return res.status(400).json({ error: 'bridge_id required' });
     if (req.body.is_public !== undefined) {
       db.updateSessionPublic(parseInt(req.params.id), bridgeId, req.body.is_public);
+
+      // Notify teammates when session is shared
+      if (req.body.is_public) {
+        try {
+          const session = db.getRacingSessionById(parseInt(req.params.id));
+          const user = bridgeId ? db.getRacingUserByBridgeId(bridgeId) : null;
+          if (user && session) {
+            const membership = db.getTeamForUser(user.id);
+            if (membership) {
+              db.notifyTeamMembers(membership.team_id, user.id, 'session_shared', 'Session shared', user.username + ' shared a session at ' + session.track_name, '/api/session/' + req.params.id + '?bridge_id=' + bridgeId);
+            }
+          }
+        } catch(notifErr) {
+          console.error('[Session Share Notification]', notifErr.message);
+        }
+      }
     }
     res.json({ ok: true });
   } catch(e) {

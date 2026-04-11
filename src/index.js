@@ -59,6 +59,10 @@ client.once('ready', async () => {
     setInterval(() => { try { db.cleanupOldBridgeBugReports(); } catch (e) {} }, 6 * 60 * 60 * 1000);
     db.cleanupOldBridgeBugReports();
 
+    // Clean up old notifications (every 24 hours)
+    setInterval(() => { try { db.cleanupOldNotifications(); } catch (e) {} }, 24 * 60 * 60 * 1000);
+    db.cleanupOldNotifications();
+
     console.log('All systems running');
   } catch (error) {
     console.error(`Startup error: ${error.message}`);
