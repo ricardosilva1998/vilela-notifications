@@ -970,6 +970,7 @@ try { db.exec('ALTER TABLE racing_users ADD COLUMN display_name TEXT'); } catch(
 try { db.exec('ALTER TABLE racing_users ADD COLUMN avatar TEXT'); } catch(e) {}
 try { db.exec('ALTER TABLE racing_users ADD COLUMN login_attempts INTEGER DEFAULT 0'); } catch(e) {}
 try { db.exec('ALTER TABLE racing_users ADD COLUMN locked_until INTEGER'); } catch(e) {}
+try { db.exec('ALTER TABLE racing_users ADD COLUMN pitwall_token TEXT'); } catch(e) {}
 // Auth activity log — tracks all login/signup attempts for spam detection
 db.exec(`
   CREATE TABLE IF NOT EXISTS auth_log (

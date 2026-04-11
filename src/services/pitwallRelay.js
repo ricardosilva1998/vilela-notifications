@@ -1,7 +1,6 @@
 'use strict';
 
 const { WebSocketServer } = require('ws');
-const bcrypt = require('bcryptjs');
 const db = require('../db');
 
 // ── State ─────────────────────────────────────────────────────────
@@ -62,7 +61,7 @@ function handleBridgeConnection(ws) {
     }
   }, AUTH_TIMEOUT_MS);
 
-  ws.on('message', async (raw) => {
+  ws.on('message', (raw) => {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
 
@@ -70,7 +69,7 @@ function handleBridgeConnection(ws) {
       if (msg.type === 'auth') {
         clearTimeout(authTimer);
         try {
-          const result = await authBridge(msg.username, msg.password);
+          const result = authBridge(msg.userId, msg.token);
           if (result.error) {
             trySend(ws, { type: 'auth-error', reason: result.error });
             ws.close();
@@ -216,12 +215,11 @@ function handlePitwallConnection(ws, req) {
 
 // ── Helpers ───────────────────────────────────────────────────────
 
-async function authBridge(username, password) {
-  if (!username || !password) return { error: 'Username and password required' };
-  const user = db.getRacingUserByUsername(username);
+function authBridge(userId, token) {
+  if (!userId || !token) return { error: 'userId and token required' };
+  const user = db.getRacingUserById(userId);
   if (!user) return { error: 'Invalid credentials' };
-  const valid = await bcrypt.compare(password, user.password_hash);
-  if (!valid) return { error: 'Invalid credentials' };
+  if (!user.pitwall_token || user.pitwall_token !== token) return { error: 'Invalid token' };
   const membership = db.getTeamForUser(user.id);
   if (!membership) return { error: 'Not in a team' };
   return { userId: user.id, teamId: membership.team_id, username: user.username };

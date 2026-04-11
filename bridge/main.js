@@ -23,6 +23,7 @@ const { load: loadSettings, save: saveSettings } = require('./settings');
 const { startVoiceInput, stopVoiceInput, setVoiceChatWindow } = require('./voiceInput');
 const { connectToChannel: connectTwitchChat, disconnect: disconnectTwitchChat } = require('./twitchChat');
 const sessionRecorder = require('./sessionRecorder');
+const pitwallUplink = require('./pitwallUplink');
 
 // Auto-updater
 let autoUpdater;
@@ -113,6 +114,7 @@ ipcMain.on('login-success', (event, data) => {
   settings.racingUsername = data.username;
   settings.racingUserId = data.userId;
   if (data.bridgeId) settings.bridgeId = data.bridgeId;
+  if (data.pitwallToken) settings.pitwallToken = data.pitwallToken;
   saveSettings(settings);
 
   // Close login window and start the app
@@ -184,6 +186,7 @@ function startBridge() {
   tray.setContextMenu(contextMenu);
 
   startServer(9100);
+  pitwallUplink.start();
   startTelemetry((status) => {
     if (controlWindow && !controlWindow.isDestroyed()) {
       controlWindow.webContents.send('iracing-status', status);
@@ -737,6 +740,7 @@ app.on('before-quit', () => {
   quitting = true;   // prevent closeOverlayWindow from overwriting with empty list
   Object.keys(overlayWindows).forEach(closeOverlayWindow);
   stopTelemetry();
+  pitwallUplink.stop();
   stopVoiceInput();
   stopServer();
   // Force exit after cleanup to kill all child processes

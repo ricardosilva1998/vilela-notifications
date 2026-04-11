@@ -133,7 +133,14 @@ router.post('/login-api', express.json(), async (req, res) => {
       try { db.db.prepare('UPDATE racing_users SET bridge_id = ? WHERE id = ?').run(bridge_id, user.id); } catch(e) {}
     }
 
-    res.json({ ok: true, id: user.id, username: user.username });
+    // Generate pitwall token for WebSocket auth (avoids storing password)
+    let pitwallToken = user.pitwall_token;
+    if (!pitwallToken) {
+      pitwallToken = crypto.randomBytes(32).toString('hex');
+      try { db.db.prepare('UPDATE racing_users SET pitwall_token = ? WHERE id = ?').run(pitwallToken, user.id); } catch(e) {}
+    }
+
+    res.json({ ok: true, id: user.id, username: user.username, pitwallToken });
   } catch(e) {
     console.error('[Racing Login API]', e.message);
     res.status(500).json({ error: 'Login failed' });

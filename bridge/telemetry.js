@@ -15,11 +15,21 @@ let connected = false;
 let pollInterval = null;
 let connectInterval = null;
 
-const { broadcastToChannel, getClientInfo, getSelectedCarIdx, resetSelectedCar } = require('./websocket');
+const { broadcastToChannel: _broadcastLocal, getClientInfo, getSelectedCarIdx, resetSelectedCar } = require('./websocket');
 const { switchCamera } = require('./keyboardSim');
 const settings = require('./settings');
 const { extractTrackFromIBT, geoKeyFromSessionInfo, loadCachedTrackByGeo, saveCachedTrackByGeo } = require('./trackExtractor');
 const sessionRecorder = require('./sessionRecorder');
+const pitwallUplink = require('./pitwallUplink');
+
+// Broadcast to local overlays + pitwall uplink
+function broadcastToChannel(channel, msg) {
+  _broadcastLocal(channel, msg);
+  // Forward telemetry to pitwall server (skip internal broadcasts)
+  if (msg && msg.type === 'data' && msg.channel && msg.data) {
+    pitwallUplink.sendTelemetry(msg.channel, msg.data);
+  }
+}
 
 // Fuel tracking
 let fuelHistory = [];

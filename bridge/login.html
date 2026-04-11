@@ -181,7 +181,7 @@
         // Use the signup endpoint with existing credentials to verify
         // Actually we need a login endpoint that returns JSON
         const res = await apiRequest('/racing/auth/login-api', { username, password, bridge_id: bridgeId });
-        ipcRenderer.send('login-success', { username: res.username || username, userId: res.id, bridgeId });
+        ipcRenderer.send('login-success', { username: res.username || username, userId: res.id, bridgeId, pitwallToken: res.pitwallToken });
       } catch(e) {
         showError(e.message || 'Login failed');
       } finally {
