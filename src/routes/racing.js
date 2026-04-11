@@ -47,6 +47,19 @@ router.get('/account', (req, res) => {
   res.render('racing-account', { streamer: req.streamer || null, racingUser: req.racingUser, msg: req.query.msg || null, error: req.query.error || null });
 });
 
+// Pitwall — live telemetry viewer
+router.get('/pitwall', (req, res) => {
+  const membership = db.getTeamForUser(req.racingUser.id);
+  if (!membership) return res.redirect('/racing/team');
+  const members = db.getTeamMembers(membership.team_id);
+  res.render('racing-pitwall', {
+    streamer: req.streamer || null,
+    racingUser: req.racingUser,
+    team: membership,
+    members,
+  });
+});
+
 // Admin — Racing accounts + Bridge users
 router.get('/admin', (req, res) => {
   if (!res.locals.isAdmin) return res.redirect('/racing');
