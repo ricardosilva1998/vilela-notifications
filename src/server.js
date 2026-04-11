@@ -107,19 +107,13 @@ app.use((req, res, next) => {
   res.locals.isAdmin = req.streamer ? db.isAdmin(req.streamer.id) : false;
   res.locals.features = config.features;
 
-  // Notifications for racing users (team invites, etc.)
+  // Stored notifications for racing users
   if (req.racingUser) {
-    const pendingInvites = db.getPendingInvitesForUser(req.racingUser.id);
-    res.locals.notifications = pendingInvites.map(inv => ({
-      id: inv.id,
-      type: 'team_invite',
-      title: 'Team invite',
-      message: inv.invited_by_name + ' invited you to ' + inv.team_name,
-      team_name: inv.team_name,
-      time: inv.created_at,
-    }));
+    res.locals.notifications = db.getNotificationsForUser(req.racingUser.id);
+    res.locals.unreadNotifCount = db.getUnreadNotificationCount(req.racingUser.id);
   } else {
     res.locals.notifications = [];
+    res.locals.unreadNotifCount = 0;
   }
 
   // i18n

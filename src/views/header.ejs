@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= typeof title !== 'undefined' ? title : 'Atleta' %></title>
   <link rel="icon" type="image/png" href="/app-icon/honest_graphic-running-athlete-9715727.png">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <meta property="og:title" content="Atleta — Personal Helper">
   <meta property="og:description" content="Free all-in-one streaming toolkit — Discord notifications, OBS overlays, Twitch & YouTube chatbots, and moderation for streamers.">
   <meta property="og:image" content="/app-icon/honest_graphic-running-athlete-9715727.png">
@@ -243,7 +244,8 @@
       background: var(--bg-hover); color: var(--text-primary);
       border-left-color: var(--accent);
     }
-    .sidebar-link svg { width: 18px; height: 18px; fill: currentColor; flex-shrink: 0; opacity: 0.7; }
+    .sidebar-link svg, .sidebar-link i[data-lucide] { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.7; }
+    .sidebar-link svg { fill: currentColor; }
     .sidebar-link:hover svg { opacity: 1; }
     .sidebar-divider { height: 1px; background: var(--border); margin: 8px 20px; }
     .sidebar-section {
@@ -614,20 +616,40 @@
       <div class="sidebar-section"><%= t('nav.navigation') %></div>
 
       <a href="<%= (typeof streamer !== 'undefined' && streamer) ? '/dashboard' : '/streamer' %>" class="sidebar-link">
-        <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+        <i data-lucide="tv"></i>
         Streamer
       </a>
       <a href="/racing" class="sidebar-link">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="M5 15H3v-2l2-4h4l3-3h4l2 3h3v4h-2"/><path d="M5 15h4m2 0h2m2 0h4"/></svg>
+        <i data-lucide="car"></i>
         Racing
       </a>
+      <% if (typeof racingUser !== 'undefined' && racingUser) { %>
+        <a href="/tracks" class="sidebar-link" style="padding-left:34px;font-size:12px;">
+          <i data-lucide="globe" style="width:15px;height:15px;"></i>
+          Track Database
+        </a>
+        <a href="/racing/team" class="sidebar-link" style="padding-left:34px;font-size:12px;">
+          <i data-lucide="users" style="width:15px;height:15px;"></i>
+          My Team
+        </a>
+        <a href="/racing/account" class="sidebar-link" style="padding-left:34px;font-size:12px;">
+          <i data-lucide="user" style="width:15px;height:15px;"></i>
+          Account
+        </a>
+        <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+        <a href="/racing/admin" class="sidebar-link" style="padding-left:34px;font-size:12px;">
+          <i data-lucide="shield" style="width:15px;height:15px;"></i>
+          Admin
+        </a>
+        <% } %>
+      <% } %>
 
       <a href="/tutorial" class="sidebar-link">
-        <svg viewBox="0 0 24 24"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>
+        <i data-lucide="book-open"></i>
         <%= t('nav.setupGuide') %>
       </a>
       <a href="/donate" class="sidebar-link">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        <i data-lucide="heart"></i>
         Buy me a coffee
       </a>
 
@@ -635,7 +657,7 @@
         <div class="sidebar-divider"></div>
         <div class="sidebar-section"><%= t('nav.support') %></div>
         <a href="/dashboard/report" class="sidebar-link">
-          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+          <i data-lucide="alert-circle"></i>
           <%= t('nav.reportIssue') %>
         </a>
       <% } %>
@@ -644,7 +666,7 @@
         <div class="sidebar-divider"></div>
         <div class="sidebar-section"><%= t('nav.account') %></div>
         <a href="/auth/logout" class="sidebar-link">
-          <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+          <i data-lucide="log-out"></i>
           <%= t('nav.logout') %>
         </a>
       <% } %>
@@ -663,33 +685,72 @@
     </div>
     <div class="nav-right">
       <% const _notifs = typeof notifications !== 'undefined' ? notifications : []; %>
+      <% const _unreadCount = typeof unreadNotifCount !== 'undefined' ? unreadNotifCount : 0; %>
       <% if (typeof racingUser !== 'undefined' && racingUser) { %>
         <div style="position:relative;">
           <button class="nav-notif-btn" onclick="toggleNotifDropdown(event)" aria-label="Notifications">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-            <% if (_notifs.length > 0) { %><span class="nav-notif-badge"><%= _notifs.length %></span><% } %>
+            <% if (_unreadCount > 0) { %><span class="nav-notif-badge"><%= _unreadCount %></span><% } %>
           </button>
           <div class="nav-notif-dropdown" id="notif-dropdown">
-            <div class="nav-notif-header">Notifications</div>
+            <div class="nav-notif-header" style="display:flex;align-items:center;justify-content:space-between;">
+              <span>Notifications</span>
+              <% if (_notifs.length > 0) { %>
+                <form method="POST" action="/racing/notifications/dismiss-all" style="margin:0;">
+                  <button type="submit" style="background:none;border:none;color:var(--text-muted);font-size:11px;cursor:pointer;padding:0;">Dismiss all</button>
+                </form>
+              <% } %>
+            </div>
             <% if (_notifs.length === 0) { %>
-              <div class="nav-notif-empty">No new notifications</div>
+              <div class="nav-notif-empty">No notifications</div>
             <% } else { %>
+              <div style="max-height:360px;overflow-y:auto;">
               <% _notifs.forEach(function(n) { %>
-                <div class="nav-notif-item">
-                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                    <span style="font-size:12px;font-weight:600;color:var(--text-primary);"><%= n.message %></span>
-                  </div>
-                  <div style="display:flex;gap:6px;">
-                    <form method="POST" action="/racing/team/invite/<%= n.id %>/accept" style="margin:0;">
-                      <button type="submit" style="background:#3ecf8e;color:#fff;border:none;border-radius:5px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;">Accept</button>
-                    </form>
-                    <form method="POST" action="/racing/team/invite/<%= n.id %>/decline" style="margin:0;">
-                      <button type="submit" style="background:rgba(240,68,56,0.15);color:#f04438;border:none;border-radius:5px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;">Decline</button>
+                <div class="nav-notif-item" style="position:relative;<%= !n.is_read ? 'background:rgba(59,130,246,0.04);' : '' %>">
+                  <div style="display:flex;gap:8px;align-items:flex-start;">
+                    <% if (!n.is_read) { %><div style="width:6px;height:6px;border-radius:50%;background:#3b82f6;margin-top:5px;flex-shrink:0;"></div><% } else { %><div style="width:6px;flex-shrink:0;"></div><% } %>
+                    <% if (n.type === 'team_invite' || n.type === 'team_join' || n.type === 'team_leave') { %>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <% } else if (n.type === 'race_result') { %>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f7c948" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                    <% } else if (n.type === 'irating_milestone') { %>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f7c948" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>
+                    <% } else if (n.type === 'bridge_update') { %>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3ecf8e" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <% } else if (n.type === 'announcement') { %>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><path d="m3 11 18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+                    <% } else if (n.type === 'session_shared') { %>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3ecf8e" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                    <% } else { %>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <% } %>
+                    <div style="flex:1;min-width:0;">
+                      <% if (n.link) { %><a href="<%= n.link %>" style="text-decoration:none;color:inherit;" onclick="fetch('/racing/notifications/<%= n.id %>/read',{method:'POST'})"><% } %>
+                        <div style="font-size:12px;font-weight:600;color:var(--text-primary);margin-bottom:2px;"><%= n.title %></div>
+                        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px;"><%= n.message %></div>
+                        <div style="font-size:10px;color:var(--text-muted);">
+                          <% var _ago = Math.floor((Date.now() - new Date(n.created_at + 'Z').getTime()) / 1000); %>
+                          <% if (_ago < 60) { %>just now<% } else if (_ago < 3600) { %><%= Math.floor(_ago/60) %>m ago<% } else if (_ago < 86400) { %><%= Math.floor(_ago/3600) %>h ago<% } else { %><%= Math.floor(_ago/86400) %>d ago<% } %>
+                        </div>
+                      <% if (n.link) { %></a><% } %>
+                      <% if (n.action_type === 'team_invite') { %>
+                        <div style="display:flex;gap:6px;margin-top:6px;">
+                          <form method="POST" action="/racing/team/invite/<%= n.action_id %>/accept" style="margin:0;">
+                            <button type="submit" style="background:#3ecf8e;color:#fff;border:none;border-radius:5px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;">Accept</button>
+                          </form>
+                          <form method="POST" action="/racing/team/invite/<%= n.action_id %>/decline" style="margin:0;">
+                            <button type="submit" style="background:rgba(240,68,56,0.15);color:#f04438;border:none;border-radius:5px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;">Decline</button>
+                          </form>
+                        </div>
+                      <% } %>
+                    </div>
+                    <form method="POST" action="/racing/notifications/<%= n.id %>/dismiss" style="margin:0;flex-shrink:0;">
+                      <button type="submit" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:2px 4px;line-height:1;opacity:0.5;" title="Dismiss" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'">&times;</button>
                     </form>
                   </div>
                 </div>
               <% }); %>
+              </div>
             <% } %>
           </div>
         </div>
