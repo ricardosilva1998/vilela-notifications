@@ -128,6 +128,9 @@
       try { msg = JSON.parse(e.data); } catch { return; }
 
       if (msg.type === 'auth-ok') {
+        // Auto-select our team (passed from server-rendered page)
+        ws.send(JSON.stringify({ type: 'select-team', teamId: <%= team.team_id %> }));
+      } else if (msg.type === 'team-selected') {
         (msg.activeDrivers || []).forEach(function(d) {
           onlineDrivers.add(d.userId);
         });

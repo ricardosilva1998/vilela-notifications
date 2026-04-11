@@ -4,7 +4,7 @@ const { WebSocketServer } = require('ws');
 const db = require('../db');
 
 // ── State ─────────────────────────────────────────────────────────
-// Bridge connections: userId → { ws, teamId, username }
+// Bridge connections: userId → { ws, teamIds, username, allTeams }
 const bridgeClients = new Map();
 // Pitwall viewers: ws → { userId, teamId, username, watchingDriverId, channels: Set }
 const pitwallClients = new Map();
@@ -108,12 +108,11 @@ function handleBridgeConnection(ws) {
             prev.ws.close();
           }
 
-          bridgeClients.set(userId, { ws, teamId: result.teamId, username: result.username });
+          bridgeClients.set(userId, { ws, teamIds: new Set(), username: result.username, allTeams: result.teams });
           driverData.set(userId, new Map());
 
-          trySend(ws, { type: 'auth-ok', userId, teamId: result.teamId });
-          broadcastToTeamViewers(result.teamId, { type: 'driver-online', userId, username: result.username });
-          console.log('[Pitwall] Bridge authenticated:', result.username, '(team:', result.teamId + ')');
+          trySend(ws, { type: 'auth-ok', userId, teams: result.teams });
+          console.log('[Pitwall] Bridge authenticated:', result.username, '(' + result.teams.length + ' teams)');
         } catch (e) {
           console.error('[Pitwall] Bridge auth error:', e.message);
           trySend(ws, { type: 'auth-error', reason: 'Server error' });
@@ -126,6 +125,30 @@ function handleBridgeConnection(ws) {
     // Heartbeat ping from Bridge
     if (msg.type === 'ping') {
       trySend(ws, { type: 'pong' });
+      return;
+    }
+
+    // Team broadcast selection
+    if (msg.type === 'set-teams' && Array.isArray(msg.teamIds)) {
+      const client = bridgeClients.get(userId);
+      if (!client) return;
+      const validIds = new Set(client.allTeams.map(t => t.id));
+      const oldTeamIds = new Set(client.teamIds);
+      client.teamIds = new Set(msg.teamIds.filter(id => validIds.has(id)));
+
+      // Notify viewers of online/offline per team
+      for (const tid of client.teamIds) {
+        if (!oldTeamIds.has(tid)) {
+          broadcastToTeamViewers(tid, { type: 'driver-online', userId, username: client.username });
+        }
+      }
+      for (const tid of oldTeamIds) {
+        if (!client.teamIds.has(tid)) {
+          broadcastToTeamViewers(tid, { type: 'driver-offline', userId, username: client.username });
+        }
+      }
+      trySend(ws, { type: 'teams-updated', teamIds: [...client.teamIds] });
+      console.log('[Pitwall] Bridge teams updated:', client.username, '->', [...client.teamIds]);
       return;
     }
 
@@ -164,7 +187,9 @@ function handleBridgeConnection(ws) {
         if (key.startsWith(userId + ':')) lastRelayTime.delete(key);
       }
       if (client) {
-        broadcastToTeamViewers(client.teamId, { type: 'driver-offline', userId, username: client.username });
+        for (const tid of client.teamIds) {
+          broadcastToTeamViewers(tid, { type: 'driver-offline', userId, username: client.username });
+        }
         console.log('[Pitwall] Bridge disconnected:', client.username);
       }
     }
@@ -200,8 +225,8 @@ function handlePitwallConnection(ws, req) {
     return;
   }
 
-  const membership = db.getTeamForUser(racingUser.id);
-  if (!membership) {
+  const teams = db.getTeamsForUser(racingUser.id);
+  if (teams.length === 0) {
     trySend(ws, { type: 'auth-error', reason: 'Not in a team' });
     ws.close();
     return;
@@ -209,23 +234,28 @@ function handlePitwallConnection(ws, req) {
 
   const viewer = {
     userId: racingUser.id,
-    teamId: membership.team_id,
+    teamId: null,
     username: racingUser.username,
     watchingDriverId: null,
     channels: new Set(),
+    teamIds: teams.map(t => t.team_id),
   };
   pitwallClients.set(ws, viewer);
 
-  // Send auth OK with active drivers
-  const activeDrivers = getActiveDrivers(membership.team_id);
-  trySend(ws, { type: 'auth-ok', teamId: membership.team_id, activeDrivers });
+  trySend(ws, { type: 'auth-ok', teams: teams.map(t => ({ id: t.team_id, name: t.team_name })) });
   console.log('[Pitwall] Viewer connected:', racingUser.username);
 
   ws.on('message', (raw) => {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
 
-    if (msg.type === 'subscribe' && Array.isArray(msg.channels)) {
+    if (msg.type === 'select-team' && msg.teamId) {
+      if (viewer.teamIds.includes(msg.teamId)) {
+        viewer.teamId = msg.teamId;
+        const activeDrivers = getActiveDrivers(msg.teamId);
+        trySend(ws, { type: 'team-selected', teamId: msg.teamId, activeDrivers });
+      }
+    } else if (msg.type === 'subscribe' && Array.isArray(msg.channels)) {
       viewer.channels = new Set(msg.channels);
       if (msg.driverId !== undefined) {
         viewer.watchingDriverId = msg.driverId;
@@ -252,9 +282,8 @@ function authBridge(userId, token) {
   const user = db.getRacingUserById(userId);
   if (!user) return { error: 'Invalid credentials' };
   if (!user.pitwall_token || user.pitwall_token !== token) return { error: 'Invalid token' };
-  const membership = db.getTeamForUser(user.id);
-  if (!membership) return { error: 'Not in a team' };
-  return { userId: user.id, teamId: membership.team_id, username: user.username };
+  const teams = db.getTeamsForUser(user.id).map(t => ({ id: t.team_id, name: t.team_name }));
+  return { userId: user.id, teams, username: user.username };
 }
 
 function relayToViewers(driverId, channel, data) {
@@ -263,7 +292,7 @@ function relayToViewers(driverId, channel, data) {
   if (!driverClient) return;
 
   pitwallClients.forEach((viewer, ws) => {
-    if (viewer.teamId === driverClient.teamId &&
+    if (driverClient.teamIds.has(viewer.teamId) &&
         viewer.watchingDriverId === driverId &&
         viewer.channels.has(channel) &&
         ws.readyState === 1) {
@@ -294,9 +323,9 @@ function broadcastToTeamViewers(teamId, data) {
 
 function getActiveDrivers(teamId) {
   const drivers = [];
-  bridgeClients.forEach((client, userId) => {
-    if (client.teamId === teamId) {
-      drivers.push({ userId, username: client.username });
+  bridgeClients.forEach((client, odriverId) => {
+    if (client.teamIds.has(teamId)) {
+      drivers.push({ userId: odriverId, username: client.username });
     }
   });
   return drivers;
