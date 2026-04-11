@@ -758,9 +758,11 @@
       <% const _isRacingPage = typeof currentPath !== 'undefined' && currentPath && (currentPath.startsWith('/racing') || currentPath.startsWith('/tracks')); %>
       <% if (_isRacingPage && typeof racingUser !== 'undefined' && racingUser) { %>
         <a href="/racing/account" class="nav-user-link">
-          <div class="nav-avatar" style="background: #3ecf8e; display: flex; align-items: center; justify-content: center; color: white; font-family: var(--font-display); font-weight: 700; font-size: 13px;">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
-          </div>
+          <% if (racingUser.avatar) { %>
+            <img src="<%= racingUser.avatar %>" alt="" class="nav-avatar" style="object-fit:cover;">
+          <% } else { %>
+            <div class="nav-avatar" style="background:#3ecf8e;display:flex;align-items:center;justify-content:center;color:white;font-family:var(--font-display);font-weight:700;font-size:13px;"><%= (racingUser.display_name || racingUser.username || '?').charAt(0).toUpperCase() %></div>
+          <% } %>
           <span class="nav-username"><%= racingUser.display_name || racingUser.username %></span>
         </a>
       <% } else if (typeof streamer !== 'undefined' && streamer) { %>
@@ -775,9 +777,11 @@
         </a>
       <% } else if (typeof racingUser !== 'undefined' && racingUser) { %>
         <a href="/racing/account" class="nav-user-link">
-          <div class="nav-avatar" style="background: #3ecf8e; display: flex; align-items: center; justify-content: center; color: white; font-family: var(--font-display); font-weight: 700; font-size: 13px;">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
-          </div>
+          <% if (racingUser.avatar) { %>
+            <img src="<%= racingUser.avatar %>" alt="" class="nav-avatar" style="object-fit:cover;">
+          <% } else { %>
+            <div class="nav-avatar" style="background:#3ecf8e;display:flex;align-items:center;justify-content:center;color:white;font-family:var(--font-display);font-weight:700;font-size:13px;"><%= (racingUser.display_name || racingUser.username || '?').charAt(0).toUpperCase() %></div>
+          <% } %>
           <span class="nav-username"><%= racingUser.display_name || racingUser.username %></span>
         </a>
       <% } %>
