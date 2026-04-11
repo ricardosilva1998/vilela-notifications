@@ -48,7 +48,7 @@
       <span id="connection-status"><span class="status-dot demo"></span></span>
     </div>
     <div id="player-content">
-      <div class="no-track">Connect Spotify on your account settings</div>
+      <div class="no-track">Connect Spotify at atletanotifications.com/racing/account</div>
     </div>
   </div>
 
@@ -83,7 +83,7 @@
     function renderPlayer(data) {
       const el = document.getElementById('player-content');
       if (!data || data.status === 'not_connected') {
-        el.innerHTML = '<div class="no-track">Connect Spotify on your account settings</div>';
+        el.innerHTML = '<div class="no-track">Connect Spotify at atletanotifications.com/racing/account</div>';
         updateStatus('disconnected');
         return;
       }
