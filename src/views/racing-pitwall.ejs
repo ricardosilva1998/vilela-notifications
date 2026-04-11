@@ -9,6 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/gridstack@10/dist/gridstack.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/gridstack@10/dist/gridstack-all.js"></script>
   <style>
     :root {
       --bg-base: #0c0d14;
@@ -30,7 +32,6 @@
       --font-body: 'DM Sans', sans-serif;
       --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       --timing-bar-h: 48px;
-      --bottom-strip-h: 80px;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -110,19 +111,6 @@
       gap: 8px;
       flex-shrink: 0;
       min-width: 0;
-    }
-    .driver-info .pos-badge {
-      display: none;
-      align-items: center;
-      justify-content: center;
-      width: 26px; height: 26px;
-      border-radius: 4px;
-      background: var(--accent);
-      color: #fff;
-      font-family: var(--font-display);
-      font-size: 12px;
-      font-weight: 700;
-      flex-shrink: 0;
     }
     .driver-info .driver-name {
       font-family: var(--font-display);
@@ -216,7 +204,7 @@
     }
     .driver-dot:hover .tooltip { display: block; }
 
-    .edit-btn {
+    .toolbar-btn {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -229,39 +217,84 @@
       transition: var(--transition);
       flex-shrink: 0;
     }
-    .edit-btn:hover { background: var(--bg-hover); color: var(--text-secondary); }
-    .edit-btn.active { background: var(--accent-glow); border-color: var(--border-focus); color: var(--accent); }
+    .toolbar-btn:hover { background: var(--bg-hover); color: var(--text-secondary); }
+    .toolbar-btn.active { background: var(--accent-glow); border-color: var(--border-focus); color: var(--accent); }
 
-    /* ── Panel Grid ── */
-    .pitwall-grid {
+    /* ── Toggle Panel ── */
+    .toggle-panel {
+      display: none;
       position: fixed;
       top: var(--timing-bar-h);
-      left: 0; right: 0;
-      bottom: var(--bottom-strip-h);
-      display: grid;
-      grid-template-columns: 5fr 2fr 2fr 1.5fr 1.5fr;
-      grid-template-rows: 3fr 2fr;
-      gap: 1px;
-      background: var(--border);
+      right: 0;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 0 8px;
+      padding: 8px 12px;
+      z-index: 99;
+      min-width: 160px;
     }
+    .toggle-panel.open { display: block; }
+    .toggle-panel label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      padding: 4px 0;
+      cursor: pointer;
+    }
+    .toggle-panel input[type="checkbox"] { accent-color: var(--accent); }
+    .toggle-panel .toggle-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+    .toggle-panel .toggle-actions button {
+      flex: 1;
+      padding: 5px 8px;
+      border-radius: 4px;
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      border: 1px solid var(--border);
+    }
+    .toggle-panel .reset-btn {
+      background: rgba(240,68,56,0.12);
+      color: #f04438;
+      border-color: rgba(240,68,56,0.25);
+    }
+    .toggle-panel .reset-btn:hover { background: rgba(240,68,56,0.2); }
+    .toggle-panel .lock-btn {
+      background: var(--accent-glow);
+      color: var(--accent);
+      border-color: var(--border-focus);
+    }
+    .toggle-panel .lock-btn:hover { background: rgba(145,70,255,0.25); }
 
-    .panel {
-      position: relative;
+    /* ── Gridstack Overrides ── */
+    .grid-stack {
+      position: fixed;
+      top: var(--timing-bar-h);
+      left: 0; right: 0; bottom: 0;
       background: var(--bg-base);
-      overflow: hidden;
     }
 
-    .panel[data-panel="standings"]    { grid-column: 1; grid-row: 1 / 3; }
-    .panel[data-panel="relative"]     { grid-column: 2 / 4; grid-row: 1; }
-    .panel[data-panel="fuel"]         { grid-column: 2; grid-row: 2; }
-    .panel[data-panel="raceduration"] { grid-column: 3; grid-row: 2; }
-    .panel[data-panel="trackmap"]     { grid-column: 4 / 6; grid-row: 1; }
-    .panel[data-panel="weather"]      { grid-column: 4; grid-row: 2; }
-    .panel[data-panel="wind"]         { grid-column: 5; grid-row: 2; }
+    .grid-stack-item-content {
+      background: var(--bg-base);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      border-radius: 0;
+      position: relative;
+    }
 
-    .panel-label {
+    .grid-stack-item-content .panel-label {
       position: absolute;
-      top: 6px; left: 8px;
+      top: 4px; left: 6px;
       font-size: 9px;
       font-weight: 600;
       text-transform: uppercase;
@@ -271,7 +304,15 @@
       pointer-events: none;
     }
 
-    .panel .placeholder {
+    .grid-stack-item-content iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: transparent;
+      display: none;
+    }
+
+    .grid-stack-item-content .placeholder {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -280,108 +321,32 @@
       font-size: 12px;
     }
 
-    .panel iframe {
-      display: none;
-      width: 100%;
-      height: 100%;
-      border: none;
-      background: transparent;
+    /* Gridstack placeholder during drag */
+    .grid-stack-placeholder > .placeholder-content {
+      background: var(--accent-glow) !important;
+      border: 1px dashed var(--accent) !important;
+      border-radius: 0 !important;
     }
 
-    /* ── Bottom Strip ── */
-    .pitwall-strip {
-      position: fixed;
-      left: 0; right: 0;
-      bottom: 0;
-      height: var(--bottom-strip-h);
-      display: grid;
-      grid-template-columns: 1fr 2.5fr;
-      gap: 1px;
-      background: var(--border);
+    /* Resize handle styling */
+    .grid-stack-item > .ui-resizable-se {
+      background: none;
+      width: 14px; height: 14px;
+      right: 2px; bottom: 2px;
+    }
+    .grid-stack-item > .ui-resizable-se::after {
+      content: '';
+      position: absolute;
+      right: 3px; bottom: 3px;
+      width: 8px; height: 8px;
+      border-right: 2px solid var(--text-muted);
+      border-bottom: 2px solid var(--text-muted);
+      opacity: 0.5;
     }
 
-    .pitwall-strip .panel { background: var(--bg-base); }
-
-    /* ── Edit Mode ── */
-    body.edit-mode .panel {
-      outline: 1px solid transparent;
-      transition: outline var(--transition);
-      cursor: grab;
-      user-select: none;
-    }
-    body.edit-mode .panel:hover { outline: 1px solid var(--accent); }
-    body.edit-mode .panel:active { cursor: grabbing; }
-    body.edit-mode .panel-label {
-      pointer-events: none;
-      background: var(--accent);
-      color: #fff;
-      padding: 2px 8px;
-      border-radius: 4px;
-    }
-    body.edit-mode .placeholder { pointer-events: none; }
-    body.edit-mode iframe { pointer-events: none; }
-    .drag-ghost {
-      position: fixed;
-      pointer-events: none;
-      z-index: 999;
-      background: rgba(145,70,255,0.25);
-      border: 1px solid var(--accent);
-      color: var(--text-primary);
-      font-family: var(--font-display);
-      font-size: 11px;
-      font-weight: 600;
-      padding: 6px 14px;
-      border-radius: 6px;
-      white-space: nowrap;
-    }
-    .panel.drag-over { outline: 2px solid var(--accent) !important; }
-    .reset-layout-btn {
-      position: fixed;
-      bottom: calc(var(--bottom-strip-h) + 8px);
-      right: 12px;
-      z-index: 101;
-      display: none;
-      align-items: center;
-      gap: 4px;
-      background: var(--bg-elevated);
-      border: 1px solid var(--border);
-      color: var(--text-secondary);
-      font-family: var(--font-display);
-      font-size: 11px;
-      font-weight: 600;
-      padding: 6px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: var(--transition);
-    }
-    .reset-layout-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
-    body.edit-mode .reset-layout-btn { display: flex; }
-
-    /* ── Grid Transitions (disabled during resize) ── */
-    .pitwall-grid, .pitwall-strip {
-      transition: grid-template-columns 0.15s ease, grid-template-rows 0.15s ease;
-    }
-    body.resizing .pitwall-grid, body.resizing .pitwall-strip { transition: none; }
-
-    /* ── Edit Mode Banner ── */
-    body.edit-mode::after {
-      content: 'EDIT MODE — Drag panels to rearrange, drag borders to resize';
-      position: fixed;
-      top: var(--timing-bar-h);
-      left: 0; right: 0;
-      height: 24px;
-      background: var(--accent);
-      color: #fff;
-      font-family: var(--font-display);
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.3px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 99;
-    }
-    body.edit-mode .pitwall-grid { top: calc(var(--timing-bar-h) + 24px); }
+    /* Lock mode — disable dragging visually */
+    .grid-stack.locked .grid-stack-item > .ui-resizable-se { display: none; }
+    .grid-stack.locked .grid-stack-item-content { cursor: default; }
   </style>
 </head>
 <body>
@@ -395,7 +360,6 @@
     <div class="live-badge" id="live-badge">LIVE</div>
 
     <div class="driver-info">
-      <div class="pos-badge" id="pos-badge"></div>
       <span class="driver-name" id="driver-name">Select a driver</span>
       <span class="lap-time" id="lap-time"></span>
     </div>
@@ -421,45 +385,16 @@
       <% }); %>
     </div>
 
-    <button class="edit-btn" id="edit-btn" onclick="toggleEditMode()" title="Edit layout">
+    <button class="toolbar-btn" id="settings-btn" onclick="toggleSettingsPanel()" title="Layout settings">
       <i data-lucide="settings" style="width:16px;height:16px;"></i>
     </button>
   </div>
 
-  <!-- Main Grid (9 panels: 7 in grid + 2 in bottom strip) -->
-  <div class="pitwall-grid" id="pitwall-grid">
-    <% var gridPanels = [
-      { id: 'standings', label: 'Standings' },
-      { id: 'relative', label: 'Relative' },
-      { id: 'fuel', label: 'Fuel' },
-      { id: 'raceduration', label: 'Race Duration' },
-      { id: 'trackmap', label: 'Track Map' },
-      { id: 'weather', label: 'Weather' },
-      { id: 'wind', label: 'Wind' },
-    ]; gridPanels.forEach(function(p) { %>
-      <div class="panel" data-panel="<%= p.id %>">
-        <div class="panel-label"><%= p.label %></div>
-        <div class="placeholder" id="placeholder-<%= p.id %>">Waiting for driver...</div>
-        <iframe id="iframe-<%= p.id %>" loading="lazy"></iframe>
-      </div>
-    <% }); %>
-  </div>
+  <!-- Toggle / Settings Panel -->
+  <div class="toggle-panel" id="toggle-panel"></div>
 
-  <!-- Bottom Strip -->
-  <div class="pitwall-strip" id="pitwall-strip">
-    <div class="panel" data-panel="inputs">
-      <div class="panel-label">Inputs</div>
-      <div class="placeholder" id="placeholder-inputs">Waiting for driver...</div>
-      <iframe id="iframe-inputs" loading="lazy"></iframe>
-    </div>
-    <div class="panel" data-panel="stintlaps">
-      <div class="panel-label">Session Laps</div>
-      <div class="placeholder" id="placeholder-stintlaps">Waiting for driver...</div>
-      <iframe id="iframe-stintlaps" loading="lazy"></iframe>
-    </div>
-  </div>
-
-  <button class="reset-layout-btn" onclick="resetLayout()">Reset layout</button>
+  <!-- Gridstack Container -->
+  <div class="grid-stack" id="pitwall-grid"></div>
 
   <script>
   (function() {
@@ -467,22 +402,220 @@
     var OVERLAY_BASE = '/pitwall/overlays';
     var ALL_CHANNELS = ['standings', 'relative', 'fuel', 'wind', 'trackmap', 'inputs', 'session'];
     var OVERLAY_MAP = {
-      standings: 'standings.html',
-      relative: 'relative.html',
-      fuel: 'fuel.html',
-      inputs: 'inputs.html',
-      trackmap: 'trackmap.html',
-      weather: 'weather.html',
-      wind: 'wind.html',
-      stintlaps: 'stintlaps.html',
+      standings:    'standings.html',
+      relative:     'relative.html',
+      fuel:         'fuel.html',
+      inputs:       'inputs.html',
+      trackmap:     'trackmap.html',
+      weather:      'weather.html',
+      wind:         'wind.html',
+      stintlaps:    'stintlaps.html',
       raceduration: 'raceduration.html'
     };
 
+    var PANEL_LABELS = {
+      standings: 'Standings', relative: 'Relative', fuel: 'Fuel',
+      inputs: 'Inputs', trackmap: 'Track Map', weather: 'Weather',
+      wind: 'Wind', stintlaps: 'Session Laps', raceduration: 'Race Duration'
+    };
+
+    // Default layout: 12-column grid, row height auto-calculated
+    var DEFAULT_LAYOUT = [
+      { id: 'standings',    x: 0,  y: 0, w: 4, h: 8 },
+      { id: 'relative',     x: 4,  y: 0, w: 4, h: 4 },
+      { id: 'fuel',         x: 4,  y: 4, w: 2, h: 4 },
+      { id: 'raceduration', x: 6,  y: 4, w: 2, h: 4 },
+      { id: 'trackmap',     x: 8,  y: 0, w: 4, h: 4 },
+      { id: 'weather',      x: 8,  y: 4, w: 2, h: 4 },
+      { id: 'wind',         x: 10, y: 4, w: 2, h: 4 },
+      { id: 'inputs',       x: 0,  y: 8, w: 4, h: 2 },
+      { id: 'stintlaps',    x: 4,  y: 8, w: 8, h: 2 },
+    ];
+
+    var LAYOUT_KEY = 'pitwall-gridstack-v2';
+    var HIDDEN_KEY = 'pitwall-hidden-v2';
+    var LOCK_KEY = 'pitwall-locked-v1';
+
+    var grid = null;
     var ws = null;
     var reconnectTimer = null;
     var selectedDriverId = null;
     var onlineDrivers = new Set();
+    var hiddenPanels = new Set();
+    var isLocked = false;
 
+    // ── Gridstack Init ──────────────────────────────────────────
+    function initGrid() {
+      // Load hidden panels
+      try {
+        var stored = localStorage.getItem(HIDDEN_KEY);
+        if (stored) JSON.parse(stored).forEach(function(id) { hiddenPanels.add(id); });
+      } catch(e) {}
+
+      // Load lock state
+      try { isLocked = localStorage.getItem(LOCK_KEY) === '1'; } catch(e) {}
+
+      // Load saved layout or use defaults
+      var layout = loadLayout();
+
+      // Calculate row height based on viewport
+      var availH = window.innerHeight - 48; // minus timing bar
+      var cellH = Math.floor(availH / 10);
+
+      grid = GridStack.init({
+        column: 12,
+        cellHeight: cellH,
+        margin: 1,
+        animate: true,
+        float: true,
+        disableOneColumnMode: true,
+        removable: false,
+        resizable: { handles: 'e,se,s' },
+      }, '#pitwall-grid');
+
+      // Add widgets
+      layout.forEach(function(item) {
+        addWidget(item);
+      });
+
+      // Apply lock state
+      if (isLocked) {
+        grid.enableMove(false);
+        grid.enableResize(false);
+        document.getElementById('pitwall-grid').classList.add('locked');
+      }
+
+      // Save on change
+      grid.on('change', function() { saveCurrentLayout(); });
+
+      // Resize handler
+      window.addEventListener('resize', function() {
+        var newH = Math.floor((window.innerHeight - 48) / 10);
+        grid.cellHeight(newH);
+      });
+    }
+
+    function addWidget(item) {
+      var isHidden = hiddenPanels.has(item.id);
+      var el = grid.addWidget({
+        id: item.id,
+        x: item.x, y: item.y,
+        w: item.w, h: item.h,
+        minW: 1, minH: 1,
+        content:
+          '<div class="panel-label">' + (PANEL_LABELS[item.id] || item.id) + '</div>' +
+          '<div class="placeholder" id="placeholder-' + item.id + '">Waiting for driver...</div>' +
+          '<iframe id="iframe-' + item.id + '" loading="lazy"></iframe>',
+      });
+      if (isHidden && el) {
+        el.style.display = 'none';
+        grid.update(el, { noMove: true, noResize: true });
+      }
+    }
+
+    function loadLayout() {
+      try {
+        var stored = localStorage.getItem(LAYOUT_KEY);
+        if (stored) {
+          var layout = JSON.parse(stored);
+          if (Array.isArray(layout) && layout.length > 0) return layout;
+        }
+      } catch(e) {}
+      return JSON.parse(JSON.stringify(DEFAULT_LAYOUT));
+    }
+
+    function saveCurrentLayout() {
+      var items = grid.getGridItems();
+      var layout = items.map(function(el) {
+        var node = el.gridstackNode;
+        return { id: node.id, x: node.x, y: node.y, w: node.w, h: node.h };
+      });
+      localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout));
+    }
+
+    // ── Toggle / Settings Panel ─────────────────────────────────
+    function buildSettingsPanel() {
+      var panel = document.getElementById('toggle-panel');
+      var html = '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px;">Show / Hide Overlays</div>';
+      Object.keys(OVERLAY_MAP).forEach(function(id) {
+        var checked = !hiddenPanels.has(id) ? 'checked' : '';
+        html += '<label><input type="checkbox" data-panel-id="' + id + '" ' + checked + ' onchange="toggleOverlay(\'' + id + '\', this.checked)"> ' + PANEL_LABELS[id] + '</label>';
+      });
+      html += '<div class="toggle-actions">';
+      html += '<button class="lock-btn" id="lock-btn" onclick="toggleLock()">' + (isLocked ? 'Unlock Layout' : 'Lock Layout') + '</button>';
+      html += '<button class="reset-btn" onclick="resetLayout()">Reset</button>';
+      html += '</div>';
+      panel.innerHTML = html;
+    }
+
+    window.toggleSettingsPanel = function() {
+      var panel = document.getElementById('toggle-panel');
+      var btn = document.getElementById('settings-btn');
+      panel.classList.toggle('open');
+      btn.classList.toggle('active');
+      if (panel.classList.contains('open')) buildSettingsPanel();
+    };
+
+    window.toggleOverlay = function(id, visible) {
+      var items = grid.getGridItems();
+      var widget = items.find(function(el) { return el.gridstackNode && el.gridstackNode.id === id; });
+
+      if (visible) {
+        hiddenPanels.delete(id);
+        if (widget) {
+          widget.style.display = '';
+          grid.update(widget, { noMove: false, noResize: false });
+        } else {
+          // Re-add with default position
+          var def = DEFAULT_LAYOUT.find(function(d) { return d.id === id; });
+          if (def) addWidget(def);
+        }
+        // Reload iframe if driver is selected
+        if (selectedDriverId) {
+          var iframe = document.getElementById('iframe-' + id);
+          var placeholder = document.getElementById('placeholder-' + id);
+          if (iframe) {
+            iframe.src = OVERLAY_BASE + '/' + OVERLAY_MAP[id] + '?pitwall=1&driver=' + selectedDriverId;
+            iframe.style.display = 'block';
+            iframe.onload = function() {
+              if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage({ type: 'bridge-connected' }, '*');
+                iframe.contentWindow.postMessage({ type: 'status', iracing: true }, '*');
+              }
+            };
+          }
+          if (placeholder) placeholder.style.display = 'none';
+        }
+      } else {
+        hiddenPanels.add(id);
+        if (widget) {
+          widget.style.display = 'none';
+          grid.update(widget, { noMove: true, noResize: true });
+          var iframe = document.getElementById('iframe-' + id);
+          if (iframe) { iframe.src = 'about:blank'; iframe.style.display = 'none'; }
+        }
+      }
+      localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenPanels]));
+      saveCurrentLayout();
+    };
+
+    window.toggleLock = function() {
+      isLocked = !isLocked;
+      grid.enableMove(!isLocked);
+      grid.enableResize(!isLocked);
+      document.getElementById('pitwall-grid').classList.toggle('locked', isLocked);
+      document.getElementById('lock-btn').textContent = isLocked ? 'Unlock Layout' : 'Lock Layout';
+      localStorage.setItem(LOCK_KEY, isLocked ? '1' : '0');
+    };
+
+    window.resetLayout = function() {
+      localStorage.removeItem(LAYOUT_KEY);
+      localStorage.removeItem(HIDDEN_KEY);
+      localStorage.removeItem(LOCK_KEY);
+      location.reload();
+    };
+
+    // ── WebSocket ───────────────────────────────────────────────
     function connect() {
       setStatus('connecting');
       ws = new WebSocket(WS_URL);
@@ -506,7 +639,6 @@
             onlineDrivers.add(d.userId);
           });
           updateDriverDots();
-          // If we already had a driver selected (reconnect), notify iframes
           if (selectedDriverId) postToIframes({ type: 'status', iracing: true });
         } else if (msg.type === 'driver-online') {
           onlineDrivers.add(msg.userId);
@@ -515,7 +647,6 @@
           onlineDrivers.delete(msg.userId);
           updateDriverDots();
         } else if (msg.type === 'data') {
-          // Forward telemetry data to overlay iframes
           postToIframes(msg);
         }
       };
@@ -526,9 +657,7 @@
         scheduleReconnect();
       };
 
-      ws.onerror = function() {
-        ws.close();
-      };
+      ws.onerror = function() { ws.close(); };
     }
 
     function scheduleReconnect() {
@@ -554,9 +683,10 @@
       });
     }
 
-    // Forward a message to all loaded overlay iframes via postMessage
+    // ── postMessage relay to iframes ────────────────────────────
     function postToIframes(msg) {
       for (var key in OVERLAY_MAP) {
+        if (hiddenPanels.has(key)) continue;
         var iframe = document.getElementById('iframe-' + key);
         if (iframe && iframe.contentWindow && iframe.style.display !== 'none') {
           iframe.contentWindow.postMessage(msg, '*');
@@ -566,12 +696,12 @@
 
     function loadOverlayIframes(driverId) {
       for (var key in OVERLAY_MAP) {
+        if (hiddenPanels.has(key)) continue;
         var iframe = document.getElementById('iframe-' + key);
         var placeholder = document.getElementById('placeholder-' + key);
         if (iframe) {
           iframe.src = OVERLAY_BASE + '/' + OVERLAY_MAP[key] + '?pitwall=1&driver=' + driverId;
           iframe.style.display = 'block';
-          // Once iframe loads, send it the connection status
           iframe.onload = (function() {
             var iframeRef = iframe;
             return function() {
@@ -595,8 +725,8 @@
       }
     }
 
+    // ── Driver Selection ────────────────────────────────────────
     window.selectDriver = function(userId, name) {
-      // Toggle off if same driver
       if (selectedDriverId === userId) {
         window.deselectDriver();
         return;
@@ -604,22 +734,18 @@
 
       selectedDriverId = userId;
 
-      // Update timing bar
       var nameEl = document.getElementById('driver-name');
       nameEl.textContent = name;
       nameEl.classList.add('has-driver');
       document.getElementById('live-badge').classList.add('active');
 
-      // Highlight selected dot
       document.querySelectorAll('.driver-dot').forEach(function(el) {
         var uid = parseInt(el.dataset.userId);
         el.classList.toggle('selected', uid === userId);
       });
 
-      // Load overlay iframes
       loadOverlayIframes(userId);
 
-      // Subscribe on WS
       if (ws && ws.readyState === 1) {
         ws.send(JSON.stringify({ type: 'subscribe', channels: ALL_CHANNELS, driverId: userId }));
       }
@@ -643,397 +769,20 @@
       clearOverlayIframes();
     };
 
-    /* ── Layout Persistence (Task 5) ── */
-    var LAYOUT_KEY = 'pitwall-layout-v1';
-    var RATIOS_KEY = 'pitwall-ratios-v1';
-    var gridEl = document.getElementById('pitwall-grid');
-    var stripEl = document.getElementById('pitwall-strip');
-
-    var GRID_AREAS = [
-      'grid-column:1; grid-row:1/3;',
-      'grid-column:2/4; grid-row:1;',
-      'grid-column:2; grid-row:2;',
-      'grid-column:3; grid-row:2;',
-      'grid-column:4/6; grid-row:1;',
-      'grid-column:4; grid-row:2;',
-      'grid-column:5; grid-row:2;'
-    ];
-
-    function getDefaultLayout() {
-      return { grid: ['standings','relative','fuel','raceduration','trackmap','weather','wind'], strip: ['inputs','stintlaps'], version: 1 };
-    }
-
-    function loadLayout() {
-      try {
-        var stored = localStorage.getItem(LAYOUT_KEY);
-        if (stored) {
-          var layout = JSON.parse(stored);
-          if (layout && layout.version === 1 && layout.grid && layout.grid.length === 7 && layout.strip && layout.strip.length === 2) return layout;
-        }
-      } catch(e) {}
-      return getDefaultLayout();
-    }
-
-    function saveLayout(layout) {
-      localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout));
-    }
-
-    function applyLayout(layout) {
-      // Reorder grid children
-      var gridPanels = Array.from(gridEl.querySelectorAll('.panel'));
-      layout.grid.forEach(function(panelId) {
-        var panel = gridPanels.find(function(p) { return p.dataset.panel === panelId; });
-        if (panel) gridEl.appendChild(panel);
-      });
-      // Reorder strip children
-      var stripPanels = Array.from(stripEl.querySelectorAll('.panel'));
-      layout.strip.forEach(function(panelId) {
-        var panel = stripPanels.find(function(p) { return p.dataset.panel === panelId; });
-        if (panel) stripEl.appendChild(panel);
-      });
-      updateGridAreas();
-    }
-
-    function updateGridAreas() {
-      var panels = Array.from(gridEl.querySelectorAll('.panel'));
-      panels.forEach(function(panel, i) {
-        if (GRID_AREAS[i]) {
-          panel.style.cssText = GRID_AREAS[i];
-        }
-      });
-    }
-
-    function getCurrentLayout() {
-      var grid = Array.from(gridEl.querySelectorAll('.panel')).map(function(p) { return p.dataset.panel; });
-      var strip = Array.from(stripEl.querySelectorAll('.panel')).map(function(p) { return p.dataset.panel; });
-      return { grid: grid, strip: strip, version: 1 };
-    }
-
-    /* ── Drag-to-Swap (Task 5) ── */
-    var dragSource = null;
-    var dragGhost = null;
-    var dragContainer = null;
-
-    function isNearAnyBoundary(x, y) {
-      var currentRatios = loadRatios();
-      var threshold = 6;
-      var gridRect = gridEl.getBoundingClientRect();
-      if (x >= gridRect.left && x <= gridRect.right && y >= gridRect.top && y <= gridRect.bottom) {
-        var colInfo = getBoundaryPositions(gridEl, currentRatios.cols, 'col');
-        if (findNearBoundary(x, colInfo.positions, threshold) !== -1) return true;
-        var rowInfo = getBoundaryPositions(gridEl, currentRatios.rows, 'row');
-        if (findNearBoundary(y, rowInfo.positions, threshold) !== -1) return true;
-      }
-      var stripRect = stripEl.getBoundingClientRect();
-      if (x >= stripRect.left && x <= stripRect.right && y >= stripRect.top && y <= stripRect.bottom) {
-        var stripInfo = getBoundaryPositions(stripEl, currentRatios.stripCols, 'col');
-        if (findNearBoundary(x, stripInfo.positions, threshold) !== -1) return true;
-      }
-      return false;
-    }
-
-    document.addEventListener('mousedown', function(e) {
-      if (!document.body.classList.contains('edit-mode')) return;
-      var panel = e.target.closest('.panel');
-      if (!panel) return;
-      // Let resize handler take priority near boundaries
-      if (isNearAnyBoundary(e.clientX, e.clientY)) return;
-      e.preventDefault();
-
-      dragSource = panel;
-      dragContainer = panel.parentElement;
-      var label = panel.querySelector('.panel-label');
-
-      dragGhost = document.createElement('div');
-      dragGhost.className = 'drag-ghost';
-      dragGhost.textContent = label ? label.textContent : panel.dataset.panel;
-      dragGhost.style.left = e.clientX + 12 + 'px';
-      dragGhost.style.top = e.clientY + 12 + 'px';
-      document.body.appendChild(dragGhost);
-
-      panel.style.opacity = '0.4';
-    });
-
-    document.addEventListener('mousemove', function(e) {
-      if (!dragSource) return;
-      if (dragGhost) {
-        dragGhost.style.left = e.clientX + 12 + 'px';
-        dragGhost.style.top = e.clientY + 12 + 'px';
-      }
-      // Highlight drop target
-      document.querySelectorAll('.panel.drag-over').forEach(function(p) { p.classList.remove('drag-over'); });
-      var target = document.elementFromPoint(e.clientX, e.clientY);
-      if (target) {
-        var targetPanel = target.closest('.panel');
-        if (targetPanel && targetPanel !== dragSource && targetPanel.parentElement === dragContainer) {
-          targetPanel.classList.add('drag-over');
-        }
-      }
-    });
-
-    document.addEventListener('mouseup', function(e) {
-      if (!dragSource) return;
-      document.querySelectorAll('.panel.drag-over').forEach(function(p) { p.classList.remove('drag-over'); });
-      if (dragGhost) { dragGhost.remove(); dragGhost = null; }
-
-      var target = document.elementFromPoint(e.clientX, e.clientY);
-      if (target) {
-        var targetPanel = target.closest('.panel');
-        if (targetPanel && targetPanel !== dragSource && targetPanel.parentElement === dragContainer) {
-          // Swap DOM positions
-          var container = dragContainer;
-          var allPanels = Array.from(container.querySelectorAll('.panel'));
-          var srcIdx = allPanels.indexOf(dragSource);
-          var tgtIdx = allPanels.indexOf(targetPanel);
-          if (srcIdx !== -1 && tgtIdx !== -1) {
-            if (srcIdx < tgtIdx) {
-              container.insertBefore(targetPanel, dragSource);
-              container.insertBefore(dragSource, allPanels[tgtIdx + 1] || null);
-            } else {
-              container.insertBefore(dragSource, targetPanel);
-              container.insertBefore(targetPanel, allPanels[srcIdx + 1] || null);
-            }
-            updateGridAreas();
-            saveLayout(getCurrentLayout());
-          }
-        }
-      }
-
-      if (dragSource) dragSource.style.opacity = '';
-      dragSource = null;
-      dragContainer = null;
-    });
-
-    /* ── Ratio Persistence (Task 6) ── */
-    var defaultRatios = { cols: [5,2,2,1.5,1.5], rows: [3,2], stripCols: [1,2.5] };
-
-    function loadRatios() {
-      try {
-        var stored = localStorage.getItem(RATIOS_KEY);
-        if (stored) {
-          var r = JSON.parse(stored);
-          if (r && r.cols && r.rows && r.stripCols) return r;
-        }
-      } catch(e) {}
-      return JSON.parse(JSON.stringify(defaultRatios));
-    }
-
-    function saveRatios(ratios) {
-      localStorage.setItem(RATIOS_KEY, JSON.stringify(ratios));
-    }
-
-    function applyRatios(ratios) {
-      gridEl.style.gridTemplateColumns = ratios.cols.map(function(v) { return v + 'fr'; }).join(' ');
-      gridEl.style.gridTemplateRows = ratios.rows.map(function(v) { return v + 'fr'; }).join(' ');
-      stripEl.style.gridTemplateColumns = ratios.stripCols.map(function(v) { return v + 'fr'; }).join(' ');
-    }
-
-    /* ── Edge Resize (Task 6) ── */
-    var resizing = false;
-    var resizeTarget = null; // 'grid-col', 'grid-row', 'strip-col'
-    var resizeIndex = -1;
-    var resizeStartX = 0;
-    var resizeStartY = 0;
-    var resizeStartRatios = null;
-    var resizeTotalPx = 0;
-
-    function getBoundaryPositions(container, ratios, axis) {
-      var rect = container.getBoundingClientRect();
-      var total = axis === 'col' ? rect.width : rect.height;
-      var gap = 1; // 1px gap
-      var numGaps = ratios.length - 1;
-      var usable = total - numGaps * gap;
-      var sum = ratios.reduce(function(a,b) { return a+b; }, 0);
-      var positions = [];
-      var offset = axis === 'col' ? rect.left : rect.top;
-      for (var i = 0; i < ratios.length - 1; i++) {
-        offset += (ratios[i] / sum) * usable + gap;
-        positions.push(offset);
-      }
-      return { positions: positions, total: usable, sum: sum };
-    }
-
-    function findNearBoundary(mousePos, positions, threshold) {
-      for (var i = 0; i < positions.length; i++) {
-        if (Math.abs(mousePos - positions[i]) < threshold) return i;
-      }
-      return -1;
-    }
-
-    document.addEventListener('mousedown', function(e) {
-      if (!document.body.classList.contains('edit-mode')) return;
-      if (dragSource) return;
-      if (e.target.closest('.reset-layout-btn') || e.target.closest('.edit-btn')) return;
-
-      var currentRatios = loadRatios();
-      var threshold = 6;
-
-      // Check grid columns
-      var gridRect = gridEl.getBoundingClientRect();
-      if (e.clientX >= gridRect.left && e.clientX <= gridRect.right && e.clientY >= gridRect.top && e.clientY <= gridRect.bottom) {
-        var colInfo = getBoundaryPositions(gridEl, currentRatios.cols, 'col');
-        var colIdx = findNearBoundary(e.clientX, colInfo.positions, threshold);
-        if (colIdx !== -1) {
-          e.preventDefault();
-          resizing = true;
-          resizeTarget = 'grid-col';
-          resizeIndex = colIdx;
-          resizeStartX = e.clientX;
-          resizeStartRatios = JSON.parse(JSON.stringify(currentRatios));
-          resizeTotalPx = colInfo.total;
-          document.body.classList.add('resizing');
-          return;
-        }
-        var rowInfo = getBoundaryPositions(gridEl, currentRatios.rows, 'row');
-        var rowIdx = findNearBoundary(e.clientY, rowInfo.positions, threshold);
-        if (rowIdx !== -1) {
-          e.preventDefault();
-          resizing = true;
-          resizeTarget = 'grid-row';
-          resizeIndex = rowIdx;
-          resizeStartY = e.clientY;
-          resizeStartRatios = JSON.parse(JSON.stringify(currentRatios));
-          resizeTotalPx = rowInfo.total;
-          document.body.classList.add('resizing');
-          return;
-        }
-      }
-
-      // Check strip columns
-      var stripRect = stripEl.getBoundingClientRect();
-      if (e.clientX >= stripRect.left && e.clientX <= stripRect.right && e.clientY >= stripRect.top && e.clientY <= stripRect.bottom) {
-        var stripInfo = getBoundaryPositions(stripEl, currentRatios.stripCols, 'col');
-        var stripIdx = findNearBoundary(e.clientX, stripInfo.positions, threshold);
-        if (stripIdx !== -1) {
-          e.preventDefault();
-          resizing = true;
-          resizeTarget = 'strip-col';
-          resizeIndex = stripIdx;
-          resizeStartX = e.clientX;
-          resizeStartRatios = JSON.parse(JSON.stringify(currentRatios));
-          resizeTotalPx = stripInfo.total;
-          document.body.classList.add('resizing');
-          return;
-        }
-      }
-    });
-
-    document.addEventListener('mousemove', function(e) {
-      // Cursor hints in edit mode
-      if (document.body.classList.contains('edit-mode') && !resizing && !dragSource) {
-        var currentRatios = loadRatios();
-        var cursor = '';
-        var gridRect = gridEl.getBoundingClientRect();
-        if (e.clientX >= gridRect.left && e.clientX <= gridRect.right && e.clientY >= gridRect.top && e.clientY <= gridRect.bottom) {
-          var colInfo = getBoundaryPositions(gridEl, currentRatios.cols, 'col');
-          if (findNearBoundary(e.clientX, colInfo.positions, 6) !== -1) cursor = 'col-resize';
-          else {
-            var rowInfo = getBoundaryPositions(gridEl, currentRatios.rows, 'row');
-            if (findNearBoundary(e.clientY, rowInfo.positions, 6) !== -1) cursor = 'row-resize';
-          }
-        }
-        if (!cursor) {
-          var stripRect = stripEl.getBoundingClientRect();
-          if (e.clientX >= stripRect.left && e.clientX <= stripRect.right && e.clientY >= stripRect.top && e.clientY <= stripRect.bottom) {
-            var stripInfo = getBoundaryPositions(stripEl, currentRatios.stripCols, 'col');
-            if (findNearBoundary(e.clientX, stripInfo.positions, 6) !== -1) cursor = 'col-resize';
-          }
-        }
-        document.body.style.cursor = cursor || '';
-      }
-
-      if (!resizing) return;
-      e.preventDefault();
-
-      var ratios = JSON.parse(JSON.stringify(resizeStartRatios));
-      var MIN_RATIO = 0.5;
-
-      if (resizeTarget === 'grid-col') {
-        var dx = e.clientX - resizeStartX;
-        var sum = ratios.cols.reduce(function(a,b) { return a+b; }, 0);
-        var dRatio = (dx / resizeTotalPx) * sum;
-        var newLeft = ratios.cols[resizeIndex] + dRatio;
-        var newRight = ratios.cols[resizeIndex + 1] - dRatio;
-        if (newLeft >= MIN_RATIO && newRight >= MIN_RATIO) {
-          ratios.cols[resizeIndex] = Math.round(newLeft * 100) / 100;
-          ratios.cols[resizeIndex + 1] = Math.round(newRight * 100) / 100;
-        }
-      } else if (resizeTarget === 'grid-row') {
-        var dy = e.clientY - resizeStartY;
-        var sum = ratios.rows.reduce(function(a,b) { return a+b; }, 0);
-        var dRatio = (dy / resizeTotalPx) * sum;
-        var newTop = ratios.rows[resizeIndex] + dRatio;
-        var newBottom = ratios.rows[resizeIndex + 1] - dRatio;
-        if (newTop >= MIN_RATIO && newBottom >= MIN_RATIO) {
-          ratios.rows[resizeIndex] = Math.round(newTop * 100) / 100;
-          ratios.rows[resizeIndex + 1] = Math.round(newBottom * 100) / 100;
-        }
-      } else if (resizeTarget === 'strip-col') {
-        var dx = e.clientX - resizeStartX;
-        var sum = ratios.stripCols.reduce(function(a,b) { return a+b; }, 0);
-        var dRatio = (dx / resizeTotalPx) * sum;
-        var newLeft = ratios.stripCols[resizeIndex] + dRatio;
-        var newRight = ratios.stripCols[resizeIndex + 1] - dRatio;
-        if (newLeft >= MIN_RATIO && newRight >= MIN_RATIO) {
-          ratios.stripCols[resizeIndex] = Math.round(newLeft * 100) / 100;
-          ratios.stripCols[resizeIndex + 1] = Math.round(newRight * 100) / 100;
-        }
-      }
-
-      applyRatios(ratios);
-    });
-
-    document.addEventListener('mouseup', function() {
-      if (!resizing) return;
-      resizing = false;
-      document.body.classList.remove('resizing');
-      document.body.style.cursor = '';
-      // Read current ratios from the grid styles and save
-      var currentRatios = loadRatios();
-      var gridCols = gridEl.style.gridTemplateColumns;
-      var gridRows = gridEl.style.gridTemplateRows;
-      var stripCols = stripEl.style.gridTemplateColumns;
-      if (gridCols) currentRatios.cols = gridCols.split(' ').map(function(v) { return parseFloat(v); });
-      if (gridRows) currentRatios.rows = gridRows.split(' ').map(function(v) { return parseFloat(v); });
-      if (stripCols) currentRatios.stripCols = stripCols.split(' ').map(function(v) { return parseFloat(v); });
-      saveRatios(currentRatios);
-      resizeTarget = null;
-      resizeIndex = -1;
-      resizeStartRatios = null;
-    });
-
-    /* ── Toggle Edit Mode ── */
-    window.toggleEditMode = function() {
-      document.body.classList.toggle('edit-mode');
-      document.getElementById('edit-btn').classList.toggle('active');
-      if (!document.body.classList.contains('edit-mode')) {
-        document.body.style.cursor = '';
-      }
-    };
-
-    /* ── Reset Layout ── */
-    window.resetLayout = function() {
-      localStorage.removeItem(LAYOUT_KEY);
-      localStorage.removeItem(RATIOS_KEY);
-      applyLayout(getDefaultLayout());
-      applyRatios(JSON.parse(JSON.stringify(defaultRatios)));
-    };
-
-    /* ── Apply saved layout + ratios on load ── */
-    applyLayout(loadLayout());
-    applyRatios(loadRatios());
-
-    // ESC key handler
+    // ── ESC key ─────────────────────────────────────────────────
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
-        if (document.body.classList.contains('edit-mode')) {
-          window.toggleEditMode();
+        var panel = document.getElementById('toggle-panel');
+        if (panel.classList.contains('open')) {
+          window.toggleSettingsPanel();
         } else {
           window.location.href = '/racing/teams';
         }
       }
     });
 
+    // ── Boot ────────────────────────────────────────────────────
+    initGrid();
     connect();
   })();
   </script>
