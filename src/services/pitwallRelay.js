@@ -323,9 +323,9 @@ function broadcastToTeamViewers(teamId, data) {
 
 function getActiveDrivers(teamId) {
   const drivers = [];
-  bridgeClients.forEach((client, odriverId) => {
+  bridgeClients.forEach((client, driverId) => {
     if (client.teamIds.has(teamId)) {
-      drivers.push({ userId: odriverId, username: client.username });
+      drivers.push({ userId: driverId, username: client.username });
     }
   });
   return drivers;

@@ -78,8 +78,12 @@ router.post('/:teamId/invite', (req, res) => {
   if (target.id === req.racingUser.id) {
     return res.redirect('/racing/teams/' + teamId + '?error=' + encodeURIComponent('Cannot invite yourself'));
   }
-  const targetTeamCount = db.countTeamsForUser(target.id);
-  if (targetTeamCount >= 5) {
+  // Check if target is already in this team
+  const targetTeams = db.getTeamsForUser(target.id);
+  if (targetTeams.some(t => t.team_id === teamId)) {
+    return res.redirect('/racing/teams/' + teamId + '?error=' + encodeURIComponent('That user is already in this team'));
+  }
+  if (targetTeams.length >= 5) {
     return res.redirect('/racing/teams/' + teamId + '?error=' + encodeURIComponent('That user is already in 5 teams'));
   }
   const result = db.createTeamInvite(teamId, target.id, req.racingUser.id);
