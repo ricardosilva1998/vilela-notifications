@@ -363,7 +363,8 @@
 
       const logoStyle = getBrandLogoStyle(carBrand);
       const logoImg = logoStyle ? `<span class="brand-logo" style="${logoStyle}"></span>` : '';
-      const badgeCell = `<div class="driver-name">${d.driverName || ''}${pitMark}${stoppedMark}</div>`;
+      const esc = typeof _esc === 'function' ? _esc : function(s) { return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+      const badgeCell = `<div class="driver-name">${esc(d.driverName)}${pitMark}${stoppedMark}</div>`;
 
       const licCell = d.safetyRating || d.license
         ? `<span style="background:${licColor};color:#fff;padding:1px 5px;border-radius:4px;font-size:${fsSmall}px;font-weight:600;font-family:'JetBrains Mono',monospace;">${d.safetyRating || d.license}</span>`

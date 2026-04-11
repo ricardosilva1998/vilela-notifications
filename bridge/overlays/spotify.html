@@ -112,8 +112,8 @@
       let html = '<div class="player' + (isPaused ? ' paused' : '') + '">';
       // Album art
       html += '<div class="album-art">';
-      if (data.albumArt) {
-        html += '<img src="' + data.albumArt + '" alt="">';
+      if (data.albumArt && /^https:\/\//.test(data.albumArt)) {
+        html += '<img src="' + data.albumArt.replace(/"/g, '&quot;') + '" alt="">';
       } else {
         html += '<div class="album-placeholder"><svg width="24" height="24" viewBox="0 0 24 24" fill="rgba(255,255,255,0.15)"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>';
       }
@@ -121,8 +121,9 @@
 
       // Track info
       html += '<div class="track-info">';
-      html += '<div class="track-name">' + (data.track || 'Unknown') + '</div>';
-      html += '<div class="track-artist">' + (data.artist || 'Unknown') + '</div>';
+      var esc = typeof _esc === 'function' ? _esc : function(s) { return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+      html += '<div class="track-name">' + esc(data.track || 'Unknown') + '</div>';
+      html += '<div class="track-artist">' + esc(data.artist || 'Unknown') + '</div>';
       html += '<div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:' + pct + '%"></div></div>';
       html += '<div class="progress-times"><span id="time-current">' + formatTime(_progressMs) + '</span><span>' + formatTime(_durationMs) + '</span></div>';
       html += '</div>';

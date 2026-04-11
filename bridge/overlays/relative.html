@@ -316,7 +316,8 @@
       const logoStyle = getBrandLogoStyle(carBrand);
       const logoImg = logoStyle ? `<span class="brand-logo" style="${logoStyle}"></span>` : '';
       const nameStyle = lapColor ? 'color:' + lapColor + ';' : '';
-      const nameCell = `<div class="driver-name" style="${nameStyle}">${d.driverName || ''}</div>`;
+      const esc = typeof _esc === 'function' ? _esc : function(s) { return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+      const nameCell = `<div class="driver-name" style="${nameStyle}">${esc(d.driverName)}</div>`;
 
       if (isPlayerRow) {
         const cells = {

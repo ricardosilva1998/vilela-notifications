@@ -178,4 +178,10 @@
     }
 
   } catch(e) {}
+
+  // Global HTML escaping utility — use for any user-provided data rendered as HTML
+  window._esc = function(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  };
 })();
