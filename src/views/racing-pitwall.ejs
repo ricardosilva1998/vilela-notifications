@@ -303,17 +303,23 @@
     .pitwall-strip .panel { background: var(--bg-base); }
 
     /* ── Edit Mode ── */
-    body.edit-mode .panel { outline: 1px solid transparent; transition: outline var(--transition); }
-    body.edit-mode .panel:hover { outline: 1px solid var(--accent); }
-    body.edit-mode .panel-label {
+    body.edit-mode .panel {
+      outline: 1px solid transparent;
+      transition: outline var(--transition);
       cursor: grab;
-      pointer-events: auto;
+      user-select: none;
+    }
+    body.edit-mode .panel:hover { outline: 1px solid var(--accent); }
+    body.edit-mode .panel:active { cursor: grabbing; }
+    body.edit-mode .panel-label {
+      pointer-events: none;
       background: var(--accent);
       color: #fff;
       padding: 2px 8px;
       border-radius: 4px;
-      user-select: none;
     }
+    body.edit-mode .placeholder { pointer-events: none; }
+    body.edit-mode iframe { pointer-events: none; }
     .drag-ghost {
       position: fixed;
       pointer-events: none;
@@ -683,23 +689,44 @@
     var dragGhost = null;
     var dragContainer = null;
 
+    function isNearAnyBoundary(x, y) {
+      var currentRatios = loadRatios();
+      var threshold = 6;
+      var gridRect = gridEl.getBoundingClientRect();
+      if (x >= gridRect.left && x <= gridRect.right && y >= gridRect.top && y <= gridRect.bottom) {
+        var colInfo = getBoundaryPositions(gridEl, currentRatios.cols, 'col');
+        if (findNearBoundary(x, colInfo.positions, threshold) !== -1) return true;
+        var rowInfo = getBoundaryPositions(gridEl, currentRatios.rows, 'row');
+        if (findNearBoundary(y, rowInfo.positions, threshold) !== -1) return true;
+      }
+      var stripRect = stripEl.getBoundingClientRect();
+      if (x >= stripRect.left && x <= stripRect.right && y >= stripRect.top && y <= stripRect.bottom) {
+        var stripInfo = getBoundaryPositions(stripEl, currentRatios.stripCols, 'col');
+        if (findNearBoundary(x, stripInfo.positions, threshold) !== -1) return true;
+      }
+      return false;
+    }
+
     document.addEventListener('mousedown', function(e) {
       if (!document.body.classList.contains('edit-mode')) return;
-      var label = e.target.closest('.panel-label');
-      if (!label) return;
-      var panel = label.closest('.panel');
+      var panel = e.target.closest('.panel');
       if (!panel) return;
+      // Let resize handler take priority near boundaries
+      if (isNearAnyBoundary(e.clientX, e.clientY)) return;
       e.preventDefault();
 
       dragSource = panel;
       dragContainer = panel.parentElement;
+      var label = panel.querySelector('.panel-label');
 
       dragGhost = document.createElement('div');
       dragGhost.className = 'drag-ghost';
-      dragGhost.textContent = label.textContent;
+      dragGhost.textContent = label ? label.textContent : panel.dataset.panel;
       dragGhost.style.left = e.clientX + 12 + 'px';
       dragGhost.style.top = e.clientY + 12 + 'px';
       document.body.appendChild(dragGhost);
+
+      panel.style.opacity = '0.4';
     });
 
     document.addEventListener('mousemove', function(e) {
@@ -747,6 +774,7 @@
         }
       }
 
+      if (dragSource) dragSource.style.opacity = '';
       dragSource = null;
       dragContainer = null;
     });
@@ -809,7 +837,8 @@
 
     document.addEventListener('mousedown', function(e) {
       if (!document.body.classList.contains('edit-mode')) return;
-      if (e.target.closest('.panel-label') || e.target.closest('.reset-layout-btn') || e.target.closest('.edit-btn')) return;
+      if (dragSource) return;
+      if (e.target.closest('.reset-layout-btn') || e.target.closest('.edit-btn')) return;
 
       var currentRatios = loadRatios();
       var threshold = 6;
