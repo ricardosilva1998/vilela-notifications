@@ -60,6 +60,10 @@ app.use(express.static(path.join(__dirname, '..', 'public'), {
     }
   }
 }));
+// Serve Bridge overlay files for pitwall iframes
+app.use('/pitwall/overlays', express.static(path.join(__dirname, '..', 'bridge', 'overlays'), {
+  setHeaders: (res) => { res.set('Cache-Control', 'no-cache, no-store, must-revalidate'); }
+}));
 // Serve custom sounds from persistent data volume (survives deploys)
 app.use('/overlay/sounds', express.static(path.join(__dirname, '..', 'data', 'sounds')));
 // Serve sponsor images from persistent data volume

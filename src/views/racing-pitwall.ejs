@@ -75,12 +75,42 @@
       </div>
       <button onclick="deselectDriver()" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:var(--text-muted);font-size:12px;cursor:pointer;">Stop spectating</button>
     </div>
-    <div class="card" style="padding:32px;text-align:center;">
-      <p style="color:var(--text-muted);font-size:13px;">Live telemetry view coming in Phase 4</p>
-      <p style="color:var(--text-muted);font-size:11px;margin-top:8px;">Overlay iframes (standings, fuel, relative, trackmap, etc.) will appear here.</p>
-      <div id="telemetry-debug" style="margin-top:16px;text-align:left;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);display:none;">
-        <div style="margin-bottom:4px;font-weight:600;color:var(--text-secondary);">Telemetry data received:</div>
-        <div id="telemetry-channels"></div>
+    <div id="overlay-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="card" style="overflow:hidden;padding:0;">
+        <div style="padding:8px 12px;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Standings</div>
+        <iframe id="iframe-standings" style="width:100%;height:400px;border:none;background:transparent;" loading="lazy"></iframe>
+      </div>
+      <div class="card" style="overflow:hidden;padding:0;">
+        <div style="padding:8px 12px;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Relative</div>
+        <iframe id="iframe-relative" style="width:100%;height:400px;border:none;background:transparent;" loading="lazy"></iframe>
+      </div>
+      <div class="card" style="overflow:hidden;padding:0;">
+        <div style="padding:8px 12px;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Fuel</div>
+        <iframe id="iframe-fuel" style="width:100%;height:300px;border:none;background:transparent;" loading="lazy"></iframe>
+      </div>
+      <div class="card" style="overflow:hidden;padding:0;">
+        <div style="padding:8px 12px;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Inputs</div>
+        <iframe id="iframe-inputs" style="width:100%;height:300px;border:none;background:transparent;" loading="lazy"></iframe>
+      </div>
+      <div class="card" style="overflow:hidden;padding:0;">
+        <div style="padding:8px 12px;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Track Map</div>
+        <iframe id="iframe-trackmap" style="width:100%;height:300px;border:none;background:transparent;" loading="lazy"></iframe>
+      </div>
+      <div class="card" style="overflow:hidden;padding:0;">
+        <div style="padding:8px 12px;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Weather</div>
+        <iframe id="iframe-weather" style="width:100%;height:300px;border:none;background:transparent;" loading="lazy"></iframe>
+      </div>
+      <div class="card" style="overflow:hidden;padding:0;">
+        <div style="padding:8px 12px;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Wind</div>
+        <iframe id="iframe-wind" style="width:100%;height:250px;border:none;background:transparent;" loading="lazy"></iframe>
+      </div>
+      <div class="card" style="overflow:hidden;padding:0;">
+        <div style="padding:8px 12px;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Session Laps</div>
+        <iframe id="iframe-stintlaps" style="width:100%;height:300px;border:none;background:transparent;" loading="lazy"></iframe>
+      </div>
+      <div class="card" style="overflow:hidden;padding:0;grid-column:1/-1;">
+        <div style="padding:8px 12px;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Race Duration</div>
+        <iframe id="iframe-raceduration" style="width:100%;height:200px;border:none;background:transparent;" loading="lazy"></iframe>
       </div>
     </div>
   </div>
@@ -89,7 +119,19 @@
 <script>
 (function() {
   const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/pitwall';
+  const OVERLAY_BASE = '/pitwall/overlays';
   const ALL_CHANNELS = ['standings', 'relative', 'fuel', 'wind', 'trackmap', 'inputs', 'session'];
+  const OVERLAY_MAP = {
+    standings: 'standings.html',
+    relative: 'relative.html',
+    fuel: 'fuel.html',
+    inputs: 'inputs.html',
+    trackmap: 'trackmap.html',
+    weather: 'weather.html',
+    wind: 'wind.html',
+    stintlaps: 'stintlaps.html',
+    raceduration: 'raceduration.html',
+  };
 
   let ws = null;
   let reconnectTimer = null;
@@ -203,6 +245,23 @@
     container.innerHTML = html;
   }
 
+  function loadOverlayIframes(driverId) {
+    var wsParam = encodeURIComponent(WS_URL);
+    for (var key in OVERLAY_MAP) {
+      var iframe = document.getElementById('iframe-' + key);
+      if (iframe) {
+        iframe.src = OVERLAY_BASE + '/' + OVERLAY_MAP[key] + '?ws=' + wsParam + '&driver=' + driverId;
+      }
+    }
+  }
+
+  function clearOverlayIframes() {
+    for (var key in OVERLAY_MAP) {
+      var iframe = document.getElementById('iframe-' + key);
+      if (iframe) iframe.src = 'about:blank';
+    }
+  }
+
   window.selectDriver = function(userId, name) {
     selectedDriverId = userId;
     document.getElementById('spectating-name').textContent = name;
@@ -215,11 +274,10 @@
       el.style.outline = uid === userId ? '2px solid #3ecf8e' : '';
     });
 
-    // Clear previous data
-    for (var k in channelData) delete channelData[k];
-    var dbg = document.getElementById('telemetry-debug');
-    if (dbg) dbg.style.display = 'none';
+    // Load overlay iframes pointing to pitwall WS
+    loadOverlayIframes(userId);
 
+    // Also subscribe on main WS for status updates
     if (ws && ws.readyState === 1) {
       ws.send(JSON.stringify({ type: 'subscribe', channels: ALL_CHANNELS, driverId: userId }));
     }
@@ -232,6 +290,7 @@
     document.querySelectorAll('.driver-card').forEach(function(el) {
       el.style.outline = '';
     });
+    clearOverlayIframes();
   };
 
   connect();

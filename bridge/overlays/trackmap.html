@@ -68,7 +68,8 @@
       try { _fs2.appendFileSync(_logPath, line); } catch(e) {}
     }
 
-    const BRIDGE_URL = 'ws://localhost:9100';
+    const BRIDGE_URL = new URLSearchParams(window.location.search).get('ws') || 'ws://localhost:9100';
+    const PITWALL_DRIVER_ID = new URLSearchParams(window.location.search).get('driver') ? parseInt(new URLSearchParams(window.location.search).get('driver')) : null;
     let ws = null;
     let bridgeConnected = false;
     let iracingConnected = false;
@@ -77,7 +78,7 @@
     function connectBridge(channels) {
       log('[TrackMap] Connecting to ' + BRIDGE_URL);
       try { ws = new WebSocket(BRIDGE_URL); } catch(e) { log('[TrackMap] WS error: ' + e.message); setTimeout(() => connectBridge(channels), 3000); return; }
-      ws.onopen = () => { log('[TrackMap] Connected'); bridgeConnected = true; updateConnectionStatus(); ws.send(JSON.stringify({ type: 'subscribe', channels })); };
+      ws.onopen = () => { log('[TrackMap] Connected'); bridgeConnected = true; updateConnectionStatus(); ws.send(JSON.stringify({ type: 'subscribe', channels, driverId: PITWALL_DRIVER_ID })); };
       ws.onmessage = (event) => { try { const msg = JSON.parse(event.data); if (msg.type === 'bridge-connected') { log('[TrackMap] Bridge confirmed'); bridgeConnected = true; updateConnectionStatus(); } else if (msg.type === 'status') { log('[TrackMap] iRacing: ' + msg.iracing); iracingConnected = msg.iracing; updateConnectionStatus(); } else if (msg.type === 'data' && dataHandlers[msg.channel]) { dataHandlers[msg.channel](msg.data); } } catch(e) {} };
       ws.onclose = () => { log('[TrackMap] Disconnected'); bridgeConnected = false; iracingConnected = false; updateConnectionStatus(); setTimeout(() => connectBridge(channels), 3000); };
       ws.onerror = () => { log('[TrackMap] WS error'); ws.close(); };

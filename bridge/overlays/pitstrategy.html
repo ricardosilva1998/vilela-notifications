@@ -62,7 +62,8 @@
       try { _fs2.appendFileSync(_logPath, line); } catch(e) {}
     }
 
-    const BRIDGE_URL = 'ws://localhost:9100';
+    const BRIDGE_URL = new URLSearchParams(window.location.search).get('ws') || 'ws://localhost:9100';
+    const PITWALL_DRIVER_ID = new URLSearchParams(window.location.search).get('driver') ? parseInt(new URLSearchParams(window.location.search).get('driver')) : null;
     let ws = null;
     let bridgeConnected = false;
     let iracingConnected = false;
@@ -84,7 +85,7 @@
     function connectBridge(channels) {
       log('[PitStrategy] Connecting to ' + BRIDGE_URL);
       try { ws = new WebSocket(BRIDGE_URL); } catch(e) { log('[PitStrategy] WS error: ' + e.message); setTimeout(() => connectBridge(channels), 3000); return; }
-      ws.onopen = () => { log('[PitStrategy] Connected'); bridgeConnected = true; updateStatus(); ws.send(JSON.stringify({ type: 'subscribe', channels })); };
+      ws.onopen = () => { log('[PitStrategy] Connected'); bridgeConnected = true; updateStatus(); ws.send(JSON.stringify({ type: 'subscribe', channels, driverId: PITWALL_DRIVER_ID })); };
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);

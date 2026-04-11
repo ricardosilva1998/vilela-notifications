@@ -44,7 +44,8 @@
 
   <script>
     const MAX_MESSAGES = 50;
-    const BRIDGE_URL = 'ws://localhost:9100';
+    const BRIDGE_URL = new URLSearchParams(window.location.search).get('ws') || 'ws://localhost:9100';
+    const PITWALL_DRIVER_ID = new URLSearchParams(window.location.search).get('driver') ? parseInt(new URLSearchParams(window.location.search).get('driver')) : null;
     let ws = null;
     let bridgeConnected = false;
 
