@@ -207,7 +207,7 @@
 
 <script>
 var cropImg = null, cropZoom = 1, cropMinZoom = 1, cropMaxZoom = 3;
-var cropX = 0, cropY = 0, cropDragging = false, cropDragStart = null, cropRaf = null;
+var cropX = 0, cropY = 0, cropDragging = false, cropDragStart = null;
 var CANVAS_SIZE = 240, CIRCLE_D = 200, CIRCLE_R = CIRCLE_D / 2;
 var CANVAS_CX = CANVAS_SIZE / 2, CANVAS_CY = CANVAS_SIZE / 2;
 
@@ -243,7 +243,8 @@ function openCropModal() {
 
 function closeCropModal() {
   document.getElementById('crop-modal').style.display = 'none';
-  if (cropRaf) { cancelAnimationFrame(cropRaf); cropRaf = null; }
+  window.onmousemove = null;
+  window.onmouseup = null;
   document.getElementById('avatar-input').value = '';
 }
 
