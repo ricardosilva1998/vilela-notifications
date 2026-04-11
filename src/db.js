@@ -3819,10 +3819,13 @@ function getTeamMemberCount(teamId) {
 
 const _searchRacingUsers = db.prepare(`
   SELECT id, username, display_name, iracing_name, avatar
-  FROM racing_users WHERE username LIKE ? COLLATE NOCASE LIMIT 8
+  FROM racing_users
+  WHERE username LIKE ? COLLATE NOCASE OR iracing_name LIKE ? COLLATE NOCASE
+  LIMIT 8
 `);
 function searchRacingUsers(query) {
-  return _searchRacingUsers.all(query + '%');
+  const pattern = '%' + query + '%';
+  return _searchRacingUsers.all(pattern, pattern);
 }
 
 module.exports = {
