@@ -518,4 +518,16 @@ router.post('/discounts/:id/toggle', requireAdmin, (req, res) => {
   res.redirect('/admin/dashboard?tab=discounts');
 });
 
+// Reset racing user password
+router.post('/racing-reset-password', requireAdmin, (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'username and password required' });
+  const user = db.getRacingUserByUsername(username);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const bcrypt = require('bcryptjs');
+  const hash = bcrypt.hashSync(password, 10);
+  db.db.prepare('UPDATE racing_users SET password_hash = ? WHERE id = ?').run(hash, user.id);
+  res.json({ ok: true, message: 'Password reset for ' + user.username });
+});
+
 module.exports = router;
