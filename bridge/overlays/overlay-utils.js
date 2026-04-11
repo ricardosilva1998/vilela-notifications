@@ -75,13 +75,19 @@
     document.addEventListener('mouseleave', function() { _dragging = false; });
 
     // Click-through: transparent areas pass through, visible panel captures
+    // When CSS transform:scale() is applied, getBoundingClientRect() returns the
+    // unscaled DOM rect. We need to use the scaled visual bounds instead.
     var _mouseOverPanel = false;
     document.addEventListener('mousemove', function(e) {
       if (_dragging) return;
       var panel = document.querySelector('.overlay-panel');
       if (!panel) return;
       var r = panel.getBoundingClientRect();
-      var over = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+      var factor = currentScale / 100;
+      // Scale shrinks visually from top-left (transformOrigin), so the visual rect is smaller
+      var visW = r.width * factor;
+      var visH = r.height * factor;
+      var over = e.clientX >= r.left && e.clientX <= r.left + visW && e.clientY >= r.top && e.clientY <= r.top + visH;
       if (over && !_mouseOverPanel) {
         _mouseOverPanel = true;
         ipcRenderer.send('set-ignore-mouse', false);
