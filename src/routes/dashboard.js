@@ -836,9 +836,11 @@ router.post('/overlay/sounds/:eventType', (req, res) => {
   const chunks = [];
   req.on('data', chunk => chunks.push(chunk));
   req.on('end', () => {
+    const buf = Buffer.concat(chunks);
+    if (buf.length > 10 * 1024 * 1024) return res.status(413).json({ error: 'File too large (max 10MB)' });
     const soundDir = path.join(__dirname, '..', '..', 'data', 'sounds');
     if (!fs.existsSync(soundDir)) fs.mkdirSync(soundDir, { recursive: true });
-    fs.writeFileSync(path.join(soundDir, `${type}.mp3`), Buffer.concat(chunks));
+    fs.writeFileSync(path.join(soundDir, `${type}.mp3`), buf);
     res.json({ ok: true });
   });
 });
@@ -1429,8 +1431,11 @@ router.post('/sponsors/upload', (req, res) => {
     if (!fs.existsSync(sponsorDir)) fs.mkdirSync(sponsorDir, { recursive: true });
 
     const ext = (req.query.ext || 'png').replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'png';
+    if (!['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) return res.status(400).json({ error: 'Invalid file type. Allowed: png, jpg, gif, webp' });
+    const buf = Buffer.concat(chunks);
+    if (buf.length > 5 * 1024 * 1024) return res.status(413).json({ error: 'File too large (max 5MB)' });
     const filename = `sponsor_${Date.now()}.${ext}`;
-    fs.writeFileSync(path.join(sponsorDir, filename), Buffer.concat(chunks));
+    fs.writeFileSync(path.join(sponsorDir, filename), buf);
 
     const displayName = req.query.name || 'Sponsor';
     const displayDuration = parseInt(req.query.dur) || 30;

@@ -178,6 +178,7 @@ app.get('/streamer', (req, res) => {
 // Bridge API — requires auth
 app.get('/api/bridge/config', (req, res) => {
   if (!req.streamer && !req.racingUser) return res.status(401).json({ error: 'Unauthorized' });
+  // TODO: migrate to server-side Whisper proxy to avoid exposing key
   res.json({ openaiKey: process.env.OPENAI_API_KEY || '' });
 });
 

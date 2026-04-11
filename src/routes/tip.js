@@ -107,10 +107,12 @@ router.get('/:username/success', async (req, res) => {
   if (!streamer) return res.status(404).send('Streamer not found.');
 
   const orderId = req.query.token; // PayPal passes order ID as 'token'
-  const donorName = req.cookies?.tip_donor || req.query.donor || 'Anonymous';
-  const message = req.cookies?.tip_message || req.query.message || '';
-  const amount = req.cookies?.tip_amount || req.query.amount || '0';
-  const currency = req.cookies?.tip_currency || req.query.currency || 'EUR';
+  if (orderId && !/^[A-Z0-9-]{10,}$/i.test(orderId)) return res.redirect('/' );
+  // Only use cookies for donor data — never trust query params (XSS risk)
+  const donorName = req.cookies?.tip_donor || 'Anonymous';
+  const message = req.cookies?.tip_message || '';
+  const amount = req.cookies?.tip_amount || '0';
+  const currency = req.cookies?.tip_currency || 'EUR';
 
   // Clear tip cookies
   res.clearCookie('tip_donor');
