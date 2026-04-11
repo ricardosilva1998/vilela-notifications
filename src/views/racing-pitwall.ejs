@@ -9,14 +9,18 @@
         <span><%= team.team_name %></span>
       </p>
     </div>
+    <div id="ws-status" style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted);">
+      <span id="ws-dot" style="width:8px;height:8px;border-radius:50%;background:var(--text-muted);"></span>
+      <span id="ws-label">Connecting...</span>
+    </div>
   </div>
 
   <!-- Team drivers -->
   <div style="margin-bottom:16px;">
     <h2 style="font-size:16px;font-weight:700;margin-bottom:12px;">Team Drivers</h2>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;">
+    <div id="driver-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;">
       <% members.forEach(function(m) { %>
-        <div class="card" style="padding:16px;opacity:<%= m.user_id === racingUser.id ? '0.5' : '1' %>;">
+        <div class="card driver-card" data-user-id="<%= m.user_id %>" style="padding:16px;cursor:<%= m.user_id === racingUser.id ? 'default' : 'pointer' %>;opacity:<%= m.user_id === racingUser.id ? '0.5' : '1' %>;transition:all 0.15s;" <% if (m.user_id !== racingUser.id) { %>onclick="selectDriver(<%= m.user_id %>, '<%= (m.display_name || m.username).replace(/'/g, "\\'") %>')"<% } %>>
           <div style="display:flex;align-items:center;gap:10px;">
             <div style="width:40px;height:40px;border-radius:50%;background:var(--bg-tertiary);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
               <% if (m.avatar) { %>
@@ -40,7 +44,7 @@
               <% if (m.user_id === racingUser.id) { %>
                 <span style="font-size:10px;color:var(--text-muted);">You</span>
               <% } else { %>
-                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-muted);" title="Offline"></span>
+                <span class="driver-status" data-user-id="<%= m.user_id %>" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-muted);transition:background 0.3s;" title="Offline"></span>
               <% } %>
             </div>
           </div>
@@ -49,8 +53,8 @@
     </div>
   </div>
 
-  <!-- Pitwall area — will hold overlay iframes when driver is selected -->
-  <div class="card" style="padding:48px;text-align:center;margin-top:24px;">
+  <!-- Pitwall area -->
+  <div id="pitwall-placeholder" class="card" style="padding:48px;text-align:center;margin-top:24px;">
     <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1" style="margin-bottom:16px;opacity:0.5;">
       <rect x="2" y="3" width="20" height="14" rx="2"/>
       <line x1="8" y1="21" x2="16" y2="21"/>
@@ -61,5 +65,176 @@
     <p style="color:var(--text-muted);font-size:13px;">When a teammate is racing with Atleta Bridge, their live telemetry will appear here.</p>
     <p style="color:var(--text-muted);font-size:11px;margin-top:12px;">Standings, relative, fuel, inputs, track map, weather — all in real time.</p>
   </div>
+
+  <!-- Active spectating view (hidden until driver selected) -->
+  <div id="pitwall-active" style="display:none;margin-top:24px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:14px;font-weight:700;">Spectating:</span>
+        <span id="spectating-name" style="font-size:14px;color:#3ecf8e;font-weight:600;"></span>
+      </div>
+      <button onclick="deselectDriver()" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:var(--text-muted);font-size:12px;cursor:pointer;">Stop spectating</button>
+    </div>
+    <div class="card" style="padding:32px;text-align:center;">
+      <p style="color:var(--text-muted);font-size:13px;">Live telemetry view coming in Phase 4</p>
+      <p style="color:var(--text-muted);font-size:11px;margin-top:8px;">Overlay iframes (standings, fuel, relative, trackmap, etc.) will appear here.</p>
+      <div id="telemetry-debug" style="margin-top:16px;text-align:left;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);display:none;">
+        <div style="margin-bottom:4px;font-weight:600;color:var(--text-secondary);">Telemetry data received:</div>
+        <div id="telemetry-channels"></div>
+      </div>
+    </div>
+  </div>
 </div>
+
+<script>
+(function() {
+  const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/pitwall';
+  const ALL_CHANNELS = ['standings', 'relative', 'fuel', 'wind', 'trackmap', 'inputs', 'session'];
+
+  let ws = null;
+  let reconnectTimer = null;
+  let selectedDriverId = null;
+  const onlineDrivers = new Set();
+  const channelData = {};
+
+  function connect() {
+    setStatus('connecting');
+    ws = new WebSocket(WS_URL);
+
+    ws.onopen = function() {
+      setStatus('connected');
+      if (selectedDriverId) {
+        ws.send(JSON.stringify({ type: 'subscribe', channels: ALL_CHANNELS, driverId: selectedDriverId }));
+      }
+    };
+
+    ws.onmessage = function(e) {
+      var msg;
+      try { msg = JSON.parse(e.data); } catch { return; }
+
+      if (msg.type === 'auth-ok') {
+        (msg.activeDrivers || []).forEach(function(d) {
+          onlineDrivers.add(d.userId);
+        });
+        updateDriverStatus();
+      } else if (msg.type === 'auth-error') {
+        console.error('[Pitwall] Auth error:', msg.reason);
+        setStatus('error');
+      } else if (msg.type === 'driver-online') {
+        onlineDrivers.add(msg.userId);
+        updateDriverStatus();
+      } else if (msg.type === 'driver-offline') {
+        onlineDrivers.delete(msg.userId);
+        updateDriverStatus();
+      } else if (msg.type === 'data') {
+        channelData[msg.channel] = msg.data;
+        updateTelemetryDebug();
+      }
+    };
+
+    ws.onclose = function() {
+      setStatus('disconnected');
+      scheduleReconnect();
+    };
+
+    ws.onerror = function() {
+      ws.close();
+    };
+  }
+
+  function scheduleReconnect() {
+    if (reconnectTimer) return;
+    reconnectTimer = setTimeout(function() {
+      reconnectTimer = null;
+      connect();
+    }, 3000);
+  }
+
+  function setStatus(state) {
+    var dot = document.getElementById('ws-dot');
+    var label = document.getElementById('ws-label');
+    if (state === 'connected') {
+      dot.style.background = '#3ecf8e';
+      label.textContent = 'Connected';
+    } else if (state === 'connecting') {
+      dot.style.background = '#f7c948';
+      label.textContent = 'Connecting...';
+    } else if (state === 'disconnected') {
+      dot.style.background = 'var(--text-muted)';
+      label.textContent = 'Reconnecting...';
+    } else if (state === 'error') {
+      dot.style.background = '#f04438';
+      label.textContent = 'Auth failed';
+    }
+  }
+
+  function updateDriverStatus() {
+    document.querySelectorAll('.driver-status').forEach(function(el) {
+      var uid = parseInt(el.dataset.userId);
+      if (onlineDrivers.has(uid)) {
+        el.style.background = '#3ecf8e';
+        el.title = 'Online';
+      } else {
+        el.style.background = 'var(--text-muted)';
+        el.title = 'Offline';
+      }
+    });
+    // Update card borders for online drivers
+    document.querySelectorAll('.driver-card').forEach(function(el) {
+      var uid = parseInt(el.dataset.userId);
+      if (onlineDrivers.has(uid)) {
+        el.style.borderColor = 'rgba(62,207,142,0.3)';
+      } else {
+        el.style.borderColor = '';
+      }
+    });
+  }
+
+  function updateTelemetryDebug() {
+    var container = document.getElementById('telemetry-channels');
+    var debugDiv = document.getElementById('telemetry-debug');
+    if (!container || !debugDiv) return;
+    debugDiv.style.display = 'block';
+    var html = '';
+    for (var ch in channelData) {
+      html += '<div style="margin-bottom:4px;"><span style="color:#3ecf8e;">' + ch + '</span>: ' +
+        JSON.stringify(channelData[ch]).substring(0, 120) + '...</div>';
+    }
+    container.innerHTML = html;
+  }
+
+  window.selectDriver = function(userId, name) {
+    selectedDriverId = userId;
+    document.getElementById('spectating-name').textContent = name;
+    document.getElementById('pitwall-placeholder').style.display = 'none';
+    document.getElementById('pitwall-active').style.display = 'block';
+
+    // Highlight selected card
+    document.querySelectorAll('.driver-card').forEach(function(el) {
+      var uid = parseInt(el.dataset.userId);
+      el.style.outline = uid === userId ? '2px solid #3ecf8e' : '';
+    });
+
+    // Clear previous data
+    for (var k in channelData) delete channelData[k];
+    var dbg = document.getElementById('telemetry-debug');
+    if (dbg) dbg.style.display = 'none';
+
+    if (ws && ws.readyState === 1) {
+      ws.send(JSON.stringify({ type: 'subscribe', channels: ALL_CHANNELS, driverId: userId }));
+    }
+  };
+
+  window.deselectDriver = function() {
+    selectedDriverId = null;
+    document.getElementById('pitwall-placeholder').style.display = '';
+    document.getElementById('pitwall-active').style.display = 'none';
+    document.querySelectorAll('.driver-card').forEach(function(el) {
+      el.style.outline = '';
+    });
+  };
+
+  connect();
+})();
+</script>
 <%- include('footer') %>
