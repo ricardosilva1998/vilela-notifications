@@ -1349,12 +1349,30 @@ async function startTelemetry(onStatusChange) {
           try {
             const classes = [...new Set(standings.map(s => s.carClass).filter(Boolean))];
             const totalMin = raceSessionTotalTime > 0 ? raceSessionTotalTime / 60 : (sessionTime + sessionTimeRemain) / 60;
+            // Detect race type for live display
+            let liveRaceType = '';
+            if (eventType === 'Race' && classes.length > 0) {
+              const hasMulti = classes.length >= 2;
+              const hasGT3 = classes.some(c => c.includes('GT3') || c === 'IMSA23');
+              if (totalMin >= 300) liveRaceType = 'Global Endurance';
+              else if (hasMulti && totalMin >= 120) liveRaceType = 'IMSA Endurance';
+              else if (!hasMulti && hasGT3 && totalMin >= 120) liveRaceType = 'VRS Endurance';
+              else if (hasMulti && totalMin >= 42) liveRaceType = 'IMSA Open';
+              else if (!hasMulti && hasGT3 && totalMin >= 37) liveRaceType = 'VRS Open';
+              else if (hasMulti) liveRaceType = 'IMSA Sprint';
+              else if (!hasMulti && hasGT3 && totalMin >= 22) liveRaceType = 'VRS Sprint';
+              else if (!hasMulti && hasGT3) liveRaceType = 'Regionals';
+              else if (totalMin >= 120) liveRaceType = 'Endurance';
+              else if (totalMin >= 30) liveRaceType = 'Open';
+              else liveRaceType = 'Sprint';
+            }
             const https = require('https');
             const payload = JSON.stringify({
               trackName, eventType, classes,
               driversCount: standings.length,
               totalMinutes: Math.round(totalMin),
               timeRemain: Math.round(sessionTimeRemain),
+              raceType: liveRaceType || null,
             });
             const url = new URL('https://atletanotifications.com/api/live-session');
             const req = https.request({

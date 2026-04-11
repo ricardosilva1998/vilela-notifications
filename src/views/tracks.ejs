@@ -46,7 +46,7 @@
   /* Detail Page */
   .track-detail { display: none; }
   .track-detail-header { display: flex; gap: 24px; align-items: flex-start; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 24px; margin-bottom: 24px; }
-  .track-detail-canvas { width: 200px; height: 160px; flex-shrink: 0; background: rgba(0,0,0,0.2); border-radius: 10px; overflow: hidden; }
+  .track-detail-canvas { width: 260px; height: 220px; flex-shrink: 0; background: rgba(0,0,0,0.2); border-radius: 10px; overflow: hidden; }
   .track-detail-canvas canvas { width: 100%; height: 100%; }
   .track-detail-info { flex: 1; min-width: 0; }
   .track-detail-info h2 { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 4px; }
@@ -1410,7 +1410,7 @@
       const detailName = document.getElementById('detail-name')?.textContent;
       if (liveSession && liveSession.trackName === detailName) {
         const classes = (liveSession.classes || []).join(', ');
-        const type = liveSession.eventType || 'Unknown';
+        const type = liveSession.raceType || liveSession.eventType || 'Unknown';
         const drivers = liveSession.driversCount || 0;
         const timeLeft = liveSession.timeRemain ? Math.round(liveSession.timeRemain / 60) + ' min left' : '';
         detailLive.innerHTML = '<span class="live-badge">LIVE</span> <span>' + type + '</span> <span style="color:rgba(255,255,255,0.5);">·</span> <span>' + classes + '</span> <span style="color:rgba(255,255,255,0.5);">·</span> <span>' + drivers + ' drivers</span>' + (timeLeft ? ' <span style="color:rgba(255,255,255,0.5);">·</span> <span>' + timeLeft + '</span>' : '');
