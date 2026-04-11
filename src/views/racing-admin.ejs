@@ -1,4 +1,5 @@
 <%- include('header', { title: 'Racing Admin', streamer: streamer }) %>
+<style>.container { max-width: 1200px !important; } .admin-table td, .admin-table th { white-space: nowrap; }</style>
 <div style="padding:24px 0;">
   <a href="/racing" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 14px;color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:16px;">&#8592; Back</a>
   <h1 style="font-size:24px;font-weight:800;margin-bottom:24px;">Racing Admin</h1>
@@ -8,7 +9,7 @@
     <% var onlineCount = 0; racingUsers.forEach(function(u) { var bd = u.bridge_id ? bridgeUsers.find(function(b){return b.bridge_id===u.bridge_id;}) : null; if (bd && (Date.now() - new Date(bd.last_seen+'Z').getTime()) < 2*60*1000) onlineCount++; }); %>
     <h2 style="font-size:16px;font-weight:700;margin-bottom:12px;">Racing Accounts (<%= racingUsers.length %>) <% if (onlineCount) { %><span style="font-size:12px;font-weight:600;color:#3ecf8e;margin-left:8px;"><%= onlineCount %> online</span><% } %></h2>
     <div class="card" style="overflow:hidden;">
-      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <table class="admin-table" style="width:100%;border-collapse:collapse;font-size:13px;">
         <thead>
           <tr style="background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);">
             <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Status</th>
@@ -74,7 +75,7 @@
     <% var unregistered = bridgeUsers.filter(function(b) { return !racingUsers.find(function(u) { return u.bridge_id === b.bridge_id; }); }); %>
     <h2 style="font-size:16px;font-weight:700;margin-bottom:12px;">Unregistered Bridges (<%= unregistered.length %>)</h2>
     <div class="card" style="overflow:hidden;">
-      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <table class="admin-table" style="width:100%;border-collapse:collapse;font-size:13px;">
         <thead>
           <tr style="background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);">
             <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Status</th>
@@ -111,7 +112,7 @@
     <h2 style="font-size:16px;font-weight:700;margin-bottom:12px;">Suspicious Activity (last 24h)</h2>
     <% if (suspicious && suspicious.length > 0) { %>
     <div class="card" style="overflow:hidden;">
-      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <table class="admin-table" style="width:100%;border-collapse:collapse;font-size:13px;">
         <thead>
           <tr style="background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);">
             <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">IP</th>
@@ -149,7 +150,7 @@
   <div style="margin-top:32px;">
     <h2 style="font-size:16px;font-weight:700;margin-bottom:12px;">Recent Auth Log</h2>
     <div class="card" style="overflow:hidden;">
-      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <table class="admin-table" style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead>
           <tr style="background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);">
             <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Time</th>
