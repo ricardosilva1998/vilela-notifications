@@ -983,9 +983,13 @@ app.get('/health', (req, res) => res.send('OK'));
 
 function start() {
   const port = config.app.port;
-  app.listen(port, () => {
+  const server = app.listen(port, () => {
     console.log(`[Server] Dashboard at ${config.app.url}`);
   });
+
+  // Pitwall WebSocket relay
+  const pitwallRelay = require('./services/pitwallRelay');
+  pitwallRelay.init(server);
 
   // Ensure all streamers have a subscription record
   db.ensureFreeSubscriptions();
