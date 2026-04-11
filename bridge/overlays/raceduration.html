@@ -39,12 +39,11 @@
   </div>
 
   <script>
-    const _fs = require('fs');
-    const _logPath = require('path').join(require('os').homedir(), 'atleta-bridge.log');
+    let _fs, _logPath;
+    try { _fs = require('fs'); _logPath = require('path').join(require('os').homedir(), 'atleta-bridge.log'); } catch(e) {}
     function log(msg) {
-      const line = '[' + new Date().toISOString() + '] ' + msg + '\n';
       console.log(msg);
-      try { _fs.appendFileSync(_logPath, line); } catch(e) {}
+      if (_fs) try { _fs.appendFileSync(_logPath, '[' + new Date().toISOString() + '] ' + msg + '\n'); } catch(e) {}
     }
 
     const BRIDGE_URL = new URLSearchParams(window.location.search).get('ws') || 'ws://localhost:9100';

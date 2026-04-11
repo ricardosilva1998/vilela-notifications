@@ -64,9 +64,8 @@
     // Load settings from persisted file
     let _overlaySettings = {};
     try {
-      const fs = require('fs');
-      const path = require('path');
-      const os = require('os');
+      let fs, path, os;
+      try { fs = require('fs'); path = require('path'); os = require('os'); } catch(e) {}
       const settingsFile = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'settings.json');
       if (fs.existsSync(settingsFile)) {
         const all = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
@@ -181,12 +180,11 @@
       return '<tr>' + enabledColumns.map(c => `<th>${labels[c] || ''}</th>`).join('') + '</tr>';
     }
 
-    const _fs = require('fs');
-    const _logPath = require('path').join(require('os').homedir(), 'atleta-bridge.log');
+    let _fs, _logPath;
+    try { _fs = require('fs'); _logPath = require('path').join(require('os').homedir(), 'atleta-bridge.log'); } catch(e) {}
     function log(msg) {
-      const line = '[' + new Date().toISOString() + '] ' + msg + '\n';
       console.log(msg);
-      try { _fs.appendFileSync(_logPath, line); } catch(e) {}
+      if (_fs) try { _fs.appendFileSync(_logPath, '[' + new Date().toISOString() + '] ' + msg + '\n'); } catch(e) {}
     }
 
     const BRIDGE_URL = new URLSearchParams(window.location.search).get('ws') || 'ws://localhost:9100';
