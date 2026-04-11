@@ -292,7 +292,7 @@
       return '<span style="color:' + colors[idx] + ';font-weight:700;font-size:' + fsSmall + 'px">' + labels[idx] + '</span>';
     }
 
-    function buildRelativeRow(d, gapClass, gapStr, isPlayerRow) {
+    function buildRelativeRow(d, gapClass, gapStr, isPlayerRow, lapDiff) {
       const pos = d.classPosition > 0 ? d.classPosition : (d.position > 0 ? d.position : '-');
       const flag = countryToFlag(d.country);
       const licColor = licenseColor(d.safetyRating || d.license);
@@ -301,6 +301,8 @@
       const classColor = d.carClassColor || '#fff';
       const carBrand = d.carMake || '';
       const disconnCls = d.disconnected ? ' disconnected' : '';
+      // Lap difference indicator: blue = lapped (behind), red = lap ahead
+      const lapColor = lapDiff > 0 ? '#38bdf8' : (lapDiff < 0 ? '#f04438' : '');
 
       const numCell = `<span style="background:${classColor};color:#000;padding:1px 4px;border-radius:3px;font-size:${fsSmall}px;font-weight:800;font-family:'JetBrains Mono',monospace;">${d.carNumber || ''}</span>`;
       const licCell = licStr
@@ -312,7 +314,8 @@
 
       const logoStyle = getBrandLogoStyle(carBrand);
       const logoImg = logoStyle ? `<span class="brand-logo" style="${logoStyle}"></span>` : '';
-      const nameCell = `<div class="driver-name">${d.driverName || ''}</div>`;
+      const nameStyle = lapColor ? 'color:' + lapColor + ';' : '';
+      const nameCell = `<div class="driver-name" style="${nameStyle}">${d.driverName || ''}</div>`;
 
       if (isPlayerRow) {
         const cells = {
@@ -349,14 +352,21 @@
       const { cars, focusCar } = data;
       // Center car: use focusCar from telemetry (the spectated/selected driver), fallback to finding in cars list
       const centerCar = focusCar || cars.find(c => c.isSpectated) || cars.find(c => c.isPlayer);
+      const centerLaps = centerCar ? (centerCar.lapsCompleted || 0) : 0;
       // Positive distGap = car is AHEAD (further along track), negative = BEHIND
       const ahead = cars.filter(c => c.distGap > 0).slice(0, MAX_AHEAD).reverse();
       const behind = cars.filter(c => c.distGap < 0).slice(-MAX_BEHIND).reverse();
 
       const rows = [];
-      for (const d of ahead) rows.push(buildRelativeRow(d, 'ahead', formatRelativeGap(-d.gap), false));
-      rows.push(buildRelativeRow(centerCar || { position: 0, classPosition: 0, carNumber: '', driverName: 'You', country: '', safetyRating: '', iRating: 0, carClassColor: '#fff' }, '', '', true));
-      for (const d of behind) rows.push(buildRelativeRow(d, 'behind', formatRelativeGap(-d.gap), false));
+      for (const d of ahead) {
+        const lapDiff = centerLaps > 0 ? (d.lapsCompleted || 0) - centerLaps : 0;
+        rows.push(buildRelativeRow(d, 'ahead', formatRelativeGap(-d.gap), false, lapDiff));
+      }
+      rows.push(buildRelativeRow(centerCar || { position: 0, classPosition: 0, carNumber: '', driverName: 'You', country: '', safetyRating: '', iRating: 0, carClassColor: '#fff' }, '', '', true, 0));
+      for (const d of behind) {
+        const lapDiff = centerLaps > 0 ? (d.lapsCompleted || 0) - centerLaps : 0;
+        rows.push(buildRelativeRow(d, 'behind', formatRelativeGap(-d.gap), false, lapDiff));
+      }
 
       return rows.join('');
     }
