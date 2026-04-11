@@ -386,6 +386,8 @@ function persistSettings() {
   if (quitting) return;
   settings.autoHideOverlays = autoHideOverlays;
   settings.enabledOverlays = Object.keys(overlayWindows);
+  // Preserve pitwall broadcast team selection across updates
+  settings.pitwallBroadcastTeamIds = pitwallUplink.getBroadcastTeamIds();
   // Persist overlay positions/sizes
   settings.overlayBounds = settings.overlayBounds || {};
   Object.entries(overlayWindows).forEach(([id, win]) => {
