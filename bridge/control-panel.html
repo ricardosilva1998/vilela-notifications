@@ -1983,6 +1983,11 @@
     // ── Team broadcast UI ────────────────────────────────────
     try {
       const pitwallUplink = require('./pitwallUplink');
+      // Show current status immediately
+      var uplinkStatus = pitwallUplink.getStatus();
+      if (uplinkStatus === 'disabled') {
+        document.getElementById('team-broadcast-list').innerHTML = '<p style="font-size:11px;color:#5a5970;font-style:italic;">Not configured — log out and log back in</p>';
+      }
       pitwallUplink.setOnTeamsUpdated(function(teams, broadcastIds) {
         const container = document.getElementById('team-broadcast-list');
         if (!container) return;

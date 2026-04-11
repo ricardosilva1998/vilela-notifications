@@ -165,6 +165,10 @@ function getBroadcastTeamIds() {
 
 function setOnTeamsUpdated(cb) {
   onTeamsUpdated = cb;
+  // If already authenticated, fire immediately so late subscribers get current state
+  if (isConnected) {
+    cb(availableTeams, broadcastTeamIds);
+  }
 }
 
 module.exports = { start, stop, sendTelemetry, setBroadcastTeams, getStatus, getAvailableTeams, getBroadcastTeamIds, setOnTeamsUpdated };
