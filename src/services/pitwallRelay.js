@@ -259,14 +259,14 @@ function handlePitwallConnection(ws, req) {
       viewer.channels = new Set(msg.channels);
       if (msg.driverId !== undefined) {
         // Validate driver is in viewer's team
-        const driverBridge = activeBridges.get(msg.driverId);
+        const driverBridge = bridgeClients.get(msg.driverId);
         if (driverBridge && viewer.teamId && driverBridge.teamIds && driverBridge.teamIds.has(viewer.teamId)) {
           viewer.watchingDriverId = msg.driverId;
           sendCachedData(ws, viewer);
         }
       }
     } else if (msg.type === 'view-driver' && msg.driverId !== undefined) {
-      const driverBridge = activeBridges.get(msg.driverId);
+      const driverBridge = bridgeClients.get(msg.driverId);
       if (driverBridge && viewer.teamId && driverBridge.teamIds && driverBridge.teamIds.has(viewer.teamId)) {
         viewer.watchingDriverId = msg.driverId;
         sendCachedData(ws, viewer);
