@@ -340,7 +340,10 @@
 
     onData('wind', data => {
       if (!data) return;
-      windDir = data.windDirection || 0;
+      // Only update if direction changed by >1 degree (filter SDK noise in constant weather)
+      const newDir = data.windDirection || 0;
+      const degDiff = Math.abs((newDir - windDir) * 180 / Math.PI) % 360;
+      if (degDiff > 1 || windDir === 0) windDir = newDir;
       windSpeed = data.windSpeed || 0;
     });
 

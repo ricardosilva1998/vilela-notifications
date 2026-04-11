@@ -234,8 +234,15 @@
       if (windDirection !== undefined) {
         const windDeg = windDirection * 180 / Math.PI;
         const carDeg = (carHeading || 0) * 180 / Math.PI;
-        targetAngle = ((windDeg - carDeg) + 360) % 360;
-        lastWindDeg = windDeg;
+        // Only update if direction changed by >1 degree (filter SDK noise in constant weather)
+        const degDiff = Math.abs(windDeg - lastWindDeg) % 360;
+        if (degDiff > 1 || lastWindDeg === 0) {
+          targetAngle = ((windDeg - carDeg) + 360) % 360;
+          lastWindDeg = windDeg;
+        } else {
+          // Still update for car heading changes (arrow rotates relative to car)
+          targetAngle = ((lastWindDeg - carDeg) + 360) % 360;
+        }
         if (dirEl) dirEl.textContent = angleToCompass(windDeg);
       }
       if (windSpeed !== undefined && speedEl) {
