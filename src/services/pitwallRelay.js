@@ -15,13 +15,13 @@ const lastRelayTime = new Map();
 
 // ── Throttle rates (ms between relays) ───────────────────────────
 const THROTTLE = {
-  standings: 500,
-  relative: 250,
-  fuel: 500,
-  wind: 250,
-  trackmap: 250,
-  inputs: 100,
-  session: 500,
+  standings: 250,
+  relative: 150,
+  fuel: 250,
+  wind: 150,
+  trackmap: 150,
+  inputs: 50,
+  session: 250,
 };
 
 const AUTH_TIMEOUT_MS = 10000;
