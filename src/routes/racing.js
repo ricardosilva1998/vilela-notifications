@@ -79,7 +79,7 @@ router.get('/admin', (req, res) => {
   const bridgeUsers = db.getBridgeUserStats();
   const suspicious = db.getSuspiciousActivity(24);
   const authLog = db.getRecentAuthLog(30);
-  res.render('racing-admin', { streamer: req.streamer || null, racingUser: req.racingUser, racingUsers, bridgeUsers, suspicious, authLog });
+  res.render('racing-admin', { streamer: req.streamer || null, racingUser: req.racingUser, racingUsers, bridgeUsers, suspicious, authLog, msg: req.query.msg || null, error: req.query.error || null });
 });
 
 router.post('/admin/unlock/:id', (req, res) => {

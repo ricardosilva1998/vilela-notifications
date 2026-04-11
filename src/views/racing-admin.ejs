@@ -4,6 +4,33 @@
   <a href="/racing" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 14px;color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:16px;">&#8592; Back</a>
   <h1 style="font-size:24px;font-weight:800;margin-bottom:24px;">Racing Admin</h1>
 
+  <% if (typeof msg !== 'undefined' && msg) { %><div style="color:#3ecf8e;background:rgba(62,207,142,0.1);padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;"><%= msg %></div><% } %>
+  <% if (typeof error !== 'undefined' && error) { %><div style="color:#f04438;background:rgba(240,68,56,0.1);padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;"><%= error %></div><% } %>
+
+  <!-- Notifications -->
+  <div style="margin-bottom:32px;">
+    <h2 style="font-size:16px;font-weight:700;margin-bottom:12px;">Notifications</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="card" style="padding:20px;">
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;">Send Announcement</h3>
+        <form method="POST" action="/racing/admin/announcement" style="display:flex;flex-direction:column;gap:10px;">
+          <input name="title" type="text" placeholder="Title" required maxlength="100" style="padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:13px;">
+          <textarea name="message" placeholder="Message" required maxlength="500" rows="3" style="padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:13px;resize:vertical;"></textarea>
+          <input name="link" type="text" placeholder="Link (optional)" maxlength="200" style="padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:13px;">
+          <button type="submit" class="btn btn-secondary" style="padding:8px;font-size:13px;" onclick="return confirm('Send announcement to all racing users?')">Send to all users</button>
+        </form>
+      </div>
+      <div class="card" style="padding:20px;">
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;">Bridge Update Notification</h3>
+        <form method="POST" action="/racing/admin/bridge-update" style="display:flex;flex-direction:column;gap:10px;">
+          <input name="version" type="text" placeholder="Version (e.g. 3.16)" required maxlength="20" style="padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:13px;">
+          <input name="message" type="text" placeholder="Custom message (optional)" maxlength="200" style="padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:13px;">
+          <button type="submit" class="btn btn-secondary" style="padding:8px;font-size:13px;" onclick="return confirm('Notify all Bridge users about this update?')">Notify Bridge users</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Racing Accounts -->
   <div style="margin-bottom:32px;">
     <% var onlineCount = 0; racingUsers.forEach(function(u) { var bd = u.bridge_id ? bridgeUsers.find(function(b){return b.bridge_id===u.bridge_id;}) : null; if (bd && (Date.now() - new Date(bd.last_seen+'Z').getTime()) < 2*60*1000) onlineCount++; }); %>
