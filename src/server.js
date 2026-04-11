@@ -163,10 +163,12 @@ const racingAuthRoutes = require('./routes/racing-auth');
 const racingRoutes = require('./routes/racing');
 const racingTeamRoutes = require('./routes/racing-team');
 app.use('/racing/auth', authLimiter, racingAuthRoutes);
-app.use('/racing/team', (req, res, next) => {
+app.use('/racing/teams', (req, res, next) => {
   if (!req.racingUser) return res.redirect('/racing');
   next();
 }, racingTeamRoutes);
+// Redirect old URL
+app.get('/racing/team', (req, res) => res.redirect('/racing/teams'));
 app.use('/racing', racingRoutes);
 
 app.get('/streamer', (req, res) => {
