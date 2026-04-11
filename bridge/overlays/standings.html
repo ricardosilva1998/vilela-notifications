@@ -389,7 +389,7 @@
         pits: '<td class="mono" style="font-size:' + fsSmall + 'px;color:' + (d.pitStops > 0 ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.25)') + '">' + (d.pitStops || 0) + '</td>',
         pitLap: '<td class="mono" style="font-size:' + fsSmall + 'px;color:' + (d.pitLap > 0 ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.25)') + '">' + (d.pitLap > 0 ? 'L' + d.pitLap : '--') + '</td>',
         pitTime: '<td class="mono" style="font-size:' + fsSmall + 'px;color:' + (d.inPit && d.pitTimeLive > 0 ? '#3ecf8e' : (d.lastPitDelta > 0 ? '#f7c948' : 'rgba(255,255,255,0.25)')) + '">' + (d.inPit && d.pitTimeLive > 0 ? d.pitTimeLive.toFixed(1) + 's' : (d.lastPitDelta > 0 ? d.lastPitDelta.toFixed(1) + 's' : '--')) + '</td>',
-        gapLdr: '<td class="mono" style="font-size:' + fsMed + 'px;color:rgba(255,255,255,0.45)">' + (d.gapToLeader > 0 ? '+' + d.gapToLeader.toFixed(1) + 's' : (d.classPosition === 1 ? 'Leader' : '--')) + '</td>',
+        gapLdr: '<td class="mono" style="font-size:' + fsMed + 'px;color:rgba(255,255,255,0.45)">' + (rank === 1 ? 'Leader' : (d.gapToLeader > 0 ? '+' + d.gapToLeader.toFixed(1) + 's' : (classLeaderBest && d.bestLap > 0 ? '+' + (d.bestLap - classLeaderBest).toFixed(3) : '--'))) + '</td>',
         posGain: '<td class="mono" style="font-size:' + fsMed + 'px;font-weight:700;color:' + (d.positionGain > 0 ? '#3ecf8e' : (d.positionGain < 0 ? '#f04438' : 'rgba(255,255,255,0.25)')) + '">' + (d.positionGain > 0 ? '\u25B2' + d.positionGain : (d.positionGain < 0 ? '\u25BC' + Math.abs(d.positionGain) : '--')) + '</td>',
       };
       return `<tr class="${rowClass}${disconnCls}" data-caridx="${d.carIdx}" onclick="selectDriver(${d.carIdx})" style="cursor:pointer">
