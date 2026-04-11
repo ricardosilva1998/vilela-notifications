@@ -1980,33 +1980,36 @@
     if (savedPanel) navigateTo(savedPanel);
     if (currentPanel === 'logs') startLogRefresh();
 
-    // ── Team broadcast UI ────────────────────────────────────
-    try {
-      const pitwallUplink = require('./pitwallUplink');
-      // Show current status immediately
-      var uplinkStatus = pitwallUplink.getStatus();
-      if (uplinkStatus === 'disabled') {
-        document.getElementById('team-broadcast-list').innerHTML = '<p style="font-size:11px;color:#5a5970;font-style:italic;">Not configured — log out and log back in</p>';
+    // ── Team broadcast UI (via IPC to main process) ────────
+    function renderTeamBroadcast(teams, broadcastIds) {
+      const container = document.getElementById('team-broadcast-list');
+      if (!container) return;
+      if (!teams || teams.length === 0) {
+        container.innerHTML = '<p style="font-size:11px;color:#5a5970;font-style:italic;">No teams — join a team at atletanotifications.com/racing/teams</p>';
+        return;
       }
-      pitwallUplink.setOnTeamsUpdated(function(teams, broadcastIds) {
-        const container = document.getElementById('team-broadcast-list');
-        if (!container) return;
-        if (teams.length === 0) {
-          container.innerHTML = '<p style="font-size:11px;color:#5a5970;font-style:italic;">No teams — join a team at atletanotifications.com/racing/teams</p>';
-          return;
-        }
-        const broadcastSet = new Set(broadcastIds);
-        container.innerHTML = teams.map(function(t) {
-          return '<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#c4c3d4;cursor:pointer;padding:4px 0;">' +
-            '<input type="checkbox" data-team-id="' + t.id + '" ' + (broadcastSet.has(t.id) ? 'checked' : '') + ' onchange="updateBroadcastTeams()" style="accent-color:#3ecf8e;">' +
-            '<span>' + (t.name||'').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>' +
-            (broadcastSet.has(t.id) ? '<span style="width:6px;height:6px;border-radius:50%;background:#3ecf8e;flex-shrink:0;"></span>' : '') +
-          '</label>';
-        }).join('');
-      });
-    } catch (e) {
-      console.log('[Control Panel] Pitwall uplink not available:', e.message);
+      const broadcastSet = new Set(broadcastIds || []);
+      container.innerHTML = teams.map(function(t) {
+        return '<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#c4c3d4;cursor:pointer;padding:4px 0;">' +
+          '<input type="checkbox" data-team-id="' + t.id + '" ' + (broadcastSet.has(t.id) ? 'checked' : '') + ' onchange="updateBroadcastTeams()" style="accent-color:#3ecf8e;">' +
+          '<span>' + (t.name||'').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>' +
+          (broadcastSet.has(t.id) ? '<span style="width:6px;height:6px;border-radius:50%;background:#3ecf8e;flex-shrink:0;"></span>' : '') +
+        '</label>';
+      }).join('');
     }
+
+    // Get current state from main process
+    var pitwallState = ipcRenderer.sendSync('get-pitwall-teams');
+    if (pitwallState.status === 'disabled') {
+      document.getElementById('team-broadcast-list').innerHTML = '<p style="font-size:11px;color:#5a5970;font-style:italic;">Not configured — log out and log back in</p>';
+    } else if (pitwallState.teams && pitwallState.teams.length > 0) {
+      renderTeamBroadcast(pitwallState.teams, pitwallState.broadcastIds);
+    }
+
+    // Listen for updates from main process
+    ipcRenderer.on('pitwall-teams', function(event, data) {
+      renderTeamBroadcast(data.teams, data.broadcastIds);
+    });
 
     window.updateBroadcastTeams = function() {
       const checks = document.querySelectorAll('#team-broadcast-list input[type=checkbox]');
@@ -2014,10 +2017,7 @@
       checks.forEach(function(cb) {
         if (cb.checked) ids.push(parseInt(cb.dataset.teamId));
       });
-      try {
-        const pitwallUplink = require('./pitwallUplink');
-        pitwallUplink.setBroadcastTeams(ids);
-      } catch (e) {}
+      ipcRenderer.send('set-pitwall-broadcast', ids);
     };
   </script>
 </body>

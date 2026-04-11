@@ -124,6 +124,19 @@ ipcMain.on('login-success', (event, data) => {
   startBridge();
 });
 
+// Pitwall team broadcasting IPC
+ipcMain.on('get-pitwall-teams', (event) => {
+  event.returnValue = {
+    teams: pitwallUplink.getAvailableTeams(),
+    broadcastIds: pitwallUplink.getBroadcastTeamIds(),
+    status: pitwallUplink.getStatus(),
+  };
+});
+
+ipcMain.on('set-pitwall-broadcast', (event, teamIds) => {
+  pitwallUplink.setBroadcastTeams(teamIds);
+});
+
 // Handle logout from control panel
 ipcMain.on('logout', () => {
   delete settings.racingUsername;
@@ -197,6 +210,11 @@ function startBridge() {
 
   startServer(9100);
   pitwallUplink.start();
+  pitwallUplink.setOnTeamsUpdated((teams, broadcastIds) => {
+    if (controlWindow && !controlWindow.isDestroyed()) {
+      controlWindow.webContents.send('pitwall-teams', { teams, broadcastIds });
+    }
+  });
   startTelemetry((status) => {
     if (controlWindow && !controlWindow.isDestroyed()) {
       controlWindow.webContents.send('iracing-status', status);
