@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Now Playing</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; }
+    .overlay-panel { background: rgba(12,13,20,0.88); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; backdrop-filter: blur(12px); overflow: hidden; }
+    .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 4px 10px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+    .status-dot.connected { background: #1DB954; }
+    .status-dot.waiting { background: #f79009; }
+    .status-dot.demo { background: #f79009; }
+
+    .player { display: flex; align-items: center; gap: 10px; padding: 8px 10px; }
+    .album-art { width: 56px; height: 56px; border-radius: 6px; flex-shrink: 0; background: rgba(255,255,255,0.05); overflow: hidden; }
+    .album-art img { width: 100%; height: 100%; object-fit: cover; }
+    .album-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+
+    .track-info { flex: 1; min-width: 0; overflow: hidden; }
+    .track-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
+    .track-artist { font-size: 11px; color: rgba(255,255,255,0.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+
+    .progress-bar { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+    .progress-fill { height: 100%; background: #1DB954; border-radius: 2px; transition: width 1s linear; }
+
+    .progress-times { display: flex; justify-content: space-between; margin-top: 3px; font-size: 8px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.25); }
+
+    .controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .ctrl-btn { background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; padding: 4px; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+    .ctrl-btn:hover { color: #fff; background: rgba(255,255,255,0.08); }
+    .ctrl-btn svg { width: 16px; height: 16px; fill: currentColor; }
+
+    .no-track { padding: 16px; text-align: center; font-size: 11px; color: rgba(255,255,255,0.25); }
+
+    .paused .track-name { color: rgba(255,255,255,0.5); }
+    .paused .progress-fill { background: rgba(255,255,255,0.2); }
+  </style>
+</head>
+<body>
+  <div class="overlay-panel">
+    <div class="overlay-header">
+      <span style="display:flex;align-items:center;gap:4px;">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="#1DB954"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+        NOW PLAYING
+      </span>
+      <span id="connection-status"><span class="status-dot demo"></span></span>
+    </div>
+    <div id="player-content">
+      <div class="no-track">Connect Spotify on your account settings</div>
+    </div>
+  </div>
+
+  <script>
+    // Settings
+    let _showControls = true;
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const os = require('os');
+      const settingsFile = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'settings.json');
+      if (fs.existsSync(settingsFile)) {
+        const all = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+        const s = (all.overlayCustom && all.overlayCustom.spotify) || {};
+        if (s.showControls === false) _showControls = false;
+      }
+    } catch(e) {}
+
+    const API_URL = 'https://atletanotifications.com/api/bridge/spotify';
+    let _lastTrack = '';
+    let _playing = false;
+    let _progressMs = 0;
+    let _durationMs = 0;
+    let _lastPollTime = 0;
+
+    function formatTime(ms) {
+      const s = Math.floor(ms / 1000);
+      const m = Math.floor(s / 60);
+      return m + ':' + String(s % 60).padStart(2, '0');
+    }
+
+    function renderPlayer(data) {
+      const el = document.getElementById('player-content');
+      if (!data || data.status === 'not_connected') {
+        el.innerHTML = '<div class="no-track">Connect Spotify on your account settings</div>';
+        updateStatus('disconnected');
+        return;
+      }
+      if (data.status === 'nothing_playing') {
+        el.innerHTML = '<div class="no-track">Nothing playing</div>';
+        updateStatus('waiting');
+        return;
+      }
+
+      _playing = data.status === 'playing';
+      _progressMs = data.progressMs || 0;
+      _durationMs = data.durationMs || 1;
+      _lastPollTime = Date.now();
+      const pct = Math.min(100, (_progressMs / _durationMs) * 100);
+      const isPaused = data.status === 'paused';
+
+      let html = '<div class="player' + (isPaused ? ' paused' : '') + '">';
+      // Album art
+      html += '<div class="album-art">';
+      if (data.albumArt) {
+        html += '<img src="' + data.albumArt + '" alt="">';
+      } else {
+        html += '<div class="album-placeholder"><svg width="24" height="24" viewBox="0 0 24 24" fill="rgba(255,255,255,0.15)"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>';
+      }
+      html += '</div>';
+
+      // Track info
+      html += '<div class="track-info">';
+      html += '<div class="track-name">' + (data.track || 'Unknown') + '</div>';
+      html += '<div class="track-artist">' + (data.artist || 'Unknown') + '</div>';
+      html += '<div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:' + pct + '%"></div></div>';
+      html += '<div class="progress-times"><span id="time-current">' + formatTime(_progressMs) + '</span><span>' + formatTime(_durationMs) + '</span></div>';
+      html += '</div>';
+
+      // Controls (optional)
+      if (_showControls) {
+        html += '<div class="controls">';
+        html += '<button class="ctrl-btn" onclick="spotifyControl(\'previous\')" title="Previous"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>';
+        html += '<button class="ctrl-btn" onclick="spotifyControl(\'' + (isPaused ? 'play' : 'pause') + '\')" title="' + (isPaused ? 'Play' : 'Pause') + '">';
+        if (isPaused) {
+          html += '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+        } else {
+          html += '<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+        }
+        html += '</button>';
+        html += '<button class="ctrl-btn" onclick="spotifyControl(\'next\')" title="Next"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>';
+        html += '</div>';
+      }
+
+      html += '</div>';
+      el.innerHTML = html;
+      updateStatus('connected');
+
+      // Track change animation
+      if (data.track !== _lastTrack) {
+        _lastTrack = data.track;
+        const nameEl = el.querySelector('.track-name');
+        if (nameEl) {
+          nameEl.style.animation = 'none';
+          nameEl.offsetHeight; // reflow
+          nameEl.style.animation = 'fadeIn 0.3s ease';
+        }
+      }
+    }
+
+    // Smooth progress bar update between polls
+    function updateProgress() {
+      if (!_playing || !_durationMs) return;
+      const elapsed = Date.now() - _lastPollTime;
+      const currentMs = Math.min(_progressMs + elapsed, _durationMs);
+      const pct = (currentMs / _durationMs) * 100;
+      const fill = document.getElementById('progress-fill');
+      const timeEl = document.getElementById('time-current');
+      if (fill) fill.style.width = pct + '%';
+      if (timeEl) timeEl.textContent = formatTime(currentMs);
+    }
+    setInterval(updateProgress, 1000);
+
+    // Spotify control (requires server endpoint)
+    window.spotifyControl = function(action) {
+      fetch('https://atletanotifications.com/api/bridge/spotify/control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      }).catch(() => {});
+      // Optimistic UI update
+      if (action === 'pause') { _playing = false; }
+      if (action === 'play') { _playing = true; _lastPollTime = Date.now(); }
+    };
+
+    function updateStatus(state) {
+      const el = document.getElementById('connection-status');
+      if (state === 'connected') el.innerHTML = '<span class="status-dot connected"></span>';
+      else if (state === 'waiting') el.innerHTML = '<span class="status-dot waiting"></span>';
+      else el.innerHTML = '<span class="status-dot demo"></span>';
+    }
+
+    // Poll Spotify API
+    async function pollSpotify() {
+      try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        renderPlayer(data);
+      } catch(e) {
+        // Offline — keep last state
+      }
+    }
+
+    // Initial load + poll every 4 seconds
+    pollSpotify();
+    setInterval(pollSpotify, 4000);
+  </script>
+  <script src="overlay-utils.js"></script>
+</body>
+</html>

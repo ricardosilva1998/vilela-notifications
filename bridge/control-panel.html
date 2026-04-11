@@ -857,6 +857,18 @@
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
+      spotify: [
+        { type: 'section', label: 'Settings' },
+        { key: 'showHeader', label: 'Show header bar', type: 'checkbox', default: true },
+        { key: 'showControls', label: 'Show media controls', type: 'checkbox', default: true },
+        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: false },
+        { type: 'section', label: 'Size & Position' },
+        { key: 'scale', label: 'Scale', type: 'select', default: '100', options: ['40','50','60','70','80','90','100','110','120','130','140','150','175','200'] },
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
+        { key: 'width', label: 'Width (px)', type: 'number', default: '360', min: 100, max: 800 },
+        { key: 'height', label: 'Height (px)', type: 'number', default: '100', min: 60, max: 300 },
+      ],
     };
 
     // Reorganize all overlay settings into sections

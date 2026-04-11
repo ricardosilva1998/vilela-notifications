@@ -166,6 +166,61 @@ app.get('/api/bridge/config', (req, res) => {
   res.json({ openaiKey: process.env.OPENAI_API_KEY || '' });
 });
 
+// Spotify now playing — for Bridge overlay (polls every 3-5s)
+app.get('/api/bridge/spotify', async (req, res) => {
+  try {
+    // Find streamer: from racingUser link or direct streamer session
+    let streamer = req.streamer;
+    if (!streamer && req.racingUser && req.racingUser.streamer_id) {
+      streamer = db.getStreamerById(req.racingUser.streamer_id);
+    }
+    if (!streamer || !streamer.spotify_access_token) {
+      return res.json({ status: 'not_connected' });
+    }
+    const { getCurrentlyPlaying } = require('./services/spotify');
+    const data = await getCurrentlyPlaying(streamer);
+    res.json(data);
+  } catch(e) {
+    res.json({ status: 'error' });
+  }
+});
+
+// Spotify playback control — for Bridge overlay media controls
+app.post('/api/bridge/spotify/control', express.json(), async (req, res) => {
+  try {
+    let streamer = req.streamer;
+    if (!streamer && req.racingUser && req.racingUser.streamer_id) {
+      streamer = db.getStreamerById(req.racingUser.streamer_id);
+    }
+    if (!streamer || !streamer.spotify_access_token) return res.json({ ok: false });
+
+    const { refreshSpotifyToken } = require('./services/spotify');
+    let token = streamer.spotify_access_token;
+    if (streamer.spotify_token_expires_at && Date.now() >= streamer.spotify_token_expires_at) {
+      token = await refreshSpotifyToken(streamer);
+    }
+    if (!token) return res.json({ ok: false });
+
+    const { action } = req.body;
+    const endpoints = {
+      play: { method: 'PUT', path: '/v1/me/player/play' },
+      pause: { method: 'PUT', path: '/v1/me/player/pause' },
+      next: { method: 'POST', path: '/v1/me/player/next' },
+      previous: { method: 'POST', path: '/v1/me/player/previous' },
+    };
+    const ep = endpoints[action];
+    if (!ep) return res.json({ ok: false, error: 'Invalid action' });
+
+    await fetch('https://api.spotify.com' + ep.path, {
+      method: ep.method,
+      headers: { Authorization: 'Bearer ' + token },
+    });
+    res.json({ ok: true });
+  } catch(e) {
+    res.json({ ok: false });
+  }
+});
+
 // Discord voice state API (public, used by Bridge app)
 app.get('/api/voice/:discordUserId', async (req, res) => {
   try {

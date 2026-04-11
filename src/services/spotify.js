@@ -69,12 +69,16 @@ async function getCurrentlyPlaying(streamer) {
 
 function parseTrack(data) {
   if (!data.item) return { status: 'nothing_playing' };
+  const images = data.item.album?.images || [];
   return {
     status: data.is_playing ? 'playing' : 'paused',
     track: data.item.name,
     artist: data.item.artists.map(a => a.name).join(', '),
     album: data.item.album?.name,
     url: data.item.external_urls?.spotify,
+    albumArt: images.length > 0 ? (images.find(i => i.width <= 300) || images[0]).url : null,
+    progressMs: data.progress_ms || 0,
+    durationMs: data.item.duration_ms || 0,
   };
 }
 

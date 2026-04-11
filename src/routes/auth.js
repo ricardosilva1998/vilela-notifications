@@ -284,7 +284,7 @@ router.get('/spotify', (req, res) => {
     client_id: clientId,
     response_type: 'code',
     redirect_uri: redirectUri,
-    scope: 'user-read-currently-playing',
+    scope: 'user-read-currently-playing user-modify-playback-state',
     state: String(req.streamer.id),
   });
   res.redirect(`https://accounts.spotify.com/authorize?${params}`);
