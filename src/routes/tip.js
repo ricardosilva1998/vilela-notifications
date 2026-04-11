@@ -85,10 +85,10 @@ router.post('/:username/create', async (req, res) => {
 
     if (order.id) {
       // Store donation details in cookies so they survive the PayPal redirect
-      res.cookie('tip_donor', donorName, { maxAge: 600000, httpOnly: true });
-      res.cookie('tip_message', message, { maxAge: 600000, httpOnly: true });
-      res.cookie('tip_amount', String(amount), { maxAge: 600000, httpOnly: true });
-      res.cookie('tip_currency', currency, { maxAge: 600000, httpOnly: true });
+      req.app.locals.secureCookie(res, 'tip_donor', donorName, { maxAge: 600000 });
+      req.app.locals.secureCookie(res, 'tip_message', message, { maxAge: 600000 });
+      req.app.locals.secureCookie(res, 'tip_amount', String(amount), { maxAge: 600000 });
+      req.app.locals.secureCookie(res, 'tip_currency', currency, { maxAge: 600000 });
       const approveUrl = order.links?.find(l => l.rel === 'approve')?.href;
       if (approveUrl) return res.redirect(approveUrl);
     }

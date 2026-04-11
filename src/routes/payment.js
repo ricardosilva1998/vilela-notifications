@@ -93,15 +93,15 @@ router.post('/create', (req, res) => {
   }
 
   // Store payment intent in session cookie
-  res.cookie('payment_intent', JSON.stringify({ tier, price, discountPercent, discountCodeUsed, durationDays }), {
-    httpOnly: true, maxAge: 30 * 60 * 1000, // 30 minutes
+  req.app.locals.secureCookie(res, 'payment_intent', JSON.stringify({ tier, price, discountPercent, discountCodeUsed, durationDays }), {
+    maxAge: 30 * 60 * 1000, // 30 minutes
   });
 
   createPayPalOrder(price, `Atleta ${tierConfig.name} - Annual Subscription`)
     .then((order) => {
       const approveLink = order.links?.find((l) => l.rel === 'approve');
       if (approveLink) {
-        res.cookie('paypal_order_id', order.id, { httpOnly: true, maxAge: 30 * 60 * 1000 });
+        req.app.locals.secureCookie(res, 'paypal_order_id', order.id, { maxAge: 30 * 60 * 1000 });
         res.redirect(approveLink.href);
       } else {
         console.error('[Payment] PayPal order creation failed:', JSON.stringify(order));

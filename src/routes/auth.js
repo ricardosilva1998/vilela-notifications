@@ -9,7 +9,7 @@ const router = Router();
 
 router.get('/login', (req, res) => {
   const state = crypto.randomUUID();
-  res.cookie('oauth_state', state, { httpOnly: true, maxAge: 600_000 });
+  req.app.locals.secureCookie(res, 'oauth_state', state, { maxAge: 600_000 });
 
   const params = new URLSearchParams({
     client_id: config.discord.clientId,
@@ -71,7 +71,7 @@ router.get('/login/callback', async (req, res) => {
     const sid = crypto.randomUUID();
     const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
     db.createSession(sid, streamer.id, expiresAt);
-    res.cookie('session', sid, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
+    req.app.locals.secureCookie(res, 'session', sid, { maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
 
     // Link Racing account if one is already logged in
     if (req.racingUser && !req.racingUser.streamer_id) {
@@ -80,7 +80,7 @@ router.get('/login/callback', async (req, res) => {
       db.deleteSession(sid);
       const linkedSid = crypto.randomBytes(32).toString('hex');
       db.createLinkedSession(linkedSid, streamer.id, req.racingUser.id, expiresAt);
-      res.cookie('session', linkedSid, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
+      req.app.locals.secureCookie(res, 'session', linkedSid, { maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
       console.log(`[Auth] Discord login: ${user.username} (${user.id}) — linked to Racing user ${req.racingUser.id}`);
       return res.redirect('/racing/account?msg=' + encodeURIComponent('Discord account linked!'));
     }
@@ -118,6 +118,7 @@ router.get('/twitch', (req, res) => {
 router.get('/twitch/callback', async (req, res) => {
   const { code, state: streamerId } = req.query;
   if (!code || !streamerId) return res.status(400).send('Missing parameters');
+  if (String(streamerId) !== String(req.streamer?.id)) return res.status(403).send('Invalid state');
 
   try {
     const tokenRes = await fetch('https://id.twitch.tv/oauth2/token', {
@@ -173,6 +174,7 @@ router.get('/broadcaster', (req, res) => {
 router.get('/broadcaster/callback', async (req, res) => {
   const { code, state: streamerId } = req.query;
   if (!code || !streamerId) return res.status(400).send('Missing parameters');
+  if (String(streamerId) !== String(req.streamer?.id)) return res.status(403).send('Invalid state');
 
   try {
     const tokenRes = await fetch('https://id.twitch.tv/oauth2/token', {
@@ -227,6 +229,7 @@ router.get('/youtube/callback', async (req, res) => {
   const { code, state: streamerId, error } = req.query;
   if (error) return res.redirect('/dashboard/youtube-chatbot?error=' + encodeURIComponent(error));
   if (!code || !streamerId) return res.redirect('/dashboard/youtube-chatbot?error=Missing parameters');
+  if (String(streamerId) !== String(req.streamer?.id)) return res.redirect('/dashboard/youtube-chatbot?error=Invalid state');
 
   try {
     const redirectUri = `${config.app.url}/auth/youtube/callback`;
@@ -291,6 +294,7 @@ router.get('/spotify/callback', async (req, res) => {
   const { code, state: streamerId, error } = req.query;
   if (error) return res.redirect('/dashboard?msg=spotify_error');
   if (!code || !streamerId) return res.redirect('/dashboard?msg=spotify_error');
+  if (String(streamerId) !== String(req.streamer?.id)) return res.redirect('/dashboard?msg=spotify_error');
 
   try {
     const { clientId, clientSecret } = config.spotify;
@@ -333,12 +337,16 @@ router.get('/link', (req, res) => {
   const { streamer_id, discord_id } = req.query;
   if (!streamer_id || !discord_id) return res.status(400).render('link-result', { success: false, twitchName: null, streamer: null });
 
+  const linkState = crypto.randomUUID();
+  req.app.locals.secureCookie(res, 'link_state', linkState, { maxAge: 600_000 });
+  req.app.locals.secureCookie(res, 'link_data', `${streamer_id}:${discord_id}`, { maxAge: 600_000 });
+
   const params = new URLSearchParams({
     client_id: config.twitch.clientId,
     redirect_uri: `${config.app.url}/auth/link/callback`,
     response_type: 'code',
     scope: '',
-    state: `${streamer_id}:${discord_id}`,
+    state: linkState,
   });
   res.redirect(`https://id.twitch.tv/oauth2/authorize?${params}`);
 });
@@ -347,7 +355,13 @@ router.get('/link/callback', async (req, res) => {
   const { code, state } = req.query;
   if (!code || !state) return res.status(400).render('link-result', { success: false, twitchName: null, streamer: null });
 
-  const [streamerId, discordId] = state.split(':');
+  const expectedState = req.cookies?.link_state;
+  const linkData = req.cookies?.link_data;
+  res.clearCookie('link_state');
+  res.clearCookie('link_data');
+  if (!expectedState || state !== expectedState || !linkData) return res.status(403).render('link-result', { success: false, twitchName: null, streamer: null });
+
+  const [streamerId, discordId] = linkData.split(':');
   if (!streamerId || !discordId) return res.status(400).render('link-result', { success: false, twitchName: null, streamer: null });
 
   try {

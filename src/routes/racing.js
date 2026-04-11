@@ -51,6 +51,12 @@ router.get('/admin', (req, res) => {
   res.render('racing-admin', { streamer: req.streamer || null, racingUser: req.racingUser, racingUsers, bridgeUsers });
 });
 
+router.post('/admin/unlock/:id', (req, res) => {
+  if (!res.locals.isAdmin) return res.redirect('/racing');
+  db.unlockRacingAccount(parseInt(req.params.id));
+  res.redirect('/racing/admin');
+});
+
 // Update profile
 router.post('/account/profile', express.urlencoded({ extended: true }), (req, res) => {
   const displayName = (req.body.display_name || '').trim().slice(0, 32);
@@ -79,13 +85,16 @@ router.post('/account/password', express.urlencoded({ extended: true }), async (
     const { current_password, new_password, confirm_password } = req.body;
     if (!current_password || !new_password) return res.redirect('/racing/account?error=All fields required');
     if (new_password !== confirm_password) return res.redirect('/racing/account?error=Passwords do not match');
-    if (new_password.length < 6) return res.redirect('/racing/account?error=Password must be at least 6 characters');
+    if (new_password.length < 8) return res.redirect('/racing/account?error=Password must be at least 8 characters');
 
     const valid = await bcrypt.compare(current_password, req.racingUser.password_hash);
     if (!valid) return res.redirect('/racing/account?error=Current password is incorrect');
 
     const hash = await bcrypt.hash(new_password, 10);
     db.updateRacingPassword(req.racingUser.id, hash);
+    // Invalidate all other sessions so stolen sessions can't persist
+    const currentSid = req.cookies?.session;
+    if (currentSid) db.deleteOtherSessions(currentSid, { racingUserId: req.racingUser.id });
     res.redirect('/racing/account?msg=Password updated');
   } catch(e) {
     res.redirect('/racing/account?error=Failed to update password');

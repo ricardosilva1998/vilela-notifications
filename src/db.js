@@ -968,6 +968,8 @@ try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_users_bridge ON racing_user
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_users_streamer ON racing_users(streamer_id)'); } catch(e) {}
 try { db.exec('ALTER TABLE racing_users ADD COLUMN display_name TEXT'); } catch(e) {}
 try { db.exec('ALTER TABLE racing_users ADD COLUMN avatar TEXT'); } catch(e) {}
+try { db.exec('ALTER TABLE racing_users ADD COLUMN login_attempts INTEGER DEFAULT 0'); } catch(e) {}
+try { db.exec('ALTER TABLE racing_users ADD COLUMN locked_until INTEGER'); } catch(e) {}
 try { db.exec('ALTER TABLE racing_sessions ADD COLUMN racing_user_id INTEGER'); } catch(e) {}
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_sessions_user ON racing_sessions(racing_user_id)'); } catch(e) {}
 
@@ -1271,6 +1273,8 @@ function linkUser(streamerId, discordUserId, twitchUserId, twitchUsername) {
 const _createSession = db.prepare('INSERT OR REPLACE INTO sessions (sid, streamer_id, expires_at) VALUES (?, ?, ?)');
 const _getSession = db.prepare('SELECT * FROM sessions WHERE sid = ? AND expires_at > ?');
 const _deleteSession = db.prepare('DELETE FROM sessions WHERE sid = ?');
+const _deleteOtherSessionsByRacingUser = db.prepare('DELETE FROM sessions WHERE racing_user_id = ? AND sid != ?');
+const _deleteOtherSessionsByStreamer = db.prepare('DELETE FROM sessions WHERE streamer_id = ? AND sid != ?');
 const _cleanExpiredSessions = db.prepare('DELETE FROM sessions WHERE expires_at <= ?');
 
 function createSession(sid, streamerId, expiresAt) {
@@ -1283,6 +1287,10 @@ function getSession(sid) {
 
 function deleteSession(sid) {
   _deleteSession.run(sid);
+}
+function deleteOtherSessions(currentSid, { racingUserId, streamerId } = {}) {
+  if (racingUserId) _deleteOtherSessionsByRacingUser.run(racingUserId, currentSid);
+  if (streamerId) _deleteOtherSessionsByStreamer.run(streamerId, currentSid);
 }
 
 function cleanExpiredSessions() {
@@ -3584,6 +3592,21 @@ function updateRacingAvatar(id, avatar) { return _updateRacingAvatar.run({ id, a
 function createRacingSession(sid, racingUserId, expiresAt) { return _createRacingSession.run(sid, racingUserId, expiresAt); }
 function createLinkedSession(sid, streamerId, racingUserId, expiresAt) { return _createLinkedSession.run(sid, streamerId, racingUserId, expiresAt); }
 
+// Account lockout
+const _recordFailedLogin = db.prepare('UPDATE racing_users SET login_attempts = login_attempts + 1 WHERE id = ?');
+const _lockAccount = db.prepare('UPDATE racing_users SET locked_until = ? WHERE id = ?');
+const _resetLoginAttempts = db.prepare('UPDATE racing_users SET login_attempts = 0, locked_until = NULL WHERE id = ?');
+function recordFailedLogin(userId) {
+  _recordFailedLogin.run(userId);
+  const user = _getRacingUserById.get({ id: userId });
+  if (user && user.login_attempts >= 5) {
+    _lockAccount.run(Date.now() + 15 * 60 * 1000, userId); // 15 min lockout
+  }
+}
+function resetLoginAttempts(userId) { _resetLoginAttempts.run(userId); }
+function isAccountLocked(user) { return user.locked_until && user.locked_until > Date.now(); }
+function unlockRacingAccount(userId) { _resetLoginAttempts.run(userId); }
+
 module.exports = {
   db,
   getStreamerByDiscordId,
@@ -3610,6 +3633,7 @@ module.exports = {
   createSession,
   getSession,
   deleteSession,
+  deleteOtherSessions,
   cleanExpiredSessions,
   logNotification,
   disableStreamer,
@@ -3827,6 +3851,10 @@ module.exports = {
   updateRacingAvatar,
   createRacingSession,
   createLinkedSession,
+  recordFailedLogin,
+  resetLoginAttempts,
+  isAccountLocked,
+  unlockRacingAccount,
   closeDb() { db.close(); },
   backup(dest) { return db.backup(dest); },
 };

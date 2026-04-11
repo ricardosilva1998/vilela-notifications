@@ -688,18 +688,21 @@
       return;
     }
 
+    function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
     grid.innerHTML = filtered.map(m => {
       const selected = m.id === vtuberSelectedId;
       const icon = CATEGORY_ICONS[m.category] || CATEGORY_ICONS.custom;
       const canDelete = !m.is_bundled;
+      const safeName = escHtml(m.name);
+      const safeAttrName = safeName.replace(/'/g, '&#39;');
       return `
         <div onclick="selectVtuberModel(${m.id})" style="border-radius: 10px; background: ${selected ? 'linear-gradient(135deg, rgba(102,126,234,0.15), rgba(118,75,162,0.15))' : 'var(--bg-elevated)'}; border: 2px solid ${selected ? '#667eea' : 'transparent'}; padding: 8px; text-align: center; cursor: pointer; position: relative; transition: all 0.2s;" onmouseover="this.style.borderColor='${selected ? '#667eea' : 'var(--border)'}'" onmouseout="this.style.borderColor='${selected ? '#667eea' : 'transparent'}'">
           <div style="width: 100%; aspect-ratio: 1; background: rgba(0,0,0,0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 6px; color: var(--text-muted);">
             ${icon}
           </div>
-          <span style="font-size: 10px; color: ${selected ? 'var(--text-primary)' : 'var(--text-muted)'}; font-weight: ${selected ? '600' : '400'}; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${m.name}</span>
+          <span style="font-size: 10px; color: ${selected ? 'var(--text-primary)' : 'var(--text-muted)'}; font-weight: ${selected ? '600' : '400'}; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${safeName}</span>
           ${selected ? '<div style="position: absolute; top: 6px; right: 6px; width: 16px; height: 16px; border-radius: 50%; background: #667eea; display: flex; align-items: center; justify-content: center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>' : ''}
-          ${canDelete ? `<div onclick="event.stopPropagation(); deleteVtuberModel(${m.id}, '${m.name.replace(/'/g, "\\'")}')" style="position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; border-radius: 50%; background: rgba(231,76,60,0.8); display: none; align-items: center; justify-content: center; cursor: pointer;" onmouseover="this.style.background='#e74c3c'" onmouseout="this.style.background='rgba(231,76,60,0.8)'" class="vtuber-delete-btn"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>` : ''}
+          ${canDelete ? `<div onclick="event.stopPropagation(); deleteVtuberModel(${m.id}, '${safeAttrName}')" style="position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; border-radius: 50%; background: rgba(231,76,60,0.8); display: none; align-items: center; justify-content: center; cursor: pointer;" onmouseover="this.style.background='#e74c3c'" onmouseout="this.style.background='rgba(231,76,60,0.8)'" class="vtuber-delete-btn"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>` : ''}
         </div>`;
     }).join('');
 

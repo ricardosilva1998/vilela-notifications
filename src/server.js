@@ -1,5 +1,7 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const crypto = require('crypto');
 const config = require('./config');
@@ -18,6 +20,32 @@ const syncRoutes = require('./routes/sync');
 // const customOverlayRoutes = require('./routes/customOverlays'); // DISABLED for now
 
 const app = express();
+const isProduction = process.env.NODE_ENV === 'production' || !!process.env.RAILWAY_ENVIRONMENT;
+app.set('trust proxy', 1); // Trust first proxy (Railway/Cloudflare)
+
+// HTTPS redirect in production
+app.use((req, res, next) => {
+  if (isProduction && req.get('x-forwarded-proto') === 'http') {
+    return res.redirect(301, `https://${req.get('host')}${req.originalUrl}`);
+  }
+  next();
+});
+
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: false, // app uses inline scripts/styles extensively
+  crossOriginEmbedderPolicy: false, // overlay pages are embedded in OBS
+}));
+
+// Rate limiters
+const generalLimiter = rateLimit({ windowMs: 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false });
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false, message: 'Too many attempts, please try again later' });
+const apiLimiter = rateLimit({ windowMs: 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false });
+app.use(generalLimiter);
+function secureCookie(res, name, value, opts = {}) {
+  res.cookie(name, value, { httpOnly: true, secure: isProduction, sameSite: 'lax', ...opts });
+}
+app.locals.secureCookie = secureCookie;
 
 // Middleware
 app.use(cookieParser());
@@ -120,15 +148,16 @@ app.use('/tip', tipRoutes);
 
 const racingAuthRoutes = require('./routes/racing-auth');
 const racingRoutes = require('./routes/racing');
-app.use('/racing/auth', racingAuthRoutes);
+app.use('/racing/auth', authLimiter, racingAuthRoutes);
 app.use('/racing', racingRoutes);
 
 app.get('/streamer', (req, res) => {
   if (req.streamer) return res.redirect('/dashboard');
   res.render('streamer-landing', { streamer: null, racingUser: null });
 });
-// Public Bridge API (no auth) — BEFORE /api auth middleware
+// Bridge API — requires auth
 app.get('/api/bridge/config', (req, res) => {
+  if (!req.streamer && !req.racingUser) return res.status(401).json({ error: 'Unauthorized' });
   res.json({ openaiKey: process.env.OPENAI_API_KEY || '' });
 });
 
@@ -198,8 +227,15 @@ app.get('/api/track-map/:trackName', (req, res) => {
 app.post('/api/track-map', (req, res) => {
   try {
     const { trackName, trackData, trackLength, trackTurns, trackCountry, trackCity } = req.body;
-    if (!trackName || !trackData || !Array.isArray(trackData) || trackData.length < 50) {
+    if (!trackName || typeof trackName !== 'string' || trackName.length > 200) {
+      return res.status(400).json({ error: 'Invalid track name' });
+    }
+    if (!trackData || !Array.isArray(trackData) || trackData.length < 50 || trackData.length > 50000) {
       return res.status(400).json({ error: 'Invalid track data' });
+    }
+    // Validate track data points are numeric arrays
+    if (!trackData.every(p => Array.isArray(p) && p.length >= 2 && p.every(v => typeof v === 'number' && isFinite(v)))) {
+      return res.status(400).json({ error: 'Invalid track data format' });
     }
     const json = JSON.stringify(trackData);
     const existing = db.db.prepare('SELECT point_count FROM track_maps WHERE track_name = ?').get(trackName);
@@ -808,7 +844,7 @@ app.get('/tracks/:trackName', (req, res) => {
   res.render('tracks', { streamer: req.streamer || null, racingUser: req.racingUser || null, t: res.locals.t });
 });
 
-app.use('/api', apiRoutes);
+app.use('/api', apiLimiter, apiRoutes);
 app.use('/admin', adminRoutes);
 app.use('/vtuber', vtuberRoutes);
 app.use('/sync', syncRoutes);
@@ -818,7 +854,7 @@ app.use('/overlay', overlayRoutes);
 // Language switch
 app.post('/set-language', (req, res) => {
   const lang = SUPPORTED_LANGS.includes(req.body.lang) ? req.body.lang : 'en';
-  res.cookie('lang', lang, { maxAge: 365 * 24 * 60 * 60 * 1000, httpOnly: true });
+  secureCookie(res, 'lang', lang, { maxAge: 365 * 24 * 60 * 60 * 1000 });
   const referer = req.headers.referer || '/';
   res.redirect(referer);
 });
