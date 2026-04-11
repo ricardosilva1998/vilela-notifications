@@ -986,6 +986,41 @@ db.exec(`
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_auth_log_ip ON auth_log(ip)'); } catch(e) {}
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_auth_log_created ON auth_log(created_at)'); } catch(e) {}
 
+// ── Teams (Pitwall Phase 1) ───────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS teams (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    owner_id INTEGER NOT NULL REFERENCES racing_users(id),
+    invite_code TEXT NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT (datetime('now'))
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS team_members (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES racing_users(id),
+    role TEXT NOT NULL DEFAULT 'member',
+    joined_at DATETIME DEFAULT (datetime('now')),
+    UNIQUE(team_id, user_id)
+  )
+`);
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_team_members_user ON team_members(user_id)'); } catch(e) {}
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS team_invites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    invited_user_id INTEGER NOT NULL REFERENCES racing_users(id),
+    invited_by INTEGER NOT NULL REFERENCES racing_users(id),
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at DATETIME DEFAULT (datetime('now'))
+  )
+`);
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_team_invites_user ON team_invites(invited_user_id)'); } catch(e) {}
+
 try { db.exec('ALTER TABLE racing_sessions ADD COLUMN racing_user_id INTEGER'); } catch(e) {}
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_sessions_user ON racing_sessions(racing_user_id)'); } catch(e) {}
 
@@ -3666,6 +3701,114 @@ function lockRacingAccount(userId) {
   db.prepare('UPDATE racing_users SET locked_until = ?, login_attempts = 99 WHERE id = ?').run(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000, userId);
 }
 
+// ── Team queries ──────────────────────────────────────────────────
+const _getTeamById = db.prepare('SELECT * FROM teams WHERE id = ?');
+const _getTeamByOwnerId = db.prepare('SELECT * FROM teams WHERE owner_id = ?');
+const _getTeamMembership = db.prepare(`
+  SELECT tm.*, t.name AS team_name, t.owner_id, t.invite_code
+  FROM team_members tm JOIN teams t ON tm.team_id = t.id
+  WHERE tm.user_id = ?
+`);
+const _getTeamMembers = db.prepare(`
+  SELECT tm.*, ru.username, ru.display_name, ru.iracing_name, ru.avatar, ru.bridge_id
+  FROM team_members tm JOIN racing_users ru ON tm.user_id = ru.id
+  WHERE tm.team_id = ? ORDER BY tm.role = 'owner' DESC, tm.joined_at ASC
+`);
+const _getPendingInvitesForUser = db.prepare(`
+  SELECT ti.*, t.name AS team_name, inv.username AS invited_by_name
+  FROM team_invites ti
+  JOIN teams t ON ti.team_id = t.id
+  JOIN racing_users inv ON ti.invited_by = inv.id
+  WHERE ti.invited_user_id = ? AND ti.status = 'pending'
+`);
+const _getPendingInvitesForTeam = db.prepare(`
+  SELECT ti.*, ru.username AS invited_username
+  FROM team_invites ti JOIN racing_users ru ON ti.invited_user_id = ru.id
+  WHERE ti.team_id = ? AND ti.status = 'pending'
+`);
+const _getTeamInviteById = db.prepare('SELECT * FROM team_invites WHERE id = ?');
+const _insertTeam = db.prepare('INSERT INTO teams (name, owner_id, invite_code) VALUES (?, ?, ?)');
+const _insertTeamMember = db.prepare('INSERT INTO team_members (team_id, user_id, role) VALUES (?, ?, ?)');
+const _insertTeamInvite = db.prepare('INSERT INTO team_invites (team_id, invited_user_id, invited_by) VALUES (?, ?, ?)');
+const _updateTeamInviteStatus = db.prepare('UPDATE team_invites SET status = ? WHERE id = ?');
+const _deleteTeamMember = db.prepare('DELETE FROM team_members WHERE team_id = ? AND user_id = ?');
+const _deleteTeam = db.prepare('DELETE FROM teams WHERE id = ?');
+const _getTeamByInviteCode = db.prepare('SELECT * FROM teams WHERE invite_code = ?');
+const _hasPendingInvite = db.prepare("SELECT id FROM team_invites WHERE team_id = ? AND invited_user_id = ? AND status = 'pending'");
+const _countTeamMembers = db.prepare('SELECT COUNT(*) AS count FROM team_members WHERE team_id = ?');
+
+function createTeam(name, ownerId) {
+  const code = require('crypto').randomBytes(4).toString('hex');
+  const result = _insertTeam.run(name, ownerId, code);
+  _insertTeamMember.run(result.lastInsertRowid, ownerId, 'owner');
+  return result.lastInsertRowid;
+}
+
+function getTeamForUser(userId) {
+  return _getTeamMembership.get(userId) || null;
+}
+
+function getTeamMembers(teamId) {
+  return _getTeamMembers.all(teamId);
+}
+
+function getPendingInvitesForUser(userId) {
+  return _getPendingInvitesForUser.all(userId);
+}
+
+function getPendingInvitesForTeam(teamId) {
+  return _getPendingInvitesForTeam.all(teamId);
+}
+
+function getTeamInviteById(id) {
+  return _getTeamInviteById.get(id) || null;
+}
+
+function createTeamInvite(teamId, invitedUserId, invitedBy) {
+  const existing = _hasPendingInvite.get(teamId, invitedUserId);
+  if (existing) return null;
+  return _insertTeamInvite.run(teamId, invitedUserId, invitedBy).lastInsertRowid;
+}
+
+function acceptTeamInvite(inviteId) {
+  const invite = _getTeamInviteById.get(inviteId);
+  if (!invite || invite.status !== 'pending') return false;
+  const existing = _getTeamMembership.get(invite.invited_user_id);
+  if (existing) return false;
+  _updateTeamInviteStatus.run('accepted', inviteId);
+  _insertTeamMember.run(invite.team_id, invite.invited_user_id, 'member');
+  return true;
+}
+
+function declineTeamInvite(inviteId) {
+  _updateTeamInviteStatus.run('declined', inviteId);
+}
+
+function removeTeamMember(teamId, userId) {
+  _deleteTeamMember.run(teamId, userId);
+}
+
+function deleteTeamById(teamId) {
+  _deleteTeam.run(teamId);
+}
+
+function joinTeamByCode(code, userId) {
+  const team = _getTeamByInviteCode.get(code);
+  if (!team) return null;
+  const existing = _getTeamMembership.get(userId);
+  if (existing) return null;
+  _insertTeamMember.run(team.id, userId, 'member');
+  return team;
+}
+
+function getTeamById(teamId) {
+  return _getTeamById.get(teamId) || null;
+}
+
+function getTeamMemberCount(teamId) {
+  return _countTeamMembers.get(teamId).count;
+}
+
 module.exports = {
   db,
   getStreamerByDiscordId,
@@ -3919,6 +4062,20 @@ module.exports = {
   getSuspiciousActivity,
   getRecentAuthLog,
   lockRacingAccount,
+  createTeam,
+  getTeamForUser,
+  getTeamMembers,
+  getPendingInvitesForUser,
+  getPendingInvitesForTeam,
+  getTeamInviteById,
+  createTeamInvite,
+  acceptTeamInvite,
+  declineTeamInvite,
+  removeTeamMember,
+  deleteTeamById,
+  joinTeamByCode,
+  getTeamById,
+  getTeamMemberCount,
   closeDb() { db.close(); },
   backup(dest) { return db.backup(dest); },
 };
