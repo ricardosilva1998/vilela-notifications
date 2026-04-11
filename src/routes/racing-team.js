@@ -154,4 +154,14 @@ router.get('/join/:code', (req, res) => {
   res.redirect('/racing/team?msg=' + encodeURIComponent('Joined ' + team.name + '!'));
 });
 
+// GET /racing/team/search?q=... — autocomplete for invite
+router.get('/search', (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (q.length < 2) return res.json([]);
+  const results = db.searchRacingUsers(q)
+    .filter(u => u.id !== req.racingUser.id)
+    .map(u => ({ username: u.username, display_name: u.display_name, iracing_name: u.iracing_name }));
+  res.json(results);
+});
+
 module.exports = router;

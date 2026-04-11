@@ -116,9 +116,12 @@
       <!-- Invite form -->
       <div class="card" style="padding:20px;margin-bottom:20px;">
         <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;">Invite Teammate</h3>
-        <form method="POST" action="/racing/team/invite" style="display:flex;gap:8px;align-items:center;">
-          <input type="text" name="username" placeholder="Racing username" required
-            style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text-primary);font-size:13px;flex:1;">
+        <form method="POST" action="/racing/team/invite" style="display:flex;gap:8px;align-items:center;position:relative;" id="invite-form">
+          <div style="position:relative;flex:1;">
+            <input type="text" name="username" placeholder="Racing username" required autocomplete="off" id="invite-input"
+              style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text-primary);font-size:13px;width:100%;box-sizing:border-box;">
+            <div id="invite-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;margin-top:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;overflow:hidden;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-height:240px;overflow-y:auto;"></div>
+          </div>
           <button type="submit" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Send Invite</button>
         </form>
 
@@ -163,4 +166,80 @@
     </div>
   <% } %>
 </div>
+<script>
+(function() {
+  const input = document.getElementById('invite-input');
+  const dropdown = document.getElementById('invite-dropdown');
+  if (!input || !dropdown) return;
+
+  let timer = null;
+  let selectedIdx = -1;
+
+  input.addEventListener('input', function() {
+    clearTimeout(timer);
+    const q = this.value.trim();
+    if (q.length < 2) { dropdown.style.display = 'none'; return; }
+    timer = setTimeout(() => {
+      fetch('/racing/team/search?q=' + encodeURIComponent(q))
+        .then(r => r.json())
+        .then(users => {
+          if (!users.length) { dropdown.style.display = 'none'; return; }
+          selectedIdx = -1;
+          dropdown.innerHTML = users.map((u, i) =>
+            '<div class="ac-item" data-idx="' + i + '" data-username="' + u.username + '" style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,0.04);">' +
+              '<div style="flex:1;min-width:0;">' +
+                '<div style="font-size:13px;font-weight:600;color:var(--text-primary);">' + u.username + '</div>' +
+                (u.display_name || u.iracing_name ? '<div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (u.display_name ? u.display_name : '') + (u.display_name && u.iracing_name ? ' · ' : '') + (u.iracing_name ? u.iracing_name : '') + '</div>' : '') +
+              '</div>' +
+            '</div>'
+          ).join('');
+          dropdown.style.display = 'block';
+
+          dropdown.querySelectorAll('.ac-item').forEach(el => {
+            el.addEventListener('mousedown', function(e) {
+              e.preventDefault();
+              input.value = this.dataset.username;
+              dropdown.style.display = 'none';
+            });
+            el.addEventListener('mouseover', function() {
+              selectedIdx = parseInt(this.dataset.idx);
+              highlightItem();
+            });
+          });
+        })
+        .catch(() => { dropdown.style.display = 'none'; });
+    }, 200);
+  });
+
+  input.addEventListener('keydown', function(e) {
+    const items = dropdown.querySelectorAll('.ac-item');
+    if (!items.length || dropdown.style.display === 'none') return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      selectedIdx = Math.min(selectedIdx + 1, items.length - 1);
+      highlightItem();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      selectedIdx = Math.max(selectedIdx - 1, 0);
+      highlightItem();
+    } else if (e.key === 'Enter' && selectedIdx >= 0) {
+      e.preventDefault();
+      input.value = items[selectedIdx].dataset.username;
+      dropdown.style.display = 'none';
+    } else if (e.key === 'Escape') {
+      dropdown.style.display = 'none';
+    }
+  });
+
+  input.addEventListener('blur', function() {
+    setTimeout(() => { dropdown.style.display = 'none'; }, 150);
+  });
+
+  function highlightItem() {
+    dropdown.querySelectorAll('.ac-item').forEach((el, i) => {
+      el.style.background = i === selectedIdx ? 'rgba(145,70,255,0.15)' : 'transparent';
+    });
+  }
+})();
+</script>
 <%- include('footer') %>

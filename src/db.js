@@ -3817,6 +3817,14 @@ function getTeamMemberCount(teamId) {
   return _countTeamMembers.get(teamId).count;
 }
 
+const _searchRacingUsers = db.prepare(`
+  SELECT id, username, display_name, iracing_name, avatar
+  FROM racing_users WHERE username LIKE ? COLLATE NOCASE LIMIT 8
+`);
+function searchRacingUsers(query) {
+  return _searchRacingUsers.all(query + '%');
+}
+
 module.exports = {
   db,
   getStreamerByDiscordId,
@@ -4084,6 +4092,7 @@ module.exports = {
   joinTeamByCode,
   getTeamById,
   getTeamMemberCount,
+  searchRacingUsers,
   closeDb() { db.close(); },
   backup(dest) { return db.backup(dest); },
 };
