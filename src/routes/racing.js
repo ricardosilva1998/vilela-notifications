@@ -6,22 +6,11 @@ const router = express.Router();
 // /racing — landing (if not logged in) or dashboard (if logged in)
 router.get('/', (req, res) => {
   if (req.racingUser) {
-    // Logged in — show dashboard with user's sessions
-    const bridgeId = req.racingUser.bridge_id || '';
-    const sessions = db.getSessionsByTrack ? [] : []; // all tracks
-    // Get recent sessions across all tracks
-    let recentSessions = [];
-    try {
-      const stmt = db.db ? null : null; // fallback
-      // Query recent sessions for this user (by bridge_id or racing_user_id)
-      recentSessions = db.getRecentSessionsByUser ? db.getRecentSessionsByUser(req.racingUser.id, bridgeId, 20) : [];
-    } catch(e) {}
     const teamMembership = db.getTeamForUser(req.racingUser.id);
     const pendingTeamInvites = db.getPendingInvitesForUser(req.racingUser.id);
     return res.render('racing-dashboard', {
       streamer: req.streamer || null,
       racingUser: req.racingUser,
-      sessions: recentSessions,
       team: teamMembership,
       pendingTeamInvites,
     });
@@ -44,7 +33,12 @@ router.use((req, res, next) => {
 });
 
 router.get('/account', (req, res) => {
-  res.render('racing-account', { streamer: req.streamer || null, racingUser: req.racingUser, msg: req.query.msg || null, error: req.query.error || null });
+  const bridgeId = req.racingUser.bridge_id || '';
+  let sessions = [];
+  try {
+    sessions = db.getRecentSessionsByUser ? db.getRecentSessionsByUser(req.racingUser.id, bridgeId, 20) : [];
+  } catch(e) {}
+  res.render('racing-account', { streamer: req.streamer || null, racingUser: req.racingUser, msg: req.query.msg || null, error: req.query.error || null, sessions });
 });
 
 // Pitwall — live telemetry viewer

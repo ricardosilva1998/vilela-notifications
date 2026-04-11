@@ -85,6 +85,70 @@
       </div>
     </div>
   </div>
+
+  <!-- My Sessions -->
+  <div style="margin-top:32px;">
+    <div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
+      <h2 style="font-size:18px;font-weight:700;">My Sessions</h2>
+      <% if (racingUser.bridge_id) { %>
+        <span style="font-size:11px;color:var(--text-muted);background:rgba(62,207,142,0.1);padding:3px 8px;border-radius:4px;color:#3ecf8e;">Bridge linked</span>
+      <% } else { %>
+        <span style="font-size:11px;color:var(--text-muted);">Link Bridge to see session data</span>
+      <% } %>
+    </div>
+
+    <% if (typeof sessions !== 'undefined' && sessions && sessions.length > 0) { %>
+      <div class="card" style="overflow:hidden;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);">
+              <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Date</th>
+              <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Track</th>
+              <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Type</th>
+              <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Car</th>
+              <th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Best Lap</th>
+              <th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Laps</th>
+              <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% sessions.forEach(function(s) { %>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.03);cursor:pointer;" onclick="window.location='/api/session/<%= s.id %>?bridge_id=<%= racingUser.bridge_id || '' %>'">
+                <td style="padding:10px 14px;color:var(--text-secondary);font-size:12px;"><%= new Date(s.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) %></td>
+                <td style="padding:10px 14px;font-weight:600;"><%= s.track_name %></td>
+                <td style="padding:10px 14px;">
+                  <span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;
+                    <% if (s.session_type === 'practice') { %>background:rgba(62,207,142,0.1);color:#3ecf8e;<% } else if (s.session_type === 'qualify') { %>background:rgba(247,201,72,0.1);color:#f7c948;<% } else { %>background:rgba(145,70,255,0.1);color:#b18cff;<% } %>
+                  "><%= s.session_type.charAt(0).toUpperCase() + s.session_type.slice(1) %></span>
+                  <% if (s.race_type) { %><span style="font-size:10px;color:var(--text-muted);margin-left:4px;"><%= s.race_type %></span><% } %>
+                </td>
+                <td style="padding:10px 14px;color:var(--text-secondary);font-size:12px;"><%= s.car_name || s.car_class %></td>
+                <td style="padding:10px 14px;text-align:right;font-family:'JetBrains Mono',monospace;font-weight:600;color:#f7c948;">
+                  <% if (s.best_lap_time && s.best_lap_time > 0) { %>
+                    <% var m = Math.floor(s.best_lap_time / 60); var sec = (s.best_lap_time % 60).toFixed(3); %>
+                    <%= m > 0 ? m + ':' + sec.padStart(6, '0') : sec %>
+                  <% } else { %>--<% } %>
+                </td>
+                <td style="padding:10px 14px;text-align:right;color:var(--text-secondary);"><%= s.actual_laps || s.lap_count || 0 %></td>
+                <td style="padding:10px 14px;text-align:center;">
+                  <% if (s.is_public) { %>
+                    <span style="font-size:10px;color:#3ecf8e;" title="Public">&#127760;</span>
+                  <% } else { %>
+                    <span style="font-size:10px;color:var(--text-muted);" title="Private">&#128274;</span>
+                  <% } %>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } else { %>
+      <div class="card" style="padding:40px;text-align:center;">
+        <p style="color:var(--text-muted);font-size:14px;margin-bottom:8px;">No sessions recorded yet</p>
+        <p style="color:var(--text-secondary);font-size:12px;">Sessions are automatically captured when you race with Atleta Bridge</p>
+      </div>
+    <% } %>
+  </div>
 </div>
 
 <script>
