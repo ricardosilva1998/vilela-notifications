@@ -422,6 +422,60 @@
 
     let _focusClass = '';
     const _relPrevPos = new Map();
+    let _lastRenderTime = 0;
+    let _pendingData = null;
+    let _renderScheduled = false;
+
+    function renderRelative(data) {
+      const tbody = document.getElementById('relative-body');
+
+      // Count position changes to decide if we should animate
+      const posChanges = new Map();
+      let changeCount = 0;
+      data.cars.forEach(c => {
+        if (c.distGap !== undefined && _relPrevPos.has(c.carIdx)) {
+          const prevGap = _relPrevPos.get(c.carIdx);
+          if (c.distGap > 0 && prevGap <= 0) { posChanges.set(c.carIdx, 'pos-down'); changeCount++; }
+          else if (c.distGap < 0 && prevGap >= 0) { posChanges.set(c.carIdx, 'pos-up'); changeCount++; }
+        }
+        _relPrevPos.set(c.carIdx, c.distGap);
+      });
+
+      // Skip FLIP animations when too many changes (pit stops, restarts) — just update HTML
+      const skipAnimation = changeCount > 5;
+
+      // FLIP: record old row positions (only if animating)
+      const oldPositions = new Map();
+      if (!skipAnimation) {
+        tbody.querySelectorAll('tr[data-caridx]').forEach(tr => {
+          oldPositions.set(parseInt(tr.dataset.caridx), tr.getBoundingClientRect().top);
+        });
+      }
+
+      tbody.innerHTML = buildRelativeRows(data);
+
+      // FLIP: animate rows + color flash (skip if too many changes)
+      if (!skipAnimation) {
+        tbody.querySelectorAll('tr[data-caridx]').forEach(tr => {
+          const idx = parseInt(tr.dataset.caridx);
+          if (oldPositions.has(idx)) {
+            const delta = oldPositions.get(idx) - tr.getBoundingClientRect().top;
+            if (Math.abs(delta) > 2) {
+              tr.style.transform = `translateY(${delta}px)`;
+              tr.style.transition = 'none';
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  tr.style.transition = 'transform 0.5s ease-out';
+                  tr.style.transform = 'translateY(0)';
+                });
+              });
+            }
+          }
+          if (posChanges.has(idx)) tr.classList.add(posChanges.get(idx));
+        });
+      }
+      _lastRenderTime = Date.now();
+    }
 
     onData('relative', data => {
       if (!data || !data.cars) return;
@@ -430,45 +484,21 @@
       // Track focused driver's class for SOF display
       if (data.focusCar && data.focusCar.carClass) _focusClass = data.focusCar.carClass;
 
-      // Detect position changes for animations
-      const posChanges = new Map();
-      data.cars.forEach(c => {
-        if (c.distGap !== undefined && _relPrevPos.has(c.carIdx)) {
-          const prevGap = _relPrevPos.get(c.carIdx);
-          // If gap changed sign or magnitude shifted significantly
-          if (c.distGap > 0 && prevGap <= 0) posChanges.set(c.carIdx, 'pos-down'); // was behind, now ahead of us
-          else if (c.distGap < 0 && prevGap >= 0) posChanges.set(c.carIdx, 'pos-up'); // was ahead, now behind us
+      // Throttle renders to max ~3fps (330ms) to prevent lag during rapid changes
+      const now = Date.now();
+      if (now - _lastRenderTime < 330) {
+        _pendingData = data;
+        if (!_renderScheduled) {
+          _renderScheduled = true;
+          setTimeout(() => {
+            _renderScheduled = false;
+            if (_pendingData) { renderRelative(_pendingData); _pendingData = null; }
+          }, 330 - (now - _lastRenderTime));
         }
-        _relPrevPos.set(c.carIdx, c.distGap);
-      });
+        return;
+      }
 
-      // FLIP: record old row positions
-      const tbody = document.getElementById('relative-body');
-      const oldPositions = new Map();
-      tbody.querySelectorAll('tr[data-caridx]').forEach(tr => {
-        oldPositions.set(parseInt(tr.dataset.caridx), tr.getBoundingClientRect().top);
-      });
-
-      tbody.innerHTML = buildRelativeRows(data);
-
-      // FLIP: animate rows + color flash
-      tbody.querySelectorAll('tr[data-caridx]').forEach(tr => {
-        const idx = parseInt(tr.dataset.caridx);
-        if (oldPositions.has(idx)) {
-          const delta = oldPositions.get(idx) - tr.getBoundingClientRect().top;
-          if (Math.abs(delta) > 2) {
-            tr.style.transform = `translateY(${delta}px)`;
-            tr.style.transition = 'none';
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                tr.style.transition = 'transform 0.5s ease-out';
-                tr.style.transform = 'translateY(0)';
-              });
-            });
-          }
-        }
-        if (posChanges.has(idx)) tr.classList.add(posChanges.get(idx));
-      });
+      renderRelative(data);
       setTimeout(() => {
         const panel = document.querySelector('.overlay-panel');
         if (panel) {
