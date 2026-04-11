@@ -61,11 +61,13 @@ src/
 │   ├── builtinCommands.js # 13 built-in chat commands — followage, 8ball, rps, roast, etc.
 │   ├── youtubeLiveChat.js # YouTube Live Chat poller — polls chat during live streams, handles events + commands
 │   ├── timedNotifications.js # Sponsor image rotation — cycles enabled sponsors per-streamer, emits to overlay + chat
-│   └── overlayBus.js     # EventEmitter singleton — routes events to overlay SSE + chat
+│   ├── overlayBus.js     # EventEmitter singleton — routes events to overlay SSE + chat
+│   └── pitwallRelay.js   # Team Pitwall WebSocket relay — Bridge uplink (/ws/bridge) + viewer connections (/ws/pitwall), multi-team broadcast
 ├── routes/
 │   ├── auth.js           # Discord + Twitch + YouTube + Spotify OAuth flows + Racing account linking
 │   ├── racing-auth.js    # Racing standalone auth — signup, login, logout, login-api (Bridge)
-│   ├── racing.js         # Racing dashboard, account settings, admin, avatar upload
+│   ├── racing.js         # Racing dashboard, account settings, admin, avatar upload, pitwall routes
+│   ├── racing-team.js    # Team management — multi-team CRUD at /racing/teams, /racing/teams/:teamId
 │   ├── overlay.js        # OBS overlay SSE endpoint + overlay HTML page + custom designs
 │   ├── customOverlays.js # Custom overlays CRUD, SSE, file upload (DISABLED — commented out in server.js/overlay.js)
 │   ├── dashboard.js      # Dashboard, account, guild config (tabbed), stats, channel CRUD, overlay config, chatbot config, overlay builder, YouTube chatbot, sound management, sponsor upload/settings, donation settings, built-in commands
@@ -82,6 +84,10 @@ src/
     ├── racing-signup.ejs    # Racing account signup form
     ├── racing-dashboard.ejs # Racing home — quick links + session history
     ├── racing-account.ejs   # Racing account settings — avatar (interactive crop editor with drag/zoom/circular preview), profile, password, Discord/Twitch links
+    ├── racing-teams.ejs     # Teams list — all user's teams as cards, pending invites, create/join (max 5)
+    ├── racing-team-detail.ejs # Per-team management — members, invite (autocomplete), kick, leave/delete
+    ├── racing-pitwall.ejs   # Pitwall — live telemetry viewer for one team, overlay iframe grid
+    ├── racing-pitwall-picker.ejs # Pitwall team picker — shown when user has 2+ teams
     ├── racing-admin.ejs     # Racing admin — user accounts, online status, unregistered bridges
     ├── tracks.ejs           # Track database — grid/list + detail with Practice/Race tabs
     ├── dashboard.ejs     # Platform-tabbed dashboard (Discord | Twitch | YouTube | Kick | iRacing | Admin)
@@ -127,6 +133,7 @@ bridge/                     # Atleta Bridge — Electron desktop app for iRacing
 ├── telemetry.js           # iRacing telemetry reader — standings, relative, fuel, wind, session info, iRating estimation, session recorder integration
 ├── sessionRecorder.js     # Session capture — buffers 10Hz telemetry per lap, progressive upload to server
 ├── websocket.js           # WebSocket server (ws://localhost:9100) — per-client channel subscriptions, driver selection
+├── pitwallUplink.js       # Team Pitwall uplink — connects to wss://atletanotifications.com/ws/bridge, multi-team broadcast selection
 ├── settings.js            # Persistent settings in ~/Documents/Atleta Bridge/settings.json
 ├── keyboardSim.js         # Windows keyboard sim + iRacing camera switch via broadcast messages
 ├── voiceInput.js          # Global hotkey hooks (uiohook-napi), IPC coordination for voice chat
@@ -208,6 +215,7 @@ bridge/                     # Atleta Bridge — Electron desktop app for iRacing
   Key: uses `exp()` not `pow(10)`, divisor is `1600/ln(2)` not `1600`. The `-0.5` offset accounts for self-pairing. The `factor` is a position-based correction. Shows green +N or red -N next to iRating on standings/relative. SOF calculated as harmonic mean of class iRatings, rounded to nearest 100. Matches iOverlay within ±1-2 points for most drivers.
 - **Track Map System:** Browser-side .ibt parser extracts Lat/Lon (radians→degrees) + track name from session YAML. Uploads to server under both geoId and display name. Bridge fetches by geoKey then by name. Track database viewer on dashboard shows canvas previews. Missing tracks list compares against ~50 known iRacing tracks.
 - **Voice Chat System:** Push-to-talk (global hotkey via `uiohook-napi` with key-down/key-up detection, supports keyboard keys, mouse side buttons, and gamepad buttons via Gamepad API) and wake word ("message") always-listening mode. OpenAI Whisper API for transcription (via PowerShell script, server-shared API key). Voice parsing: "all [text]", "number [#] [text]", "[name] [text]", "team [text]" with Levenshtein fuzzy matching. Confirmation UI. Sends to iRacing via `keyboardSim.js` — clipboard paste into iRacing chat. Configurable chat open key (T/Y/U/Enter).
+- **Team Pitwall:** Live telemetry sharing with teammates. Users can be in up to 5 teams simultaneously. DB tables: `teams` (name, owner, invite_code), `team_members` (team_id, user_id, role — `UNIQUE(team_id, user_id)`), `team_invites`. Query functions: `getTeamsForUser(userId)` returns array of all memberships, `countTeamsForUser(userId)` for max-5 cap, `getTeamForUser(userId)` returns first team (backward compat). Routes at `/racing/teams` (list), `/racing/teams/:teamId` (detail), old `/racing/team` redirects. WebSocket relay (`pitwallRelay.js`): Bridge connects to `/ws/bridge` with userId + pitwall_token, receives team list, sends `set-teams` to choose which teams see telemetry (multi-select, persisted to Bridge settings as `pitwallBroadcastTeamIds`). Pitwall viewers connect to `/ws/pitwall` via session cookie, send `select-team` to pick which team to watch, then `subscribe` to channels + `view-driver` to select a driver. Relay stores `teamIds: Set` per bridge client, filters data via `driverClient.teamIds.has(viewer.teamId)`. Throttle rates per channel (inputs 100ms, standings/fuel/session 1s, relative/wind/trackmap 500ms). Pitwall page (`/racing/pitwall`) shows team picker if 2+ teams, skips to pitwall if 1 team, redirects to `/racing/teams` if 0. Bridge control panel Overview tab has "Team Broadcasting" section with checkboxes per team.
 - **iRacing Web Integration (coming soon):** Full integration built but disabled — waiting for iRacing OAuth credentials
 - **DB migrations:** Auto-run on startup in `src/db.js`
 - **No ORM:** All SQL is raw in `db.js`
@@ -259,6 +267,8 @@ Optional:
 - Track map API endpoints (`GET /api/track-maps`, `GET /api/track-map/:name`, `POST /api/track-map`) are public — placed BEFORE the `/api` auth middleware in `server.js`
 - Session data API endpoints (`POST /api/session`, `POST /api/session/:id/lap`, `PATCH /api/session/:id/finish`, `GET /api/sessions/:trackName`, `GET /api/session/:id`, `GET /api/session/share/:token`) are public — placed BEFORE auth middleware
 - Racing auth endpoints (`/racing/auth/*`) are public. Racing dashboard routes (`/racing/*` except `/` and `/signup`) require `req.racingUser`
+- Team routes mounted at `/racing/teams` (not `/racing/team`). Old `/racing/team` URL redirects to `/racing/teams`. Team detail routes use `/racing/teams/:teamId/...` pattern (invite, kick, leave, delete). Max 5 teams per user enforced in both routes and DB transaction functions.
+- Pitwall relay (`pitwallRelay.js`) initialized in `src/index.js` via `pitwallRelay.init(httpServer)`. Bridge uplink (`bridge/pitwallUplink.js`) connects to `wss://atletanotifications.com/ws/bridge`. Bridge persists `pitwallBroadcastTeamIds` array in settings.json.
 - `racing_users` table uses `COLLATE NOCASE` for username (case-insensitive login)
 - `racing_sessions` table is separate from web auth `sessions` table. Query functions: `getRacingSessionById` (not `getSessionById`), `deleteRacingSession` (not `deleteSession`) to avoid collision with web auth session functions
 - Bridge overlay drag/click-through: ALL overlays use `overlay-utils.js` as single source. No inline drag/click-through handlers in overlay HTML files.
