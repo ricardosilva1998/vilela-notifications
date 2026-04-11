@@ -1021,6 +1021,24 @@ db.exec(`
 `);
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_team_invites_user ON team_invites(invited_user_id)'); } catch(e) {}
 
+// ── Notifications ─────────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES racing_users(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    link TEXT,
+    action_type TEXT,
+    action_id INTEGER,
+    is_read INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT (datetime('now'))
+  )
+`);
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read)'); } catch(e) {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at)'); } catch(e) {}
+
 try { db.exec('ALTER TABLE racing_sessions ADD COLUMN racing_user_id INTEGER'); } catch(e) {}
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_sessions_user ON racing_sessions(racing_user_id)'); } catch(e) {}
 
@@ -3828,6 +3846,94 @@ function searchRacingUsers(query) {
   return _searchRacingUsers.all(pattern, pattern);
 }
 
+// ── Notification queries ──────────────────────────────────────────
+const _getNotificationsForUser = db.prepare(`
+  SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 20
+`);
+const _getUnreadCountForUser = db.prepare(`
+  SELECT COUNT(*) AS count FROM notifications WHERE user_id = ? AND is_read = 0
+`);
+const _insertNotification = db.prepare(`
+  INSERT INTO notifications (user_id, type, title, message, link, action_type, action_id)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
+`);
+const _markNotificationRead = db.prepare('UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?');
+const _deleteNotification = db.prepare('DELETE FROM notifications WHERE id = ? AND user_id = ?');
+const _deleteAllNotifications = db.prepare('DELETE FROM notifications WHERE user_id = ?');
+const _deleteNotificationByAction = db.prepare('DELETE FROM notifications WHERE action_type = ? AND action_id = ? AND user_id = ?');
+const _cleanupOldNotifications = db.prepare("DELETE FROM notifications WHERE created_at < datetime('now', '-30 days')");
+const _getAllRacingUserIds = db.prepare('SELECT id FROM racing_users');
+const _getBridgeUserIds = db.prepare('SELECT id FROM racing_users WHERE bridge_id IS NOT NULL');
+const _getTeamMemberIds = db.prepare('SELECT user_id FROM team_members WHERE team_id = ?');
+const _hasNotification = db.prepare("SELECT id FROM notifications WHERE user_id = ? AND type = ? AND message = ? LIMIT 1");
+
+function getNotificationsForUser(userId) {
+  return _getNotificationsForUser.all(userId);
+}
+
+function getUnreadNotificationCount(userId) {
+  return _getUnreadCountForUser.get(userId).count;
+}
+
+function createNotification(userId, type, title, message, link, actionType, actionId) {
+  return _insertNotification.run(userId, type, title, message, link || null, actionType || null, actionId || null);
+}
+
+function markNotificationRead(id, userId) {
+  return _markNotificationRead.run(id, userId);
+}
+
+function dismissNotification(id, userId) {
+  return _deleteNotification.run(id, userId);
+}
+
+function dismissAllNotifications(userId) {
+  return _deleteAllNotifications.run(userId);
+}
+
+function dismissNotificationByAction(actionType, actionId, userId) {
+  return _deleteNotificationByAction.run(actionType, actionId, userId);
+}
+
+function notifyTeamMembers(teamId, excludeUserId, type, title, message, link) {
+  const members = _getTeamMemberIds.all(teamId);
+  for (const m of members) {
+    if (m.user_id !== excludeUserId) {
+      _insertNotification.run(m.user_id, type, title, message, link || null, null, null);
+    }
+  }
+}
+
+function createNotificationForAllUsers(type, title, message, link) {
+  const users = _getAllRacingUserIds.all();
+  const txn = db.transaction(() => {
+    for (const u of users) {
+      _insertNotification.run(u.id, type, title, message, link || null, null, null);
+    }
+  });
+  txn();
+  return users.length;
+}
+
+function createNotificationForBridgeUsers(type, title, message, link) {
+  const users = _getBridgeUserIds.all();
+  const txn = db.transaction(() => {
+    for (const u of users) {
+      _insertNotification.run(u.id, type, title, message, link || null, null, null);
+    }
+  });
+  txn();
+  return users.length;
+}
+
+function hasNotification(userId, type, message) {
+  return !!_hasNotification.get(userId, type, message);
+}
+
+function cleanupOldNotifications() {
+  return _cleanupOldNotifications.run();
+}
+
 module.exports = {
   db,
   getStreamerByDiscordId,
@@ -4096,6 +4202,18 @@ module.exports = {
   getTeamById,
   getTeamMemberCount,
   searchRacingUsers,
+  getNotificationsForUser,
+  getUnreadNotificationCount,
+  createNotification,
+  markNotificationRead,
+  dismissNotification,
+  dismissAllNotifications,
+  dismissNotificationByAction,
+  notifyTeamMembers,
+  createNotificationForAllUsers,
+  createNotificationForBridgeUsers,
+  hasNotification,
+  cleanupOldNotifications,
   closeDb() { db.close(); },
   backup(dest) { return db.backup(dest); },
 };
