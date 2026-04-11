@@ -1,6 +1,6 @@
 {
   "name": "atleta-notifications-helper",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Self-service Discord notification bot for streamers - Twitch live, clips, YouTube, welcome messages, and sub sync",
   "main": "src/index.js",
   "scripts": {
