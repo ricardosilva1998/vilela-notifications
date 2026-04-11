@@ -93,9 +93,33 @@ async function extractFromFile(filePath) {
 
     if (filled < SLOT_COUNT * 0.5) return null;
 
+    // Interpolate empty slots between filled ones (including wrap-around)
+    const allSlots = new Array(SLOT_COUNT);
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      if (slots[i]) allSlots[i] = slots[i];
+    }
+    for (let gap = 0; gap < SLOT_COUNT; gap++) {
+      if (allSlots[gap]) continue;
+      let prev = gap - 1;
+      while (!allSlots[(prev + SLOT_COUNT) % SLOT_COUNT] && prev > gap - SLOT_COUNT) prev--;
+      let next = gap + 1;
+      while (!allSlots[next % SLOT_COUNT] && next < gap + SLOT_COUNT) next++;
+      const pi = (prev + SLOT_COUNT) % SLOT_COUNT;
+      const ni = next % SLOT_COUNT;
+      if (allSlots[pi] && allSlots[ni]) {
+        const total = ((next - prev + SLOT_COUNT) % SLOT_COUNT) || 1;
+        const t = ((gap - prev + SLOT_COUNT) % SLOT_COUNT) / total;
+        allSlots[gap] = {
+          x: allSlots[pi].x + (allSlots[ni].x - allSlots[pi].x) * t,
+          y: allSlots[pi].y + (allSlots[ni].y - allSlots[pi].y) * t,
+          pct: gap / SLOT_COUNT,
+        };
+      }
+    }
+
     const points = [];
     for (let i = 0; i < SLOT_COUNT; i++) {
-      if (slots[i]) points.push(slots[i]);
+      if (allSlots[i]) points.push({ x: allSlots[i].x, y: allSlots[i].y, pct: i / SLOT_COUNT });
     }
 
     // Smooth with moving average

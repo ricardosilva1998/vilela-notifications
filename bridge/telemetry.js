@@ -115,14 +115,42 @@ function uploadTrackToServer(trackName, pathData, metadata) {
 }
 
 function buildTrackPath() {
-  // Convert filled slots to a continuous path
-  const points = [];
+  // Convert filled slots to a continuous path, interpolating gaps
+  const filled = [];
   for (let i = 0; i < TRACK_SLOTS; i++) {
     if (trackSlots[i]) {
-      points.push({ x: trackSlots[i].x, y: trackSlots[i].y, pct: i / TRACK_SLOTS });
+      filled.push({ x: trackSlots[i].x, y: trackSlots[i].y, slot: i });
     }
   }
-  if (points.length < 50) return points;
+  if (filled.length < 50) return filled.map(p => ({ x: p.x, y: p.y, pct: p.slot / TRACK_SLOTS }));
+
+  // Interpolate empty slots between filled ones (including wrap-around)
+  const allSlots = new Array(TRACK_SLOTS);
+  for (const p of filled) allSlots[p.slot] = { x: p.x, y: p.y };
+
+  for (let gap = 0; gap < TRACK_SLOTS; gap++) {
+    if (allSlots[gap]) continue;
+    // Find previous and next filled slots (wrapping)
+    let prev = gap - 1;
+    while (!allSlots[(prev + TRACK_SLOTS) % TRACK_SLOTS] && prev > gap - TRACK_SLOTS) prev--;
+    let next = gap + 1;
+    while (!allSlots[next % TRACK_SLOTS] && next < gap + TRACK_SLOTS) next++;
+    const pi = (prev + TRACK_SLOTS) % TRACK_SLOTS;
+    const ni = next % TRACK_SLOTS;
+    if (allSlots[pi] && allSlots[ni]) {
+      const total = ((next - prev + TRACK_SLOTS) % TRACK_SLOTS) || 1;
+      const t = ((gap - prev + TRACK_SLOTS) % TRACK_SLOTS) / total;
+      allSlots[gap] = {
+        x: allSlots[pi].x + (allSlots[ni].x - allSlots[pi].x) * t,
+        y: allSlots[pi].y + (allSlots[ni].y - allSlots[pi].y) * t,
+      };
+    }
+  }
+
+  const points = [];
+  for (let i = 0; i < TRACK_SLOTS; i++) {
+    if (allSlots[i]) points.push({ x: allSlots[i].x, y: allSlots[i].y, pct: i / TRACK_SLOTS });
+  }
 
   // Smooth the path with a moving average (window=5) to remove noise
   const smoothed = [];

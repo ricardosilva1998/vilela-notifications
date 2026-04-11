@@ -317,8 +317,16 @@ app.post('/api/track-map', (req, res) => {
     if (!trackData || !Array.isArray(trackData) || trackData.length < 50 || trackData.length > 50000) {
       return res.status(400).json({ error: 'Invalid track data' });
     }
-    // Validate track data points are numeric arrays
-    if (!trackData.every(p => Array.isArray(p) && p.length >= 2 && p.every(v => typeof v === 'number' && isFinite(v)))) {
+    // Accept both {x,y,pct} objects and [x,y] arrays
+    const isObjectFormat = trackData.length > 0 && typeof trackData[0] === 'object' && !Array.isArray(trackData[0]) && 'x' in trackData[0];
+    const isArrayFormat = trackData.length > 0 && Array.isArray(trackData[0]);
+    if (!isObjectFormat && !isArrayFormat) {
+      return res.status(400).json({ error: 'Invalid track data format' });
+    }
+    if (isArrayFormat && !trackData.every(p => Array.isArray(p) && p.length >= 2 && p.every(v => typeof v === 'number' && isFinite(v)))) {
+      return res.status(400).json({ error: 'Invalid track data format' });
+    }
+    if (isObjectFormat && !trackData.every(p => typeof p.x === 'number' && isFinite(p.x) && typeof p.y === 'number' && isFinite(p.y))) {
       return res.status(400).json({ error: 'Invalid track data format' });
     }
     const json = JSON.stringify(trackData);

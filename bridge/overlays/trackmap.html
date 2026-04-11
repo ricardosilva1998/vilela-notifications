@@ -107,6 +107,7 @@
     let targetCars = [];
     let displayCars = [];
     let windDir = 0;
+    let targetWindDir = 0;
     let windSpeed = 0;
 
     function resizeCanvas() {
@@ -128,12 +129,42 @@
       return points;
     }
 
+    // Fill pct gaps by interpolating between endpoints (wrapping around 0/1 boundary)
+    function fillTrackGaps(path) {
+      if (!path || path.length < 10) return path;
+      // Sort by pct
+      const sorted = path.slice().sort((a, b) => a.pct - b.pct);
+      const first = sorted[0], last = sorted[sorted.length - 1];
+      // If data already covers full range, no gap to fill
+      if (first.pct < 0.005 && last.pct > 0.995) return sorted;
+      // Interpolate through the wrap-around gap (last → 1.0/0.0 → first)
+      const gapSize = (1.0 - last.pct) + first.pct;
+      if (gapSize < 0.005) return sorted;
+      const step = 0.002;
+      const extra = [];
+      for (let d = step; d < gapSize; d += step) {
+        const t = d / gapSize;
+        const newPct = (last.pct + d) % 1.0;
+        extra.push({
+          x: last.x + (first.x - last.x) * t,
+          y: last.y + (first.y - last.y) * t,
+          pct: newPct,
+        });
+      }
+      // Insert: points before first.pct go at start, points after last.pct go at end
+      const before = extra.filter(p => p.pct < first.pct).sort((a, b) => a.pct - b.pct);
+      const after = extra.filter(p => p.pct > last.pct).sort((a, b) => a.pct - b.pct);
+      return [...before, ...sorted, ...after];
+    }
+
     // Normalize raw path to 0-1 square, preserving track aspect ratio
     function normalizeTrackPath(rawPath) {
       if (!rawPath || rawPath.length < 10) return generateCirclePath();
+      // Fill gaps around start/finish line
+      const filled = fillTrackGaps(rawPath);
 
       let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      rawPath.forEach(p => {
+      filled.forEach(p => {
         if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
         if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
       });
@@ -146,7 +177,7 @@
       if (aspect > 1) sy = 1 / aspect; else sx = aspect;
 
       const u = 1 - 2 * pad;
-      return rawPath.map(p => ({
+      return filled.map(p => ({
         x: pad + u * sx * (p.x - minX) / xRange + u * (1 - sx) / 2,
         y: pad + u * sy * (1 - (p.y - minY) / yRange) + u * (1 - sy) / 2,
         pct: p.pct,
@@ -155,27 +186,30 @@
 
     function getTrackPosition(pct) {
       if (!trackPoints.length) return { x: 0.5, y: 0.5 };
+      // Find closest point, considering wrap-around (0.0 ≈ 1.0)
       let bestIdx = 0;
-      let minDist = Math.abs(pct - trackPoints[0].pct);
+      let minDist = Math.min(Math.abs(pct - trackPoints[0].pct), 1 - Math.abs(pct - trackPoints[0].pct));
       for (let i = 1; i < trackPoints.length; i++) {
-        const d = Math.abs(pct - trackPoints[i].pct);
+        const d = Math.min(Math.abs(pct - trackPoints[i].pct), 1 - Math.abs(pct - trackPoints[i].pct));
         if (d < minDist) { minDist = d; bestIdx = i; }
       }
       const p1 = trackPoints[bestIdx];
-      let p2, t;
-      if (pct >= p1.pct && bestIdx < trackPoints.length - 1) {
-        p2 = trackPoints[bestIdx + 1];
-        const range = p2.pct - p1.pct;
-        t = range > 0 ? (pct - p1.pct) / range : 0;
-      } else if (pct < p1.pct && bestIdx > 0) {
-        p2 = trackPoints[bestIdx - 1];
-        const range = p1.pct - p2.pct;
-        t = range > 0 ? (p1.pct - pct) / range : 0;
-        const tmp = p1;
-        return { x: p2.x + (tmp.x - p2.x) * (1 - t), y: p2.y + (tmp.y - p2.y) * (1 - t) };
+      // Find neighbor to interpolate with (wrap-aware)
+      let neighborIdx;
+      if (pct >= p1.pct) {
+        neighborIdx = bestIdx < trackPoints.length - 1 ? bestIdx + 1 : 0;
       } else {
-        return { x: p1.x, y: p1.y };
+        neighborIdx = bestIdx > 0 ? bestIdx - 1 : trackPoints.length - 1;
       }
+      const p2 = trackPoints[neighborIdx];
+      // Calculate interpolation factor
+      let range = p2.pct - p1.pct;
+      if (range > 0.5) range -= 1;
+      if (range < -0.5) range += 1;
+      let diff = pct - p1.pct;
+      if (diff > 0.5) diff -= 1;
+      if (diff < -0.5) diff += 1;
+      const t = range !== 0 ? Math.max(0, Math.min(1, diff / range)) : 0;
       return { x: p1.x + (p2.x - p1.x) * t, y: p1.y + (p2.y - p1.y) * t };
     }
 
@@ -223,6 +257,12 @@
       });
       ctx.closePath();
       ctx.stroke();
+
+      // Smoothly lerp wind direction toward target (shortest angle)
+      let windDiff = targetWindDir - windDir;
+      if (windDiff > Math.PI) windDiff -= Math.PI * 2;
+      if (windDiff < -Math.PI) windDiff += Math.PI * 2;
+      windDir += windDiff * 0.08;
 
       // Draw wind chevron arrow at edge of square
       if (windSpeed > 0) {
@@ -340,10 +380,7 @@
 
     onData('wind', data => {
       if (!data) return;
-      // Only update if direction changed by >1 degree (filter SDK noise in constant weather)
-      const newDir = data.windDirection || 0;
-      const degDiff = Math.abs((newDir - windDir) * 180 / Math.PI) % 360;
-      if (degDiff > 1 || windDir === 0) windDir = newDir;
+      targetWindDir = data.windDirection || 0;
       windSpeed = data.windSpeed || 0;
     });
 
