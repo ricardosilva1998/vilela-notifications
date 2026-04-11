@@ -822,6 +822,10 @@ try { db.exec('ALTER TABLE track_stats ADD COLUMN top_car TEXT'); } catch(e) {}
 // Migration: add category column (road/formula/oval/dirt_oval/dirt_road) — existing data = road
 try { db.exec("ALTER TABLE track_stats ADD COLUMN category TEXT DEFAULT 'road'"); } catch(e) {}
 
+// Migration: add picture and banner to teams
+try { db.exec('ALTER TABLE teams ADD COLUMN picture TEXT'); } catch(e) {}
+try { db.exec('ALTER TABLE teams ADD COLUMN banner TEXT'); } catch(e) {}
+
 // ── Normalize race_type values (merge old snake_case → proper names) ──
 try {
   const raceTypeMap = {
@@ -3764,10 +3768,12 @@ const _updateTeamInviteStatus = db.prepare('UPDATE team_invites SET status = ? W
 const _deleteTeamMember = db.prepare('DELETE FROM team_members WHERE team_id = ? AND user_id = ?');
 const _deleteTeam = db.prepare('DELETE FROM teams WHERE id = ?');
 const _getTeamByInviteCode = db.prepare('SELECT * FROM teams WHERE invite_code = ?');
+const _updateTeamPicture = db.prepare('UPDATE teams SET picture = ? WHERE id = ?');
+const _updateTeamBanner = db.prepare('UPDATE teams SET banner = ? WHERE id = ?');
 const _hasPendingInvite = db.prepare("SELECT id FROM team_invites WHERE team_id = ? AND invited_user_id = ? AND status = 'pending'");
 const _countTeamMembers = db.prepare('SELECT COUNT(*) AS count FROM team_members WHERE team_id = ?');
 const _getTeamMemberships = db.prepare(`
-  SELECT tm.*, t.name AS team_name, t.owner_id, t.invite_code
+  SELECT tm.*, t.name AS team_name, t.owner_id, t.invite_code, t.picture AS team_picture, t.banner AS team_banner
   FROM team_members tm JOIN teams t ON tm.team_id = t.id
   WHERE tm.user_id = ?
   ORDER BY tm.joined_at ASC
@@ -3857,6 +3863,14 @@ function joinTeamByCode(code, userId) {
 
 function getTeamById(teamId) {
   return _getTeamById.get(teamId) || null;
+}
+
+function updateTeamPicture(teamId, base64) {
+  _updateTeamPicture.run(base64, teamId);
+}
+
+function updateTeamBanner(teamId, base64) {
+  _updateTeamBanner.run(base64, teamId);
 }
 
 function getTeamMemberCount(teamId) {
@@ -4230,6 +4244,8 @@ module.exports = {
   deleteTeamById,
   joinTeamByCode,
   getTeamById,
+  updateTeamPicture,
+  updateTeamBanner,
   getTeamMemberCount,
   searchRacingUsers,
   getNotificationsForUser,
