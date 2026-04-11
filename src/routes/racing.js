@@ -6,12 +6,12 @@ const router = express.Router();
 // /racing — landing (if not logged in) or dashboard (if logged in)
 router.get('/', (req, res) => {
   if (req.racingUser) {
-    const teamMembership = db.getTeamForUser(req.racingUser.id);
+    const teams = db.getTeamsForUser(req.racingUser.id);
     const pendingTeamInvites = db.getPendingInvitesForUser(req.racingUser.id);
     return res.render('racing-dashboard', {
       streamer: req.streamer || null,
       racingUser: req.racingUser,
-      team: teamMembership,
+      teams,
       pendingTeamInvites,
     });
   }
@@ -43,9 +43,38 @@ router.get('/account', (req, res) => {
 
 // Pitwall — live telemetry viewer
 router.get('/pitwall', (req, res) => {
-  const membership = db.getTeamForUser(req.racingUser.id);
-  if (!membership) return res.redirect('/racing/team');
-  const members = db.getTeamMembers(membership.team_id);
+  const teams = db.getTeamsForUser(req.racingUser.id);
+  if (teams.length === 0) return res.redirect('/racing/teams');
+
+  // If only 1 team, go straight to pitwall
+  if (teams.length === 1) {
+    const members = db.getTeamMembers(teams[0].team_id);
+    return res.render('racing-pitwall', {
+      streamer: req.streamer || null,
+      racingUser: req.racingUser,
+      team: teams[0],
+      members,
+    });
+  }
+
+  // Multiple teams — show team picker
+  const enrichedTeams = teams.map(t => ({
+    ...t,
+    member_count: db.getTeamMemberCount(t.team_id),
+  }));
+  res.render('racing-pitwall-picker', {
+    streamer: req.streamer || null,
+    racingUser: req.racingUser,
+    teams: enrichedTeams,
+  });
+});
+
+// Pitwall for a specific team
+router.get('/pitwall/:teamId', (req, res) => {
+  const teamId = parseInt(req.params.teamId);
+  const membership = db.getTeamsForUser(req.racingUser.id).find(t => t.team_id === teamId);
+  if (!membership) return res.redirect('/racing/pitwall');
+  const members = db.getTeamMembers(teamId);
   res.render('racing-pitwall', {
     streamer: req.streamer || null,
     racingUser: req.racingUser,

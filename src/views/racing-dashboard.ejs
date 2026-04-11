@@ -30,25 +30,25 @@
         </div>
       </div>
     </a>
-    <a href="/racing/team" class="card" style="padding:28px 24px;text-decoration:none;color:inherit;<%= (typeof pendingTeamInvites !== 'undefined' && pendingTeamInvites && pendingTeamInvites.length > 0) ? 'border:1px solid rgba(247,201,72,0.3);' : '' %>">
+    <a href="/racing/teams" class="card" style="padding:28px 24px;text-decoration:none;color:inherit;<%= (typeof pendingTeamInvites !== 'undefined' && pendingTeamInvites && pendingTeamInvites.length > 0) ? 'border:1px solid rgba(247,201,72,0.3);' : '' %>">
       <div style="display:flex;align-items:center;gap:16px;">
         <div style="width:52px;height:52px;border-radius:12px;background:rgba(59,130,246,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <i data-lucide="users" style="width:26px;height:26px;color:#3b82f6;"></i>
         </div>
         <div>
           <h3 style="font-size:17px;font-weight:700;margin-bottom:4px;">
-            My Team
+            Teams
             <% if (typeof pendingTeamInvites !== 'undefined' && pendingTeamInvites && pendingTeamInvites.length > 0) { %>
               <span style="background:#f7c948;color:#000;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;margin-left:6px;"><%= pendingTeamInvites.length %></span>
             <% } %>
           </h3>
           <p style="color:var(--text-muted);font-size:13px;">
-            <% if (typeof team !== 'undefined' && team) { %><%= team.team_name %><% } else { %>Create or join a team<% } %>
+            <% if (typeof teams !== 'undefined' && teams && teams.length > 0) { %><%= teams.length %> team<%= teams.length !== 1 ? 's' : '' %><% } else { %>Create or join a team<% } %>
           </p>
         </div>
       </div>
     </a>
-    <% if (typeof team !== 'undefined' && team) { %>
+    <% if (typeof teams !== 'undefined' && teams && teams.length > 0) { %>
     <a href="/racing/pitwall" class="card" style="padding:28px 24px;text-decoration:none;color:inherit;border:1px solid rgba(62,207,142,0.15);">
       <div style="display:flex;align-items:center;gap:16px;">
         <div style="width:52px;height:52px;border-radius:12px;background:rgba(62,207,142,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
