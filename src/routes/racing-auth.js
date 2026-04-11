@@ -31,6 +31,7 @@ router.post('/signup', express.json(), express.urlencoded({ extended: true }), a
 
     const existing = db.getRacingUserByUsername(username);
     if (existing) {
+      db.logAuthAttempt('signup', username, req.ip, false, 'username_taken', req.headers['user-agent']);
       if (req.is('json')) return res.status(400).json({ error: 'Could not create account. Please try a different username.' });
       return res.redirect('/racing/signup?error=' + encodeURIComponent('Could not create account. Please try a different username.'));
     }
@@ -44,6 +45,7 @@ router.post('/signup', express.json(), express.urlencoded({ extended: true }), a
     db.createRacingSession(sid, userId, expiresAt);
     req.app.locals.secureCookie(res, 'session', sid, { maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
 
+    db.logAuthAttempt('signup', username, req.ip, true, null, req.headers['user-agent']);
     if (req.is('json')) return res.json({ ok: true, id: userId, username });
     res.redirect('/racing');
   } catch(e) {
@@ -62,9 +64,13 @@ router.post('/login', express.urlencoded({ extended: true }), async (req, res) =
     }
 
     const user = db.getRacingUserByUsername(username);
-    if (!user) return res.redirect('/racing?error=' + encodeURIComponent('Invalid username or password'));
+    if (!user) {
+      db.logAuthAttempt('login', username, req.ip, false, 'user_not_found', req.headers['user-agent']);
+      return res.redirect('/racing?error=' + encodeURIComponent('Invalid username or password'));
+    }
 
     if (db.isAccountLocked(user)) {
+      db.logAuthAttempt('login', username, req.ip, false, 'account_locked', req.headers['user-agent']);
       const minsLeft = Math.ceil((user.locked_until - Date.now()) / 60000);
       return res.redirect('/racing?error=' + encodeURIComponent(`Account locked. Try again in ${minsLeft} minute${minsLeft === 1 ? '' : 's'}`));
     }
@@ -72,10 +78,12 @@ router.post('/login', express.urlencoded({ extended: true }), async (req, res) =
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
       db.recordFailedLogin(user.id);
+      db.logAuthAttempt('login', username, req.ip, false, 'wrong_password', req.headers['user-agent']);
       return res.redirect('/racing?error=' + encodeURIComponent('Invalid username or password'));
     }
 
     db.resetLoginAttempts(user.id);
+    db.logAuthAttempt('login', username, req.ip, true, null, req.headers['user-agent']);
     const sid = crypto.randomBytes(32).toString('hex');
     const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
 
@@ -100,9 +108,13 @@ router.post('/login-api', express.json(), async (req, res) => {
     if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
 
     const user = db.getRacingUserByUsername(username);
-    if (!user) return res.status(401).json({ error: 'Invalid username or password' });
+    if (!user) {
+      db.logAuthAttempt('login-api', username, req.ip, false, 'user_not_found', req.headers['user-agent']);
+      return res.status(401).json({ error: 'Invalid username or password' });
+    }
 
     if (db.isAccountLocked(user)) {
+      db.logAuthAttempt('login-api', username, req.ip, false, 'account_locked', req.headers['user-agent']);
       const minsLeft = Math.ceil((user.locked_until - Date.now()) / 60000);
       return res.status(429).json({ error: `Account locked. Try again in ${minsLeft} minute${minsLeft === 1 ? '' : 's'}` });
     }
@@ -110,10 +122,12 @@ router.post('/login-api', express.json(), async (req, res) => {
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
       db.recordFailedLogin(user.id);
+      db.logAuthAttempt('login-api', username, req.ip, false, 'wrong_password', req.headers['user-agent']);
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
     db.resetLoginAttempts(user.id);
+    db.logAuthAttempt('login-api', username, req.ip, true, null, req.headers['user-agent']);
     // Link bridge_id if provided and not already linked
     if (bridge_id && !user.bridge_id) {
       try { db.db.prepare('UPDATE racing_users SET bridge_id = ? WHERE id = ?').run(bridge_id, user.id); } catch(e) {}

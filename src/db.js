@@ -970,6 +970,22 @@ try { db.exec('ALTER TABLE racing_users ADD COLUMN display_name TEXT'); } catch(
 try { db.exec('ALTER TABLE racing_users ADD COLUMN avatar TEXT'); } catch(e) {}
 try { db.exec('ALTER TABLE racing_users ADD COLUMN login_attempts INTEGER DEFAULT 0'); } catch(e) {}
 try { db.exec('ALTER TABLE racing_users ADD COLUMN locked_until INTEGER'); } catch(e) {}
+// Auth activity log — tracks all login/signup attempts for spam detection
+db.exec(`
+  CREATE TABLE IF NOT EXISTS auth_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    action TEXT NOT NULL,
+    username TEXT,
+    ip TEXT,
+    success INTEGER DEFAULT 0,
+    reason TEXT,
+    user_agent TEXT,
+    created_at DATETIME DEFAULT (datetime('now'))
+  )
+`);
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_auth_log_ip ON auth_log(ip)'); } catch(e) {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_auth_log_created ON auth_log(created_at)'); } catch(e) {}
+
 try { db.exec('ALTER TABLE racing_sessions ADD COLUMN racing_user_id INTEGER'); } catch(e) {}
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_racing_sessions_user ON racing_sessions(racing_user_id)'); } catch(e) {}
 
@@ -3613,6 +3629,37 @@ function recordFailedLogin(userId) {
 function resetLoginAttempts(userId) { _resetLoginAttempts.run(userId); }
 function isAccountLocked(user) { return user.locked_until && user.locked_until > Date.now(); }
 function unlockRacingAccount(userId) { _resetLoginAttempts.run(userId); }
+// Auth logging
+const _insertAuthLog = db.prepare(`INSERT INTO auth_log (action, username, ip, success, reason, user_agent) VALUES (@action, @username, @ip, @success, @reason, @user_agent)`);
+function logAuthAttempt(action, username, ip, success, reason, userAgent) {
+  try { _insertAuthLog.run({ action, username: username || null, ip: ip || null, success: success ? 1 : 0, reason: reason || null, user_agent: (userAgent || '').substring(0, 200) }); } catch(e) {}
+}
+
+function getSuspiciousActivity(hours) {
+  const since = new Date(Date.now() - (hours || 24) * 60 * 60 * 1000).toISOString();
+  return db.prepare(`
+    SELECT ip, username, action,
+      COUNT(*) as attempts,
+      SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) as failures,
+      SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as successes,
+      MAX(created_at) as last_attempt,
+      MIN(created_at) as first_attempt
+    FROM auth_log
+    WHERE created_at >= ?
+    GROUP BY ip, username, action
+    HAVING failures >= 2
+    ORDER BY failures DESC, last_attempt DESC
+    LIMIT 50
+  `).all(since);
+}
+
+function getRecentAuthLog(limit) {
+  return db.prepare('SELECT * FROM auth_log ORDER BY created_at DESC LIMIT ?').all(limit || 50);
+}
+
+// Auto-cleanup: delete auth logs older than 7 days
+try { db.exec("DELETE FROM auth_log WHERE created_at < datetime('now', '-7 days')"); } catch(e) {}
+
 function lockRacingAccount(userId) {
   // Lock for 24 hours
   db.prepare('UPDATE racing_users SET locked_until = ?, login_attempts = 99 WHERE id = ?').run(Date.now() + 24 * 60 * 60 * 1000, userId);
@@ -3867,6 +3914,9 @@ module.exports = {
   resetLoginAttempts,
   isAccountLocked,
   unlockRacingAccount,
+  logAuthAttempt,
+  getSuspiciousActivity,
+  getRecentAuthLog,
   lockRacingAccount,
   closeDb() { db.close(); },
   backup(dest) { return db.backup(dest); },

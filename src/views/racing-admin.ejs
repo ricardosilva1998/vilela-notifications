@@ -105,5 +105,84 @@
       </table>
     </div>
   </div>
+
+  <!-- Suspicious Activity -->
+  <div style="margin-top:32px;">
+    <h2 style="font-size:16px;font-weight:700;margin-bottom:12px;">Suspicious Activity (last 24h)</h2>
+    <% if (suspicious && suspicious.length > 0) { %>
+    <div class="card" style="overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);">
+            <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">IP</th>
+            <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Username</th>
+            <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Action</th>
+            <th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Failures</th>
+            <th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Successes</th>
+            <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Last Attempt</th>
+            <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">First Attempt</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% suspicious.forEach(function(s) { %>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+              <td style="padding:10px 14px;font-family:monospace;font-size:11px;color:var(--text-muted);"><%= s.ip || '—' %></td>
+              <td style="padding:10px 14px;font-weight:600;<%= s.failures >= 5 ? 'color:#f04438;' : '' %>"><%= s.username || '—' %></td>
+              <td style="padding:10px 14px;font-size:11px;"><%= s.action %></td>
+              <td style="padding:10px 14px;text-align:right;font-weight:700;color:<%= s.failures >= 5 ? '#f04438' : (s.failures >= 3 ? '#f79009' : 'var(--text-secondary)') %>;"><%= s.failures %></td>
+              <td style="padding:10px 14px;text-align:right;color:var(--text-muted);"><%= s.successes %></td>
+              <td style="padding:10px 14px;color:var(--text-muted);font-size:11px;"><%= new Date(s.last_attempt).toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) %></td>
+              <td style="padding:10px 14px;color:var(--text-muted);font-size:11px;"><%= new Date(s.first_attempt).toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <% } else { %>
+    <div class="card" style="padding:20px;text-align:center;">
+      <p style="color:var(--text-muted);font-size:13px;">No suspicious activity in the last 24 hours</p>
+    </div>
+    <% } %>
+  </div>
+
+  <!-- Recent Auth Log -->
+  <div style="margin-top:32px;">
+    <h2 style="font-size:16px;font-weight:700;margin-bottom:12px;">Recent Auth Log</h2>
+    <div class="card" style="overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);">
+            <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Time</th>
+            <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Action</th>
+            <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Username</th>
+            <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">IP</th>
+            <th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Result</th>
+            <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% authLog.forEach(function(l) { %>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+              <td style="padding:8px 12px;color:var(--text-muted);font-size:11px;"><%= new Date(l.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit', second:'2-digit' }) %></td>
+              <td style="padding:8px 12px;font-size:11px;"><%= l.action %></td>
+              <td style="padding:8px 12px;font-weight:600;"><%= l.username || '—' %></td>
+              <td style="padding:8px 12px;font-family:monospace;font-size:10px;color:var(--text-muted);"><%= l.ip || '—' %></td>
+              <td style="padding:8px 12px;text-align:center;">
+                <% if (l.success) { %>
+                  <span style="color:#3ecf8e;font-size:10px;font-weight:600;">OK</span>
+                <% } else { %>
+                  <span style="color:#f04438;font-size:10px;font-weight:600;">FAIL</span>
+                <% } %>
+              </td>
+              <td style="padding:8px 12px;font-size:10px;color:var(--text-muted);"><%= l.reason || '—' %></td>
+            </tr>
+          <% }); %>
+          <% if (!authLog.length) { %>
+            <tr><td colspan="6" style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;">No auth activity logged yet</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 <%- include('footer') %>

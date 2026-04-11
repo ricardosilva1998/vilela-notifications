@@ -48,7 +48,9 @@ router.get('/admin', (req, res) => {
   if (!res.locals.isAdmin) return res.redirect('/racing');
   const racingUsers = db.getAllRacingUsers();
   const bridgeUsers = db.getBridgeUserStats();
-  res.render('racing-admin', { streamer: req.streamer || null, racingUser: req.racingUser, racingUsers, bridgeUsers });
+  const suspicious = db.getSuspiciousActivity(24);
+  const authLog = db.getRecentAuthLog(30);
+  res.render('racing-admin', { streamer: req.streamer || null, racingUser: req.racingUser, racingUsers, bridgeUsers, suspicious, authLog });
 });
 
 router.post('/admin/unlock/:id', (req, res) => {
