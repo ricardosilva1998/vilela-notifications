@@ -3703,7 +3703,6 @@ function lockRacingAccount(userId) {
 
 // ── Team queries ──────────────────────────────────────────────────
 const _getTeamById = db.prepare('SELECT * FROM teams WHERE id = ?');
-const _getTeamByOwnerId = db.prepare('SELECT * FROM teams WHERE owner_id = ?');
 const _getTeamMembership = db.prepare(`
   SELECT tm.*, t.name AS team_name, t.owner_id, t.invite_code
   FROM team_members tm JOIN teams t ON tm.team_id = t.id
@@ -3739,9 +3738,12 @@ const _countTeamMembers = db.prepare('SELECT COUNT(*) AS count FROM team_members
 
 function createTeam(name, ownerId) {
   const code = require('crypto').randomBytes(4).toString('hex');
-  const result = _insertTeam.run(name, ownerId, code);
-  _insertTeamMember.run(result.lastInsertRowid, ownerId, 'owner');
-  return result.lastInsertRowid;
+  const txn = db.transaction(() => {
+    const result = _insertTeam.run(name, ownerId, code);
+    _insertTeamMember.run(result.lastInsertRowid, ownerId, 'owner');
+    return result.lastInsertRowid;
+  });
+  return txn();
 }
 
 function getTeamForUser(userId) {
@@ -3771,13 +3773,16 @@ function createTeamInvite(teamId, invitedUserId, invitedBy) {
 }
 
 function acceptTeamInvite(inviteId) {
-  const invite = _getTeamInviteById.get(inviteId);
-  if (!invite || invite.status !== 'pending') return false;
-  const existing = _getTeamMembership.get(invite.invited_user_id);
-  if (existing) return false;
-  _updateTeamInviteStatus.run('accepted', inviteId);
-  _insertTeamMember.run(invite.team_id, invite.invited_user_id, 'member');
-  return true;
+  const txn = db.transaction(() => {
+    const invite = _getTeamInviteById.get(inviteId);
+    if (!invite || invite.status !== 'pending') return false;
+    const existing = _getTeamMembership.get(invite.invited_user_id);
+    if (existing) return false;
+    _updateTeamInviteStatus.run('accepted', inviteId);
+    _insertTeamMember.run(invite.team_id, invite.invited_user_id, 'member');
+    return true;
+  });
+  return txn();
 }
 
 function declineTeamInvite(inviteId) {
@@ -3793,12 +3798,15 @@ function deleteTeamById(teamId) {
 }
 
 function joinTeamByCode(code, userId) {
-  const team = _getTeamByInviteCode.get(code);
-  if (!team) return null;
-  const existing = _getTeamMembership.get(userId);
-  if (existing) return null;
-  _insertTeamMember.run(team.id, userId, 'member');
-  return team;
+  const txn = db.transaction(() => {
+    const team = _getTeamByInviteCode.get(code);
+    if (!team) return null;
+    const existing = _getTeamMembership.get(userId);
+    if (existing) return null;
+    _insertTeamMember.run(team.id, userId, 'member');
+    return team;
+  });
+  return txn();
 }
 
 function getTeamById(teamId) {
