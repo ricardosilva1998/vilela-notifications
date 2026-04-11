@@ -86,6 +86,9 @@
                 </form>
               </td>
               <td style="padding:10px 14px;">
+                <form method="POST" action="/racing/admin/reset-password/<%= u.id %>" style="display:inline;">
+                  <button type="submit" style="background:none;border:1px solid rgba(62,207,142,0.3);border-radius:4px;padding:3px 8px;font-size:10px;font-weight:600;color:#3ecf8e;cursor:pointer;margin-right:4px;">Reset PW</button>
+                </form>
                 <form method="POST" action="/racing/admin/delete/<%= u.id %>" style="display:inline;" onsubmit="return confirm('Delete account @<%= u.username %>? This cannot be undone.');">
                   <button type="submit" style="background:none;border:1px solid rgba(240,68,56,0.3);border-radius:4px;padding:3px 8px;font-size:10px;font-weight:600;color:#f04438;cursor:pointer;">Delete</button>
                 </form>

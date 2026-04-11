@@ -134,6 +134,35 @@ router.post('/admin/delete/:id', (req, res) => {
   res.redirect('/racing/admin');
 });
 
+// Admin — Generate password reset link
+router.post('/admin/reset-password/:id', (req, res) => {
+  if (!res.locals.isAdmin) return res.redirect('/racing');
+  const userId = parseInt(req.params.id);
+  const user = db.getRacingUserById(userId);
+  if (!user) return res.redirect('/racing/admin');
+  const crypto = require('crypto');
+  const config = require('../config');
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+  db.db.prepare('INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)').run(userId, token, expiresAt);
+  const resetUrl = config.app.url + '/racing/auth/reset?token=' + token;
+  res.send(`
+    <!DOCTYPE html><html><head><meta charset="UTF-8"><title>Reset Link</title>
+    <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'DM Sans',sans-serif;background:#0c0d14;color:#e8e6f0;min-height:100vh;display:flex;align-items:center;justify-content:center}
+    .card{background:#141520;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:32px;max-width:500px;width:100%;text-align:center}
+    h2{font-size:20px;margin-bottom:12px}p{color:#8b8a9e;font-size:13px;margin-bottom:16px}
+    .url{background:#1a1b2e;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;font-size:12px;word-break:break-all;color:#3ecf8e;margin-bottom:16px;user-select:all;cursor:text}
+    a{color:#9146ff;font-size:13px}</style></head><body>
+    <div class="card">
+      <h2>Password Reset Link</h2>
+      <p>Send this link to <strong>${user.username}</strong>. It expires in 24 hours.</p>
+      <div class="url">${resetUrl}</div>
+      <button onclick="navigator.clipboard.writeText('${resetUrl}');this.textContent='Copied!'" style="padding:8px 20px;background:#3ecf8e;color:#000;font-weight:700;border:none;border-radius:8px;cursor:pointer;font-size:13px;margin-bottom:16px;">Copy Link</button>
+      <br><a href="/racing/admin">Back to Admin</a>
+    </div></body></html>
+  `);
+});
+
 // Admin — Announcements & Bridge updates
 router.post('/admin/announcement', express.urlencoded({ extended: true }), (req, res) => {
   if (!res.locals.isAdmin) return res.redirect('/racing');
