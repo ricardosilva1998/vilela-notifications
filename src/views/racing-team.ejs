@@ -1,0 +1,166 @@
+<%- include('header', { title: 'Team — Atleta', streamer: streamer }) %>
+<div style="padding:24px 0;max-width:800px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+    <div>
+      <h1 style="font-size:28px;font-weight:800;margin-bottom:4px;">My Team</h1>
+      <p style="color:var(--text-secondary);font-size:14px;">
+        <a href="/racing" style="color:var(--text-muted);text-decoration:none;">&larr; Racing</a>
+      </p>
+    </div>
+  </div>
+
+  <% if (error) { %>
+    <div style="background:rgba(240,68,56,0.1);border:1px solid rgba(240,68,56,0.2);border-radius:8px;padding:12px 16px;margin-bottom:16px;color:#f04438;font-size:13px;"><%= error %></div>
+  <% } %>
+  <% if (msg) { %>
+    <div style="background:rgba(62,207,142,0.1);border:1px solid rgba(62,207,142,0.2);border-radius:8px;padding:12px 16px;margin-bottom:16px;color:#3ecf8e;font-size:13px;"><%= msg %></div>
+  <% } %>
+
+  <% if (pendingInvites && pendingInvites.length > 0) { %>
+    <div class="card" style="padding:20px;margin-bottom:20px;border:1px solid rgba(247,201,72,0.2);">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:#f7c948;">Pending Invites</h3>
+      <% pendingInvites.forEach(function(inv) { %>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div>
+            <span style="font-weight:600;"><%= inv.team_name %></span>
+            <span style="color:var(--text-muted);font-size:12px;margin-left:8px;">invited by <%= inv.invited_by_name %></span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <form method="POST" action="/racing/team/invite/<%= inv.id %>/accept" style="margin:0;">
+              <button type="submit" style="background:#3ecf8e;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;">Accept</button>
+            </form>
+            <form method="POST" action="/racing/team/invite/<%= inv.id %>/decline" style="margin:0;">
+              <button type="submit" style="background:rgba(240,68,56,0.15);color:#f04438;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;">Decline</button>
+            </form>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+  <% } %>
+
+  <% if (!team) { %>
+    <!-- No team — create or join -->
+    <div class="card" style="padding:32px;text-align:center;margin-bottom:20px;">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin-bottom:12px;">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:4px;">No Team Yet</h3>
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">Create a team or join one with an invite code.</p>
+
+      <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+        <form method="POST" action="/racing/team/create" style="display:flex;gap:8px;align-items:center;">
+          <input type="text" name="team_name" placeholder="Team name" required minlength="2" maxlength="40"
+            style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text-primary);font-size:13px;width:180px;">
+          <button type="submit" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Create Team</button>
+        </form>
+      </div>
+
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+        <p style="color:var(--text-muted);font-size:12px;margin-bottom:8px;">Have an invite code?</p>
+        <form style="display:flex;gap:8px;justify-content:center;align-items:center;" onsubmit="event.preventDefault(); var c = this.querySelector('input').value.trim(); if(c) window.location='/racing/team/join/' + encodeURIComponent(c);">
+          <input type="text" placeholder="Paste invite code" style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text-primary);font-size:13px;width:160px;">
+          <button type="submit" style="background:rgba(62,207,142,0.15);color:#3ecf8e;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;">Join</button>
+        </form>
+      </div>
+    </div>
+  <% } else { %>
+    <!-- Team info -->
+    <div class="card" style="padding:20px;margin-bottom:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <h2 style="font-size:20px;font-weight:800;"><%= team.team_name %></h2>
+          <p style="color:var(--text-muted);font-size:12px;"><%= members.length %> member<%= members.length !== 1 ? 's' : '' %></p>
+        </div>
+        <% if (team.role === 'owner') { %>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-secondary);user-select:all;cursor:text;" title="Share this code to invite teammates"><%= team.invite_code %></div>
+            <button onclick="navigator.clipboard.writeText('<%= team.invite_code %>');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" style="background:rgba(145,70,255,0.15);color:var(--accent);border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;">Copy</button>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Members list -->
+      <div style="border-top:1px solid var(--border);padding-top:12px;">
+        <% members.forEach(function(m) { %>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--bg-tertiary);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+                <% if (m.avatar) { %>
+                  <img src="<%= m.avatar %>" style="width:100%;height:100%;object-fit:cover;">
+                <% } else { %>
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="var(--text-muted)"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+                <% } %>
+              </div>
+              <div>
+                <span style="font-weight:600;font-size:14px;"><%= m.display_name || m.username %></span>
+                <% if (m.iracing_name) { %><span style="color:var(--text-muted);font-size:11px;margin-left:6px;"><%= m.iracing_name %></span><% } %>
+                <% if (m.role === 'owner') { %>
+                  <span style="background:rgba(247,201,72,0.15);color:#f7c948;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px;">OWNER</span>
+                <% } %>
+              </div>
+            </div>
+            <% if (team.role === 'owner' && m.user_id !== racingUser.id) { %>
+              <form method="POST" action="/racing/team/kick/<%= m.user_id %>" style="margin:0;" onsubmit="return confirm('Remove <%= m.username %> from the team?')">
+                <button type="submit" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:4px 8px;border-radius:4px;transition:all 0.15s;" onmouseover="this.style.color='#f04438';this.style.background='rgba(240,68,56,0.1)'" onmouseout="this.style.color='var(--text-muted)';this.style.background='none'">&times; Remove</button>
+              </form>
+            <% } %>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+
+    <% if (team.role === 'owner') { %>
+      <!-- Invite form -->
+      <div class="card" style="padding:20px;margin-bottom:20px;">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;">Invite Teammate</h3>
+        <form method="POST" action="/racing/team/invite" style="display:flex;gap:8px;align-items:center;">
+          <input type="text" name="username" placeholder="Racing username" required
+            style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text-primary);font-size:13px;flex:1;">
+          <button type="submit" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Send Invite</button>
+        </form>
+
+        <% if (teamInvites && teamInvites.length > 0) { %>
+          <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
+            <p style="color:var(--text-muted);font-size:11px;margin-bottom:8px;">Pending invites:</p>
+            <% teamInvites.forEach(function(ti) { %>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
+                <span style="font-size:13px;"><%= ti.invited_username %></span>
+                <span style="color:var(--text-muted);font-size:11px;">pending</span>
+              </div>
+            <% }); %>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Invite code share -->
+      <div class="card" style="padding:20px;margin-bottom:20px;">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:8px;">Invite Link</h3>
+        <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px;">Share this link — anyone with a Racing account can join your team directly.</p>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" readonly value="<%= APP_URL %>/racing/team/join/<%= team.invite_code %>" id="invite-link"
+            style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text-secondary);font-size:12px;flex:1;font-family:'JetBrains Mono',monospace;"
+            onclick="this.select()">
+          <button onclick="navigator.clipboard.writeText(document.getElementById('invite-link').value);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy Link',1500)"
+            style="background:rgba(145,70,255,0.15);color:var(--accent);border:none;border-radius:6px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">Copy Link</button>
+        </div>
+      </div>
+    <% } %>
+
+    <!-- Leave / Delete -->
+    <div style="display:flex;gap:12px;margin-top:8px;">
+      <% if (team.role !== 'owner') { %>
+        <form method="POST" action="/racing/team/leave" onsubmit="return confirm('Leave the team?')">
+          <button type="submit" style="background:rgba(240,68,56,0.1);color:#f04438;border:1px solid rgba(240,68,56,0.2);border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;">Leave Team</button>
+        </form>
+      <% } else { %>
+        <form method="POST" action="/racing/team/delete" onsubmit="return confirm('Delete the team? This cannot be undone.')">
+          <button type="submit" style="background:rgba(240,68,56,0.1);color:#f04438;border:1px solid rgba(240,68,56,0.2);border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;">Delete Team</button>
+        </form>
+      <% } %>
+    </div>
+  <% } %>
+</div>
+<%- include('footer') %>
