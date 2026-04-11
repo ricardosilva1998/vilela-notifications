@@ -16,6 +16,7 @@ let enabled = false;
 let reconnectDelay = RECONNECT_BASE;
 let availableTeams = [];    // Teams returned by server on auth
 let broadcastTeamIds = [];  // Teams user chose to broadcast to
+let hasAuthedOnce = false;  // True after first successful auth this session
 
 // Callback for control panel to update UI
 let onTeamsUpdated = null;
@@ -70,6 +71,7 @@ function connect() {
 
     if (msg.type === 'auth-ok') {
       isConnected = true;
+      hasAuthedOnce = true;
       reconnectDelay = RECONNECT_BASE;
       availableTeams = msg.teams || [];
       console.log('[Pitwall Uplink] Authenticated (' + availableTeams.length + ' teams)');
@@ -165,8 +167,8 @@ function getBroadcastTeamIds() {
 
 function setOnTeamsUpdated(cb) {
   onTeamsUpdated = cb;
-  // If already authenticated, fire immediately so late subscribers get current state
-  if (isConnected) {
+  // If we've authenticated at least once this session, fire with last known teams
+  if (hasAuthedOnce) {
     cb(availableTeams, broadcastTeamIds);
   }
 }
