@@ -26,6 +26,7 @@
     @keyframes posUp { 0% { background: rgba(62,207,142,0.3); } 30% { background: rgba(62,207,142,0.15); } 100% { background: transparent; } }
     @keyframes posDown { 0% { background: rgba(240,68,56,0.3); } 30% { background: rgba(240,68,56,0.15); } 100% { background: transparent; } }
     .pit-indicator { background: #f79009; color: #000; font-weight: 700; font-size: 8px; padding: 1px 5px; border-radius: 8px; margin-left: 6px; vertical-align: middle; }
+    .gap-separator td { height: auto !important; min-height: auto !important; padding: 2px 8px !important; }
     .mono { font-family: 'JetBrains Mono', 'Consolas', monospace; }
     .driver-name { white-space: nowrap; display: block; }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
@@ -395,6 +396,44 @@
       </tr>`;
     }
 
+    // Smart window: when anchor driver is outside top N, show leaders + gap + window around them
+    function applySmartWindow(drivers, maxLimit, anchorDriver) {
+      if (maxLimit <= 0 || drivers.length <= maxLimit) {
+        return { topSlice: drivers, bottomSlice: [], separator: null };
+      }
+      const anchorIdx = anchorDriver ? drivers.findIndex(d => d.carIdx === anchorDriver.carIdx) : -1;
+      if (anchorIdx < 0 || anchorIdx < maxLimit) {
+        return { topSlice: drivers.slice(0, maxLimit), bottomSlice: [], separator: null };
+      }
+      const TOP_COUNT = Math.min(5, Math.floor(maxLimit / 3));
+      const aroundSlots = maxLimit - TOP_COUNT - 1;
+      if (aroundSlots < 3) {
+        return { topSlice: drivers.slice(0, maxLimit), bottomSlice: [], separator: null };
+      }
+      const aheadCount = Math.max(1, Math.floor(aroundSlots / 3));
+      const behindCount = aroundSlots - aheadCount;
+      let windowStart = anchorIdx - aheadCount;
+      let windowEnd = anchorIdx + behindCount + 1;
+      if (windowEnd > drivers.length) {
+        const overflow = windowEnd - drivers.length;
+        windowStart = Math.max(TOP_COUNT + 1, windowStart - overflow);
+        windowEnd = drivers.length;
+      }
+      if (windowStart <= TOP_COUNT) {
+        return { topSlice: drivers.slice(0, Math.min(drivers.length, maxLimit)), bottomSlice: [], separator: null };
+      }
+      return {
+        topSlice: drivers.slice(0, TOP_COUNT),
+        bottomSlice: drivers.slice(windowStart, windowEnd),
+        separator: { fromPos: TOP_COUNT + 1, toPos: windowStart + 1, skipped: windowStart - TOP_COUNT }
+      };
+    }
+
+    function buildSeparatorRow(separator) {
+      const label = 'P' + separator.fromPos + ' — P' + separator.toPos;
+      return '<tr class="gap-separator" style="pointer-events:none;"><td colspan="' + enabledColumns.length + '" style="text-align:center;font-size:' + fsTiny + 'px;font-family:\'JetBrains Mono\',monospace;color:rgba(255,255,255,0.2);letter-spacing:2px;border-bottom:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.015);"><span style="border-top:1px dashed rgba(255,255,255,0.1);display:inline-block;padding-top:2px;">···&nbsp;&nbsp;' + label + '&nbsp;&nbsp;···</span></td></tr>';
+    }
+
     function buildStandingsHTML(data) {
       // Find the player's class to exempt it from the max limit
       const playerDriver = data.find(d => d.isPlayer);
@@ -436,32 +475,41 @@
         return a.localeCompare(b);
       });
 
-      // Apply per-class limits
+      // Apply smart window per class — keeps player visible even when deep in the field
+      const anchorDriver = data.find(d => d.isPlayer) || data.find(d => d.isSpectated) || null;
       classNames.forEach(cls => {
-        if (cls === playerClass && maxMyClass > 0) {
-          classes[cls].drivers = classes[cls].drivers.slice(0, maxMyClass);
-        } else if (cls !== playerClass && maxOtherClasses > 0) {
-          classes[cls].drivers = classes[cls].drivers.slice(0, maxOtherClasses);
-        }
+        const maxLimit = (cls === playerClass) ? maxMyClass : maxOtherClasses;
+        const anchor = (anchorDriver && anchorDriver.carClass === cls) ? anchorDriver : null;
+        classes[cls].windowResult = applySmartWindow(classes[cls].drivers, maxLimit, anchor);
       });
+
+      // Helper to render a class's windowed drivers
+      function renderClassDrivers(group) {
+        const { topSlice, bottomSlice, separator } = group.windowResult;
+        const leaderBest = group.drivers.find(d => d.bestLap > 0)?.bestLap || null;
+        let html = '';
+        topSlice.forEach(d => { html += buildDriverRow(d, d.classPosition || 0, leaderBest); });
+        if (separator) {
+          html += buildSeparatorRow(separator);
+          bottomSlice.forEach(d => { html += buildDriverRow(d, d.classPosition || 0, leaderBest); });
+        }
+        return html;
+      }
 
       // If only one class, no headers needed
       if (classNames.length <= 1) {
-        const drivers = classNames.length === 1 ? classes[classNames[0]].drivers : data;
-        const leaderBest = drivers.find(d => d.bestLap > 0)?.bestLap || null;
-        return drivers.map((d, i) => buildDriverRow(d, i + 1, leaderBest)).join('');
+        return classNames.length === 1 ? renderClassDrivers(classes[classNames[0]]) : '';
       }
 
       // Multiple classes — add a class header row before each group
-      const roundSOF = (v) => Math.round(v / 100) * 100; // ≤50 rounds down, >50 rounds up
+      const roundSOF = (v) => Math.round(v / 100) * 100;
       const formatSOFShort = (v) => { const r = roundSOF(v); return r >= 1000 ? (r/1000).toFixed(1) + 'k' : String(r); };
       let html = '';
       classNames.forEach(cls => {
         const group = classes[cls];
         const color = group.color;
-        const leaderBest = group.drivers.find(d => d.bestLap > 0)?.bestLap || null;
 
-        // Class header row — respect classHeaderEnabled toggles
+        // Class header row — respect classHeaderEnabled toggles (uses full driver count, not windowed)
         const classSof = _sofByClass[cls] || 0;
         const classNamePart = isClassHeaderOn('className') ? `<span style="color:${color};">${cls}</span>` : '';
         const carCountPart = isClassHeaderOn('carCount') ? `<span style="color:rgba(255,255,255,0.3);font-weight:400;margin-left:6px;">${group.drivers.length} cars</span>` : '';
@@ -470,9 +518,7 @@
           ${classNamePart}${classSofPart}${carCountPart}
         </td></tr>`;
 
-        group.drivers.forEach((d, i) => {
-          html += buildDriverRow(d, i + 1, leaderBest);
-        });
+        html += renderClassDrivers(group);
       });
 
       return html;
