@@ -382,7 +382,7 @@
         name: `<td>${badgeCell}</td>`,
         license: `<td>${licCell}</td>`,
         irating: `<td>${irCell}</td>`,
-        best: `<td class="mono" style="font-size:${fsMed}px">${bestFormatted}</td>`,
+        best: `<td class="mono" style="font-size:${fsMed}px;${d.bestLap > 0 && classLeaderBest > 0 && d.bestLap <= classLeaderBest ? 'color:#9146ff;font-weight:700;' : ''}">${bestFormatted}</td>`,
         last: `<td class="mono" style="font-size:${fsMed}px;color:rgba(255,255,255,0.55)">${lastFormatted}</td>`,
         gap: `<td class="mono" style="font-size:${fsMed}px;color:rgba(255,255,255,0.45)">${gap}</td>`,
         tire: '<td>' + tireLabel(d.tireCompound) + '</td>',
