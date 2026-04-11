@@ -1,281 +1,560 @@
-<%- include('header', { title: 'Pitwall — Atleta', streamer: streamer }) %>
-<div style="padding:24px 0;">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
-    <div>
-      <h1 style="font-size:28px;font-weight:800;margin-bottom:4px;">Pitwall</h1>
-      <p style="color:var(--text-secondary);font-size:14px;">
-        <a href="/racing" style="color:var(--text-muted);text-decoration:none;">&larr; Racing</a>
-        <span style="color:var(--border);margin:0 8px;">|</span>
-        <span><%= team.team_name %></span>
-        <a href="/racing/pitwall" style="color:var(--accent);text-decoration:none;font-size:12px;margin-left:10px;">Switch Team</a>
-      </p>
-    </div>
-    <div id="ws-status" style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted);">
-      <span id="ws-dot" style="width:8px;height:8px;border-radius:50%;background:var(--text-muted);"></span>
-      <span id="ws-label">Connecting...</span>
-    </div>
-  </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pitwall — <%= team.team_name %> — Atleta</title>
+  <link rel="icon" href="/images/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --bg-base: #0c0d14;
+      --bg-surface: #141520;
+      --bg-elevated: #1a1b2e;
+      --bg-hover: #1f2037;
+      --border: rgba(255,255,255,0.06);
+      --border-focus: rgba(145,70,255,0.4);
+      --text-primary: #e8e6f0;
+      --text-secondary: #8b8a9e;
+      --text-muted: #5c5b6e;
+      --accent: #9146ff;
+      --accent-glow: rgba(145,70,255,0.15);
+      --accent-hover: #a56bff;
+      --success: #3ecf8e;
+      --danger: #f04438;
+      --warning: #f79009;
+      --font-display: 'Outfit', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      --timing-bar-h: 48px;
+      --bottom-strip-h: 80px;
+    }
 
-  <!-- Team drivers -->
-  <div style="margin-bottom:16px;">
-    <h2 style="font-size:16px;font-weight:700;margin-bottom:12px;">Team Drivers</h2>
-    <div id="driver-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;">
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-base);
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ── Timing Bar ── */
+    .timing-bar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--timing-bar-h);
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 10px;
+      z-index: 100;
+    }
+
+    .timing-bar .back-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px; height: 32px;
+      border-radius: 6px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: var(--transition);
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+    .timing-bar .back-btn:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .live-badge {
+      display: none;
+      align-items: center;
+      gap: 5px;
+      background: #e10600;
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .live-badge.active { display: flex; }
+    .live-badge::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #fff;
+      animation: live-pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes live-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .driver-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      min-width: 0;
+    }
+    .driver-info .pos-badge {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 26px; height: 26px;
+      border-radius: 4px;
+      background: var(--accent);
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .driver-info .driver-name {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      color: var(--text-secondary);
+    }
+    .driver-info .driver-name.has-driver { color: var(--text-primary); }
+    .driver-info .lap-time {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .session-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .session-info span {
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .timing-spacer { flex: 1; }
+
+    .ws-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      flex-shrink: 0;
+      transition: background var(--transition);
+    }
+
+    .driver-dots {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .driver-dot {
+      position: relative;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--bg-elevated);
+      border: 2px solid var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: var(--transition);
+      user-select: none;
+    }
+    .driver-dot:hover { border-color: var(--text-secondary); }
+    .driver-dot.online { border-color: var(--success); }
+    .driver-dot.selected {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .driver-dot.self {
+      opacity: 0.4;
+      cursor: default;
+    }
+    .driver-dot .tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .driver-dot:hover .tooltip { display: block; }
+
+    .edit-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px; height: 32px;
+      border-radius: 6px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: var(--transition);
+      flex-shrink: 0;
+    }
+    .edit-btn:hover { background: var(--bg-hover); color: var(--text-secondary); }
+    .edit-btn.active { background: var(--accent-glow); border-color: var(--border-focus); color: var(--accent); }
+
+    /* ── Panel Grid ── */
+    .pitwall-grid {
+      position: fixed;
+      top: var(--timing-bar-h);
+      left: 0; right: 0;
+      bottom: var(--bottom-strip-h);
+      display: grid;
+      grid-template-columns: 5fr 2fr 2fr 1.5fr 1.5fr;
+      grid-template-rows: 3fr 2fr;
+      gap: 1px;
+      background: var(--border);
+    }
+
+    .panel {
+      position: relative;
+      background: var(--bg-base);
+      overflow: hidden;
+    }
+
+    .panel[data-panel="standings"]    { grid-column: 1; grid-row: 1 / 3; }
+    .panel[data-panel="relative"]     { grid-column: 2 / 4; grid-row: 1; }
+    .panel[data-panel="fuel"]         { grid-column: 2; grid-row: 2; }
+    .panel[data-panel="raceduration"] { grid-column: 3; grid-row: 2; }
+    .panel[data-panel="trackmap"]     { grid-column: 4 / 6; grid-row: 1; }
+    .panel[data-panel="weather"]      { grid-column: 4; grid-row: 2; }
+    .panel[data-panel="wind"]         { grid-column: 5; grid-row: 2; }
+
+    .panel-label {
+      position: absolute;
+      top: 6px; left: 8px;
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .panel .placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%; height: 100%;
+      color: rgba(255,255,255,0.12);
+      font-size: 12px;
+    }
+
+    .panel iframe {
+      display: none;
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: transparent;
+    }
+
+    /* ── Bottom Strip ── */
+    .pitwall-strip {
+      position: fixed;
+      left: 0; right: 0;
+      bottom: 0;
+      height: var(--bottom-strip-h);
+      display: grid;
+      grid-template-columns: 1fr 2.5fr;
+      gap: 1px;
+      background: var(--border);
+    }
+
+    .pitwall-strip .panel { background: var(--bg-base); }
+  </style>
+</head>
+<body>
+
+  <!-- Timing Bar -->
+  <div class="timing-bar">
+    <a href="/racing/teams" class="back-btn" title="Back to teams">
+      <i data-lucide="arrow-left" style="width:16px;height:16px;"></i>
+    </a>
+
+    <div class="live-badge" id="live-badge">LIVE</div>
+
+    <div class="driver-info">
+      <div class="pos-badge" id="pos-badge"></div>
+      <span class="driver-name" id="driver-name">Select a driver</span>
+      <span class="lap-time" id="lap-time"></span>
+    </div>
+
+    <div class="session-info">
+      <span id="lap-count"></span>
+      <span id="time-remaining"></span>
+    </div>
+
+    <div class="timing-spacer"></div>
+
+    <div class="ws-dot" id="ws-dot" title="Disconnected"></div>
+
+    <div class="driver-dots">
       <% members.forEach(function(m) { %>
-        <div class="card driver-card" data-user-id="<%= m.user_id %>" style="padding:16px;cursor:<%= m.user_id === racingUser.id ? 'default' : 'pointer' %>;opacity:<%= m.user_id === racingUser.id ? '0.5' : '1' %>;transition:all 0.15s;" <% if (m.user_id !== racingUser.id) { %>onclick="selectDriver(<%= m.user_id %>, '<%= (m.display_name || m.username).replace(/'/g, "\\'") %>')"<% } %>>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:40px;height:40px;border-radius:50%;background:var(--bg-tertiary);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
-              <% if (m.avatar) { %>
-                <img src="<%= m.avatar %>" style="width:100%;height:100%;object-fit:cover;">
-              <% } else { %>
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="var(--text-muted)"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
-              <% } %>
-            </div>
-            <div style="flex:1;min-width:0;">
-              <div style="display:flex;align-items:center;gap:6px;">
-                <span style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><%= m.display_name || m.username %></span>
-                <% if (m.role === 'owner') { %>
-                  <span style="background:rgba(247,201,72,0.15);color:#f7c948;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;">OWNER</span>
-                <% } %>
-              </div>
-              <% if (m.iracing_name) { %>
-                <p style="color:var(--text-muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><%= m.iracing_name %></p>
-              <% } %>
-            </div>
-            <div style="flex-shrink:0;">
-              <% if (m.user_id === racingUser.id) { %>
-                <span style="font-size:10px;color:var(--text-muted);">You</span>
-              <% } else { %>
-                <span class="driver-status" data-user-id="<%= m.user_id %>" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-muted);transition:background 0.3s;" title="Offline"></span>
-              <% } %>
-            </div>
-          </div>
+        <div class="driver-dot<%= m.user_id === racingUser.id ? ' self' : '' %>"
+             data-user-id="<%= m.user_id %>"
+             data-name="<%= (m.display_name || m.username).replace(/"/g, '&quot;') %>"
+             <% if (m.user_id !== racingUser.id) { %>onclick="selectDriver(<%= m.user_id %>, this.dataset.name)"<% } %>>
+          <%= (m.display_name || m.username).substring(0, 2).toUpperCase() %>
+          <span class="tooltip"><%= m.display_name || m.username %><%= m.user_id === racingUser.id ? ' (You)' : '' %></span>
         </div>
       <% }); %>
     </div>
+
+    <button class="edit-btn" id="edit-btn" onclick="toggleEditMode()" title="Edit layout">
+      <i data-lucide="settings" style="width:16px;height:16px;"></i>
+    </button>
   </div>
 
-  <!-- Pitwall overlay grid — always visible, shows placeholders when no driver selected -->
-  <div id="pitwall-active" style="margin-top:24px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <span style="font-size:14px;font-weight:700;">Spectating:</span>
-        <span id="spectating-name" style="font-size:14px;color:#3ecf8e;font-weight:600;">No driver selected</span>
+  <!-- Main Grid (9 panels: 7 in grid + 2 in bottom strip) -->
+  <div class="pitwall-grid">
+    <% var gridPanels = [
+      { id: 'standings', label: 'Standings' },
+      { id: 'relative', label: 'Relative' },
+      { id: 'fuel', label: 'Fuel' },
+      { id: 'raceduration', label: 'Race Duration' },
+      { id: 'trackmap', label: 'Track Map' },
+      { id: 'weather', label: 'Weather' },
+      { id: 'wind', label: 'Wind' },
+    ]; gridPanels.forEach(function(p) { %>
+      <div class="panel" data-panel="<%= p.id %>">
+        <div class="panel-label"><%= p.label %></div>
+        <div class="placeholder" id="placeholder-<%= p.id %>">Waiting for driver...</div>
+        <iframe id="iframe-<%= p.id %>" loading="lazy"></iframe>
       </div>
-      <button id="btn-stop-spectating" onclick="deselectDriver()" style="display:none;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:var(--text-muted);font-size:12px;cursor:pointer;">Stop spectating</button>
+    <% }); %>
+  </div>
+
+  <!-- Bottom Strip -->
+  <div class="pitwall-strip">
+    <div class="panel" data-panel="inputs">
+      <div class="panel-label">Inputs</div>
+      <div class="placeholder" id="placeholder-inputs">Waiting for driver...</div>
+      <iframe id="iframe-inputs" loading="lazy"></iframe>
     </div>
-    <div id="overlay-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <% var panels = [
-        { id: 'standings', label: 'Standings', h: 400 },
-        { id: 'relative', label: 'Relative', h: 400 },
-        { id: 'fuel', label: 'Fuel', h: 300 },
-        { id: 'inputs', label: 'Inputs', h: 300 },
-        { id: 'trackmap', label: 'Track Map', h: 300 },
-        { id: 'weather', label: 'Weather', h: 300 },
-        { id: 'wind', label: 'Wind', h: 250 },
-        { id: 'stintlaps', label: 'Session Laps', h: 300 },
-      ]; panels.forEach(function(p) { %>
-        <div class="card" style="overflow:hidden;padding:0;">
-          <div style="padding:8px 12px;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;"><%= p.label %></div>
-          <div id="placeholder-<%= p.id %>" style="height:<%= p.h %>px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.12);font-size:12px;">Waiting for driver...</div>
-          <iframe id="iframe-<%= p.id %>" style="width:100%;height:<%= p.h %>px;border:none;background:transparent;display:none;" loading="lazy"></iframe>
-        </div>
-      <% }); %>
-      <div class="card" style="overflow:hidden;padding:0;grid-column:1/-1;">
-        <div style="padding:8px 12px;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Race Duration</div>
-        <div id="placeholder-raceduration" style="height:200px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.12);font-size:12px;">Waiting for driver...</div>
-        <iframe id="iframe-raceduration" style="width:100%;height:200px;border:none;background:transparent;display:none;" loading="lazy"></iframe>
-      </div>
+    <div class="panel" data-panel="stintlaps">
+      <div class="panel-label">Session Laps</div>
+      <div class="placeholder" id="placeholder-stintlaps">Waiting for driver...</div>
+      <iframe id="iframe-stintlaps" loading="lazy"></iframe>
     </div>
   </div>
-</div>
 
-<script>
-(function() {
-  const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/pitwall';
-  const OVERLAY_BASE = '/pitwall/overlays';
-  const ALL_CHANNELS = ['standings', 'relative', 'fuel', 'wind', 'trackmap', 'inputs', 'session'];
-  const OVERLAY_MAP = {
-    standings: 'standings.html',
-    relative: 'relative.html',
-    fuel: 'fuel.html',
-    inputs: 'inputs.html',
-    trackmap: 'trackmap.html',
-    weather: 'weather.html',
-    wind: 'wind.html',
-    stintlaps: 'stintlaps.html',
-    raceduration: 'raceduration.html',
-  };
-
-  let ws = null;
-  let reconnectTimer = null;
-  let selectedDriverId = null;
-  const onlineDrivers = new Set();
-  const channelData = {};
-
-  function connect() {
-    setStatus('connecting');
-    ws = new WebSocket(WS_URL);
-
-    ws.onopen = function() {
-      setStatus('connected');
-      if (selectedDriverId) {
-        ws.send(JSON.stringify({ type: 'subscribe', channels: ALL_CHANNELS, driverId: selectedDriverId }));
-      }
+  <script>
+  (function() {
+    var WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/pitwall';
+    var OVERLAY_BASE = '/pitwall/overlays';
+    var ALL_CHANNELS = ['standings', 'relative', 'fuel', 'wind', 'trackmap', 'inputs', 'session'];
+    var OVERLAY_MAP = {
+      standings: 'standings.html',
+      relative: 'relative.html',
+      fuel: 'fuel.html',
+      inputs: 'inputs.html',
+      trackmap: 'trackmap.html',
+      weather: 'weather.html',
+      wind: 'wind.html',
+      stintlaps: 'stintlaps.html',
+      raceduration: 'raceduration.html'
     };
 
-    ws.onmessage = function(e) {
-      var msg;
-      try { msg = JSON.parse(e.data); } catch { return; }
+    var ws = null;
+    var reconnectTimer = null;
+    var selectedDriverId = null;
+    var onlineDrivers = new Set();
 
-      if (msg.type === 'auth-ok') {
-        // Auto-select our team (passed from server-rendered page)
+    function connect() {
+      setStatus('connecting');
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = function() {
+        setStatus('connected');
         ws.send(JSON.stringify({ type: 'select-team', teamId: <%= team.team_id %> }));
-      } else if (msg.type === 'team-selected') {
-        (msg.activeDrivers || []).forEach(function(d) {
-          onlineDrivers.add(d.userId);
-        });
-        updateDriverStatus();
-      } else if (msg.type === 'auth-error') {
-        console.error('[Pitwall] Auth error:', msg.reason);
-        setStatus('error');
-      } else if (msg.type === 'driver-online') {
-        onlineDrivers.add(msg.userId);
-        updateDriverStatus();
-      } else if (msg.type === 'driver-offline') {
-        onlineDrivers.delete(msg.userId);
-        updateDriverStatus();
-      } else if (msg.type === 'data') {
-        channelData[msg.channel] = msg.data;
-        updateTelemetryDebug();
+        if (selectedDriverId) {
+          ws.send(JSON.stringify({ type: 'subscribe', channels: ALL_CHANNELS, driverId: selectedDriverId }));
+        }
+      };
+
+      ws.onmessage = function(e) {
+        var msg;
+        try { msg = JSON.parse(e.data); } catch(err) { return; }
+
+        if (msg.type === 'auth-ok') {
+          ws.send(JSON.stringify({ type: 'select-team', teamId: <%= team.team_id %> }));
+        } else if (msg.type === 'team-selected') {
+          (msg.activeDrivers || []).forEach(function(d) {
+            onlineDrivers.add(d.userId);
+          });
+          updateDriverDots();
+        } else if (msg.type === 'driver-online') {
+          onlineDrivers.add(msg.userId);
+          updateDriverDots();
+        } else if (msg.type === 'driver-offline') {
+          onlineDrivers.delete(msg.userId);
+          updateDriverDots();
+        }
+      };
+
+      ws.onclose = function() {
+        setStatus('disconnected');
+        scheduleReconnect();
+      };
+
+      ws.onerror = function() {
+        ws.close();
+      };
+    }
+
+    function scheduleReconnect() {
+      if (reconnectTimer) return;
+      reconnectTimer = setTimeout(function() {
+        reconnectTimer = null;
+        connect();
+      }, 3000);
+    }
+
+    function setStatus(state) {
+      var dot = document.getElementById('ws-dot');
+      var colors = { connected: 'var(--success)', connecting: 'var(--warning)', disconnected: 'var(--text-muted)', error: 'var(--danger)' };
+      var titles = { connected: 'Connected', connecting: 'Connecting...', disconnected: 'Disconnected', error: 'Error' };
+      dot.style.background = colors[state] || 'var(--text-muted)';
+      dot.title = titles[state] || state;
+    }
+
+    function updateDriverDots() {
+      document.querySelectorAll('.driver-dot').forEach(function(el) {
+        var uid = parseInt(el.dataset.userId);
+        el.classList.toggle('online', onlineDrivers.has(uid));
+      });
+    }
+
+    function loadOverlayIframes(driverId) {
+      var wsParam = encodeURIComponent(WS_URL);
+      for (var key in OVERLAY_MAP) {
+        var iframe = document.getElementById('iframe-' + key);
+        var placeholder = document.getElementById('placeholder-' + key);
+        if (iframe) {
+          iframe.src = OVERLAY_BASE + '/' + OVERLAY_MAP[key] + '?ws=' + wsParam + '&driver=' + driverId;
+          iframe.style.display = 'block';
+        }
+        if (placeholder) placeholder.style.display = 'none';
+      }
+    }
+
+    function clearOverlayIframes() {
+      for (var key in OVERLAY_MAP) {
+        var iframe = document.getElementById('iframe-' + key);
+        var placeholder = document.getElementById('placeholder-' + key);
+        if (iframe) { iframe.src = 'about:blank'; iframe.style.display = 'none'; }
+        if (placeholder) placeholder.style.display = 'flex';
+      }
+    }
+
+    window.selectDriver = function(userId, name) {
+      // Toggle off if same driver
+      if (selectedDriverId === userId) {
+        window.deselectDriver();
+        return;
+      }
+
+      selectedDriverId = userId;
+
+      // Update timing bar
+      var nameEl = document.getElementById('driver-name');
+      nameEl.textContent = name;
+      nameEl.classList.add('has-driver');
+      document.getElementById('live-badge').classList.add('active');
+
+      // Highlight selected dot
+      document.querySelectorAll('.driver-dot').forEach(function(el) {
+        var uid = parseInt(el.dataset.userId);
+        el.classList.toggle('selected', uid === userId);
+      });
+
+      // Load overlay iframes
+      loadOverlayIframes(userId);
+
+      // Subscribe on WS
+      if (ws && ws.readyState === 1) {
+        ws.send(JSON.stringify({ type: 'subscribe', channels: ALL_CHANNELS, driverId: userId }));
       }
     };
 
-    ws.onclose = function() {
-      setStatus('disconnected');
-      scheduleReconnect();
+    window.deselectDriver = function() {
+      selectedDriverId = null;
+
+      var nameEl = document.getElementById('driver-name');
+      nameEl.textContent = 'Select a driver';
+      nameEl.classList.remove('has-driver');
+      document.getElementById('live-badge').classList.remove('active');
+      document.getElementById('lap-time').textContent = '';
+      document.getElementById('lap-count').textContent = '';
+      document.getElementById('time-remaining').textContent = '';
+
+      document.querySelectorAll('.driver-dot').forEach(function(el) {
+        el.classList.remove('selected');
+      });
+
+      clearOverlayIframes();
     };
 
-    ws.onerror = function() {
-      ws.close();
+    window.toggleEditMode = function() {
+      document.body.classList.toggle('edit-mode');
+      document.getElementById('edit-btn').classList.toggle('active');
     };
-  }
 
-  function scheduleReconnect() {
-    if (reconnectTimer) return;
-    reconnectTimer = setTimeout(function() {
-      reconnectTimer = null;
-      connect();
-    }, 3000);
-  }
-
-  function setStatus(state) {
-    var dot = document.getElementById('ws-dot');
-    var label = document.getElementById('ws-label');
-    if (state === 'connected') {
-      dot.style.background = '#3ecf8e';
-      label.textContent = 'Connected';
-    } else if (state === 'connecting') {
-      dot.style.background = '#f7c948';
-      label.textContent = 'Connecting...';
-    } else if (state === 'disconnected') {
-      dot.style.background = 'var(--text-muted)';
-      label.textContent = 'Reconnecting...';
-    } else if (state === 'error') {
-      dot.style.background = '#f04438';
-      label.textContent = 'Auth failed';
-    }
-  }
-
-  function updateDriverStatus() {
-    document.querySelectorAll('.driver-status').forEach(function(el) {
-      var uid = parseInt(el.dataset.userId);
-      if (onlineDrivers.has(uid)) {
-        el.style.background = '#3ecf8e';
-        el.title = 'Online';
-      } else {
-        el.style.background = 'var(--text-muted)';
-        el.title = 'Offline';
+    // ESC key handler
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        if (document.body.classList.contains('edit-mode')) {
+          window.toggleEditMode();
+        } else {
+          window.location.href = '/racing/teams';
+        }
       }
     });
-    // Update card borders for online drivers
-    document.querySelectorAll('.driver-card').forEach(function(el) {
-      var uid = parseInt(el.dataset.userId);
-      if (onlineDrivers.has(uid)) {
-        el.style.borderColor = 'rgba(62,207,142,0.3)';
-      } else {
-        el.style.borderColor = '';
-      }
-    });
-  }
 
-  function updateTelemetryDebug() {
-    var container = document.getElementById('telemetry-channels');
-    var debugDiv = document.getElementById('telemetry-debug');
-    if (!container || !debugDiv) return;
-    debugDiv.style.display = 'block';
-    var html = '';
-    for (var ch in channelData) {
-      html += '<div style="margin-bottom:4px;"><span style="color:#3ecf8e;">' + ch + '</span>: ' +
-        JSON.stringify(channelData[ch]).substring(0, 120) + '...</div>';
-    }
-    container.innerHTML = html;
-  }
+    connect();
+  })();
+  </script>
 
-  function loadOverlayIframes(driverId) {
-    var wsParam = encodeURIComponent(WS_URL);
-    for (var key in OVERLAY_MAP) {
-      var iframe = document.getElementById('iframe-' + key);
-      var placeholder = document.getElementById('placeholder-' + key);
-      if (iframe) {
-        iframe.src = OVERLAY_BASE + '/' + OVERLAY_MAP[key] + '?ws=' + wsParam + '&driver=' + driverId;
-        iframe.style.display = 'block';
-      }
-      if (placeholder) placeholder.style.display = 'none';
-    }
-  }
-
-  function clearOverlayIframes() {
-    for (var key in OVERLAY_MAP) {
-      var iframe = document.getElementById('iframe-' + key);
-      var placeholder = document.getElementById('placeholder-' + key);
-      if (iframe) { iframe.src = 'about:blank'; iframe.style.display = 'none'; }
-      if (placeholder) placeholder.style.display = 'flex';
-    }
-  }
-
-  window.selectDriver = function(userId, name) {
-    selectedDriverId = userId;
-    document.getElementById('spectating-name').textContent = name;
-    document.getElementById('spectating-name').style.color = '#3ecf8e';
-    document.getElementById('btn-stop-spectating').style.display = 'inline-block';
-
-    // Highlight selected card
-    document.querySelectorAll('.driver-card').forEach(function(el) {
-      var uid = parseInt(el.dataset.userId);
-      el.style.outline = uid === userId ? '2px solid #3ecf8e' : '';
-    });
-
-    // Load overlay iframes pointing to pitwall WS
-    loadOverlayIframes(userId);
-
-    // Also subscribe on main WS for status updates
-    if (ws && ws.readyState === 1) {
-      ws.send(JSON.stringify({ type: 'subscribe', channels: ALL_CHANNELS, driverId: userId }));
-    }
-  };
-
-  window.deselectDriver = function() {
-    selectedDriverId = null;
-    document.getElementById('spectating-name').textContent = 'No driver selected';
-    document.getElementById('spectating-name').style.color = 'var(--text-muted)';
-    document.getElementById('btn-stop-spectating').style.display = 'none';
-    document.querySelectorAll('.driver-card').forEach(function(el) {
-      el.style.outline = '';
-    });
-    clearOverlayIframes();
-  };
-
-  connect();
-})();
-</script>
-<%- include('footer') %>
+  <script>lucide.createIcons();</script>
+</body>
+</html>
