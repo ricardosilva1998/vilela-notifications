@@ -874,8 +874,9 @@ async function startTelemetry(onStatusChange) {
           // Lap-based race: use iRacing's laps remaining
           estLapsRemain = sessionLapsRemain;
         } else if (sessionTimeRemainFuel > 0 && avgLapTime > 0) {
-          // Timed race: estimate from time remaining + average lap time (+1 for finish lap)
-          estLapsRemain = Math.ceil(sessionTimeRemainFuel / avgLapTime) + 1;
+          // Timed race: estimate from time remaining + average lap time
+          // Math.ceil already accounts for the partial lap to checkered — no +1 needed
+          estLapsRemain = Math.ceil(sessionTimeRemainFuel / avgLapTime);
         }
 
         const fuelToFinish = (estLapsRemain > 0 && avgAll > 0) ? estLapsRemain * avgAll : 0;
