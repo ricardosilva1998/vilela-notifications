@@ -148,7 +148,12 @@ app.use('/tip', tipRoutes);
 
 const racingAuthRoutes = require('./routes/racing-auth');
 const racingRoutes = require('./routes/racing');
+const racingTeamRoutes = require('./routes/racing-team');
 app.use('/racing/auth', authLimiter, racingAuthRoutes);
+app.use('/racing/team', (req, res, next) => {
+  if (!req.racingUser) return res.redirect('/racing');
+  next();
+}, racingTeamRoutes);
 app.use('/racing', racingRoutes);
 
 app.get('/streamer', (req, res) => {
