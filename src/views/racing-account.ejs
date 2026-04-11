@@ -172,43 +172,228 @@
       </div>
     <% } %>
   </div>
+
+  <!-- Crop Avatar Modal -->
+  <div id="crop-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);" onclick="if(event.target===this)closeCropModal()">
+    <div style="background:#1a1b23;border-radius:12px;border:1px solid rgba(255,255,255,0.08);padding:24px;width:480px;max-width:95vw;" onclick="event.stopPropagation()">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <h3 style="font-size:16px;font-weight:700;margin:0;">Crop Avatar</h3>
+        <button onclick="closeCropModal()" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;">&times;</button>
+      </div>
+      <div style="display:flex;gap:20px;align-items:flex-start;">
+        <canvas id="crop-canvas" width="240" height="240" style="border-radius:8px;cursor:grab;flex-shrink:0;background:#0c0d14;"></canvas>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:8px;">
+          <span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Preview</span>
+          <canvas id="crop-preview-72" width="72" height="72" style="border-radius:50%;border:2px solid rgba(255,255,255,0.1);"></canvas>
+          <canvas id="crop-preview-36" width="36" height="36" style="border-radius:50%;border:2px solid rgba(255,255,255,0.1);"></canvas>
+          <div style="display:flex;gap:12px;font-size:10px;color:var(--text-muted);margin-top:-2px;">
+            <span>72px</span>
+            <span>36px</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:14px;">
+        <span style="font-size:12px;color:var(--text-muted);">&minus;</span>
+        <input type="range" id="crop-zoom-slider" min="0" max="100" value="0" style="flex:1;accent-color:#3ecf8e;">
+        <span style="font-size:12px;color:var(--text-muted);">+</span>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
+        <button onclick="closeCropModal()" style="background:none;border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 18px;color:rgba(255,255,255,0.6);font-size:13px;cursor:pointer;">Cancel</button>
+        <button onclick="saveCrop()" style="background:#3ecf8e;border:none;border-radius:8px;padding:8px 22px;color:#0c0d14;font-size:13px;font-weight:700;cursor:pointer;">Save</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
+var cropImg = null, cropZoom = 1, cropMinZoom = 1, cropMaxZoom = 3;
+var cropX = 0, cropY = 0, cropDragging = false, cropDragStart = null, cropRaf = null;
+var CANVAS_SIZE = 240, CIRCLE_D = 200, CIRCLE_R = CIRCLE_D / 2;
+var CANVAS_CX = CANVAS_SIZE / 2, CANVAS_CY = CANVAS_SIZE / 2;
+
 function uploadAvatar(input) {
   if (!input.files || !input.files[0]) return;
-  const file = input.files[0];
-  if (file.size > 500000) { alert('Image too large (max 500KB)'); return; }
+  var file = input.files[0];
+  if (file.size > 5 * 1024 * 1024) { alert('Image too large (max 5MB)'); return; }
 
-  const reader = new FileReader();
+  var reader = new FileReader();
   reader.onload = function(e) {
-    // Resize to 128x128
-    const img = new Image();
+    var img = new Image();
     img.onload = function() {
-      const canvas = document.createElement('canvas');
-      canvas.width = 128; canvas.height = 128;
-      const ctx = canvas.getContext('2d');
-      const size = Math.min(img.width, img.height);
-      const sx = (img.width - size) / 2;
-      const sy = (img.height - size) / 2;
-      ctx.drawImage(img, sx, sy, size, size, 0, 0, 128, 128);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-
-      fetch('/racing/account/avatar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ avatar: dataUrl }),
-      }).then(r => r.json()).then(d => {
-        if (d.ok) {
-          document.getElementById('avatar-preview').innerHTML = '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;">';
-        } else {
-          alert(d.error || 'Upload failed');
-        }
-      }).catch(() => alert('Upload failed'));
+      cropImg = img;
+      cropMinZoom = CIRCLE_D / Math.min(img.width, img.height);
+      cropMaxZoom = cropMinZoom * 3;
+      cropZoom = cropMinZoom;
+      cropX = CANVAS_CX - (img.width * cropZoom) / 2;
+      cropY = CANVAS_CY - (img.height * cropZoom) / 2;
+      openCropModal();
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+function openCropModal() {
+  document.getElementById('crop-modal').style.display = 'flex';
+  var slider = document.getElementById('crop-zoom-slider');
+  slider.value = 0;
+  setupCropEvents();
+  renderCrop();
+}
+
+function closeCropModal() {
+  document.getElementById('crop-modal').style.display = 'none';
+  if (cropRaf) { cancelAnimationFrame(cropRaf); cropRaf = null; }
+  document.getElementById('avatar-input').value = '';
+}
+
+function clampCropPosition() {
+  var sw = cropImg.width * cropZoom, sh = cropImg.height * cropZoom;
+  var minX = CANVAS_CX + CIRCLE_R - sw;
+  var maxX = CANVAS_CX - CIRCLE_R;
+  var minY = CANVAS_CY + CIRCLE_R - sh;
+  var maxY = CANVAS_CY - CIRCLE_R;
+  cropX = Math.min(maxX, Math.max(minX, cropX));
+  cropY = Math.min(maxY, Math.max(minY, cropY));
+}
+
+function renderCrop() {
+  var canvas = document.getElementById('crop-canvas');
+  var ctx = canvas.getContext('2d');
+  var sw = cropImg.width * cropZoom, sh = cropImg.height * cropZoom;
+
+  ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+  ctx.drawImage(cropImg, cropX, cropY, sw, sh);
+
+  // Dark overlay outside circle
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+  ctx.arc(CANVAS_CX, CANVAS_CY, CIRCLE_R, 0, Math.PI * 2, true);
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fill();
+  ctx.restore();
+
+  // Circle border
+  ctx.beginPath();
+  ctx.arc(CANVAS_CX, CANVAS_CY, CIRCLE_R, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  renderPreview('crop-preview-72', 72);
+  renderPreview('crop-preview-36', 36);
+}
+
+function renderPreview(canvasId, size) {
+  var canvas = document.getElementById(canvasId);
+  var ctx = canvas.getContext('2d');
+  var srcCx = (CANVAS_CX - cropX) / cropZoom;
+  var srcCy = (CANVAS_CY - cropY) / cropZoom;
+  var srcR = CIRCLE_R / cropZoom;
+
+  ctx.clearRect(0, 0, size, size);
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.drawImage(cropImg, srcCx - srcR, srcCy - srcR, srcR * 2, srcR * 2, 0, 0, size, size);
+  ctx.restore();
+}
+
+function setupCropEvents() {
+  var canvas = document.getElementById('crop-canvas');
+  var slider = document.getElementById('crop-zoom-slider');
+
+  canvas.onmousedown = function(e) {
+    cropDragging = true;
+    cropDragStart = { x: e.clientX - cropX, y: e.clientY - cropY };
+    canvas.style.cursor = 'grabbing';
+  };
+  window.onmousemove = function(e) {
+    if (!cropDragging) return;
+    cropX = e.clientX - cropDragStart.x;
+    cropY = e.clientY - cropDragStart.y;
+    clampCropPosition();
+    renderCrop();
+  };
+  window.onmouseup = function() {
+    cropDragging = false;
+    canvas.style.cursor = 'grab';
+  };
+
+  canvas.ontouchstart = function(e) {
+    e.preventDefault();
+    var t = e.touches[0];
+    cropDragging = true;
+    cropDragStart = { x: t.clientX - cropX, y: t.clientY - cropY };
+  };
+  canvas.ontouchmove = function(e) {
+    e.preventDefault();
+    if (!cropDragging) return;
+    var t = e.touches[0];
+    cropX = t.clientX - cropDragStart.x;
+    cropY = t.clientY - cropDragStart.y;
+    clampCropPosition();
+    renderCrop();
+  };
+  canvas.ontouchend = function() { cropDragging = false; };
+
+  canvas.onwheel = function(e) {
+    e.preventDefault();
+    var oldZoom = cropZoom;
+    var delta = e.deltaY > 0 ? -0.02 : 0.02;
+    cropZoom = Math.min(cropMaxZoom, Math.max(cropMinZoom, cropZoom + delta * (cropMaxZoom - cropMinZoom)));
+    // Zoom toward center
+    var ratio = cropZoom / oldZoom;
+    cropX = CANVAS_CX - (CANVAS_CX - cropX) * ratio;
+    cropY = CANVAS_CY - (CANVAS_CY - cropY) * ratio;
+    clampCropPosition();
+    slider.value = ((cropZoom - cropMinZoom) / (cropMaxZoom - cropMinZoom)) * 100;
+    renderCrop();
+  };
+
+  slider.oninput = function() {
+    var oldZoom = cropZoom;
+    cropZoom = cropMinZoom + (parseFloat(this.value) / 100) * (cropMaxZoom - cropMinZoom);
+    var ratio = cropZoom / oldZoom;
+    cropX = CANVAS_CX - (CANVAS_CX - cropX) * ratio;
+    cropY = CANVAS_CY - (CANVAS_CY - cropY) * ratio;
+    clampCropPosition();
+    renderCrop();
+  };
+}
+
+function saveCrop() {
+  var outCanvas = document.createElement('canvas');
+  outCanvas.width = 128; outCanvas.height = 128;
+  var ctx = outCanvas.getContext('2d');
+  var srcCx = (CANVAS_CX - cropX) / cropZoom;
+  var srcCy = (CANVAS_CY - cropY) / cropZoom;
+  var srcR = CIRCLE_R / cropZoom;
+
+  ctx.beginPath();
+  ctx.arc(64, 64, 64, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.drawImage(cropImg, srcCx - srcR, srcCy - srcR, srcR * 2, srcR * 2, 0, 0, 128, 128);
+
+  var dataUrl = outCanvas.toDataURL('image/jpeg', 0.8);
+
+  fetch('/racing/account/avatar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ avatar: dataUrl }),
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.ok) {
+      document.getElementById('avatar-preview').innerHTML = '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;">';
+      // Update nav avatar if present
+      var navAvatar = document.querySelector('.nav-avatar-img, nav img[style*="border-radius:50%"]');
+      if (navAvatar) navAvatar.src = dataUrl;
+      closeCropModal();
+    } else {
+      alert(d.error || 'Upload failed');
+    }
+  }).catch(function() { alert('Upload failed'); });
 }
 </script>
 <%- include('footer') %>
