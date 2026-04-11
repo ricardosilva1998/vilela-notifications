@@ -16,10 +16,14 @@ router.get('/', (req, res) => {
       // Query recent sessions for this user (by bridge_id or racing_user_id)
       recentSessions = db.getRecentSessionsByUser ? db.getRecentSessionsByUser(req.racingUser.id, bridgeId, 20) : [];
     } catch(e) {}
+    const teamMembership = db.getTeamForUser(req.racingUser.id);
+    const pendingTeamInvites = db.getPendingInvitesForUser(req.racingUser.id);
     return res.render('racing-dashboard', {
       streamer: req.streamer || null,
       racingUser: req.racingUser,
       sessions: recentSessions,
+      team: teamMembership,
+      pendingTeamInvites,
     });
   }
   res.render('racing-landing', { streamer: req.streamer || null, racingUser: null, error: req.query.error || null });

@@ -31,6 +31,24 @@
         </div>
       </div>
     </a>
+    <a href="/racing/team" class="card" style="padding:16px;text-decoration:none;color:inherit;<%= (typeof pendingTeamInvites !== 'undefined' && pendingTeamInvites && pendingTeamInvites.length > 0) ? 'border:1px solid rgba(247,201,72,0.3);' : '' %>">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:36px;height:36px;border-radius:8px;background:rgba(59,130,246,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div>
+          <h3 style="font-size:14px;margin-bottom:2px;">
+            My Team
+            <% if (typeof pendingTeamInvites !== 'undefined' && pendingTeamInvites && pendingTeamInvites.length > 0) { %>
+              <span style="background:#f7c948;color:#000;font-size:10px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:4px;"><%= pendingTeamInvites.length %></span>
+            <% } %>
+          </h3>
+          <p style="color:var(--text-muted);font-size:11px;">
+            <% if (typeof team !== 'undefined' && team) { %><%= team.team_name %><% } else { %>Create or join a team<% } %>
+          </p>
+        </div>
+      </div>
+    </a>
     <% if (isAdmin) { %>
     <a href="/racing/admin" class="card" style="padding:16px;text-decoration:none;color:inherit;border:1px solid rgba(240,68,56,0.15);">
       <div style="display:flex;align-items:center;gap:10px;">
