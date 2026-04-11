@@ -260,15 +260,6 @@ function startBridge() {
       if (controlWindow && !controlWindow.isDestroyed()) {
         controlWindow.webContents.send('update-available', info.version);
       }
-      // System notification so user sees it even without opening control panel
-      try {
-        const notif = new Notification({
-          title: 'Atleta Bridge Update Available',
-          body: `Version ${info.version} is ready to download. Click to open settings.`,
-        });
-        notif.on('click', () => showControlWindow());
-        notif.show();
-      } catch(e) {}
     });
     autoUpdater.on('update-not-available', () => {
       console.log('[Updater] No updates');
@@ -286,14 +277,6 @@ function startBridge() {
       if (controlWindow && !controlWindow.isDestroyed()) {
         controlWindow.webContents.send('update-downloaded');
       }
-      try {
-        const notif = new Notification({
-          title: 'Atleta Bridge Update Ready',
-          body: 'Update downloaded. It will install when you close the app.',
-        });
-        notif.on('click', () => showControlWindow());
-        notif.show();
-      } catch(e) {}
     });
     autoUpdater.on('error', (err) => {
       console.log('[Updater] Error:', err.message);
