@@ -183,6 +183,42 @@ router.get('/join/:code', (req, res) => {
   res.redirect('/racing/teams?msg=' + encodeURIComponent('Joined ' + team.name + '!'));
 });
 
+// POST /racing/teams/:teamId/picture
+router.post('/:teamId/picture', express.json({ limit: '2mb' }), (req, res) => {
+  const teamId = parseInt(req.params.teamId);
+  const membership = db.getTeamsForUser(req.racingUser.id).find(t => t.team_id === teamId);
+  if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) {
+    return res.status(403).json({ error: 'Only team owner can change the picture' });
+  }
+  const { picture } = req.body;
+  if (!picture || !picture.startsWith('data:image/')) {
+    return res.status(400).json({ error: 'Invalid image' });
+  }
+  if (picture.length > 700000) {
+    return res.status(400).json({ error: 'Image too large (max 500KB)' });
+  }
+  db.updateTeamPicture(teamId, picture);
+  res.json({ ok: true });
+});
+
+// POST /racing/teams/:teamId/banner
+router.post('/:teamId/banner', express.json({ limit: '2mb' }), (req, res) => {
+  const teamId = parseInt(req.params.teamId);
+  const membership = db.getTeamsForUser(req.racingUser.id).find(t => t.team_id === teamId);
+  if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) {
+    return res.status(403).json({ error: 'Only team owner can change the banner' });
+  }
+  const { banner } = req.body;
+  if (!banner || !banner.startsWith('data:image/')) {
+    return res.status(400).json({ error: 'Invalid image' });
+  }
+  if (banner.length > 1000000) {
+    return res.status(400).json({ error: 'Image too large (max 700KB)' });
+  }
+  db.updateTeamBanner(teamId, banner);
+  res.json({ ok: true });
+});
+
 // GET /racing/teams/search?q=... (rate limited: 10 per minute per user)
 const _searchCounts = new Map();
 setInterval(() => _searchCounts.clear(), 60000);
