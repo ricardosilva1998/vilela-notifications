@@ -506,17 +506,23 @@
             onlineDrivers.add(d.userId);
           });
           updateDriverDots();
+          // If we already had a driver selected (reconnect), notify iframes
+          if (selectedDriverId) postToIframes({ type: 'status', iracing: true });
         } else if (msg.type === 'driver-online') {
           onlineDrivers.add(msg.userId);
           updateDriverDots();
         } else if (msg.type === 'driver-offline') {
           onlineDrivers.delete(msg.userId);
           updateDriverDots();
+        } else if (msg.type === 'data') {
+          // Forward telemetry data to overlay iframes
+          postToIframes(msg);
         }
       };
 
       ws.onclose = function() {
         setStatus('disconnected');
+        postToIframes({ type: 'status', iracing: false });
         scheduleReconnect();
       };
 
@@ -548,14 +554,33 @@
       });
     }
 
+    // Forward a message to all loaded overlay iframes via postMessage
+    function postToIframes(msg) {
+      for (var key in OVERLAY_MAP) {
+        var iframe = document.getElementById('iframe-' + key);
+        if (iframe && iframe.contentWindow && iframe.style.display !== 'none') {
+          iframe.contentWindow.postMessage(msg, '*');
+        }
+      }
+    }
+
     function loadOverlayIframes(driverId) {
-      var wsParam = encodeURIComponent(WS_URL);
       for (var key in OVERLAY_MAP) {
         var iframe = document.getElementById('iframe-' + key);
         var placeholder = document.getElementById('placeholder-' + key);
         if (iframe) {
-          iframe.src = OVERLAY_BASE + '/' + OVERLAY_MAP[key] + '?ws=' + wsParam + '&driver=' + driverId;
+          iframe.src = OVERLAY_BASE + '/' + OVERLAY_MAP[key] + '?pitwall=1&driver=' + driverId;
           iframe.style.display = 'block';
+          // Once iframe loads, send it the connection status
+          iframe.onload = (function() {
+            var iframeRef = iframe;
+            return function() {
+              if (iframeRef.contentWindow) {
+                iframeRef.contentWindow.postMessage({ type: 'bridge-connected' }, '*');
+                iframeRef.contentWindow.postMessage({ type: 'status', iracing: true }, '*');
+              }
+            };
+          })();
         }
         if (placeholder) placeholder.style.display = 'none';
       }

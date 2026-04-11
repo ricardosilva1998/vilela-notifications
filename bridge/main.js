@@ -124,6 +124,17 @@ ipcMain.on('login-success', (event, data) => {
   startBridge();
 });
 
+// Handle logout from control panel
+ipcMain.on('logout', () => {
+  delete settings.racingUsername;
+  delete settings.racingUserId;
+  delete settings.pitwallToken;
+  delete settings.pitwallBroadcastTeamIds;
+  saveSettings(settings);
+  app.relaunch();
+  app.quit();
+});
+
 let loginWindow = null;
 
 function showLoginWindow() {

@@ -485,6 +485,7 @@
                   <div class="account-info-value" id="account-display-iracing">—</div>
                 </div>
               </div>
+              <button onclick="logoutAccount()" style="margin-top:14px;width:100%;padding:8px 0;background:rgba(255,80,80,0.12);color:#ff6b6b;border:1px solid rgba(255,80,80,0.25);border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit;transition:background 0.15s;">Log Out</button>
             </div>
           </div>
         </div>
@@ -1789,6 +1790,11 @@
       }
     }
     initAccountPanel();
+
+    window.logoutAccount = function() {
+      if (!confirm('Log out of your Racing account? The app will restart.')) return;
+      ipcRenderer.send('logout');
+    };
 
     async function createRacingAccount() {
       const username = document.getElementById('account-username').value.trim();

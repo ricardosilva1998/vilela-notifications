@@ -49,12 +49,23 @@
 
     const BRIDGE_URL = new URLSearchParams(window.location.search).get('ws') || 'ws://localhost:9100';
     const PITWALL_DRIVER_ID = new URLSearchParams(window.location.search).get('driver') ? parseInt(new URLSearchParams(window.location.search).get('driver')) : null;
+    const PITWALL_MODE = new URLSearchParams(window.location.search).get('pitwall') === '1';
     let ws = null;
     let bridgeConnected = false;
     let iracingConnected = false;
     const dataHandlers = {};
 
     function connectBridge(channels) {
+      if (PITWALL_MODE) {
+        bridgeConnected = true; iracingConnected = true; updateStatus();
+        window.addEventListener('message', function(e) {
+          var msg = e.data; if (!msg || !msg.type) return;
+          if (msg.type === 'bridge-connected') { bridgeConnected = true; updateStatus(); }
+          else if (msg.type === 'status') { iracingConnected = msg.iracing; updateStatus(); }
+          else if (msg.type === 'data' && dataHandlers[msg.channel]) { dataHandlers[msg.channel](msg.data); }
+        });
+        return;
+      }
       log('[RaceDuration] Connecting to ' + BRIDGE_URL);
       try { ws = new WebSocket(BRIDGE_URL); } catch(e) { log('[RaceDuration] WS error: ' + e.message); setTimeout(() => connectBridge(channels), 3000); return; }
       ws.onopen = () => { log('[RaceDuration] Connected'); bridgeConnected = true; updateStatus(); ws.send(JSON.stringify({ type: 'subscribe', channels, driverId: PITWALL_DRIVER_ID })); };

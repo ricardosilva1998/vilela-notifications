@@ -185,12 +185,23 @@
 
     const BRIDGE_URL = new URLSearchParams(window.location.search).get('ws') || 'ws://localhost:9100';
     const PITWALL_DRIVER_ID = new URLSearchParams(window.location.search).get('driver') ? parseInt(new URLSearchParams(window.location.search).get('driver')) : null;
+    const PITWALL_MODE = new URLSearchParams(window.location.search).get('pitwall') === '1';
     let ws = null;
     let bridgeConnected = false;
     let iracingConnected = false;
     const dataHandlers = {};
 
     function connectBridge(channels) {
+      if (PITWALL_MODE) {
+        bridgeConnected = true; iracingConnected = true; updateConnectionStatus();
+        window.addEventListener('message', function(e) {
+          var msg = e.data; if (!msg || !msg.type) return;
+          if (msg.type === 'bridge-connected') { bridgeConnected = true; updateConnectionStatus(); }
+          else if (msg.type === 'status') { iracingConnected = msg.iracing; updateConnectionStatus(); }
+          else if (msg.type === 'data' && dataHandlers[msg.channel]) { dataHandlers[msg.channel](msg.data); }
+        });
+        return;
+      }
       log('[Inputs] Connecting to ' + BRIDGE_URL);
       try { ws = new WebSocket(BRIDGE_URL); } catch(e) { log('[Inputs] WS error: ' + e.message); setTimeout(() => connectBridge(channels), 3000); return; }
       ws.onopen = () => {
