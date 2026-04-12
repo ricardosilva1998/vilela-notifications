@@ -72,7 +72,7 @@ reset()                             // wipe state (used internally + by onSessio
 - `tick(snapshot)` is called once per telemetry poll, immediately after the existing `PlayerTrackSurface` read at line 1622. The snapshot is built from values telemetry.js already reads — no new SDK calls.
 - `onLapComplete(...)` is called from the existing lap-completion block (where the per-lap recorder logs the lap time).
 - `onSessionChange(...)` is called from the existing session-num-changed block (where standings/persistedDrivers/etc. are cleared).
-- `getState()` is called once per `raceduration` channel broadcast and embedded in the channel payload as `data.incidents`.
+- `getState()` is called once per `session` channel broadcast (around `bridge/telemetry.js:1039`, the existing `broadcastToChannel('session', ...)` call) and embedded in the channel payload as `data.incidents`. `raceduration.html` already subscribes to `session` via `onData('session', ...)`, so no new channel or subscription is needed.
 
 ### Data flow
 
@@ -82,7 +82,7 @@ iRacing SDK → telemetry.js poll loop
         incidentTracker.tick()
                 ↓ (state update)
         incidentTracker.getState()
-                ↓ (embedded in raceduration channel)
+                ↓ (embedded in session channel)
         broadcastToChannel('raceduration', { ...existing, incidents: {...} })
                 ↓ (WebSocket)
         raceduration.html handler
@@ -90,7 +90,7 @@ iRacing SDK → telemetry.js poll loop
         UI footer block
 ```
 
-No new WS channel. No new IPC. The single coupling point is the `raceduration` channel payload schema.
+No new WS channel. No new IPC. The single coupling point is the `session` channel payload schema.
 
 ## Detection logic
 
