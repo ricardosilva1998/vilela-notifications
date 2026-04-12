@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Flags</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; font-family: 'Segoe UI', -apple-system, sans-serif; color: #e8e6f0; }
+    .overlay-panel { background: rgba(12,13,20,0.85); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; backdrop-filter: blur(12px); overflow: hidden; position: relative; }
+    .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 5px 10px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+    .status-dot.connected { background: #3ecf8e; }
+    .status-dot.waiting { background: #f79009; }
+    .status-dot.demo { background: #f79009; }
+
+    .flag-body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 14px 14px;
+      opacity: 0;
+      transition: opacity 0.6s ease-out;
+    }
+    .flag-body.visible {
+      opacity: 1;
+      transition: opacity 0.3s ease-in;
+    }
+    .flag-svg {
+      width: 110px;
+      height: 76px;
+      display: block;
+      filter: drop-shadow(0 4px 16px rgba(0,0,0,0.5));
+    }
+    .flag-label {
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 2.5px;
+      color: #fff;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay-panel">
+    <div class="overlay-header">
+      <span>FLAGS</span>
+      <span id="connection-status"><span class="status-dot demo"></span></span>
+    </div>
+    <div class="flag-body" id="flag-body">
+      <svg class="flag-svg" viewBox="0 0 140 96">
+        <defs>
+          <pattern id="checker" x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse">
+            <rect x="0" y="0" width="8" height="8" fill="#000"/>
+            <rect x="8" y="0" width="8" height="8" fill="#fff"/>
+            <rect x="0" y="8" width="8" height="8" fill="#fff"/>
+            <rect x="8" y="8" width="8" height="8" fill="#000"/>
+          </pattern>
+        </defs>
+        <rect x="8" y="8" width="2" height="88" fill="#555"/>
+        <path id="flag-fabric" d="M10 12 Q35 0, 60 12 T110 12 L110 60 Q85 72, 60 60 T10 60 Z" fill="#888">
+          <animate attributeName="d"
+            values="M10 12 Q35 0, 60 12 T110 12 L110 60 Q85 72, 60 60 T10 60 Z;
+                    M10 12 Q35 24, 60 12 T110 12 L110 60 Q85 48, 60 60 T10 60 Z;
+                    M10 12 Q35 0, 60 12 T110 12 L110 60 Q85 72, 60 60 T10 60 Z"
+            dur="1.2s" repeatCount="indefinite"/>
+        </path>
+      </svg>
+      <div class="flag-label" id="flag-label"></div>
+    </div>
+  </div>
+
+  <script>
+    let _fs, _logPath;
+    try { _fs = require('fs'); _logPath = require('path').join(require('os').homedir(), 'atleta-bridge.log'); } catch(e) {}
+    function log(msg) {
+      console.log(msg);
+      if (_fs) try { _fs.appendFileSync(_logPath, '[' + new Date().toISOString() + '] ' + msg + '\n'); } catch(e) {}
+    }
+
+    const BRIDGE_URL = new URLSearchParams(window.location.search).get('ws') || 'ws://localhost:9100';
+    const PITWALL_DRIVER_ID = new URLSearchParams(window.location.search).get('driver') ? parseInt(new URLSearchParams(window.location.search).get('driver')) : null;
+    const PITWALL_MODE = new URLSearchParams(window.location.search).get('pitwall') === '1';
+    let ws = null;
+    let bridgeConnected = false;
+    let iracingConnected = false;
+    const dataHandlers = {};
+
+    function connectBridge(channels) {
+      if (PITWALL_MODE) {
+        bridgeConnected = true; iracingConnected = true; updateStatus();
+        window.addEventListener('message', function(e) {
+          var msg = e.data; if (!msg || !msg.type) return;
+          if (msg.type === 'bridge-connected') { bridgeConnected = true; updateStatus(); }
+          else if (msg.type === 'status') { iracingConnected = msg.iracing; updateStatus(); }
+          else if (msg.type === 'data' && dataHandlers[msg.channel]) { dataHandlers[msg.channel](msg.data); }
+        });
+        return;
+      }
+      log('[Flags] Connecting to ' + BRIDGE_URL);
+      try { ws = new WebSocket(BRIDGE_URL); } catch(e) { log('[Flags] WS error: ' + e.message); setTimeout(() => connectBridge(channels), 3000); return; }
+      ws.onopen = () => { log('[Flags] Connected'); bridgeConnected = true; updateStatus(); ws.send(JSON.stringify({ type: 'subscribe', channels, driverId: PITWALL_DRIVER_ID })); };
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'bridge-connected') { bridgeConnected = true; updateStatus(); }
+          else if (msg.type === 'status') { iracingConnected = msg.iracing; updateStatus(); }
+          else if (msg.type === 'data' && dataHandlers[msg.channel]) { dataHandlers[msg.channel](msg.data); }
+        } catch(e) {}
+      };
+      ws.onclose = () => { log('[Flags] Disconnected'); bridgeConnected = false; iracingConnected = false; updateStatus(); setTimeout(() => connectBridge(channels), 3000); };
+      ws.onerror = () => { log('[Flags] WS error'); try { ws.close(); } catch(e) {} };
+    }
+    function onData(ch, fn) { dataHandlers[ch] = fn; }
+    function updateStatus() {
+      const el = document.getElementById('connection-status');
+      if (!el) return;
+      if (!bridgeConnected) { el.innerHTML = '<span class="status-dot demo"></span>'; }
+      else if (!iracingConnected) { el.innerHTML = '<span class="status-dot waiting"></span>'; }
+      else { el.innerHTML = '<span class="status-dot connected"></span>'; }
+    }
+
+    // Per-flag visual style. Dropping a key here hides that flag from the overlay
+    // (used by the showBlue control-panel toggle below).
+    const FLAG_STYLES = {
+      green:     { color: '#22c55e', label: 'GREEN' },
+      yellow:    { color: '#f7c948', label: 'YELLOW' },
+      blue:      { color: '#3b82f6', label: 'BLUE' },
+      white:     { color: '#ffffff', label: 'WHITE' },
+      black:     { color: '#0a0a0a', label: 'BLACK' },
+      checkered: { color: 'url(#checker)', label: 'CHECKERED' },
+    };
+
+    // Respect the control-panel showBlue toggle (?showBlue=false)
+    const showBlue = new URLSearchParams(window.location.search).get('showBlue') !== 'false';
+    if (!showBlue) delete FLAG_STYLES.blue;
+
+    const fabric = document.getElementById('flag-fabric');
+    const label = document.getElementById('flag-label');
+    const body = document.getElementById('flag-body');
+    let lastActive = null;
+
+    function renderFlag(data) {
+      const active = data && data.activeFlag;
+      const style = active ? FLAG_STYLES[active] : null;
+      const effectiveActive = style ? active : null;  // treat filtered-out flags as none
+      if (effectiveActive === lastActive) return;
+      if (effectiveActive === null) {
+        body.classList.remove('visible');
+      } else {
+        fabric.setAttribute('fill', style.color);
+        label.textContent = style.label;
+        label.style.color = (effectiveActive === 'black' || effectiveActive === 'checkered')
+          ? '#fff'
+          : style.color;
+        body.classList.add('visible');
+      }
+      lastActive = effectiveActive;
+    }
+
+    onData('flags', renderFlag);
+    connectBridge(['flags']);
+  </script>
+  <script src="overlay-utils.js"></script>
+</body>
+</html>
