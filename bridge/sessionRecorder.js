@@ -8,7 +8,7 @@ const https = require('https');
 const http = require('http');
 
 const API_BASE = 'https://atletanotifications.com';
-const PENDING_FILE = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'pending-sessions.json');
+const PENDING_FILE = path.join(require('./settings').getSettingsDir(), 'pending-sessions.json');
 const LOG_PATH = path.join(os.homedir(), 'atleta-bridge.log');
 
 function log(msg) {

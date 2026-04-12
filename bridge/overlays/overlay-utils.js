@@ -12,7 +12,7 @@
     var fs = require('fs');
     var path = require('path');
     var os = require('os');
-    var settingsFile = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'settings.json');
+    var settingsFile = path.join(require('../settings').getSettingsDir(), 'settings.json');
     if (fs.existsSync(settingsFile)) {
       var all = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
       // Detect overlay ID from the page title or URL

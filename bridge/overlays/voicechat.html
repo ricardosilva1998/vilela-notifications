@@ -395,7 +395,7 @@
 
     // Load saved gamepad PTT from settings
     try {
-      const _settingsFile = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'settings.json');
+      const _settingsFile = path.join(require('../settings').getSettingsDir(), 'settings.json');
       if (fs.existsSync(_settingsFile)) {
         const _all = JSON.parse(fs.readFileSync(_settingsFile, 'utf8'));
         const _ptt = _all.voiceChat && _all.voiceChat.pushToTalkKey;

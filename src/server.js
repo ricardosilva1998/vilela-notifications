@@ -185,6 +185,51 @@ app.get('/api/bridge/config', (req, res) => {
   res.json({ whisperProxyEnabled: !!process.env.OPENAI_API_KEY });
 });
 
+// Bridge: full account info for the Atleta Racing Account tab. Authenticated
+// by session cookie OR by ?bridge_id= matching a known Racing user. The
+// pitwall_token column is intentionally NOT returned — it's sensitive.
+app.get('/api/bridge/account', (req, res) => {
+  try {
+    let user = req.racingUser;
+    if (!user && req.query.bridge_id && /^[a-f0-9-]{20,}$/i.test(req.query.bridge_id)) {
+      user = db.getRacingUserByBridgeId(req.query.bridge_id);
+    }
+    if (!user) return res.status(401).json({ error: 'unauthorized' });
+
+    // Resolve Twitch + Spotify via the linked streamer (if any).
+    let twitchUsername = null;
+    let twitchConnected = false;
+    let spotifyConnected = false;
+    if (user.streamer_id) {
+      try {
+        const streamer = db.getStreamerById(user.streamer_id);
+        if (streamer) {
+          twitchUsername = streamer.twitch_display_name || streamer.twitch_username || null;
+          twitchConnected = !!streamer.twitch_username;
+          spotifyConnected = !!streamer.spotify_refresh_token;
+        }
+      } catch (e) {}
+    }
+
+    res.json({
+      id: user.id,
+      username: user.username,
+      display_name: user.display_name || null,
+      iracing_name: user.iracing_name || null,
+      email: user.email || null,
+      avatar: user.avatar || null,
+      created_at: user.created_at,
+      bridge_id: user.bridge_id,
+      twitch_connected: twitchConnected,
+      twitch_username: twitchUsername,
+      spotify_connected: spotifyConnected,
+    });
+  } catch (e) {
+    console.error('[Bridge Account] error:', e.message);
+    res.status(500).json({ error: 'internal_error' });
+  }
+});
+
 // Server-side Whisper proxy. Bridges upload raw audio bytes here; the server
 // forwards to OpenAI Whisper and returns the transcription. Authenticated by
 // session cookie or by ?bridge_id= matching a known Racing user (same

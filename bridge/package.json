@@ -1,7 +1,7 @@
 {
   "name": "atleta-bridge",
-  "version": "3.25.3",
-  "description": "Atleta Bridge — reads iRacing telemetry and serves it to web overlays",
+  "version": "3.26.0",
+  "description": "Atleta Racing — reads iRacing telemetry and serves it to web overlays",
   "author": "Atleta",
   "repository": "https://github.com/ricardosilva1998/atleta-notifications-helper",
   "main": "main.js",
@@ -24,7 +24,7 @@
   "build": {
     "npmRebuild": false,
     "appId": "com.atleta.bridge",
-    "productName": "Atleta Bridge",
+    "productName": "Atleta Racing",
     "directories": {
       "buildResources": "build"
     },

@@ -48,7 +48,7 @@ let lastRecordedPct = -1;
 let filledSlots = 0;
 
 // Track map sources: server DB → local cache → manual mapping
-const TRACK_MAPS_DIR = path.join(require('os').homedir(), 'Documents', 'Atleta Bridge', 'trackmaps');
+const TRACK_MAPS_DIR = path.join(require('./settings').getSettingsDir(), 'trackmaps');
 const TRACK_API_URL = 'https://atletanotifications.com/api/track-map';
 
 function loadCachedTrack(trackName) {
@@ -197,7 +197,7 @@ const pitTracking = new Map(); // carIdx -> { wasPitting, bestLapSnapshot, lapsS
 const incidentTracker = createIncidentTracker();
 let _showIncidents = true; // controlled by control-panel toggle via setIncidentCountersEnabled()
 let classPitDeltas = {};       // className -> { avgDelta, samples }
-const PIT_TIMES_FILE = path.join(require('os').homedir(), 'Documents', 'Atleta Bridge', 'pittimes.json');
+const PIT_TIMES_FILE = path.join(require('./settings').getSettingsDir(), 'pittimes.json');
 
 function loadPitTimes() {
   try {

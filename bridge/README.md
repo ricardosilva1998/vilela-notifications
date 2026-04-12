@@ -1,4 +1,4 @@
-# Atleta Bridge
+# Atleta Racing
 
 Desktop app that reads iRacing telemetry and serves it to web overlays via WebSocket.
 

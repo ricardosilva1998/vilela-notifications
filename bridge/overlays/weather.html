@@ -165,7 +165,7 @@
     try {
       let fs, path, os;
       try { fs = require('fs'); path = require('path'); os = require('os'); } catch(e) {}
-      const settingsFile = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'settings.json');
+      const settingsFile = path.join(require('../settings').getSettingsDir(), 'settings.json');
       if (fs.existsSync(settingsFile)) {
         const all = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
         _weatherSettings = (all.overlayCustom && all.overlayCustom.weather) || {};

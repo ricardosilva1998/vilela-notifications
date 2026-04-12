@@ -43,6 +43,27 @@ let quitting = false;
 // Persisted settings
 let settings = {};
 
+// Resolve the Atleta app icon path across dev and packaged builds.
+// Dev: bridge/build/atleta.ico. Packaged: process.resourcesPath/atleta.ico
+// (electron-builder copies via extraResources). Returns undefined if none
+// of the candidate paths exist, in which case Electron falls back to its
+// default icon.
+function resolveIconPath() {
+  const fs = require('fs');
+  const candidates = [
+    process.resourcesPath ? path.join(process.resourcesPath, 'atleta.ico') : null,
+    process.resourcesPath ? path.join(process.resourcesPath, 'atleta.png') : null,
+    path.join(__dirname, 'build', 'atleta.ico'),
+    path.join(__dirname, 'build', 'atleta.png'),
+    path.join(__dirname, 'atleta.ico'),
+  ];
+  for (const p of candidates) {
+    try { if (p && fs.existsSync(p)) return p; } catch(e) {}
+  }
+  return undefined;
+}
+const APP_ICON_PATH = resolveIconPath();
+
 
 const OVERLAYS = [
   { id: 'standings', name: 'Standings', width: 900, height: 800 },
@@ -119,7 +140,7 @@ app.on('ready', () => {
   if (!Array.isArray(settings.uiFavorites)) settings.uiFavorites = [];
   if (!Array.isArray(settings.uiRecent)) settings.uiRecent = [];
   if (!settings.uiSidebarGroups || typeof settings.uiSidebarGroups !== 'object') {
-    settings.uiSidebarGroups = { race: true, car: true, track: true, stream: true };
+    settings.uiSidebarGroups = { general: false, race: true, car: true, track: true, stream: true };
   }
 
   // Check if user is logged in — show login screen if not
@@ -155,7 +176,7 @@ ipcMain.on('get-ui-state', (event) => {
     uiRecent: Array.isArray(settings.uiRecent) ? settings.uiRecent : [],
     uiSidebarGroups: (settings.uiSidebarGroups && typeof settings.uiSidebarGroups === 'object')
       ? settings.uiSidebarGroups
-      : { race: true, car: true, track: true, stream: true },
+      : { general: false, race: true, car: true, track: true, stream: true },
   };
 });
 
@@ -201,8 +222,8 @@ function showLoginWindow() {
     height: 520,
     resizable: false,
     maximizable: false,
-    title: 'Atleta Bridge — Login',
-    icon: path.join(process.resourcesPath || __dirname, 'atleta.ico'),
+    title: 'Atleta Racing — Login',
+    icon: APP_ICON_PATH,
     backgroundColor: '#0c0d14',
     webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
@@ -222,15 +243,17 @@ function showLoginWindow() {
 }
 
 function startBridge() {
-  // Load app icon
+  // Load tray icon — reuse APP_ICON_PATH if available, otherwise scan
+  // the same dev-mode fallback paths (resolveIconPath may have returned
+  // the .ico directly, which we downsize to 16x16 for the tray).
   try {
+    let trayIcon = nativeImage.createEmpty();
     const iconPaths = [
-      path.join(process.resourcesPath || __dirname, 'atleta.ico'),
-      path.join(process.resourcesPath || __dirname, 'atleta.png'),
+      APP_ICON_PATH,
+      process.resourcesPath ? path.join(process.resourcesPath, 'atleta.png') : null,
       path.join(__dirname, 'build', 'atleta.ico'),
       path.join(__dirname, 'build', 'atleta.png'),
-    ];
-    let trayIcon = nativeImage.createEmpty();
+    ].filter(Boolean);
     for (const p of iconPaths) {
       try {
         const img = nativeImage.createFromPath(p);
@@ -241,7 +264,7 @@ function startBridge() {
   } catch (e) {
     tray = new Tray(nativeImage.createEmpty());
   }
-  tray.setToolTip('Atleta Bridge');
+  tray.setToolTip('Atleta Racing');
   tray.on('click', () => showControlWindow());
 
   const logPath = require('path').join(require('os').homedir(), 'atleta-bridge.log');
@@ -305,7 +328,7 @@ function startBridge() {
 
   // Restore session backup after update (if exists)
   try {
-    const backupFile = path.join(require('os').homedir(), 'Documents', 'Atleta Bridge', 'session-backup.json');
+    const backupFile = path.join(require('./settings').getSettingsDir(), 'session-backup.json');
     const fs = require('fs');
     if (fs.existsSync(backupFile)) {
       const backupData = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
@@ -466,8 +489,8 @@ function showControlWindow() {
     maximizable: true,
     minWidth: 800,
     minHeight: 600,
-    title: 'Atleta Bridge',
-    icon: path.join(process.resourcesPath || __dirname, 'atleta.ico'),
+    title: 'Atleta Racing',
+    icon: APP_ICON_PATH,
     backgroundColor: '#0c0d14',
     webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
@@ -804,7 +827,7 @@ ipcMain.on('install-update', async () => {
   }
   // Save backup to file
   try {
-    const backupFile = path.join(require('os').homedir(), 'Documents', 'Atleta Bridge', 'session-backup.json');
+    const backupFile = path.join(require('./settings').getSettingsDir(), 'session-backup.json');
     require('fs').writeFileSync(backupFile, JSON.stringify(backupData, null, 2));
     console.log('[Backup] Saved session state for ' + Object.keys(backupData).length + ' overlays');
   } catch(e) { console.log('[Backup] Save error:', e.message); }

@@ -59,7 +59,7 @@
       const fs = require('fs');
       const path = require('path');
       const os = require('os');
-      const settingsFile = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'settings.json');
+      const settingsFile = path.join(require('../settings').getSettingsDir(), 'settings.json');
       if (fs.existsSync(settingsFile)) {
         const all = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
         const s = (all.overlayCustom && all.overlayCustom.spotify) || {};
@@ -73,7 +73,7 @@
       const fs = require('fs');
       const path = require('path');
       const os = require('os');
-      const sf = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'settings.json');
+      const sf = path.join(require('../settings').getSettingsDir(), 'settings.json');
       if (fs.existsSync(sf)) { _bridgeId = JSON.parse(fs.readFileSync(sf, 'utf8')).bridgeId || ''; }
     } catch(e) {}
     const API_URL = 'https://atletanotifications.com/api/bridge/spotify?bridge_id=' + encodeURIComponent(_bridgeId);

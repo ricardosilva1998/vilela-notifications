@@ -74,7 +74,7 @@
       const fs = require('fs');
       const path = require('path');
       const os = require('os');
-      const settingsFile = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'settings.json');
+      const settingsFile = path.join(require('../settings').getSettingsDir(), 'settings.json');
       if (fs.existsSync(settingsFile)) {
         const all = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
         const s = (all.overlayCustom && all.overlayCustom.pitstrategy) || {};
@@ -162,7 +162,7 @@
           const fs = require('fs');
           const path = require('path');
           const os = require('os');
-          const pitFile = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'pittimes.json');
+          const pitFile = path.join(require('../settings').getSettingsDir(), 'pittimes.json');
           if (fs.existsSync(pitFile)) {
             const pitData = JSON.parse(fs.readFileSync(pitFile, 'utf8'));
             // Find track from session data

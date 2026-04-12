@@ -67,7 +67,7 @@
       const fs = require('fs');
       const path = require('path');
       const os = require('os');
-      const settingsFile = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'settings.json');
+      const settingsFile = path.join(require('../settings').getSettingsDir(), 'settings.json');
       if (fs.existsSync(settingsFile)) {
         const all = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
         const s = (all.overlayCustom && all.overlayCustom.drivercard) || {};

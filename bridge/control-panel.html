@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Atleta Bridge</title>
+  <title>Atleta Racing</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', sans-serif; background: #0c0d14; color: #e8e6f0; user-select: none; overflow: hidden; }
@@ -301,6 +301,63 @@
     .tb-toggle.on { background: #3ecf8e; border-color: #3ecf8e; }
     .tb-toggle.on::after { left: 18px; }
 
+    /* ─── Broadcasting save/discard buttons ───────────────── */
+    .tb-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      justify-content: flex-end;
+      align-items: center;
+    }
+    .tb-dirty-note {
+      flex: 1;
+      font-size: 11px;
+      color: #f7c948;
+    }
+    .tb-btn {
+      padding: 9px 18px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+      border: 1px solid transparent;
+    }
+    .tb-btn-save {
+      background: rgba(145,70,255,0.2);
+      border-color: rgba(145,70,255,0.45);
+      color: #b48cff;
+    }
+    .tb-btn-save:hover:not(:disabled) {
+      background: rgba(145,70,255,0.32);
+      border-color: rgba(145,70,255,0.6);
+    }
+    .tb-btn-discard {
+      background: rgba(255,255,255,0.04);
+      border-color: rgba(255,255,255,0.1);
+      color: #8b8a9e;
+    }
+    .tb-btn-discard:hover:not(:disabled) {
+      background: rgba(255,255,255,0.09);
+      color: #e8e6f0;
+    }
+    .tb-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .tb-saved-flash {
+      animation: tbSavedFlash 1.6s ease-out;
+    }
+    @keyframes tbSavedFlash {
+      0%   { color: #3ecf8e; }
+      70%  { color: #3ecf8e; }
+      100% { color: #8b8a9e; }
+    }
+
     /* ─── Settings form fields ────────────────────────────── */
     .enable-row {
       display: flex; align-items: center; justify-content: space-between;
@@ -451,14 +508,41 @@
     .account-submit:hover { opacity: 0.85; }
     .account-submit:disabled { opacity: 0.4; cursor: default; }
     .account-error { margin-top: 10px; padding: 7px 10px; background: rgba(240,68,56,0.1); border: 1px solid rgba(240,68,56,0.3); border-radius: 6px; font-size: 11px; color: #f04438; display: none; }
-    .account-linked { text-align: center; }
-    .account-linked-icon { font-size: 36px; margin-bottom: 10px; }
-    .account-linked-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(62,207,142,0.12); border: 1px solid rgba(62,207,142,0.3); border-radius: 20px; padding: 3px 10px; font-size: 10px; font-weight: 600; color: #3ecf8e; margin-bottom: 14px; }
-    .account-linked-badge::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #3ecf8e; }
-    .account-info-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
-    .account-info-row:last-child { border-bottom: none; }
-    .account-info-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: #5c5b6e; }
-    .account-info-value { font-size: 11px; color: #e8e6f0; font-weight: 600; }
+    .account-linked-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(62,207,142,0.12); border: 1px solid rgba(62,207,142,0.3); border-radius: 20px; padding: 3px 10px; font-size: 9px; font-weight: 600; color: #3ecf8e; text-transform: uppercase; letter-spacing: 0.5px; }
+    .account-linked-badge::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #3ecf8e; }
+    .account-header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .account-avatar {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: rgba(145,70,255,0.15); border: 1px solid rgba(145,70,255,0.4);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; color: #b48cff; flex-shrink: 0;
+      object-fit: cover;
+    }
+    .account-header-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .account-display-name { font-size: 16px; font-weight: 700; color: #e8e6f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .account-username-tag { font-size: 11px; color: #8b8a9e; font-weight: 500; }
+    .account-info-grid { display: flex; flex-direction: column; gap: 0; }
+    .account-info-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.04); gap: 12px; }
+    .account-info-row:last-of-type { border-bottom: none; }
+    .account-info-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: #5c5b6e; flex-shrink: 0; }
+    .account-info-value { font-size: 11px; color: #e8e6f0; font-weight: 600; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .account-info-value.mono { font-family: Consolas, 'SF Mono', monospace; font-size: 10px; color: #8b8a9e; }
+    .account-info-value.linked { color: #3ecf8e; }
+    .account-actions { display: flex; gap: 10px; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.05); }
+    .account-btn-primary {
+      flex: 1; padding: 9px 14px; border-radius: 6px;
+      background: rgba(145,70,255,0.18); border: 1px solid rgba(145,70,255,0.4);
+      color: #b48cff; font-size: 11px; font-weight: 600; cursor: pointer;
+      font-family: inherit; transition: all 0.15s;
+    }
+    .account-btn-primary:hover { background: rgba(145,70,255,0.3); }
+    .account-btn-danger {
+      flex: 1; padding: 9px 14px; border-radius: 6px;
+      background: rgba(255,80,80,0.1); border: 1px solid rgba(255,80,80,0.3);
+      color: #ff6b6b; font-size: 11px; font-weight: 600; cursor: pointer;
+      font-family: inherit; transition: all 0.15s;
+    }
+    .account-btn-danger:hover { background: rgba(255,80,80,0.18); }
 
     /* ─── About panel ─────────────────────────────────────── */
     .about-card {
@@ -501,17 +585,20 @@
         <input type="search" id="sidebar-search" class="sidebar-search-input" placeholder="🔎 Search overlays…" autocomplete="off" spellcheck="false">
         <div id="sidebar-search-empty" class="sidebar-search-empty" style="display:none;"></div>
       </div>
-      <div class="sidebar-item active" data-panel="overview" onclick="navigateTo('overview')">
-        <span class="sidebar-icon">&#9638;</span> Overview
-      </div>
-      <div class="sidebar-item" data-panel="favorites" onclick="navigateTo('favorites')">
-        <span class="sidebar-icon" style="color:#f7c948;">&#9733;</span> Favorites
-      </div>
-      <div class="sidebar-item" data-panel="recent" onclick="navigateTo('recent')">
-        <span class="sidebar-icon" style="color:#3ecf8e;">&#128340;</span> Recent
-      </div>
-      <div class="sidebar-item" data-panel="broadcast" onclick="navigateTo('broadcast')">
-        <span class="sidebar-icon" style="color:#3ecf8e;">&#128225;</span> Broadcasting
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('general')">&#9660; General</div>
+      <div class="sidebar-group" id="group-general">
+        <div class="sidebar-item active" data-panel="overview" onclick="navigateTo('overview')">
+          <span class="sidebar-icon">&#9638;</span> Overview
+        </div>
+        <div class="sidebar-item" data-panel="favorites" onclick="navigateTo('favorites')">
+          <span class="sidebar-icon" style="color:#f7c948;">&#9733;</span> Favorites
+        </div>
+        <div class="sidebar-item" data-panel="recent" onclick="navigateTo('recent')">
+          <span class="sidebar-icon" style="color:#3ecf8e;">&#128340;</span> Recent
+        </div>
+        <div class="sidebar-item" data-panel="broadcast" onclick="navigateTo('broadcast')">
+          <span class="sidebar-icon" style="color:#3ecf8e;">&#128225;</span> Broadcasting
+        </div>
       </div>
       <div class="sidebar-divider"></div>
       <div class="sidebar-group-label" onclick="toggleSidebarGroup('race')">&#9654; Race</div>
@@ -687,20 +774,43 @@
         <!-- Linked state (shown when account exists) -->
         <div id="account-linked-section" style="display:none;">
           <div class="account-card">
-            <div class="account-linked">
-              <div class="account-linked-icon">&#127937;</div>
-              <div class="account-linked-badge">Account linked</div>
-              <div style="background:rgba(255,255,255,0.03); border-radius:8px; padding:10px 12px; text-align:left;">
-                <div class="account-info-row">
-                  <div class="account-info-label">Username</div>
-                  <div class="account-info-value" id="account-display-username">—</div>
-                </div>
-                <div class="account-info-row">
-                  <div class="account-info-label">iRacing Name</div>
-                  <div class="account-info-value" id="account-display-iracing">—</div>
-                </div>
+            <div class="account-header">
+              <div class="account-avatar" id="account-avatar-slot">&#128100;</div>
+              <div class="account-header-text">
+                <div class="account-display-name" id="account-display-name">—</div>
+                <div class="account-username-tag" id="account-username-tag">@—</div>
+                <div><span class="account-linked-badge">Account linked</span></div>
               </div>
-              <button onclick="logoutAccount()" style="margin-top:14px;width:100%;padding:8px 0;background:rgba(255,80,80,0.12);color:#ff6b6b;border:1px solid rgba(255,80,80,0.25);border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit;transition:background 0.15s;">Log Out</button>
+            </div>
+            <div class="account-info-grid">
+              <div class="account-info-row">
+                <div class="account-info-label">iRacing Name</div>
+                <div class="account-info-value" id="account-display-iracing">—</div>
+              </div>
+              <div class="account-info-row">
+                <div class="account-info-label">Email</div>
+                <div class="account-info-value" id="account-display-email">—</div>
+              </div>
+              <div class="account-info-row">
+                <div class="account-info-label">Member since</div>
+                <div class="account-info-value" id="account-display-created">—</div>
+              </div>
+              <div class="account-info-row">
+                <div class="account-info-label">Twitch</div>
+                <div class="account-info-value" id="account-display-twitch">Not linked</div>
+              </div>
+              <div class="account-info-row">
+                <div class="account-info-label">Spotify</div>
+                <div class="account-info-value" id="account-display-spotify">Not linked</div>
+              </div>
+              <div class="account-info-row">
+                <div class="account-info-label">Bridge ID</div>
+                <div class="account-info-value mono" id="account-display-bridgeid">—</div>
+              </div>
+            </div>
+            <div class="account-actions">
+              <button class="account-btn-primary" onclick="openAccountSettings()">Manage on web</button>
+              <button class="account-btn-danger" onclick="logoutAccount()">Log Out</button>
             </div>
           </div>
         </div>
@@ -863,7 +973,7 @@
       <div class="content-panel" id="panel-about">
         <div class="about-card">
           <div class="about-logo">&#127937;</div>
-          <div class="about-name">Atleta Bridge</div>
+          <div class="about-name">Atleta Racing</div>
           <div class="about-ver" id="about-version">v--</div>
           <div class="about-desc">
             iRacing Overlay Manager<br>
@@ -892,7 +1002,7 @@
     const { pushRecent: _pushRecentPure, toggleFavorite: _toggleFavoritePure, pruneStaleIds: _pruneStaleIds, isFavorite: _isFavorite } = require('./sidebarState');
     let appVersion = '--';
     // ─── UI state (favorites, recent, sidebar groups) ────────
-    let uiState = { uiFavorites: [], uiRecent: [], uiSidebarGroups: { race: true, car: true, track: true, stream: true } };
+    let uiState = { uiFavorites: [], uiRecent: [], uiSidebarGroups: { general: false, race: true, car: true, track: true, stream: true } };
     try {
       const fromMain = ipcRenderer.sendSync('get-ui-state');
       if (fromMain) uiState = fromMain;
@@ -1246,11 +1356,14 @@
 
     // ─── Navigation ──────────────────────────────────────────
     function applyPersistedGroups() {
-      ['race', 'car', 'track', 'stream'].forEach(name => {
+      ['general', 'race', 'car', 'track', 'stream'].forEach(name => {
         const group = document.getElementById('group-' + name);
         const label = group?.previousElementSibling;
         if (!group || !label) return;
-        const collapsed = uiState.uiSidebarGroups && uiState.uiSidebarGroups[name] !== false;
+        // General defaults to expanded (false); other groups default to collapsed.
+        const defaultCollapsed = name !== 'general';
+        const stored = uiState.uiSidebarGroups && uiState.uiSidebarGroups[name];
+        const collapsed = stored === undefined ? defaultCollapsed : stored !== false;
         group.classList.toggle('collapsed', collapsed);
         label.innerHTML = (collapsed ? '\u25B6 ' : '\u25BC ') + name.charAt(0).toUpperCase() + name.slice(1);
       });
@@ -1284,7 +1397,12 @@
       // Re-render dynamic pages
       if (panelId === 'favorites') renderFavoritesPage();
       if (panelId === 'recent') renderRecentPage();
-      if (panelId === 'broadcast') renderBroadcastPage();
+      if (panelId === 'broadcast') {
+        // Re-sync from persisted state on every entry so uncommitted edits
+        // don't leak across tab switches.
+        resetBroadcastPending();
+        renderBroadcastPage();
+      }
       // Track overlay panels in Recent (skip utility pages and dynamic pages)
       const RECENT_EXCLUDE = new Set(['overview', 'favorites', 'recent', 'account', 'updates', 'logs', 'about']);
       if (!RECENT_EXCLUDE.has(panelId) && overlays.find(o => o.id === panelId)) {
@@ -1392,6 +1510,19 @@
     }
 
     // ─── Broadcasting page ───────────────────────────────────
+    // Staged edit model: toggles mutate pendingBroadcastIds only.
+    // Save button commits to the main process. Discard reverts to savedBroadcastIds.
+    // Navigating away + back via navigateTo('broadcast') drops pending edits.
+    let pendingBroadcastIds = null; // Set | null
+    let savedBroadcastIds = null;   // Set | null (last persisted snapshot)
+    let broadcastSavedFlashUntil = 0;
+
+    function setsEqual(a, b) {
+      if (a.size !== b.size) return false;
+      for (const v of a) if (!b.has(v)) return false;
+      return true;
+    }
+
     function renderBroadcastPage() {
       const panel = document.getElementById('panel-broadcast');
       if (!panel) return;
@@ -1399,11 +1530,18 @@
       try { state = ipcRenderer.sendSync('get-pitwall-teams'); }
       catch (e) { state = { status: 'disabled', teams: [], broadcastIds: [] }; }
 
+      // Refresh the saved snapshot every render so external updates (team
+      // created/deleted on the server) flow in.
+      savedBroadcastIds = new Set(state.broadcastIds || []);
+      if (pendingBroadcastIds === null) {
+        pendingBroadcastIds = new Set(savedBroadcastIds);
+      }
+
       const header = `
         <div style="display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700;color:#e8e6f0;margin-bottom:6px;">
           <span style="color:#3ecf8e;font-size:18px;">📡</span> Team Broadcasting
         </div>
-        <div style="font-size:11px;color:#5c5b6e;margin-bottom:18px;">Toggle which teams can see your live telemetry on Pitwall. Settings persist across restarts.</div>
+        <div style="font-size:11px;color:#5c5b6e;margin-bottom:18px;">Toggle which teams can see your live telemetry on Pitwall, then click <strong style="color:#b48cff;">Save</strong> to apply.</div>
       `;
 
       if (state.status === 'disabled') {
@@ -1412,20 +1550,24 @@
       }
 
       const teams = Array.isArray(state.teams) ? state.teams : [];
-      const broadcastSet = new Set(state.broadcastIds || []);
       const isConnected = state.status === 'connected';
       const dotColor = isConnected ? '#3ecf8e' : '#f79009';
+      const isDirty = !setsEqual(pendingBroadcastIds, savedBroadcastIds);
       let statusText;
       if (teams.length === 0) {
         statusText = isConnected ? 'Connected to Pitwall · 0 teams' : 'Connecting to Pitwall…';
       } else {
         statusText = isConnected
-          ? `Connected to Pitwall · ${teams.length} team${teams.length === 1 ? '' : 's'} · ${broadcastSet.size} broadcasting`
+          ? `Connected to Pitwall · ${teams.length} team${teams.length === 1 ? '' : 's'} · ${pendingBroadcastIds.size} broadcasting`
           : 'Reconnecting to Pitwall…';
       }
+      if (isDirty) statusText += ' · unsaved changes';
+
+      const justSaved = Date.now() < broadcastSavedFlashUntil;
+      const statusClass = justSaved ? 'tb-saved-flash' : '';
 
       const statusBar = `
-        <div class="tb-status">
+        <div class="tb-status ${statusClass}">
           <div class="tb-status-dot" style="background:${dotColor};box-shadow:0 0 6px ${dotColor}80;"></div>
           <span>${statusText}</span>
         </div>
@@ -1449,14 +1591,15 @@
 
       const escapeName = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const cards = teams.map(t => {
-        const on = broadcastSet.has(t.id);
+        const on = pendingBroadcastIds.has(t.id);
+        const statusLabel = on ? (savedBroadcastIds.has(t.id) ? '● Broadcasting' : '● Will broadcast') : (savedBroadcastIds.has(t.id) ? 'Will turn off' : 'Off');
         return `
           <div class="tb-card ${on ? 'live' : ''}">
             <div class="tb-card-left">
               <div class="tb-card-icon">📡</div>
               <div class="tb-card-info">
                 <div class="tb-card-name">${escapeName(t.name)}</div>
-                <div class="tb-card-status">${on ? '● Broadcasting' : 'Off'}</div>
+                <div class="tb-card-status">${statusLabel}</div>
               </div>
             </div>
             <div class="tb-toggle ${on ? 'on' : ''}" data-team-id="${t.id}" onclick="toggleTeamBroadcast(${t.id})"></div>
@@ -1464,22 +1607,48 @@
         `;
       }).join('');
 
-      panel.innerHTML = header + statusBar + `<div class="tb-grid">${cards}</div>`;
+      const dirtyNote = isDirty ? '<div class="tb-dirty-note">You have unsaved changes</div>' : '<div class="tb-dirty-note"></div>';
+      const actions = `
+        <div class="tb-actions">
+          ${dirtyNote}
+          <button class="tb-btn tb-btn-discard" onclick="discardBroadcastChanges()" ${isDirty ? '' : 'disabled'}>Discard</button>
+          <button class="tb-btn tb-btn-save" onclick="saveBroadcastChanges()" ${isDirty ? '' : 'disabled'}>Save</button>
+        </div>
+      `;
+
+      panel.innerHTML = header + statusBar + `<div class="tb-grid">${cards}</div>` + actions;
     }
 
-    // ─── Toggle team broadcast (called from card toggle clicks) ─
+    // ─── Toggle team broadcast (updates pending state only) ──
     function toggleTeamBroadcast(teamId) {
-      let state;
-      try { state = ipcRenderer.sendSync('get-pitwall-teams'); }
-      catch (e) { return; }
-      const current = new Set(state.broadcastIds || []);
-      if (current.has(teamId)) current.delete(teamId);
-      else current.add(teamId);
-      const newIds = Array.from(current);
-      try { ipcRenderer.send('set-pitwall-broadcast', newIds); } catch (e) {}
+      if (!pendingBroadcastIds) return;
+      if (pendingBroadcastIds.has(teamId)) pendingBroadcastIds.delete(teamId);
+      else pendingBroadcastIds.add(teamId);
       renderBroadcastPage();
     }
     window.toggleTeamBroadcast = toggleTeamBroadcast;
+
+    // ─── Save pending broadcast changes via IPC ──────────────
+    function saveBroadcastChanges() {
+      if (!pendingBroadcastIds) return;
+      const ids = Array.from(pendingBroadcastIds);
+      try { ipcRenderer.send('set-pitwall-broadcast', ids); } catch (e) {}
+      savedBroadcastIds = new Set(pendingBroadcastIds);
+      broadcastSavedFlashUntil = Date.now() + 1600;
+      renderBroadcastPage();
+    }
+    window.saveBroadcastChanges = saveBroadcastChanges;
+
+    // ─── Discard pending edits ───────────────────────────────
+    function discardBroadcastChanges() {
+      if (!savedBroadcastIds) return;
+      pendingBroadcastIds = new Set(savedBroadcastIds);
+      renderBroadcastPage();
+    }
+    window.discardBroadcastChanges = discardBroadcastChanges;
+
+    // ─── Reset pending state when leaving the broadcast tab ──
+    function resetBroadcastPending() { pendingBroadcastIds = null; }
 
     // ─── Toggle favorite (called from card star buttons) ─────
     function toggleFavorite(overlayId) {
@@ -1496,7 +1665,7 @@
     function applySearchFilter(rawQuery) {
       const query = (rawQuery || '').trim().toLowerCase();
       const emptyEl = document.getElementById('sidebar-search-empty');
-      const groupNames = ['race', 'car', 'track', 'stream'];
+      const groupNames = ['general', 'race', 'car', 'track', 'stream'];
 
       if (!query) {
         // Restore: clear all dim/hidden, restore each group to its persisted collapse state
@@ -2270,26 +2439,93 @@
     }
 
     // ─── Account Panel ───────────────────────────────────────
-    function initAccountPanel() {
+    function setText(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    }
+
+    function formatMemberSince(createdAt) {
+      if (!createdAt) return '—';
+      // SQLite datetime() returns UTC with no trailing Z — append it so Date parses as UTC.
+      const iso = /Z$/.test(createdAt) ? createdAt : createdAt.replace(' ', 'T') + 'Z';
       try {
-        const s = require('./settings').load();
-        if (s.racingUsername) {
-          // Account already linked — show linked state
-          document.getElementById('account-signup-section').style.display = 'none';
-          document.getElementById('account-linked-section').style.display = 'block';
-          document.getElementById('account-display-username').textContent = s.racingUsername;
-          document.getElementById('account-display-iracing').textContent = s.iracingName || '—';
-        } else {
-          // Pre-fill iRacing name if available
-          if (s.iracingName) {
-            document.getElementById('account-iracing-name').value = s.iracingName;
-          }
+        const d = new Date(iso);
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
         }
-      } catch(e) {
-        console.error('[Account Panel] Failed to load settings:', e.message);
+      } catch(e) {}
+      return createdAt;
+    }
+
+    function setAccountAvatar(avatar) {
+      const slot = document.getElementById('account-avatar-slot');
+      if (!slot) return;
+      if (!avatar) {
+        slot.innerHTML = '&#128100;';
+        return;
       }
+      const src = avatar.startsWith('data:') ? avatar : 'data:image/jpeg;base64,' + avatar;
+      slot.innerHTML = '<img src="' + src + '" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />';
+    }
+
+    function initAccountPanel() {
+      let s = {};
+      try { s = require('./settings').load(); } catch(e) { return; }
+
+      if (!s.racingUsername) {
+        // Not linked — signup form visible; pre-fill iRacing name if known.
+        if (s.iracingName) {
+          const input = document.getElementById('account-iracing-name');
+          if (input) input.value = s.iracingName;
+        }
+        return;
+      }
+
+      // Linked — show linked section with local fallback data immediately.
+      document.getElementById('account-signup-section').style.display = 'none';
+      document.getElementById('account-linked-section').style.display = 'block';
+      setText('account-display-name', s.racingUsername);
+      setText('account-username-tag', '@' + s.racingUsername);
+      setText('account-display-iracing', s.iracingName || '—');
+      setText('account-display-bridgeid', s.bridgeId || '—');
+
+      // Enrich from server if we have a bridge_id.
+      if (!s.bridgeId) return;
+      const url = 'https://atletanotifications.com/api/bridge/account?bridge_id=' + encodeURIComponent(s.bridgeId);
+      fetch(url).then(r => r.ok ? r.json() : null).then(a => {
+        if (!a) return;
+        setText('account-display-name', a.display_name || a.username || '—');
+        setText('account-username-tag', '@' + (a.username || ''));
+        setText('account-display-iracing', a.iracing_name || '—');
+        setText('account-display-email', a.email || 'Not set');
+        setText('account-display-created', formatMemberSince(a.created_at));
+        const twitchEl = document.getElementById('account-display-twitch');
+        if (twitchEl) {
+          twitchEl.textContent = a.twitch_connected ? '✓ ' + (a.twitch_username || 'Linked') : 'Not linked';
+          twitchEl.classList.toggle('linked', !!a.twitch_connected);
+        }
+        const spotifyEl = document.getElementById('account-display-spotify');
+        if (spotifyEl) {
+          spotifyEl.textContent = a.spotify_connected ? '✓ Connected' : 'Not linked';
+          spotifyEl.classList.toggle('linked', !!a.spotify_connected);
+        }
+        setAccountAvatar(a.avatar);
+        if (a.iracing_name && a.iracing_name !== s.iracingName) {
+          // Keep local settings in sync so overlays get the latest name on next read.
+          try {
+            const settingsMod = require('./settings');
+            const cur = settingsMod.load();
+            cur.iracingName = a.iracing_name;
+            settingsMod.save(cur);
+          } catch(e) {}
+        }
+      }).catch(() => { /* offline — local fallback already populated */ });
     }
     initAccountPanel();
+
+    window.openAccountSettings = function() {
+      try { require('electron').shell.openExternal('https://atletanotifications.com/racing/account'); } catch(e) {}
+    };
 
     window.logoutAccount = function() {
       if (!confirm('Log out of your Racing account? The app will restart.')) return;
@@ -2343,12 +2579,11 @@
           const settingsMod = require('./settings');
           const s = settingsMod.load();
           s.racingUsername = username;
+          if (iracingName) s.iracingName = iracingName;
           settingsMod.save(s);
-          // Show linked state
-          document.getElementById('account-signup-section').style.display = 'none';
-          document.getElementById('account-linked-section').style.display = 'block';
-          document.getElementById('account-display-username').textContent = username;
-          document.getElementById('account-display-iracing').textContent = iracingName || '—';
+          // Refresh the account panel — this will fetch the full profile
+          // from the server and populate all rows.
+          initAccountPanel();
         } else {
           errorEl.textContent = data.error || 'Signup failed. Please try again.';
           errorEl.style.display = 'block';

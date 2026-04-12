@@ -12,7 +12,7 @@ function log(msg) {
 }
 
 const IBT_DIR = path.join(os.homedir(), 'Documents', 'iRacing', 'telemetry');
-const TRACK_MAPS_DIR = path.join(os.homedir(), 'Documents', 'Atleta Bridge', 'trackmaps');
+const TRACK_MAPS_DIR = path.join(require('./settings').getSettingsDir(), 'trackmaps');
 const SCANNED_FILE = path.join(TRACK_MAPS_DIR, 'scanned_ibts.json');
 const SLOT_COUNT = 500;
 

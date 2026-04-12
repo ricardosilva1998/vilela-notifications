@@ -61,7 +61,7 @@
     }
     let savedChannelName = '';
     try {
-      const settingsFile = _path.join(_os.homedir(), 'Documents', 'Atleta Bridge', 'settings.json');
+      const settingsFile = _path.join(require('../settings').getSettingsDir(), 'settings.json');
       if (_fs.existsSync(settingsFile)) {
         const all = JSON.parse(_fs.readFileSync(settingsFile, 'utf8'));
         savedChannelName = (all.overlayCustom && all.overlayCustom.chat && all.overlayCustom.chat.twitchChannel) || '';
