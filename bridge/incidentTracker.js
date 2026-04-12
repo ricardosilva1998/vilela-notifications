@@ -155,7 +155,21 @@ function createIncidentTracker() {
     state.onPitRoadDuringLap = false;
     state.lastLapCompletedAt = Date.now();
   }
-  function onSessionChange(_newSessionType) {}
+  function onSessionChange(newSessionType) {
+    const isRace = (newSessionType || '').toLowerCase().includes('race');
+    const wasRace = (state.currentSessionType || '').toLowerCase().includes('race');
+    const isFirstCall = state.currentSessionType === null;
+
+    if (!isFirstCall && isRace && !wasRace) {
+      // Transitioning into a Race session — wipe counters
+      const preserved = { currentSessionType: newSessionType };
+      init();
+      state.currentSessionType = preserved.currentSessionType;
+      return;
+    }
+
+    state.currentSessionType = newSessionType;
+  }
 
   init();
 

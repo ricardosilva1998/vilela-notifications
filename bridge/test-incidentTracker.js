@@ -285,3 +285,70 @@ test('attribution: rounding to 0.1s in getState output', () => {
   // And that it's the expected rounded value (+5.123 → 5.1)
   assert.equal(lost, 5.1);
 });
+
+test('session change: P → Q carries over (no reset)', () => {
+  const t = createIncidentTracker();
+  t.init();
+  t.onSessionChange('Practice');
+  t.onLapComplete(2, 90.0, true);
+  t.onLapComplete(3, 90.0, true);
+  t.onLapComplete(4, 95.0, true);  // slow lap
+  assert.equal(t.getState().slowLaps.count, 1);
+
+  t.onSessionChange('Qualifying');
+  assert.equal(t.getState().slowLaps.count, 1);  // carried over
+});
+
+test('session change: P → Race resets to zero', () => {
+  const t = createIncidentTracker();
+  t.init();
+  t.onSessionChange('Practice');
+  t.onLapComplete(2, 90.0, true);
+  t.onLapComplete(3, 90.0, true);
+  t.onLapComplete(4, 95.0, true);
+  assert.equal(t.getState().slowLaps.count, 1);
+
+  t.onSessionChange('Race');
+  assert.equal(t.getState().slowLaps.count, 0);
+  assert.equal(t.getState().slowLaps.timeLost, 0);
+});
+
+test('session change: Q → Race resets to zero', () => {
+  const t = createIncidentTracker();
+  t.init();
+  t.onSessionChange('Qualifying');
+  t.onLapComplete(2, 90.0, true);
+  t.onLapComplete(3, 90.0, true);
+  t.onLapComplete(4, 95.0, true);
+  assert.equal(t.getState().slowLaps.count, 1);
+
+  t.onSessionChange('Race');
+  assert.equal(t.getState().slowLaps.count, 0);
+});
+
+test('session change: Race → Race (rejoin) does NOT reset', () => {
+  const t = createIncidentTracker();
+  t.init();
+  t.onSessionChange('Race');
+  t.onLapComplete(2, 90.0, true);
+  t.onLapComplete(3, 90.0, true);
+  t.onLapComplete(4, 95.0, true);
+  assert.equal(t.getState().slowLaps.count, 1);
+
+  // Rejoin same race session — should NOT reset
+  t.onSessionChange('Race');
+  assert.equal(t.getState().slowLaps.count, 1);
+});
+
+test('session change: first call sets currentSessionType without reset', () => {
+  const t = createIncidentTracker();
+  t.init();
+  t.onLapComplete(2, 90.0, true);
+  t.onLapComplete(3, 90.0, true);
+  t.onLapComplete(4, 95.0, true);
+  assert.equal(t.getState().slowLaps.count, 1);
+
+  // First session-change call (telemetry just connected) — no reset
+  t.onSessionChange('Practice');
+  assert.equal(t.getState().slowLaps.count, 1);
+});
