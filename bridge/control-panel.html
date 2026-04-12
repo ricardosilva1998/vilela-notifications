@@ -629,6 +629,9 @@
         <div class="sidebar-item" data-panel="broadcast" onclick="navigateTo('broadcast')">
           <span class="sidebar-icon" style="color:#3ecf8e;">&#128225;</span> Broadcasting
         </div>
+        <div class="sidebar-item" data-panel="visibility" onclick="navigateTo('visibility')">
+          <span class="sidebar-icon" style="color:#9146ff;">&#128065;</span> Visibility
+        </div>
       </div>
       <div class="sidebar-divider"></div>
       <div class="sidebar-group-label" onclick="toggleSidebarGroup('race')">&#9654; Race</div>
@@ -728,6 +731,9 @@
 
       <!-- ═══ BROADCASTING PANEL ═══ -->
       <div class="content-panel" id="panel-broadcast"></div>
+
+      <!-- ═══ VISIBILITY PANEL ═══ -->
+      <div class="content-panel" id="panel-visibility"></div>
 
       <!-- ═══ OVERVIEW PANEL ═══ -->
       <div class="content-panel active" id="panel-overview">
@@ -1407,8 +1413,9 @@
         resetBroadcastPending();
         renderBroadcastPage();
       }
+      if (panelId === 'visibility') renderVisibilityPage();
       // Track overlay panels in Recent (skip utility pages and dynamic pages)
-      const RECENT_EXCLUDE = new Set(['overview', 'favorites', 'recent', 'account', 'updates', 'logs', 'about']);
+      const RECENT_EXCLUDE = new Set(['overview', 'favorites', 'recent', 'visibility', 'account', 'updates', 'logs', 'about']);
       if (!RECENT_EXCLUDE.has(panelId) && overlays.find(o => o.id === panelId)) {
         uiState.uiRecent = _pushRecentPure(uiState.uiRecent || [], panelId);
         saveUiState({ uiRecent: uiState.uiRecent });
@@ -1621,6 +1628,13 @@
       `;
 
       panel.innerHTML = header + statusBar + `<div class="tb-grid">${cards}</div>` + actions;
+    }
+
+    // ─── Visibility page (placeholder, populated in task 9) ────
+    function renderVisibilityPage() {
+      const panel = document.getElementById('panel-visibility');
+      if (!panel) return;
+      panel.innerHTML = '<div style="padding:20px;color:#8b8a9e;">Loading…</div>';
     }
 
     // ─── Toggle team broadcast (updates pending state only) ──
