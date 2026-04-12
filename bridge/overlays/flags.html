@@ -132,8 +132,21 @@
       checkered: { color: 'url(#checker)', label: 'CHECKERED' },
     };
 
-    // Respect the control-panel showBlue toggle (?showBlue=false)
-    const showBlue = new URLSearchParams(window.location.search).get('showBlue') !== 'false';
+    // Load the control-panel showBlue toggle from settings.json (same pattern as weather.html).
+    // The URL param `?showBlue=false` is kept as an escape hatch for testing / pitwall mode.
+    let _flagsSettings = {};
+    try {
+      let _fs3, _path3;
+      try { _fs3 = require('fs'); _path3 = require('path'); } catch(e) {}
+      const _settingsFile = _path3.join(require('../settings').getSettingsDir(), 'settings.json');
+      if (_fs3.existsSync(_settingsFile)) {
+        const _all = JSON.parse(_fs3.readFileSync(_settingsFile, 'utf8'));
+        _flagsSettings = (_all.overlayCustom && _all.overlayCustom.flags) || {};
+      }
+    } catch(e) {}
+    const _showBlueSetting = _flagsSettings.showBlue !== false;
+    const _showBlueParam = new URLSearchParams(window.location.search).get('showBlue') !== 'false';
+    const showBlue = _showBlueSetting && _showBlueParam;
     if (!showBlue) delete FLAG_STYLES.blue;
 
     const fabric = document.getElementById('flag-fabric');

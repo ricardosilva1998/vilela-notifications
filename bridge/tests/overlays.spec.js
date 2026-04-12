@@ -14,7 +14,7 @@ const OVERLAY_SIZES = {
   inputs:       { w: 540, h: 150 },
   weather:      { w: 320, h: 195 },
   raceduration: { w: 280, h: 80 },
-  flags:        { w: 180, h: 130 },
+  flags:        { w: 180, h: 150 },
   drivercard:   { w: 300, h: 180 },
   stintlaps:    { w: 320, h: 300 },
   livestats:    { w: 420, h: 250 },
