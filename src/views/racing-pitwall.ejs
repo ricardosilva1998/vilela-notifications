@@ -219,6 +219,35 @@
     .toolbar-btn:hover { background: var(--bg-hover); color: var(--text-secondary); }
     .toolbar-btn.active { background: var(--accent-glow); border-color: var(--border-focus); color: var(--accent); }
 
+    .edit-mode-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 6px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .edit-mode-btn:hover { background: var(--bg-hover); color: var(--text-secondary); }
+    .edit-mode-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .edit-mode-btn.active:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
     /* ── Toggle Panel ── */
     .toggle-panel {
       display: none;
@@ -295,6 +324,95 @@
       color: var(--text-muted);
       z-index: 2;
       pointer-events: none;
+    }
+
+    .grid-stack-item-content .pitwall-drag-strip {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 18px;
+      padding: 0 8px;
+      background: var(--accent);
+      color: #fff;
+      font-family: var(--font-body);
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      align-items: center;
+      gap: 5px;
+      z-index: 4;
+      cursor: move;
+      pointer-events: none;
+      user-select: none;
+    }
+    .grid-stack-item-content .pitwall-drag-strip .drag-grip {
+      color: #fff;
+      font-size: 11px;
+      letter-spacing: -2px;
+      font-weight: 900;
+      opacity: 0.85;
+    }
+
+    .grid-stack-item-content .pitwall-iframe-shield {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      background: transparent;
+      cursor: move;
+    }
+
+    /* ── Edit Mode ── */
+    #pitwall-grid.editing .grid-stack-item-content {
+      border: 2px solid var(--accent);
+      cursor: move;
+    }
+    #pitwall-grid.editing .grid-stack-item-content .pitwall-drag-strip {
+      display: flex;
+    }
+    #pitwall-grid.editing .grid-stack-item-content .pitwall-iframe-shield {
+      display: block;
+    }
+    #pitwall-grid.editing .grid-stack-item-content .panel-label {
+      display: none;
+    }
+    #pitwall-grid.editing .grid-stack-item > .ui-resizable-handle {
+      display: block !important;
+      background: var(--accent);
+      opacity: 0.85;
+    }
+    #pitwall-grid.editing .grid-stack-item > .ui-resizable-e,
+    #pitwall-grid.editing .grid-stack-item > .ui-resizable-w {
+      width: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 28px;
+      border-radius: 3px;
+    }
+    #pitwall-grid.editing .grid-stack-item > .ui-resizable-n,
+    #pitwall-grid.editing .grid-stack-item > .ui-resizable-s {
+      height: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 28px;
+      border-radius: 3px;
+    }
+    #pitwall-grid.editing .grid-stack-item > .ui-resizable-se,
+    #pitwall-grid.editing .grid-stack-item > .ui-resizable-sw,
+    #pitwall-grid.editing .grid-stack-item > .ui-resizable-ne,
+    #pitwall-grid.editing .grid-stack-item > .ui-resizable-nw {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 1.5px solid #fff;
+      background: var(--accent);
+    }
+    /* Reset the old bottom-right-only visual override from the base styles */
+    #pitwall-grid.editing .grid-stack-item > .ui-resizable-se::after {
+      display: none;
     }
 
     .grid-stack-item-content iframe {
@@ -374,6 +492,9 @@
       <% }); %>
     </div>
 
+    <button class="edit-mode-btn" id="edit-mode-btn" onclick="toggleEditMode()" title="Rearrange panels (Esc to exit)">
+      <span id="edit-mode-btn-label">✎ Edit Layout</span>
+    </button>
     <button class="toolbar-btn" id="settings-btn" onclick="toggleSettingsPanel()" title="Layout settings">
       <i data-lucide="settings" style="width:16px;height:16px;"></i>
     </button>
@@ -430,6 +551,7 @@
     var selectedDriverId = null;
     var onlineDrivers = new Set();
     var hiddenPanels = new Set();
+    var isEditing = false;
 
     // ── Gridstack Init ──────────────────────────────────────────
     function initGrid() {
@@ -486,8 +608,10 @@
         minW: 1, minH: 1,
         content:
           '<div class="panel-label">' + (PANEL_LABELS[item.id] || item.id) + '</div>' +
+          '<div class="pitwall-drag-strip"><span class="drag-grip">⋮⋮</span>' + (PANEL_LABELS[item.id] || item.id) + '</div>' +
           '<div class="placeholder" id="placeholder-' + item.id + '">Waiting for driver...</div>' +
-          '<iframe id="iframe-' + item.id + '" loading="lazy"></iframe>',
+          '<iframe id="iframe-' + item.id + '" loading="lazy"></iframe>' +
+          '<div class="pitwall-iframe-shield"></div>',
       });
       if (isHidden && el) {
         el.style.display = 'none';
@@ -585,6 +709,26 @@
       localStorage.removeItem(HIDDEN_KEY);
       location.reload();
     };
+
+    // ── Edit Mode ───────────────────────────────────────────────
+    window.toggleEditMode = function() {
+      isEditing = !isEditing;
+      if (!grid) return;
+      grid.enableMove(isEditing);
+      grid.enableResize(isEditing);
+      var gridEl = document.getElementById('pitwall-grid');
+      var btn = document.getElementById('edit-mode-btn');
+      var label = document.getElementById('edit-mode-btn-label');
+      if (gridEl) gridEl.classList.toggle('editing', isEditing);
+      if (btn) btn.classList.toggle('active', isEditing);
+      if (label) label.textContent = isEditing ? '✓ Done' : '✎ Edit Layout';
+    };
+
+    window.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && isEditing) {
+        window.toggleEditMode();
+      }
+    });
 
     // ── WebSocket ───────────────────────────────────────────────
     function connect() {
