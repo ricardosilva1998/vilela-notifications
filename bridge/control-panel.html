@@ -625,14 +625,6 @@
         <div class="section-header">Overlays</div>
         <div class="overview-grid" id="overview-grid"></div>
 
-        <div class="section-header" style="margin-top:14px;">Team Broadcasting</div>
-        <div id="team-broadcast-section" style="margin-bottom:8px;">
-          <p style="font-size:11px;color:#5a5970;margin-bottom:8px;">Select which teams can see your telemetry on Pitwall:</p>
-          <div id="team-broadcast-list" style="display:flex;flex-direction:column;gap:4px;">
-            <p style="font-size:11px;color:#5a5970;font-style:italic;">Connecting...</p>
-          </div>
-        </div>
-
         <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#8b8a9e;margin-top:10px;cursor:pointer;">
           <input type="checkbox" id="autohide-check" checked onchange="toggleAutoHide(this.checked)" style="accent-color:#9146ff;">
           Auto-hide overlays when iRacing closes
@@ -2488,45 +2480,8 @@
     if (savedPanel) navigateTo(savedPanel);
     if (currentPanel === 'logs') startLogRefresh();
 
-    // ── Team broadcast UI (via IPC to main process) ────────
-    function renderTeamBroadcast(teams, broadcastIds) {
-      const container = document.getElementById('team-broadcast-list');
-      if (!container) return;
-      if (!teams || teams.length === 0) {
-        container.innerHTML = '<p style="font-size:11px;color:#5a5970;font-style:italic;">No teams — join a team at atletanotifications.com/racing/teams</p>';
-        return;
-      }
-      const broadcastSet = new Set(broadcastIds || []);
-      container.innerHTML = teams.map(function(t) {
-        return '<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#c4c3d4;cursor:pointer;padding:4px 0;">' +
-          '<input type="checkbox" data-team-id="' + t.id + '" ' + (broadcastSet.has(t.id) ? 'checked' : '') + ' onchange="updateBroadcastTeams()" style="accent-color:#3ecf8e;">' +
-          '<span>' + (t.name||'').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>' +
-          (broadcastSet.has(t.id) ? '<span style="width:6px;height:6px;border-radius:50%;background:#3ecf8e;flex-shrink:0;"></span>' : '') +
-        '</label>';
-      }).join('');
-    }
-
-    // Get current state from main process
-    var pitwallState = ipcRenderer.sendSync('get-pitwall-teams');
-    if (pitwallState.status === 'disabled') {
-      document.getElementById('team-broadcast-list').innerHTML = '<p style="font-size:11px;color:#5a5970;font-style:italic;">Not configured — log out and log back in</p>';
-    } else if (pitwallState.teams && pitwallState.teams.length > 0) {
-      renderTeamBroadcast(pitwallState.teams, pitwallState.broadcastIds);
-    }
-
-    // Listen for updates from main process
-    ipcRenderer.on('pitwall-teams', function(event, data) {
-      renderTeamBroadcast(data.teams, data.broadcastIds);
-    });
-
-    window.updateBroadcastTeams = function() {
-      const checks = document.querySelectorAll('#team-broadcast-list input[type=checkbox]');
-      const ids = [];
-      checks.forEach(function(cb) {
-        if (cb.checked) ids.push(parseInt(cb.dataset.teamId));
-      });
-      ipcRenderer.send('set-pitwall-broadcast', ids);
-    };
+    // Server-pushed updates re-render the new Broadcasting tab
+    ipcRenderer.on('pitwall-teams', () => renderBroadcastPage());
 
     // Search field interactions
     (function () {
