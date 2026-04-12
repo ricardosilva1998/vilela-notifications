@@ -16,7 +16,6 @@ function createIncidentTracker() {
       slowLaps:  { count: 0, timeLost: 0 },
 
       // Per-tick internal state
-      offtrackWindow: [],          // [tNow, ...] of recent OffTrack timestamps (3s window)
       lastIncidentCount: null,     // PlayerCarMyIncidentCount last tick
       lastSessionFlags: 0,         // CarIdxSessionFlags[playerCarIdx] last tick
       firstTick: true,             // true until first tick completes (seeds lastSessionFlags)
@@ -61,8 +60,6 @@ function createIncidentTracker() {
       : sorted[mid];
   }
 
-  const OFFTRACK_WINDOW_MS = 3000;
-
   const CLEAN_LAP_BUFFER_SIZE = 5;
   const SLOW_LAP_MIN_LOSS_SEC = 2.0;
   const SLOW_LAP_REL_THRESHOLD = 0.05;
@@ -75,21 +72,14 @@ function createIncidentTracker() {
   ];
 
   function tick(snapshot) {
-    const tNow = snapshot.tNow;
-
-    // Slide the offtrack window forward
-    while (state.offtrackWindow.length && state.offtrackWindow[0] < tNow - OFFTRACK_WINDOW_MS) {
-      state.offtrackWindow.shift();
-    }
-    if (snapshot.trackSurface === 0) {
-      state.offtrackWindow.push(tNow);
-    }
-
-    // Incident count edge detection
+    // Any positive change in PlayerCarMyIncidentCount is counted as an incident
+    // event. The previous approach gated on a 3-second trackSurface=0 window, but
+    // at 10Hz polling a brief 4-wheel-off can slip entirely between polls so the
+    // surface is never sampled as 0 — the event then silently dropped.
     if (state.lastIncidentCount === null) {
       state.lastIncidentCount = snapshot.incidentCount;
     } else {
-      if (snapshot.incidentCount > state.lastIncidentCount && state.offtrackWindow.length > 0) {
+      if (snapshot.incidentCount > state.lastIncidentCount) {
         state.offtracks.count += 1;
         state.thisLapHadOfftrack = true;
       }

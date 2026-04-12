@@ -32,33 +32,23 @@ test('reset() returns state to zeros', () => {
   assert.equal(s.slowLaps.timeLost, 0);
 });
 
-test('offtrack: increments when incidentCount jumps after a recent OffTrack', () => {
+test('offtrack: increments on any incidentCount jump', () => {
   const t = createIncidentTracker();
   t.init();
   // First tick seeds lastIncidentCount, no event.
   t.tick({ trackSurface: 0, incidentCount: 0, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.1, currentLap: 2, tNow: 1000 });
-  // Player goes offtrack at 1100ms (still in window).
-  t.tick({ trackSurface: 0, incidentCount: 0, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.12, currentLap: 2, tNow: 1100 });
-  // 200ms later iRacing tags an incident.
   t.tick({ trackSurface: 3, incidentCount: 1, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.13, currentLap: 2, tNow: 1300 });
   assert.equal(t.getState().offtracks.count, 1);
 });
 
-test('offtrack: ignores incident jumps with no recent OffTrack window', () => {
+test('offtrack: counts incident jumps even without a surface=0 sample', () => {
+  // A brief 4-wheel-off slipping entirely between two 10Hz polls still registers
+  // a 1x in iRacing; we must count it rather than silently dropping the event.
   const t = createIncidentTracker();
   t.init();
   t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.1, currentLap: 2, tNow: 1000 });
   t.tick({ trackSurface: 3, incidentCount: 1, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.12, currentLap: 2, tNow: 1100 });
-  assert.equal(t.getState().offtracks.count, 0);
-});
-
-test('offtrack: window expires after 3 seconds', () => {
-  const t = createIncidentTracker();
-  t.init();
-  t.tick({ trackSurface: 0, incidentCount: 0, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.1, currentLap: 2, tNow: 1000 });
-  // 4 seconds later — window has expired.
-  t.tick({ trackSurface: 3, incidentCount: 1, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.5, currentLap: 2, tNow: 5100 });
-  assert.equal(t.getState().offtracks.count, 0);
+  assert.equal(t.getState().offtracks.count, 1);
 });
 
 test('offtrack: first tick seeds lastIncidentCount without firing', () => {
@@ -351,4 +341,34 @@ test('session change: first call sets currentSessionType without reset', () => {
   // First session-change call (telemetry just connected) — no reset
   t.onSessionChange('Practice');
   assert.equal(t.getState().slowLaps.count, 1);
+});
+
+// User bug repro: off-tracks stop counting mid-race, only penalties still count.
+// Simulates a realistic race: offtrack → meatball → pit/serve → back out →
+// offtrack again. The last offtrack MUST count.
+test('bug repro: offtracks still count after meatball + pit service', () => {
+  const t = createIncidentTracker();
+  t.init();
+  t.onSessionChange('Race');
+
+  // --- Race start, seed state ---
+  t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: 0, speed: 50, onPitRoad: false, lapDistPct: 0.0, currentLap: 1, tNow: 1000 });
+
+  // --- First off-track on lap 2 ---
+  t.tick({ trackSurface: 3, incidentCount: 1, sessionFlags: 0, speed: 50, onPitRoad: false, lapDistPct: 0.22, currentLap: 2, tNow: 2200 });
+  assert.equal(t.getState().offtracks.count, 1, 'first off-track should count');
+
+  // --- Meatball flag triggers (repair) ---
+  t.tick({ trackSurface: 3, incidentCount: 1, sessionFlags: 0x100000, speed: 30, onPitRoad: false, lapDistPct: 0.6, currentLap: 2, tNow: 8200 });
+  assert.equal(t.getState().penalties.count, 1, 'meatball should count');
+
+  // --- Player drives to pits, serves flag, comes back out ---
+  t.tick({ trackSurface: 2, incidentCount: 1, sessionFlags: 0x100000, speed: 20, onPitRoad: true,  lapDistPct: 0.95, currentLap: 2, tNow: 10000 });
+  t.tick({ trackSurface: 1, incidentCount: 1, sessionFlags: 0x100000, speed: 5,  onPitRoad: true,  lapDistPct: 0.98, currentLap: 2, tNow: 30000 });
+  t.tick({ trackSurface: 2, incidentCount: 1, sessionFlags: 0,        speed: 20, onPitRoad: true,  lapDistPct: 0.99, currentLap: 2, tNow: 45000 });
+  t.tick({ trackSurface: 3, incidentCount: 1, sessionFlags: 0,        speed: 50, onPitRoad: false, lapDistPct: 0.00, currentLap: 3, tNow: 46000 });
+
+  // --- Player goes off again on lap 4 ---
+  t.tick({ trackSurface: 3, incidentCount: 2, sessionFlags: 0, speed: 50, onPitRoad: false, lapDistPct: 0.32, currentLap: 4, tNow: 120200 });
+  assert.equal(t.getState().offtracks.count, 2, 'off-track after penalty should still count');
 });
