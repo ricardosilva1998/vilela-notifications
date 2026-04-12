@@ -714,6 +714,16 @@
   <script>
     const { ipcRenderer } = require('electron');
     let appVersion = '--';
+    // ─── UI state (favorites, recent, sidebar groups) ────────
+    let uiState = { uiFavorites: [], uiRecent: [], uiSidebarGroups: { race: true, car: true, track: true, stream: true } };
+    try {
+      const fromMain = ipcRenderer.sendSync('get-ui-state');
+      if (fromMain) uiState = fromMain;
+    } catch (e) { /* renderer running outside electron — keep defaults */ }
+    function saveUiState(patch) {
+      try { ipcRenderer.send('save-ui-state', patch); } catch (e) {}
+    }
+
     let currentPanel = 'overview';
 
     // ─── Overlay Definitions ─────────────────────────────────
@@ -1058,12 +1068,29 @@
     ];
 
     // ─── Navigation ──────────────────────────────────────────
+    function applyPersistedGroups() {
+      ['race', 'car', 'track', 'stream'].forEach(name => {
+        const group = document.getElementById('group-' + name);
+        const label = group?.previousElementSibling;
+        if (!group || !label) return;
+        const collapsed = uiState.uiSidebarGroups && uiState.uiSidebarGroups[name] !== false;
+        group.classList.toggle('collapsed', collapsed);
+        label.innerHTML = (collapsed ? '\u25B6 ' : '\u25BC ') + name.charAt(0).toUpperCase() + name.slice(1);
+      });
+    }
+    applyPersistedGroups();
+
     function toggleSidebarGroup(name) {
       const group = document.getElementById('group-' + name);
       const label = group?.previousElementSibling;
       if (!group) return;
       group.classList.toggle('collapsed');
-      if (label) label.innerHTML = (group.classList.contains('collapsed') ? '&#9654; ' : '&#9660; ') + name.charAt(0).toUpperCase() + name.slice(1);
+      const collapsed = group.classList.contains('collapsed');
+      if (label) label.innerHTML = (collapsed ? '\u25B6 ' : '\u25BC ') + name.charAt(0).toUpperCase() + name.slice(1);
+      // Persist
+      if (!uiState.uiSidebarGroups) uiState.uiSidebarGroups = {};
+      uiState.uiSidebarGroups[name] = collapsed;
+      saveUiState({ uiSidebarGroups: uiState.uiSidebarGroups });
     }
 
     function navigateTo(panelId) {
