@@ -67,8 +67,8 @@ function createIncidentTracker() {
     // Incident count edge detection
     if (state.lastIncidentCount === null) {
       state.lastIncidentCount = snapshot.incidentCount;
-    } else if (snapshot.incidentCount > state.lastIncidentCount) {
-      if (state.offtrackWindow.length > 0) {
+    } else {
+      if (snapshot.incidentCount > state.lastIncidentCount && state.offtrackWindow.length > 0) {
         state.offtracks.count += 1;
         state.thisLapHadOfftrack = true;
       }

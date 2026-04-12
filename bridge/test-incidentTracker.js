@@ -68,3 +68,18 @@ test('offtrack: first tick seeds lastIncidentCount without firing', () => {
   t.tick({ trackSurface: 0, incidentCount: 12, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.1, currentLap: 2, tNow: 1000 });
   assert.equal(t.getState().offtracks.count, 0);
 });
+
+test('offtrack: count decreasing then re-rising still detects later increment', () => {
+  const t = createIncidentTracker();
+  t.init();
+  // Seed at count=5
+  t.tick({ trackSurface: 3, incidentCount: 5, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.1, currentLap: 2, tNow: 1000 });
+  // Anomaly: count drops to 3 — must update internal lastIncidentCount, no event
+  t.tick({ trackSurface: 3, incidentCount: 3, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.2, currentLap: 2, tNow: 1100 });
+  assert.equal(t.getState().offtracks.count, 0);
+  // Player goes offtrack
+  t.tick({ trackSurface: 0, incidentCount: 3, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.3, currentLap: 2, tNow: 1200 });
+  // Count rises to 4 — must fire (would be missed if lastIncidentCount were stuck at 5)
+  t.tick({ trackSurface: 3, incidentCount: 4, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.4, currentLap: 2, tNow: 1300 });
+  assert.equal(t.getState().offtracks.count, 1);
+});
