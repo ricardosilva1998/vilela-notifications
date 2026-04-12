@@ -742,10 +742,6 @@
         <div class="section-header">Overlays</div>
         <div class="overview-grid" id="overview-grid"></div>
 
-        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#8b8a9e;margin-top:10px;cursor:pointer;">
-          <input type="checkbox" id="autohide-check" checked onchange="toggleAutoHide(this.checked)" style="accent-color:#9146ff;">
-          Auto-hide overlays when iRacing closes
-        </label>
 
         <div style="display:flex;gap:8px;margin-top:14px;">
           <button onclick="saveAllOverlays()" style="flex:1;padding:8px;background:rgba(145,70,255,0.15);border:1px solid rgba(145,70,255,0.3);border-radius:6px;color:#9146ff;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;">Save All Settings</button>
@@ -2186,10 +2182,6 @@
       });
     }
 
-    // ─── Auto-hide ─────────────────────────────────────────
-    function toggleAutoHide(enabled) {
-      ipcRenderer.send('toggle-autohide', enabled);
-    }
 
     // ─── Updates ─────────────────────────────────────────────
     const RELEASE_NOTES = [
@@ -2435,10 +2427,6 @@
       if (yEl) yEl.value = y;
     });
 
-    ipcRenderer.on('autohide-state', (event, enabled) => {
-      const check = document.getElementById('autohide-check');
-      if (check) check.checked = enabled;
-    });
 
     ipcRenderer.send('get-overlay-states');
 
