@@ -544,6 +544,7 @@ async function startTelemetry(onStatusChange) {
   let pollCount = 0;
   let qualifyBestByClass = {}; // className -> best lap time from qualify session
   let raceSessionTotalTime = 0; // total race duration for sprint/open/endurance detection
+  let lastInGarage = false; // tracked across polls to fire statusCallback only on change
 
   connectInterval = setInterval(async () => {
     if (ir && connected) return;
@@ -580,13 +581,22 @@ async function startTelemetry(onStatusChange) {
         cachedGapToLeader.clear();
         sessionResults.clear();
         log('[Telemetry] Connected to iRacing!');
-        broadcastToChannel('_all', { type: 'status', iracing: true });
-        if (statusCallback) statusCallback({ iracing: true });
+        // Pull initial IsInGarage before first broadcast so main.js enters the
+        // correct mode immediately (no flash of notRunning → onTrack).
+        let initialInGarage = false;
+        try {
+          ir.refreshSharedMemory();
+          initialInGarage = !!ir.get(VARS.IS_IN_GARAGE)?.[0];
+        } catch (e) {}
+        lastInGarage = initialInGarage;
+        broadcastToChannel('_all', { type: 'status', iracing: true, inGarage: initialInGarage });
+        if (statusCallback) statusCallback({ iracing: true, inGarage: initialInGarage });
         startPolling();
       }
     } catch (e) {
       if (connected) {
         connected = false; ir = null;
+        lastInGarage = false;
         log('[Telemetry] Disconnected: ' + e.message);
         broadcastToChannel('_all', { type: 'status', iracing: false });
         if (statusCallback) statusCallback({ iracing: false });
@@ -614,6 +624,7 @@ async function startTelemetry(onStatusChange) {
             } catch(e) {}
             try { sessionRecorder.onSessionEnd(); } catch(e) {}
             connected = false;
+            lastInGarage = false;
             log('[Telemetry] Disconnected during poll');
             broadcastToChannel('_all', { type: 'status', iracing: false });
             if (statusCallback) statusCallback({ iracing: false });
@@ -633,6 +644,16 @@ async function startTelemetry(onStatusChange) {
             sessionRecorder.init(s.bridgeId || '');
           } catch(e) {}
         }
+
+        // === Garage state change detection ===
+        try {
+          const inGarageNow = !!ir.get(VARS.IS_IN_GARAGE)?.[0];
+          if (inGarageNow !== lastInGarage) {
+            lastInGarage = inGarageNow;
+            broadcastToChannel('_all', { type: 'status', iracing: true, inGarage: inGarageNow });
+            if (statusCallback) statusCallback({ iracing: true, inGarage: inGarageNow });
+          }
+        } catch (e) {}
 
         // === Session change detection ===
         try {
