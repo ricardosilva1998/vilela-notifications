@@ -44,18 +44,20 @@ let quitting = false;
 let settings = {};
 
 // Resolve the Atleta app icon path across dev and packaged builds.
-// Dev: bridge/build/atleta.ico. Packaged: process.resourcesPath/atleta.ico
-// (electron-builder copies via extraResources). Returns undefined if none
-// of the candidate paths exist, in which case Electron falls back to its
-// default icon.
+// Windows prefers .ico (taskbar); macOS/Linux use .png for the dock icon.
+// In dev mode process.resourcesPath points at Electron's own resources so
+// we also fall back to bridge/build/.
 function resolveIconPath() {
   const fs = require('fs');
+  const isWin = process.platform === 'win32';
+  const primary  = isWin ? 'atleta.ico' : 'atleta.png';
+  const fallback = isWin ? 'atleta.png' : 'atleta.ico';
   const candidates = [
-    process.resourcesPath ? path.join(process.resourcesPath, 'atleta.ico') : null,
-    process.resourcesPath ? path.join(process.resourcesPath, 'atleta.png') : null,
-    path.join(__dirname, 'build', 'atleta.ico'),
-    path.join(__dirname, 'build', 'atleta.png'),
-    path.join(__dirname, 'atleta.ico'),
+    process.resourcesPath ? path.join(process.resourcesPath, primary)  : null,
+    process.resourcesPath ? path.join(process.resourcesPath, fallback) : null,
+    path.join(__dirname, 'build', primary),
+    path.join(__dirname, 'build', fallback),
+    path.join(__dirname, primary),
   ];
   for (const p of candidates) {
     try { if (p && fs.existsSync(p)) return p; } catch(e) {}
@@ -114,6 +116,16 @@ app.on('ready', () => {
   session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
     return ALLOWED_PERMISSIONS.includes(permission);
   });
+
+  // macOS dock icon — BrowserWindow.icon is a no-op on macOS, so we set
+  // it explicitly here so dev-mode (`npm start`) shows the Atleta logo
+  // instead of the generic Electron/document icon.
+  if (process.platform === 'darwin' && app.dock && APP_ICON_PATH) {
+    try {
+      const dockImg = nativeImage.createFromPath(APP_ICON_PATH);
+      if (!dockImg.isEmpty()) app.dock.setIcon(dockImg);
+    } catch (e) { console.log('[Main] dock icon set failed:', e.message); }
+  }
 
   // Load persisted settings
   settings = loadSettings();
