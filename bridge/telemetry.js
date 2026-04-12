@@ -22,6 +22,7 @@ const { extractTrackFromIBT, geoKeyFromSessionInfo, loadCachedTrackByGeo, saveCa
 const sessionRecorder = require('./sessionRecorder');
 const pitwallUplink = require('./pitwallUplink');
 const { createIncidentTracker } = require('./incidentTracker');
+const { createFlagState } = require('./flagState');
 
 // Broadcast to local overlays + pitwall uplink
 function broadcastToChannel(channel, msg) {
@@ -195,6 +196,7 @@ let _recorderSessionStarted = false;
 // Pit time tracking — measure time lost per pit stop per class
 const pitTracking = new Map(); // carIdx -> { wasPitting, bestLapSnapshot, lapsSnapshot, waitingForLap, referenceLap }
 const incidentTracker = createIncidentTracker();
+const flagState = createFlagState();
 let _showIncidents = true; // controlled by control-panel toggle via setIncidentCountersEnabled()
 let classPitDeltas = {};       // className -> { avgDelta, samples }
 const PIT_TIMES_FILE = path.join(require('./settings').getSettingsDir(), 'pittimes.json');
@@ -567,6 +569,7 @@ async function startTelemetry(onStatusChange) {
         driverLastLapPoll.clear();
         classPitDeltas = {};
         resetFuel();
+        flagState.reset();
         trackSlots.fill(null);
         trackPathComplete = false;
         trackPathOutput = [];
@@ -1068,6 +1071,9 @@ async function startTelemetry(onStatusChange) {
           })),
           incidents: _showIncidents ? (() => { try { return incidentTracker.getState(); } catch (e) { return null; } })() : null,
         }});
+        broadcastToChannel('flags', { type: 'data', channel: 'flags', data: (() => {
+          try { return flagState.getState(); } catch (e) { return null; }
+        })() });
 
         // Read camera spectated car index (for replay/spectate)
         let camCarIdx = playerCarIdx;
@@ -1650,6 +1656,12 @@ async function startTelemetry(onStatusChange) {
             tNow: Date.now(),
           });
         } catch (e) { /* never let the tracker take down the poll loop */ }
+        try {
+          flagState.tick({
+            rawBits: (carIdxFlags && carIdxFlags[playerCarIdx]) || 0,
+            tNow: Date.now(),
+          });
+        } catch (e) { /* never let the flag tracker take down the poll loop */ }
         // iRacing TrackSurface: -1=NotInWorld, 0=OffTrack, 1=InPitStall, 2=ApproachPits, 3=OnTrack
         const isOnTrack = trackSurface >= 2; // Record on track + pit approach
 
