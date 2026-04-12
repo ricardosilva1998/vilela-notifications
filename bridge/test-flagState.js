@@ -111,13 +111,18 @@ test('priority: green has lowest priority', () => {
   assert.equal(s.getState().activeFlag, 'yellow');
 });
 
-test('transition yellow → green switches the active flag', () => {
+test('transition yellow → green waits for dwell (lower-priority does not cut short)', () => {
   const s = createFlagState();
   s.tick({ rawBits: YELLOW, tNow: 1000 });
   assert.equal(s.getState().activeFlag, 'yellow');
+  // Green appears after only 200ms — yellow has NOT been on screen long enough,
+  // and green is lower priority, so yellow holds.
   s.tick({ rawBits: GREEN, tNow: 1200 });
+  assert.equal(s.getState().activeFlag, 'yellow', 'lower-priority candidate must not cut dwell short');
+  // After the 3-second dwell elapses, the green candidate takes over.
+  s.tick({ rawBits: GREEN, tNow: 4500 });
   assert.equal(s.getState().activeFlag, 'green');
-  assert.equal(s.getState().since, 1200);
+  assert.equal(s.getState().since, 4500);
 });
 
 test('flag clears but stays visible through MIN_DWELL_MS', () => {
@@ -185,4 +190,42 @@ test('getState echoes rawBits', () => {
   const s = createFlagState();
   s.tick({ rawBits: YELLOW | BLUE, tNow: 1000 });
   assert.equal(s.getState().rawBits, YELLOW | BLUE);
+});
+
+test('higher-priority flag overrides dwell immediately', () => {
+  const s = createFlagState();
+  s.tick({ rawBits: YELLOW, tNow: 1000 });
+  // Black has higher priority than yellow — should override even inside the dwell
+  s.tick({ rawBits: BLACK,  tNow: 1200 });
+  assert.equal(s.getState().activeFlag, 'black');
+  assert.equal(s.getState().since, 1200);
+});
+
+test('blue single-tick dropout is absorbed, no cooldown starts', () => {
+  const s = createFlagState();
+  s.tick({ rawBits: BLUE, tNow: 1000 });
+  s.tick({ rawBits: 0,    tNow: 1100 });  // 100ms dropout — within grace window
+  s.tick({ rawBits: BLUE, tNow: 1200 });  // blue is back
+  s.tick({ rawBits: BLUE, tNow: 5000 });  // continuous blue well past the 3s dwell
+  // Still showing blue because the dropout was absorbed
+  assert.equal(s.getState().activeFlag, 'blue');
+  // And immediately clearing now should NOT find a stale cooldown
+  s.tick({ rawBits: 0,    tNow: 5100 });
+  s.tick({ rawBits: 0,    tNow: 5500 });  // grace met (400ms ≥ 300)
+  // Cooldown starts from 5100 (when the real clear began), ends 20100
+  s.tick({ rawBits: BLUE, tNow: 19000 }); // 19000 < 20100 → suppressed
+  assert.equal(s.getState().activeFlag, null);
+});
+
+test('blue dropout beyond grace commits cooldown', () => {
+  const s = createFlagState();
+  s.tick({ rawBits: BLUE, tNow: 1000 });
+  s.tick({ rawBits: 0,    tNow: 1100 });  // absent since 1100
+  s.tick({ rawBits: 0,    tNow: 1500 });  // 400ms later, grace met → cooldown starts at 1100+15000=16100
+  s.tick({ rawBits: 0,    tNow: 4500 });  // dwell expires
+  assert.equal(s.getState().activeFlag, null);
+  s.tick({ rawBits: BLUE, tNow: 10000 }); // still in cooldown (10000 < 16100)
+  assert.equal(s.getState().activeFlag, null);
+  s.tick({ rawBits: BLUE, tNow: 16500 }); // past cooldown
+  assert.equal(s.getState().activeFlag, 'blue');
 });

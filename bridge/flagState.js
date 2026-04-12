@@ -13,6 +13,7 @@ function createFlagState() {
       displayedSince: 0,        // tNow when displayed became non-null
       lastRawBits: 0,
       blueWasPresented: false,  // was blue actually shown (not suppressed) in the previous tick
+      blueAbsentSince: 0,       // tNow when the current continuous blue absence began (0 = blue present OR never presented)
       blueCooldownUntil: 0,     // tNow after which blue is allowed to re-trigger
     };
   }
@@ -23,6 +24,7 @@ function createFlagState() {
 
   const MIN_DWELL_MS = 3000;
   const BLUE_COOLDOWN_MS = 15000;
+  const BLUE_DROPOUT_GRACE_MS = 300;  // absorb brief SDK polling dropouts before committing to a cooldown
 
   // iRacing irsdk_Flags bits (subset we care about)
   const BIT_CHECKERED = 0x1;
@@ -62,24 +64,49 @@ function createFlagState() {
     const rawBits = snapshot.rawBits | 0;
 
     const active = activeFlagKeysFromBits(rawBits);
-
-    // Blue-flag throttle. Edge-triggered cooldown start when blue clears
-    // (blueWasPresented: true → false).
     const hasBlue = active.indexOf('blue') !== -1;
+
+    // Blue-flag throttle with dropout debounce. A single-tick absence at 10Hz
+    // is not enough to conclude iRacing cleared blue — we wait BLUE_DROPOUT_GRACE_MS
+    // of continuous absence before committing. Otherwise a brief SDK polling race
+    // would trigger a 15-second blackout while blue is still being shown.
     if (state.blueWasPresented && !hasBlue) {
-      state.blueCooldownUntil = tNow + BLUE_COOLDOWN_MS;
+      if (state.blueAbsentSince === 0) state.blueAbsentSince = tNow;
+      if (tNow - state.blueAbsentSince >= BLUE_DROPOUT_GRACE_MS) {
+        // Confirmed clear — cooldown window starts from when the absence began,
+        // so the 15-second suppression measures real elapsed time.
+        state.blueCooldownUntil = state.blueAbsentSince + BLUE_COOLDOWN_MS;
+        state.blueWasPresented = false;
+        state.blueAbsentSince = 0;
+      }
+    } else if (hasBlue) {
+      // Blue is present — clear any pending absence tracking and, if we're
+      // past the cooldown window, start tracking a new presentation.
+      state.blueAbsentSince = 0;
+      if (!state.blueWasPresented && tNow >= state.blueCooldownUntil) {
+        state.blueWasPresented = true;
+      }
     }
+
     const inCooldown = tNow < state.blueCooldownUntil;
     const filtered = (inCooldown && hasBlue)
       ? active.filter((k) => k !== 'blue')
       : active;
-    const blueShownThisTick = filtered.indexOf('blue') !== -1;
 
     const candidate = highestPriority(filtered);
 
     if (candidate !== null && candidate !== state.displayed) {
-      state.displayed = candidate;
-      state.displayedSince = tNow;
+      // Minimum-dwell floor: respect the 3-second display time before switching
+      // to a LOWER-priority flag. Higher-priority flags (e.g. black over yellow)
+      // override the dwell because they're urgent.
+      const candP = PRIORITY[candidate];
+      const dispP = state.displayed !== null ? PRIORITY[state.displayed] : Infinity;
+      const dwellExpired = state.displayed === null
+        || (tNow - state.displayedSince >= MIN_DWELL_MS);
+      if (candP < dispP || dwellExpired) {
+        state.displayed = candidate;
+        state.displayedSince = tNow;
+      }
     } else if (candidate === null && state.displayed !== null) {
       if (tNow - state.displayedSince >= MIN_DWELL_MS) {
         state.displayed = null;
@@ -87,14 +114,13 @@ function createFlagState() {
       }
     }
 
-    state.blueWasPresented = blueShownThisTick;
     state.lastRawBits = rawBits;
   }
 
   function getState() {
     return {
       activeFlag: state.displayed,
-      since: state.displayed ? state.displayedSince : null,
+      since: state.displayed !== null ? state.displayedSince : null,
       rawBits: state.lastRawBits,
     };
   }
