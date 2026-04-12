@@ -218,3 +218,70 @@ test('slow lap: rolling median caps at 5 laps', () => {
   assert.equal(t.getState().slowLaps.count, 1);
   assert.equal(t.getState().slowLaps.timeLost, 6.0);
 });
+
+test('attribution: penalty + offtrack on same lap → counts both, time → penalty bucket', () => {
+  const t = createIncidentTracker();
+  t.init();
+  // Seed median with two clean 90.0s laps
+  t.onLapComplete(2, 90.0, true);
+  t.onLapComplete(3, 90.0, true);
+
+  // Lap 4: trigger offtrack mid-lap
+  t.tick({ trackSurface: 0, incidentCount: 5, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.1, currentLap: 4, tNow: 1000 });
+  t.tick({ trackSurface: 3, incidentCount: 6, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.15, currentLap: 4, tNow: 1100 });
+  // Then trigger black flag mid-lap
+  t.tick({ trackSurface: 3, incidentCount: 6, sessionFlags: FLAG_BLACK, speed: 30, onPitRoad: false, lapDistPct: 0.5, currentLap: 4, tNow: 1500 });
+
+  // Lap completes 8s slower than clean median
+  t.onLapComplete(4, 98.0, true);
+
+  const s = t.getState();
+  assert.equal(s.offtracks.count, 1);                 // counted
+  assert.equal(s.penalties.count, 1);                 // counted
+  assert.equal(s.offtracks.timeLost, 0);              // NOT credited (penalty wins)
+  assert.equal(s.penalties.timeLost, 8.0);            // credited
+  assert.equal(s.slowLaps.count, 0);                  // not slow (other buckets won)
+});
+
+test('attribution: offtrack-only lap → time → offtrack bucket', () => {
+  const t = createIncidentTracker();
+  t.init();
+  t.onLapComplete(2, 90.0, true);
+  t.onLapComplete(3, 90.0, true);
+
+  t.tick({ trackSurface: 0, incidentCount: 5, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.1, currentLap: 4, tNow: 1000 });
+  t.tick({ trackSurface: 3, incidentCount: 6, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.15, currentLap: 4, tNow: 1100 });
+  t.onLapComplete(4, 95.0, true);
+
+  const s = t.getState();
+  assert.equal(s.offtracks.count, 1);
+  assert.equal(s.offtracks.timeLost, 5.0);
+  assert.equal(s.slowLaps.count, 0);
+  assert.equal(s.slowLaps.timeLost, 0);
+});
+
+test('attribution: small loss (< floor) is not attributed anywhere', () => {
+  const t = createIncidentTracker();
+  t.init();
+  t.onLapComplete(2, 90.0, true);
+  t.onLapComplete(3, 90.0, true);
+  t.onLapComplete(4, 90.2, true);  // +0.2s, below 0.3 floor
+  const s = t.getState();
+  assert.equal(s.slowLaps.count, 0);
+  assert.equal(s.slowLaps.timeLost, 0);
+});
+
+test('attribution: rounding to 0.1s in getState output', () => {
+  const t = createIncidentTracker();
+  t.init();
+  // Seed two clean 90.0s laps
+  t.onLapComplete(2, 90.0, true);
+  t.onLapComplete(3, 90.0, true);
+  // Slow lap of +5.123s — above the 4.5s threshold, should be counted
+  t.onLapComplete(4, 95.123, true);
+  const lost = t.getState().slowLaps.timeLost;
+  // Verify rounding to 1 decimal place
+  assert.equal(lost, Math.round(lost * 10) / 10);
+  // And that it's the expected rounded value (+5.123 → 5.1)
+  assert.equal(lost, 5.1);
+});
