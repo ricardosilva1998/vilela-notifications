@@ -24,6 +24,12 @@ const { startVoiceInput, stopVoiceInput, setVoiceChatWindow } = require('./voice
 const { connectToChannel: connectTwitchChat, disconnect: disconnectTwitchChat } = require('./twitchChat');
 const sessionRecorder = require('./sessionRecorder');
 const pitwallUplink = require('./pitwallUplink');
+const {
+  deriveMode,
+  isOverlayVisibleInMode,
+  buildDefaultVisibility,
+  toggleVisibility,
+} = require('./overlayVisibility');
 
 // Auto-updater
 let autoUpdater;
@@ -37,7 +43,7 @@ let tray = null;
 let controlWindow = null;
 const overlayWindows = {};
 // Lock feature removed — overlays are always unlocked and draggable
-let autoHideOverlays = true;
+let currentMode = 'notRunning';
 let quitting = false;
 
 // Persisted settings
@@ -66,6 +72,20 @@ function resolveIconPath() {
 }
 const APP_ICON_PATH = resolveIconPath();
 
+function applyVisibilityForMode(mode) {
+  currentMode = mode;
+  Object.entries(overlayWindows).forEach(([id, win]) => {
+    if (!win || win.isDestroyed()) return;
+    if (isOverlayVisibleInMode(settings.overlayVisibility, id, mode)) {
+      try { win.show(); } catch (e) {}
+    } else {
+      try { win.hide(); } catch (e) {}
+    }
+  });
+  if (controlWindow && !controlWindow.isDestroyed()) {
+    try { controlWindow.webContents.send('mode-changed', { mode }); } catch (e) {}
+  }
+}
 
 const OVERLAYS = [
   { id: 'standings', name: 'Standings', width: 900, height: 800 },
@@ -129,7 +149,17 @@ app.on('ready', () => {
 
   // Load persisted settings
   settings = loadSettings();
-  if (settings.autoHideOverlays !== undefined) autoHideOverlays = settings.autoHideOverlays;
+
+  // One-shot migration: convert legacy autoHideOverlays into per-overlay overlayVisibility.
+  // Idempotent — only runs if overlayVisibility has not been created yet.
+  if (!settings.overlayVisibility) {
+    settings.overlayVisibility = buildDefaultVisibility(
+      OVERLAYS.map(o => o.id),
+      settings.autoHideOverlays
+    );
+    delete settings.autoHideOverlays;
+    saveSettings(settings);
+  }
 
   // One-shot migration: race-duration window grew in v3.23.1 to fit the
   // new incidents footer. Anyone who saved with the old default of 80
@@ -299,14 +329,7 @@ function startBridge() {
     if (controlWindow && !controlWindow.isDestroyed()) {
       controlWindow.webContents.send('iracing-status', status);
     }
-    // Auto-hide/show overlays based on iRacing connection
-    if (autoHideOverlays) {
-      if (status.iracing) {
-        Object.values(overlayWindows).forEach(w => { if (w && !w.isDestroyed()) w.show(); });
-      } else {
-        Object.values(overlayWindows).forEach(w => { if (w && !w.isDestroyed()) w.hide(); });
-      }
-    }
+    applyVisibilityForMode(deriveMode(status));
   });
 
   // Start voice input system only if voice chat overlay is enabled
@@ -327,15 +350,11 @@ function startBridge() {
 
   showControlWindow();
 
-  // Restore enabled overlays from settings (hidden if autoHide is on — shown when iRacing connects)
+  // Restore enabled overlays from settings, then apply visibility for the current mode
+  // (notRunning at launch — telemetry status callback will flip us to garage/onTrack shortly).
   if (settings.enabledOverlays && Array.isArray(settings.enabledOverlays)) {
     settings.enabledOverlays.forEach(id => createOverlayWindow(id));
-    // Hide all overlays initially when autoHide is on (iRacing isn't connected yet)
-    if (autoHideOverlays) {
-      setTimeout(() => {
-        Object.values(overlayWindows).forEach(w => { if (w && !w.isDestroyed()) w.hide(); });
-      }, 200);
-    }
+    setTimeout(() => applyVisibilityForMode(currentMode), 200);
   }
 
   // Restore session backup after update (if exists)
@@ -464,7 +483,6 @@ function startBridge() {
 
 function persistSettings() {
   if (quitting) return;
-  settings.autoHideOverlays = autoHideOverlays;
   settings.enabledOverlays = Object.keys(overlayWindows);
   // Preserve pitwall broadcast team selection across updates
   settings.pitwallBroadcastTeamIds = pitwallUplink.getBroadcastTeamIds();
@@ -608,6 +626,12 @@ function createOverlayWindow(overlayId) {
     setVoiceChatWindow(win);
   }
 
+  // Respect current mode — if this overlay is hidden in the active mode,
+  // hide it immediately so it does not flash visible before the next mode transition.
+  if (!isOverlayVisibleInMode(settings.overlayVisibility, overlayId, currentMode)) {
+    try { win.hide(); } catch (e) {}
+  }
+
   persistSettings();
 }
 
@@ -709,11 +733,6 @@ ipcMain.on('get-window-size', (event) => {
   }
 });
 
-ipcMain.on('toggle-autohide', (event, enabled) => {
-  autoHideOverlays = enabled;
-  persistSettings();
-});
-
 ipcMain.on('save-overlay-settings', (event, overlayId, overlaySettings) => {
   if (!settings.overlayCustom) settings.overlayCustom = {};
   settings.overlayCustom[overlayId] = overlaySettings;
@@ -787,7 +806,31 @@ ipcMain.on('get-overlay-states', (event) => {
   const states = {};
   OVERLAYS.forEach(o => { states[o.id] = !!overlayWindows[o.id]; });
   event.reply('overlay-states', states);
-  event.reply('autohide-state', autoHideOverlays);
+});
+
+ipcMain.on('get-visibility', (event) => {
+  event.returnValue = {
+    visibility: settings.overlayVisibility || {},
+    currentMode,
+  };
+});
+
+ipcMain.on('set-visibility', (event, payload) => {
+  if (!payload || typeof payload !== 'object') return;
+  const { overlayId, mode, value } = payload;
+  if (!overlayId || !mode) return;
+  try {
+    settings.overlayVisibility = toggleVisibility(settings.overlayVisibility, overlayId, mode, value);
+  } catch (e) {
+    return; // unknown mode
+  }
+  saveSettings(settings);
+  applyVisibilityForMode(currentMode);
+  if (controlWindow && !controlWindow.isDestroyed()) {
+    try {
+      controlWindow.webContents.send('visibility-changed', { overlayId, mode, value: !!value });
+    } catch (e) {}
+  }
 });
 
 ipcMain.on('get-overlay-settings', (event, overlayId) => {

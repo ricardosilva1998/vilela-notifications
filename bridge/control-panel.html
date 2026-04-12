@@ -592,6 +592,25 @@
       font-size: 11px; font-weight: 600; z-index: 300;
     }
 
+    /* ─── Visibility matrix ─────────────────────────────── */
+    .vis-mode-pills { display:flex; gap:8px; margin:12px 0 18px; }
+    .vis-mode-pill {
+      padding:6px 12px; border-radius:999px; font-size:10px; font-weight:600;
+      text-transform:uppercase; letter-spacing:0.5px;
+      background:rgba(255,255,255,0.05); color:#5c5b6e;
+      border:1px solid rgba(255,255,255,0.08);
+    }
+    .vis-mode-pill.active { background:rgba(145,70,255,0.18); color:#c7aafe; border-color:rgba(145,70,255,0.4); }
+    .vis-table { width:100%; border-collapse:collapse; font-size:12px; }
+    .vis-table th, .vis-table td { padding:10px 8px; text-align:left; border-bottom:1px solid rgba(255,255,255,0.05); }
+    .vis-table th { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#8b8a9e; }
+    .vis-table th.vis-col { cursor:pointer; text-align:center; user-select:none; }
+    .vis-table th.vis-col:hover { color:#c7aafe; }
+    .vis-table td.vis-col { text-align:center; }
+    .vis-table .vis-row-icon { font-size:16px; margin-right:8px; }
+    .vis-table .vis-row-name { color:#e8e6f0; }
+    .vis-table input[type="checkbox"] { accent-color:#9146ff; width:16px; height:16px; cursor:pointer; }
+
   </style>
 </head>
 <body>
@@ -628,6 +647,9 @@
         </div>
         <div class="sidebar-item" data-panel="broadcast" onclick="navigateTo('broadcast')">
           <span class="sidebar-icon" style="color:#3ecf8e;">&#128225;</span> Broadcasting
+        </div>
+        <div class="sidebar-item" data-panel="visibility" onclick="navigateTo('visibility')">
+          <span class="sidebar-icon" style="color:#9146ff;">&#128065;</span> Visibility
         </div>
       </div>
       <div class="sidebar-divider"></div>
@@ -729,6 +751,9 @@
       <!-- ═══ BROADCASTING PANEL ═══ -->
       <div class="content-panel" id="panel-broadcast"></div>
 
+      <!-- ═══ VISIBILITY PANEL ═══ -->
+      <div class="content-panel" id="panel-visibility"></div>
+
       <!-- ═══ OVERVIEW PANEL ═══ -->
       <div class="content-panel active" id="panel-overview">
         <div class="status-card">
@@ -742,10 +767,6 @@
         <div class="section-header">Overlays</div>
         <div class="overview-grid" id="overview-grid"></div>
 
-        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#8b8a9e;margin-top:10px;cursor:pointer;">
-          <input type="checkbox" id="autohide-check" checked onchange="toggleAutoHide(this.checked)" style="accent-color:#9146ff;">
-          Auto-hide overlays when iRacing closes
-        </label>
 
         <div style="display:flex;gap:8px;margin-top:14px;">
           <button onclick="saveAllOverlays()" style="flex:1;padding:8px;background:rgba(145,70,255,0.15);border:1px solid rgba(145,70,255,0.3);border-radius:6px;color:#9146ff;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;">Save All Settings</button>
@@ -1077,7 +1098,6 @@
         { key: 'showIRatingGain', label: 'Show estimated iRating gain/loss', type: 'checkbox', default: true },
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       relative: [
         { key: 'carsAhead', label: 'Cars ahead', type: 'number', default: '5', min: 1, max: 15 },
@@ -1087,7 +1107,6 @@
         { key: 'showIRatingGain', label: 'Show estimated iRating gain/loss', type: 'checkbox', default: true },
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       fuel: [
         { key: 'showAvg5', label: 'Show Avg 5 Laps', type: 'checkbox', default: true },
@@ -1098,7 +1117,6 @@
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       wind: [
         { key: 'speedUnit', label: 'Speed unit', type: 'select', default: 'kmh', options: [
@@ -1111,20 +1129,17 @@
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       proximity: [
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       chat: [
         { key: 'twitchChannel', label: 'Twitch Channel', type: 'text', default: '', placeholder: 'your_channel_name' },
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       trackmap: [
         { key: 'overlaySize', label: 'Overlay Size', type: 'select', default: 'medium', options: [
@@ -1138,7 +1153,6 @@
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       voicechat: [
         { key: 'openaiKey', label: 'OpenAI API Key (for Whisper)', type: 'password', default: '', placeholder: 'sk-...' },
@@ -1162,7 +1176,6 @@
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       inputs: [
         { key: 'showGraph', label: 'Telemetry Graph', type: 'checkbox', default: true },
@@ -1177,7 +1190,6 @@
         { key: 'fontSize', label: 'Font size (px)', type: 'number', default: '11', min: 8, max: 18 },
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       drivercard: [
         { key: 'helmetStyle', label: 'Helmet Style', type: 'select', default: 'helmet', options: [
@@ -1186,12 +1198,10 @@
         ]},
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       stintlaps: [
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       weather: [
         { key: 'speedUnit', label: 'Wind Speed Unit', type: 'select', default: 'kmh', options: [
@@ -1200,46 +1210,38 @@
         ]},
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       raceduration: [
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
         { key: 'showIncidents', label: 'Incident counters (off-tracks, penalties, slow laps)', type: 'checkbox', default: true },
       ],
       pitstrategy: [
         { key: 'maxDrivers', label: 'Max cars to show', type: 'number', default: '5', min: 1, max: 15 },
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       lapcompare: [
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       livestats: [
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       pittimer: [
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       discord: [
         { key: 'discordUserId', label: 'Discord User ID', type: 'text', default: '', placeholder: 'Right-click your name > Copy User ID' },
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
       ],
       spotify: [
         { type: 'section', label: 'Settings' },
         { key: 'showHeader', label: 'Show header bar', type: 'checkbox', default: true },
         { key: 'showControls', label: 'Show media controls', type: 'checkbox', default: true },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: false },
         { type: 'section', label: 'Size & Position' },
         { key: 'scale', label: 'Scale', type: 'select', default: '100', options: ['40','50','60','70','80','90','100','110','120','130','140','150','175','200'] },
         { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
@@ -1252,9 +1254,9 @@
     // Reorganize all overlay settings into sections
     Object.keys(CUSTOMIZE_FIELDS).forEach(function(id) {
       var fields = CUSTOMIZE_FIELDS[id];
-      // Remove posX, posY, autoHide, fontSize, rowHeight, showIRatingGain from current positions
+      // Remove posX, posY, fontSize, rowHeight, showIRatingGain from current positions
       var extracted = {};
-      ['posX', 'posY', 'autoHide', 'fontSize', 'rowHeight', 'showIRatingGain', 'maxMyClass', 'maxOtherClasses', 'sofDisplay'].forEach(function(key) {
+      ['posX', 'posY', 'fontSize', 'rowHeight', 'showIRatingGain', 'maxMyClass', 'maxOtherClasses', 'sofDisplay'].forEach(function(key) {
         var idx = fields.findIndex(function(f) { return f.key === key; });
         if (idx >= 0) { extracted[key] = fields.splice(idx, 1)[0]; }
       });
@@ -1263,7 +1265,6 @@
       fields.unshift(
         { key: '_section_settings', type: 'section', label: 'Settings' },
         { key: 'showHeader', label: 'Show header bar', type: 'checkbox', default: true },
-        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: (extracted.autoHide || {}).default !== undefined ? extracted.autoHide.default : true },
         { key: 'scale', label: 'Scale', type: 'select', default: '100', options: [
           { value: '40', label: '40%' }, { value: '50', label: '50%' }, { value: '60', label: '60%' },
           { value: '70', label: '70%' }, { value: '80', label: '80%' }, { value: '90', label: '90%' },
@@ -1431,8 +1432,9 @@
         resetBroadcastPending();
         renderBroadcastPage();
       }
+      if (panelId === 'visibility') renderVisibilityPage();
       // Track overlay panels in Recent (skip utility pages and dynamic pages)
-      const RECENT_EXCLUDE = new Set(['overview', 'favorites', 'recent', 'account', 'updates', 'logs', 'about']);
+      const RECENT_EXCLUDE = new Set(['overview', 'favorites', 'recent', 'visibility', 'account', 'updates', 'logs', 'about']);
       if (!RECENT_EXCLUDE.has(panelId) && overlays.find(o => o.id === panelId)) {
         uiState.uiRecent = _pushRecentPure(uiState.uiRecent || [], panelId);
         saveUiState({ uiRecent: uiState.uiRecent });
@@ -1645,6 +1647,93 @@
       `;
 
       panel.innerHTML = header + statusBar + `<div class="tb-grid">${cards}</div>` + actions;
+    }
+
+    // ─── Visibility page ─────────────────────────────────
+    let visibilityState = { visibility: {}, currentMode: 'notRunning' };
+
+    function refreshVisibilityStateFromMain() {
+      try {
+        visibilityState = ipcRenderer.sendSync('get-visibility') || { visibility: {}, currentMode: 'notRunning' };
+      } catch (e) {
+        visibilityState = { visibility: {}, currentMode: 'notRunning' };
+      }
+    }
+
+    function isVisibleCell(overlayId, mode) {
+      const vis = visibilityState.visibility;
+      const entry = vis && vis[overlayId];
+      if (!entry) return true;
+      return entry[mode] !== false;
+    }
+
+    function renderVisibilityPage() {
+      const panel = document.getElementById('panel-visibility');
+      if (!panel) return;
+      refreshVisibilityStateFromMain();
+
+      const mode = visibilityState.currentMode;
+      const modePill = (key, label) => {
+        const active = (mode === key) ? ' active' : '';
+        return '<span class="vis-mode-pill' + active + '" data-mode="' + key + '">' + label + '</span>';
+      };
+
+      const rows = overlays.map(ov => {
+        const cell = (modeKey) => {
+          const checked = isVisibleCell(ov.id, modeKey) ? 'checked' : '';
+          return '<td class="vis-col"><input type="checkbox" ' + checked +
+            ' onchange="setVisibilityCell(\'' + ov.id + '\', \'' + modeKey + '\', this.checked)"></td>';
+        };
+        return '<tr data-overlay-id="' + ov.id + '">' +
+          '<td><span class="vis-row-icon">' + ov.icon + '</span><span class="vis-row-name">' + ov.name + '</span></td>' +
+          cell('notRunning') + cell('garage') + cell('onTrack') +
+          '</tr>';
+      }).join('');
+
+      panel.innerHTML =
+        '<div style="display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700;color:#e8e6f0;margin-bottom:6px;">' +
+          '<span style="color:#9146ff;font-size:18px;">👁</span> Overlay visibility per state' +
+        '</div>' +
+        '<div style="font-size:11px;color:#5c5b6e;margin-bottom:12px;">' +
+          'Pick which overlays show in each state. Changes save instantly. Click a column header to toggle that whole column.' +
+        '</div>' +
+        '<div class="vis-mode-pills">' +
+          modePill('notRunning', 'Not running') +
+          modePill('garage', 'Garage') +
+          modePill('onTrack', 'On track') +
+        '</div>' +
+        '<table class="vis-table">' +
+          '<thead><tr>' +
+            '<th>Overlay</th>' +
+            '<th class="vis-col" onclick="bulkToggleVisibilityColumn(\'notRunning\')">Not Running</th>' +
+            '<th class="vis-col" onclick="bulkToggleVisibilityColumn(\'garage\')">Garage</th>' +
+            '<th class="vis-col" onclick="bulkToggleVisibilityColumn(\'onTrack\')">On Track</th>' +
+          '</tr></thead>' +
+          '<tbody>' + rows + '</tbody>' +
+        '</table>';
+    }
+
+    function setVisibilityCell(overlayId, mode, value) {
+      // Optimistic local update so the UI reflects immediately
+      if (!visibilityState.visibility[overlayId]) {
+        visibilityState.visibility[overlayId] = { notRunning: true, garage: true, onTrack: true };
+      }
+      visibilityState.visibility[overlayId][mode] = !!value;
+      ipcRenderer.send('set-visibility', { overlayId, mode, value: !!value });
+    }
+
+    function bulkToggleVisibilityColumn(mode) {
+      // If every cell in the column is currently true, turn them all off. Otherwise turn them all on.
+      const allOn = overlays.every(ov => isVisibleCell(ov.id, mode));
+      const target = !allOn;
+      overlays.forEach(ov => {
+        if (!visibilityState.visibility[ov.id]) {
+          visibilityState.visibility[ov.id] = { notRunning: true, garage: true, onTrack: true };
+        }
+        visibilityState.visibility[ov.id][mode] = target;
+        ipcRenderer.send('set-visibility', { overlayId: ov.id, mode, value: target });
+      });
+      renderVisibilityPage();
     }
 
     // ─── Toggle team broadcast (updates pending state only) ──
@@ -2186,10 +2275,6 @@
       });
     }
 
-    // ─── Auto-hide ─────────────────────────────────────────
-    function toggleAutoHide(enabled) {
-      ipcRenderer.send('toggle-autohide', enabled);
-    }
 
     // ─── Updates ─────────────────────────────────────────────
     const RELEASE_NOTES = [
@@ -2435,10 +2520,6 @@
       if (yEl) yEl.value = y;
     });
 
-    ipcRenderer.on('autohide-state', (event, enabled) => {
-      const check = document.getElementById('autohide-check');
-      if (check) check.checked = enabled;
-    });
 
     ipcRenderer.send('get-overlay-states');
 
@@ -2751,6 +2832,20 @@
 
     // Server-pushed updates re-render the new Broadcasting tab
     ipcRenderer.on('pitwall-teams', () => renderBroadcastPage());
+
+    ipcRenderer.on('mode-changed', (event, payload) => {
+      if (payload && payload.mode) visibilityState.currentMode = payload.mode;
+      if (currentPanel === 'visibility') renderVisibilityPage();
+    });
+
+    ipcRenderer.on('visibility-changed', (event, payload) => {
+      if (!payload || !payload.overlayId || !payload.mode) return;
+      if (!visibilityState.visibility[payload.overlayId]) {
+        visibilityState.visibility[payload.overlayId] = { notRunning: true, garage: true, onTrack: true };
+      }
+      visibilityState.visibility[payload.overlayId][payload.mode] = !!payload.value;
+      if (currentPanel === 'visibility') renderVisibilityPage();
+    });
 
     // Search field interactions
     (function () {
