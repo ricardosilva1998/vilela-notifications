@@ -268,12 +268,6 @@
       border-color: rgba(240,68,56,0.25);
     }
     .toggle-panel .reset-btn:hover { background: rgba(240,68,56,0.2); }
-    .toggle-panel .lock-btn {
-      background: var(--accent-glow);
-      color: var(--accent);
-      border-color: var(--border-focus);
-    }
-    .toggle-panel .lock-btn:hover { background: rgba(145,70,255,0.25); }
 
     /* ── Gridstack Overrides ── */
     .grid-stack {
@@ -342,10 +336,6 @@
       border-bottom: 2px solid var(--text-muted);
       opacity: 0.5;
     }
-
-    /* Lock mode — disable dragging visually */
-    .grid-stack.locked .grid-stack-item > .ui-resizable-se { display: none; }
-    .grid-stack.locked .grid-stack-item-content { cursor: default; }
   </style>
 </head>
 <body>
@@ -433,7 +423,6 @@
 
     var LAYOUT_KEY = 'pitwall-gridstack-v2';
     var HIDDEN_KEY = 'pitwall-hidden-v2';
-    var LOCK_KEY = 'pitwall-locked-v1';
 
     var grid = null;
     var ws = null;
@@ -441,7 +430,6 @@
     var selectedDriverId = null;
     var onlineDrivers = new Set();
     var hiddenPanels = new Set();
-    var isLocked = false;
 
     // ── Gridstack Init ──────────────────────────────────────────
     function initGrid() {
@@ -450,9 +438,6 @@
         var stored = localStorage.getItem(HIDDEN_KEY);
         if (stored) JSON.parse(stored).forEach(function(id) { hiddenPanels.add(id); });
       } catch(e) {}
-
-      // Load lock state
-      try { isLocked = localStorage.getItem(LOCK_KEY) === '1'; } catch(e) {}
 
       // Load saved layout or use defaults
       var layout = loadLayout();
@@ -466,10 +451,10 @@
         cellHeight: cellH,
         margin: 1,
         animate: true,
-        float: false,
+        float: true,
         disableOneColumnMode: true,
         removable: false,
-        resizable: { handles: 'e,se,s' },
+        resizable: { handles: 'n,e,s,w,ne,nw,se,sw' },
       }, '#pitwall-grid');
 
       // Add widgets
@@ -477,12 +462,10 @@
         addWidget(item);
       });
 
-      // Apply lock state
-      if (isLocked) {
-        grid.enableMove(false);
-        grid.enableResize(false);
-        document.getElementById('pitwall-grid').classList.add('locked');
-      }
+      // Default: viewing mode — grid is present but drag/resize are off
+      // until the user clicks Edit Layout (Task 2).
+      grid.enableMove(false);
+      grid.enableResize(false);
 
       // Save on change
       grid.on('change', function() { saveCurrentLayout(); });
@@ -541,7 +524,6 @@
         html += '<label><input type="checkbox" data-panel-id="' + id + '" ' + checked + ' onchange="toggleOverlay(\'' + id + '\', this.checked)"> ' + PANEL_LABELS[id] + '</label>';
       });
       html += '<div class="toggle-actions">';
-      html += '<button class="lock-btn" id="lock-btn" onclick="toggleLock()">' + (isLocked ? 'Unlock Layout' : 'Lock Layout') + '</button>';
       html += '<button class="reset-btn" onclick="resetLayout()">Reset</button>';
       html += '</div>';
       panel.innerHTML = html;
@@ -598,19 +580,9 @@
       saveCurrentLayout();
     };
 
-    window.toggleLock = function() {
-      isLocked = !isLocked;
-      grid.enableMove(!isLocked);
-      grid.enableResize(!isLocked);
-      document.getElementById('pitwall-grid').classList.toggle('locked', isLocked);
-      document.getElementById('lock-btn').textContent = isLocked ? 'Unlock Layout' : 'Lock Layout';
-      localStorage.setItem(LOCK_KEY, isLocked ? '1' : '0');
-    };
-
     window.resetLayout = function() {
       localStorage.removeItem(LAYOUT_KEY);
       localStorage.removeItem(HIDDEN_KEY);
-      localStorage.removeItem(LOCK_KEY);
       location.reload();
     };
 
