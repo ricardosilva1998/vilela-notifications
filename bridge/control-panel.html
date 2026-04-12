@@ -592,6 +592,26 @@
       font-size: 11px; font-weight: 600; z-index: 300;
     }
 
+    /* ─── Visibility matrix ─────────────────────────────── */
+    .vis-mode-pills { display:flex; gap:8px; margin:12px 0 18px; }
+    .vis-mode-pill {
+      padding:6px 12px; border-radius:999px; font-size:10px; font-weight:600;
+      text-transform:uppercase; letter-spacing:0.5px;
+      background:rgba(255,255,255,0.05); color:#5c5b6e;
+      border:1px solid rgba(255,255,255,0.08);
+    }
+    .vis-mode-pill.active { background:rgba(145,70,255,0.18); color:#c7aafe; border-color:rgba(145,70,255,0.4); }
+    .vis-table { width:100%; border-collapse:collapse; font-size:12px; }
+    .vis-table th, .vis-table td { padding:10px 8px; text-align:left; border-bottom:1px solid rgba(255,255,255,0.05); }
+    .vis-table th { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#8b8a9e; }
+    .vis-table th.vis-col { cursor:pointer; text-align:center; user-select:none; }
+    .vis-table th.vis-col:hover { color:#c7aafe; }
+    .vis-table td.vis-col { text-align:center; }
+    .vis-table .vis-row-icon { font-size:16px; margin-right:8px; }
+    .vis-table .vis-row-name { color:#e8e6f0; }
+    .vis-table input[type="checkbox"] { accent-color:#9146ff; width:16px; height:16px; cursor:pointer; }
+    .vis-table tr.vis-active-mode td { background:rgba(145,70,255,0.06); }
+
   </style>
 </head>
 <body>
@@ -1630,11 +1650,91 @@
       panel.innerHTML = header + statusBar + `<div class="tb-grid">${cards}</div>` + actions;
     }
 
-    // ─── Visibility page (placeholder, populated in task 9) ────
+    // ─── Visibility page ─────────────────────────────────
+    let visibilityState = { visibility: {}, currentMode: 'notRunning' };
+
+    function refreshVisibilityStateFromMain() {
+      try {
+        visibilityState = ipcRenderer.sendSync('get-visibility') || { visibility: {}, currentMode: 'notRunning' };
+      } catch (e) {
+        visibilityState = { visibility: {}, currentMode: 'notRunning' };
+      }
+    }
+
+    function isVisibleCell(overlayId, mode) {
+      const vis = visibilityState.visibility;
+      const entry = vis && vis[overlayId];
+      if (!entry) return true;
+      return entry[mode] !== false;
+    }
+
     function renderVisibilityPage() {
       const panel = document.getElementById('panel-visibility');
       if (!panel) return;
-      panel.innerHTML = '<div style="padding:20px;color:#8b8a9e;">Loading…</div>';
+      refreshVisibilityStateFromMain();
+
+      const mode = visibilityState.currentMode;
+      const modePill = (key, label) => {
+        const active = (mode === key) ? ' active' : '';
+        return '<span class="vis-mode-pill' + active + '" data-mode="' + key + '">' + label + '</span>';
+      };
+
+      const rows = overlays.map(ov => {
+        const cell = (modeKey) => {
+          const checked = isVisibleCell(ov.id, modeKey) ? 'checked' : '';
+          return '<td class="vis-col"><input type="checkbox" ' + checked +
+            ' onchange="setVisibilityCell(\'' + ov.id + '\', \'' + modeKey + '\', this.checked)"></td>';
+        };
+        return '<tr data-overlay-id="' + ov.id + '">' +
+          '<td><span class="vis-row-icon">' + ov.icon + '</span><span class="vis-row-name">' + ov.name + '</span></td>' +
+          cell('notRunning') + cell('garage') + cell('onTrack') +
+          '</tr>';
+      }).join('');
+
+      panel.innerHTML =
+        '<div style="display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700;color:#e8e6f0;margin-bottom:6px;">' +
+          '<span style="color:#9146ff;font-size:18px;">👁</span> Overlay visibility per state' +
+        '</div>' +
+        '<div style="font-size:11px;color:#5c5b6e;margin-bottom:12px;">' +
+          'Pick which overlays show in each state. Changes save instantly. Click a column header to toggle that whole column.' +
+        '</div>' +
+        '<div class="vis-mode-pills">' +
+          modePill('notRunning', 'Not running') +
+          modePill('garage', 'Garage') +
+          modePill('onTrack', 'On track') +
+        '</div>' +
+        '<table class="vis-table">' +
+          '<thead><tr>' +
+            '<th>Overlay</th>' +
+            '<th class="vis-col" onclick="bulkToggleVisibilityColumn(\'notRunning\')">Not Running</th>' +
+            '<th class="vis-col" onclick="bulkToggleVisibilityColumn(\'garage\')">Garage</th>' +
+            '<th class="vis-col" onclick="bulkToggleVisibilityColumn(\'onTrack\')">On Track</th>' +
+          '</tr></thead>' +
+          '<tbody>' + rows + '</tbody>' +
+        '</table>';
+    }
+
+    function setVisibilityCell(overlayId, mode, value) {
+      // Optimistic local update so the UI reflects immediately
+      if (!visibilityState.visibility[overlayId]) {
+        visibilityState.visibility[overlayId] = { notRunning: true, garage: true, onTrack: true };
+      }
+      visibilityState.visibility[overlayId][mode] = !!value;
+      ipcRenderer.send('set-visibility', { overlayId, mode, value: !!value });
+    }
+
+    function bulkToggleVisibilityColumn(mode) {
+      // If every cell in the column is currently true, turn them all off. Otherwise turn them all on.
+      const allOn = overlays.every(ov => isVisibleCell(ov.id, mode));
+      const target = !allOn;
+      overlays.forEach(ov => {
+        if (!visibilityState.visibility[ov.id]) {
+          visibilityState.visibility[ov.id] = { notRunning: true, garage: true, onTrack: true };
+        }
+        visibilityState.visibility[ov.id][mode] = target;
+        ipcRenderer.send('set-visibility', { overlayId: ov.id, mode, value: target });
+      });
+      renderVisibilityPage();
     }
 
     // ─── Toggle team broadcast (updates pending state only) ──
@@ -2733,6 +2833,20 @@
 
     // Server-pushed updates re-render the new Broadcasting tab
     ipcRenderer.on('pitwall-teams', () => renderBroadcastPage());
+
+    ipcRenderer.on('mode-changed', (event, payload) => {
+      if (payload && payload.mode) visibilityState.currentMode = payload.mode;
+      if (currentPanel === 'visibility') renderVisibilityPage();
+    });
+
+    ipcRenderer.on('visibility-changed', (event, payload) => {
+      if (!payload || !payload.overlayId || !payload.mode) return;
+      if (!visibilityState.visibility[payload.overlayId]) {
+        visibilityState.visibility[payload.overlayId] = { notRunning: true, garage: true, onTrack: true };
+      }
+      visibilityState.visibility[payload.overlayId][payload.mode] = !!payload.value;
+      if (currentPanel === 'visibility') renderVisibilityPage();
+    });
 
     // Search field interactions
     (function () {
