@@ -19,6 +19,7 @@ function createIncidentTracker() {
       offtrackWindow: [],          // [tNow, ...] of recent OffTrack timestamps (3s window)
       lastIncidentCount: null,     // PlayerCarMyIncidentCount last tick
       lastSessionFlags: 0,         // CarIdxSessionFlags[playerCarIdx] last tick
+      firstTick: true,             // true until first tick completes (seeds lastSessionFlags)
 
       // Per-lap accumulators (reset by onLapComplete)
       thisLapHadOfftrack: false,
@@ -53,6 +54,12 @@ function createIncidentTracker() {
 
   const OFFTRACK_WINDOW_MS = 3000;
 
+  const PENALTY_BITS = [
+    { bit: 0x10000,  type: 'black'   },
+    { bit: 0x100000, type: 'repair'  },
+    { bit: 0x80000,  type: 'furled'  },
+  ];
+
   function tick(snapshot) {
     const tNow = snapshot.tNow;
 
@@ -73,6 +80,22 @@ function createIncidentTracker() {
         state.thisLapHadOfftrack = true;
       }
       state.lastIncidentCount = snapshot.incidentCount;
+    }
+
+    // Penalty bit transitions (edge-triggered)
+    if (state.firstTick) {
+      state.lastSessionFlags = snapshot.sessionFlags;
+      state.firstTick = false;
+    } else {
+      for (const { bit } of PENALTY_BITS) {
+        const wasSet = (state.lastSessionFlags & bit) !== 0;
+        const nowSet = (snapshot.sessionFlags & bit) !== 0;
+        if (!wasSet && nowSet) {
+          state.penalties.count += 1;
+          state.thisLapHadPenalty = true;
+        }
+      }
+      state.lastSessionFlags = snapshot.sessionFlags;
     }
   }
 

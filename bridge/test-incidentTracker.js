@@ -83,3 +83,51 @@ test('offtrack: count decreasing then re-rising still detects later increment', 
   t.tick({ trackSurface: 3, incidentCount: 4, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.4, currentLap: 2, tNow: 1300 });
   assert.equal(t.getState().offtracks.count, 1);
 });
+
+// iRacing flag bits
+const FLAG_BLACK   = 0x10000;
+const FLAG_REPAIR  = 0x100000;  // meatball
+const FLAG_FURLED  = 0x80000;   // move-over
+
+test('penalty: increments on transition into black flag', () => {
+  const t = createIncidentTracker();
+  t.init();
+  t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: 0,           speed: 30, onPitRoad: false, lapDistPct: 0.1, currentLap: 2, tNow: 1000 });
+  t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: FLAG_BLACK,  speed: 30, onPitRoad: false, lapDistPct: 0.2, currentLap: 2, tNow: 1100 });
+  assert.equal(t.getState().penalties.count, 1);
+});
+
+test('penalty: only fires once per continuous flag activation', () => {
+  const t = createIncidentTracker();
+  t.init();
+  t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: 0,           speed: 30, onPitRoad: false, lapDistPct: 0.1, currentLap: 2, tNow: 1000 });
+  t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: FLAG_BLACK,  speed: 30, onPitRoad: false, lapDistPct: 0.2, currentLap: 2, tNow: 1100 });
+  t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: FLAG_BLACK,  speed: 30, onPitRoad: false, lapDistPct: 0.3, currentLap: 2, tNow: 1200 });
+  t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: FLAG_BLACK,  speed: 30, onPitRoad: false, lapDistPct: 0.4, currentLap: 2, tNow: 1300 });
+  assert.equal(t.getState().penalties.count, 1);
+});
+
+test('penalty: fires again after flag clears and re-arms', () => {
+  const t = createIncidentTracker();
+  t.init();
+  t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: 0,           speed: 30, onPitRoad: false, lapDistPct: 0.1, currentLap: 2, tNow: 1000 });
+  t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: FLAG_BLACK,  speed: 30, onPitRoad: false, lapDistPct: 0.2, currentLap: 2, tNow: 1100 });
+  t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: 0,           speed: 30, onPitRoad: false, lapDistPct: 0.3, currentLap: 2, tNow: 1200 });
+  t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: FLAG_REPAIR, speed: 30, onPitRoad: false, lapDistPct: 0.4, currentLap: 2, tNow: 1300 });
+  assert.equal(t.getState().penalties.count, 2);
+});
+
+test('penalty: transition into multiple bits at once counts as one event per bit', () => {
+  const t = createIncidentTracker();
+  t.init();
+  t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.1, currentLap: 2, tNow: 1000 });
+  t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: FLAG_BLACK | FLAG_REPAIR, speed: 30, onPitRoad: false, lapDistPct: 0.2, currentLap: 2, tNow: 1100 });
+  assert.equal(t.getState().penalties.count, 2);
+});
+
+test('penalty: first tick seeds lastSessionFlags without firing', () => {
+  const t = createIncidentTracker();
+  t.init();
+  t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: FLAG_BLACK, speed: 30, onPitRoad: false, lapDistPct: 0.1, currentLap: 2, tNow: 1000 });
+  assert.equal(t.getState().penalties.count, 0);
+});
