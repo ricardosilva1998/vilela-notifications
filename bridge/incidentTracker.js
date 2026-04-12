@@ -51,8 +51,31 @@ function createIncidentTracker() {
 
   function round1(n) { return Math.round(n * 10) / 10; }
 
-  // Stub methods — fleshed out in later tasks
-  function tick(_snapshot) {}
+  const OFFTRACK_WINDOW_MS = 3000;
+
+  function tick(snapshot) {
+    const tNow = snapshot.tNow;
+
+    // Slide the offtrack window forward
+    while (state.offtrackWindow.length && state.offtrackWindow[0] < tNow - OFFTRACK_WINDOW_MS) {
+      state.offtrackWindow.shift();
+    }
+    if (snapshot.trackSurface === 0) {
+      state.offtrackWindow.push(tNow);
+    }
+
+    // Incident count edge detection
+    if (state.lastIncidentCount === null) {
+      state.lastIncidentCount = snapshot.incidentCount;
+    } else if (snapshot.incidentCount > state.lastIncidentCount) {
+      if (state.offtrackWindow.length > 0) {
+        state.offtracks.count += 1;
+        state.thisLapHadOfftrack = true;
+      }
+      state.lastIncidentCount = snapshot.incidentCount;
+    }
+  }
+
   function onLapComplete(_lapNum, _lapTime, _isValid) {}
   function onSessionChange(_newSessionType) {}
 
