@@ -276,18 +276,18 @@
       if (!data) return;
       currentSessionType = data.eventType || '';
       const sn = data.sessionNum ?? -1;
-      if (sn !== currentSessionNum && currentSessionNum >= 0) {
-        // Session changed — clear all laps if going backwards or new session
-        // Keep laps across qualify->race, clear on practice->qualify
-        const prevTag = sessionTag(currentSessionType);
-        // Actually, just let laps accumulate across all sessions (P/Q/R tags distinguish them)
-        // Only clear if session number went DOWN (rejoin/restart)
-        if (sn < currentSessionNum) {
-          for (const driver of allDrivers.values()) {
-            driver.laps = [];
-            driver.lastLap = -1;
-          }
-          log('[StintLaps] Session number decreased (' + currentSessionNum + ' -> ' + sn + '), cleared all laps');
+      if (sn >= 0 && sn !== currentSessionNum && currentSessionNum !== -1) {
+        for (const driver of allDrivers.values()) {
+          driver.laps = [];
+          driver.lastLap = -1;
+        }
+        log('[StintLaps] Session number changed (' + currentSessionNum + ' -> ' + sn + '), cleared all laps');
+      }
+      if (currentSessionNum === -1 && sn >= 0) {
+        // First session detected — clear any stale restored data
+        for (const driver of allDrivers.values()) {
+          driver.laps = [];
+          driver.lastLap = -1;
         }
       }
       currentSessionNum = sn;
