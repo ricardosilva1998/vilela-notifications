@@ -1211,26 +1211,11 @@
       `;
     }
 
+    // ─── Overview Grid ───────────────────────────────────────
     function buildOverviewGrid() {
       const grid = document.getElementById('overview-grid');
-      grid.innerHTML = '';
-      overlays.forEach(ov => {
-        const card = document.createElement('div');
-        card.className = 'overview-card';
-        const isProximity = ov.id === 'proximity';
-        card.innerHTML = `
-          <div class="overview-card-left">
-            <span class="overview-card-icon">${ov.icon}</span>
-            <span class="overview-card-name">${ov.name}</span>
-            ${isProximity ? '<span style="font-size:9px;color:#f79009;background:rgba(247,144,9,0.15);padding:1px 6px;border-radius:4px;margin-left:4px;font-weight:600;">Coming Soon</span>' : ''}
-          </div>
-          <label class="toggle">
-            <input type="checkbox" id="toggle-${ov.id}" ${isProximity ? 'disabled' : ''} onchange="toggleOverlay('${ov.id}', this.checked)">
-            <span class="slider"></span>
-          </label>
-        `;
-        grid.appendChild(card);
-      });
+      if (!grid) return;
+      grid.innerHTML = overlays.map(renderOverlayCard).join('');
     }
     buildOverviewGrid();
 
