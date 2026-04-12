@@ -1369,7 +1369,7 @@ async function startTelemetry(onStatusChange) {
           const playerStanding = standings.find(s => s.isPlayer);
           // Periodic debug: log player standing state for session recorder
           if (pollCount % 900 === 0 && playerStanding) {
-            log('[SessionRec] Debug: player carIdx=' + playerStanding.carIdx + ' lastLap=' + playerStanding.lastLap + ' lapsCompleted=' + playerStanding.lapsCompleted + ' recorderLastLap=' + _recorderLastLap + ' recording=' + (typeof sessionRecorder !== 'undefined'));
+            log('[SessionRec] Debug: player carIdx=' + playerStanding.carIdx + ' lastLap=' + playerStanding.lastLap + ' lapsCompleted=' + playerStanding.lapsCompleted + ' recorderLastLap=' + _recorderLastLap + ' isRecording=' + sessionRecorder.isRecording() + ' recLastLapNum=' + sessionRecorder.getLastLapNumber());
           }
           if (playerStanding && playerStanding.lastLap > 0 && playerStanding.lastLap !== _recorderLastLap) {
             _recorderLastLap = playerStanding.lastLap;

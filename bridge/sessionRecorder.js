@@ -106,6 +106,7 @@ function onSessionStart(sessionNum, trackName, carClass, carName, sessionType, c
 }
 
 function onLapComplete(lapData) {
+  log('onLapComplete called: lapNum=' + lapData.lapNumber + ' lapTime=' + (lapData.lapTime || 0).toFixed(3) + ' recording=' + _recording + ' lastLapNum=' + _lastLapNumber);
   if (!_recording) return;
   if (_lastLapNumber === lapData.lapNumber) return;
 
@@ -117,6 +118,8 @@ function onLapComplete(lapData) {
   if (lapData.inPit) isValid = false;
   if (lapData.lapTime <= 30) isValid = false;
   if (_bestLapTime > 0 && lapData.lapTime > _bestLapTime * 2) isValid = false;
+  // Filter reset laps in test drives — if >20s faster than best, it's a track reset not a real lap
+  if (_bestLapTime > 0 && lapData.lapTime > 0 && lapData.lapTime < _bestLapTime - 20) isValid = false;
 
   if (isValid && lapData.lapTime > 0 && (_bestLapTime === 0 || lapData.lapTime < _bestLapTime)) {
     _bestLapTime = lapData.lapTime;
@@ -329,4 +332,7 @@ function retryPendingUploads() {
   }
 }
 
-module.exports = { init, setIdentity, poll, onSessionStart, onLapComplete, onSessionEnd, flush, setRaceType };
+function isRecording() { return _recording; }
+function getLastLapNumber() { return _lastLapNumber; }
+
+module.exports = { init, setIdentity, poll, onSessionStart, onLapComplete, onSessionEnd, flush, setRaceType, isRecording, getLastLapNumber };
