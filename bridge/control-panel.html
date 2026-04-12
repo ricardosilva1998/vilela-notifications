@@ -1288,6 +1288,17 @@
       `;
     }
 
+    // ─── Toggle favorite (called from card star buttons) ─────
+    function toggleFavorite(overlayId) {
+      uiState.uiFavorites = _toggleFavoritePure(uiState.uiFavorites || [], overlayId);
+      saveUiState({ uiFavorites: uiState.uiFavorites });
+      // Re-render every page that shows cards so star icons stay in sync
+      buildOverviewGrid();
+      renderFavoritesPage();
+      renderRecentPage();
+    }
+    window.toggleFavorite = toggleFavorite;
+
     // ─── Toggle Overlay ──────────────────────────────────────
     function toggleOverlay(id, enabled) {
       ipcRenderer.send('toggle-overlay', id, enabled);
