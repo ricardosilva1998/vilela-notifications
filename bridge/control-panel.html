@@ -510,6 +510,9 @@
       <div class="sidebar-item" data-panel="recent" onclick="navigateTo('recent')">
         <span class="sidebar-icon" style="color:#3ecf8e;">&#128340;</span> Recent
       </div>
+      <div class="sidebar-item" data-panel="broadcast" onclick="navigateTo('broadcast')">
+        <span class="sidebar-icon" style="color:#3ecf8e;">&#128225;</span> Broadcasting
+      </div>
       <div class="sidebar-divider"></div>
       <div class="sidebar-group-label" onclick="toggleSidebarGroup('race')">&#9654; Race</div>
       <div class="sidebar-group collapsed" id="group-race">
@@ -605,6 +608,9 @@
 
       <!-- ═══ RECENT PANEL ═══ -->
       <div class="content-panel" id="panel-recent"></div>
+
+      <!-- ═══ BROADCASTING PANEL ═══ -->
+      <div class="content-panel" id="panel-broadcast"></div>
 
       <!-- ═══ OVERVIEW PANEL ═══ -->
       <div class="content-panel active" id="panel-overview">
@@ -1286,6 +1292,7 @@
       // Re-render dynamic pages
       if (panelId === 'favorites') renderFavoritesPage();
       if (panelId === 'recent') renderRecentPage();
+      if (panelId === 'broadcast') renderBroadcastPage();
       // Track overlay panels in Recent (skip utility pages and dynamic pages)
       const RECENT_EXCLUDE = new Set(['overview', 'favorites', 'recent', 'account', 'updates', 'logs', 'about']);
       if (!RECENT_EXCLUDE.has(panelId) && overlays.find(o => o.id === panelId)) {
@@ -1391,6 +1398,96 @@
         <div class="overview-grid">${cards}</div>
       `;
     }
+
+    // ─── Broadcasting page ───────────────────────────────────
+    function renderBroadcastPage() {
+      const panel = document.getElementById('panel-broadcast');
+      if (!panel) return;
+      let state;
+      try { state = ipcRenderer.sendSync('get-pitwall-teams'); }
+      catch (e) { state = { status: 'disabled', teams: [], broadcastIds: [] }; }
+
+      const header = `
+        <div style="display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700;color:#e8e6f0;margin-bottom:6px;">
+          <span style="color:#3ecf8e;font-size:18px;">📡</span> Team Broadcasting
+        </div>
+        <div style="font-size:11px;color:#5c5b6e;margin-bottom:18px;">Toggle which teams can see your live telemetry on Pitwall. Settings persist across restarts.</div>
+      `;
+
+      if (state.status === 'disabled') {
+        panel.innerHTML = header + '<div class="ov-empty">Pitwall not configured — log out and log back in to enable team broadcasting.</div>';
+        return;
+      }
+
+      const teams = Array.isArray(state.teams) ? state.teams : [];
+      const broadcastSet = new Set(state.broadcastIds || []);
+      const isConnected = state.status === 'connected';
+      const dotColor = isConnected ? '#3ecf8e' : '#f79009';
+      let statusText;
+      if (teams.length === 0) {
+        statusText = isConnected ? 'Connected to Pitwall · 0 teams' : 'Connecting to Pitwall…';
+      } else {
+        statusText = isConnected
+          ? `Connected to Pitwall · ${teams.length} team${teams.length === 1 ? '' : 's'} · ${broadcastSet.size} broadcasting`
+          : 'Reconnecting to Pitwall…';
+      }
+
+      const statusBar = `
+        <div class="tb-status">
+          <div class="tb-status-dot" style="background:${dotColor};box-shadow:0 0 6px ${dotColor}80;"></div>
+          <span>${statusText}</span>
+        </div>
+      `;
+
+      if (teams.length === 0) {
+        if (isConnected) {
+          panel.innerHTML = header + statusBar + '<div class="ov-empty">You\'re not in any teams yet — join one at <a href="#" id="tb-join-link" style="color:#3ecf8e;">atletanotifications.com/racing/teams</a></div>';
+          const link = document.getElementById('tb-join-link');
+          if (link) {
+            link.addEventListener('click', (e) => {
+              e.preventDefault();
+              try { require('electron').shell.openExternal('https://atletanotifications.com/racing/teams'); } catch (err) {}
+            });
+          }
+        } else {
+          panel.innerHTML = header + statusBar + '<div class="ov-empty" style="font-style:italic;color:#5c5b6e;">Loading…</div>';
+        }
+        return;
+      }
+
+      const escapeName = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const cards = teams.map(t => {
+        const on = broadcastSet.has(t.id);
+        return `
+          <div class="tb-card ${on ? 'live' : ''}">
+            <div class="tb-card-left">
+              <div class="tb-card-icon">📡</div>
+              <div class="tb-card-info">
+                <div class="tb-card-name">${escapeName(t.name)}</div>
+                <div class="tb-card-status">${on ? '● Broadcasting' : 'Off'}</div>
+              </div>
+            </div>
+            <div class="tb-toggle ${on ? 'on' : ''}" data-team-id="${t.id}" onclick="toggleTeamBroadcast(${t.id})"></div>
+          </div>
+        `;
+      }).join('');
+
+      panel.innerHTML = header + statusBar + `<div class="tb-grid">${cards}</div>`;
+    }
+
+    // ─── Toggle team broadcast (called from card toggle clicks) ─
+    function toggleTeamBroadcast(teamId) {
+      let state;
+      try { state = ipcRenderer.sendSync('get-pitwall-teams'); }
+      catch (e) { return; }
+      const current = new Set(state.broadcastIds || []);
+      if (current.has(teamId)) current.delete(teamId);
+      else current.add(teamId);
+      const newIds = Array.from(current);
+      try { ipcRenderer.send('set-pitwall-broadcast', newIds); } catch (e) {}
+      renderBroadcastPage();
+    }
+    window.toggleTeamBroadcast = toggleTeamBroadcast;
 
     // ─── Toggle favorite (called from card star buttons) ─────
     function toggleFavorite(overlayId) {
