@@ -273,6 +273,13 @@
 
 <script>
 (function() {
+  // Track names + class/car names come from .ibt uploads — never trust them
+  // in HTML. Always run user/session strings through escapeHtml when building
+  // markup, and use data-* attributes + delegated handlers instead of inline
+  // onclick to avoid JS-string injection.
+  const _HTML_ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  function escapeHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => _HTML_ESC[c]); }
+
   let allTracks = [];
   let allStats = [];
   let currentView = localStorage.getItem('tracks-view') || 'grid';
@@ -494,14 +501,16 @@
     let gridHtml = '';
     filtered.forEach(t => {
       const s = statsLookup[t.track_name];
-      const loc = [t.track_city, t.track_country].filter(Boolean).join(', ');
-      gridHtml += `<div class="track-card" onclick="window._showDetail('${t.track_name.replace(/'/g, "\\'")}')">
-        <div class="track-card-canvas"><canvas data-track="${t.track_name}" width="440" height="280"></canvas></div>
+      const safeName = escapeHtml(t.track_name);
+      const safeLength = escapeHtml(t.track_length || '');
+      const safeTurns = escapeHtml(t.track_turns || '');
+      gridHtml += `<div class="track-card" data-track="${safeName}">
+        <div class="track-card-canvas"><canvas data-track="${safeName}" width="440" height="280"></canvas></div>
         <div class="track-card-body">
-          <div class="track-card-name" title="${t.track_name}">${t.track_name}</div>
+          <div class="track-card-name" title="${safeName}">${safeName}</div>
           <div class="track-card-meta">
-            ${t.track_length ? '<span>' + t.track_length + '</span>' : ''}
-            ${t.track_turns ? '<span>' + t.track_turns + ' turns</span>' : ''}
+            ${t.track_length ? '<span>' + safeLength + '</span>' : ''}
+            ${t.track_turns ? '<span>' + safeTurns + ' turns</span>' : ''}
             <span>${s ? s.classes.size : 0} class${(s ? s.classes.size : 0) !== 1 ? 'es' : ''}</span>
             <span>${s ? s.totalRaces : 0} race${(s ? s.totalRaces : 0) !== 1 ? 's' : ''}</span>
           </div>
@@ -513,10 +522,11 @@
     filteredMissing.forEach(n => {
       var catLabel = catLabels[n.cat] || 'Road';
       var catColor = catColors[n.cat] || '#9146ff';
+      const safeMissing = escapeHtml(n.name);
       gridHtml += `<div class="track-card missing">
         <div class="track-card-canvas" style="display:flex;align-items:center;justify-content:center;color:rgba(255,80,80,0.35);font-size:11px;">No data</div>
         <div class="track-card-body">
-          <div class="track-card-name" title="${n.name}">${n.name}</div>
+          <div class="track-card-name" title="${safeMissing}">${safeMissing}</div>
           <div style="display:flex;gap:6px;align-items:center;">
             <span style="font-size:9px;font-weight:700;color:${catColor};background:${catColor}15;padding:1px 6px;border-radius:4px;">${catLabel}</span>
             <span class="track-card-missing">Upload IBT to add</span>
@@ -531,11 +541,15 @@
     filtered.forEach(t => {
       const s = statsLookup[t.track_name];
       const loc = [t.track_city, t.track_country].filter(Boolean).join(', ') || '--';
-      listHtml += `<tr class="clickable" onclick="window._showDetail('${t.track_name.replace(/'/g, "\\'")}')">
-        <td><canvas class="list-thumb" data-track="${t.track_name}" width="120" height="72"></canvas> ${t.track_name}</td>
-        <td>${loc}</td>
-        <td>${t.track_length || '--'}</td>
-        <td>${t.track_turns || '--'}</td>
+      const safeName = escapeHtml(t.track_name);
+      const safeLoc = escapeHtml(loc);
+      const safeLength = escapeHtml(t.track_length || '--');
+      const safeTurns = escapeHtml(t.track_turns || '--');
+      listHtml += `<tr class="clickable" data-track="${safeName}">
+        <td><canvas class="list-thumb" data-track="${safeName}" width="120" height="72"></canvas> ${safeName}</td>
+        <td>${safeLoc}</td>
+        <td>${safeLength}</td>
+        <td>${safeTurns}</td>
         <td>${s ? s.classes.size : 0}</td>
         <td>${s ? s.totalRaces : 0}</td>
       </tr>`;
@@ -543,9 +557,18 @@
     filteredMissing.forEach(n => {
       var catLabel = catLabels[n.cat] || 'Road';
       var catColor = catColors[n.cat] || '#9146ff';
-      listHtml += `<tr class="missing"><td>${n.name} <span style="font-size:9px;font-weight:700;color:${catColor};margin-left:6px;">${catLabel}</span></td><td>--</td><td>--</td><td>--</td><td>0</td><td>0</td></tr>`;
+      const safeMissing = escapeHtml(n.name);
+      listHtml += `<tr class="missing"><td>${safeMissing} <span style="font-size:9px;font-weight:700;color:${catColor};margin-left:6px;">${catLabel}</span></td><td>--</td><td>--</td><td>--</td><td>0</td><td>0</td></tr>`;
     });
     document.getElementById('tracks-list-body').innerHTML = listHtml;
+
+    // Delegated click handlers — replaces inline onclick=
+    document.querySelectorAll('#tracks-grid .track-card[data-track]').forEach(el => {
+      el.addEventListener('click', () => window._showDetail(el.dataset.track));
+    });
+    document.querySelectorAll('#tracks-list-body tr.clickable[data-track]').forEach(el => {
+      el.addEventListener('click', () => window._showDetail(el.dataset.track));
+    });
 
     // Draw canvases
     requestAnimationFrame(() => {
@@ -621,9 +644,13 @@
     classes.forEach((cls, i) => {
       const color = getClassColor(cls);
       const activeStyle = i === 0 ? ' style="background:' + color + '22;border-color:' + color + ';"' : '';
-      tabsHtml += '<button class="class-tab' + (i === 0 ? ' active' : '') + '"' + activeStyle + ' onclick="window._switchClassTab(this, \'' + cls.replace(/'/g, "\\'") + '\')" data-class="' + cls + '" data-color="' + color + '"><span class="class-dot" style="background:' + color + ';"></span>' + cls + '</button>';
+      const safeCls = escapeHtml(cls);
+      tabsHtml += '<button class="class-tab' + (i === 0 ? ' active' : '') + '"' + activeStyle + ' data-class="' + safeCls + '" data-color="' + color + '"><span class="class-dot" style="background:' + color + ';"></span>' + safeCls + '</button>';
     });
     document.getElementById('class-tabs').innerHTML = tabsHtml;
+    document.querySelectorAll('#class-tabs .class-tab[data-class]').forEach(btn => {
+      btn.addEventListener('click', () => window._switchClassTab(btn, btn.dataset.class));
+    });
     renderClassStats(trackName, classes[0]);
   }
 
@@ -643,7 +670,7 @@
       const s = lookup[rt];
       if (s) {
         html += `<tr>
-          <td style="color:#fff;font-family:inherit;font-weight:600;">${rt}</td>
+          <td style="color:#fff;font-family:inherit;font-weight:600;">${escapeHtml(rt)}</td>
           <td>${formatLapTime(s.avg_lap_time)}</td>
           <td>${s.avg_pit_time > 0 ? s.avg_pit_time.toFixed(1) + 's' : '--'}</td>
           <td>${formatLapTime(s.avg_qualify_time)}</td>
@@ -651,11 +678,11 @@
           <td>${formatSOF(s.avg_sof)}</td>
           <td>${s.race_count || 0}</td>
           <td>${s.avg_drivers > 0 ? Math.round(s.avg_drivers) : '--'}</td>
-          <td>${s.top_car || '--'}</td>
+          <td>${escapeHtml(s.top_car || '--')}</td>
         </tr>`;
       } else {
         html += `<tr>
-          <td style="color:rgba(255,255,255,0.25);font-family:inherit;">${rt}</td>
+          <td style="color:rgba(255,255,255,0.25);font-family:inherit;">${escapeHtml(rt)}</td>
           <td class="dimmed">--</td><td class="dimmed">--</td><td class="dimmed">--</td>
           <td class="dimmed">--</td><td class="dimmed">--</td><td class="dimmed">--</td><td class="dimmed">--</td><td class="dimmed">--</td>
         </tr>`;
@@ -666,7 +693,7 @@
     trackStats.forEach(s => {
       if (!raceTypes.includes(s.race_type)) {
         html += `<tr>
-          <td style="color:#fff;font-family:inherit;font-weight:600;">${s.race_type}</td>
+          <td style="color:#fff;font-family:inherit;font-weight:600;">${escapeHtml(s.race_type)}</td>
           <td>${formatLapTime(s.avg_lap_time)}</td>
           <td>${s.avg_pit_time > 0 ? s.avg_pit_time.toFixed(1) + 's' : '--'}</td>
           <td>${formatLapTime(s.avg_qualify_time)}</td>
@@ -674,7 +701,7 @@
           <td>${formatSOF(s.avg_sof)}</td>
           <td>${s.race_count || 0}</td>
           <td>${s.avg_drivers > 0 ? Math.round(s.avg_drivers) : '--'}</td>
-          <td>${s.top_car || '--'}</td>
+          <td>${escapeHtml(s.top_car || '--')}</td>
         </tr>`;
       }
     });
@@ -745,14 +772,14 @@
       const laps = s.actual_laps || s.lap_count || 0;
       const typeLabel = s.race_type || s.session_type;
       const typeColor = s.session_type === 'practice' ? '#3ecf8e' : s.session_type === 'qualify' ? '#f7c948' : '#b18cff';
-      const rowId = containerId + '-row-' + idx;
       const detailId = containerId + '-detail-' + idx;
-      html += '<div class="session-row" onclick="toggleSessionDetail(\'' + detailId + '\',' + s.id + ',\'' + (s.bridge_id || '') + '\')" style="cursor:pointer;">';
+      const safeBridge = escapeHtml(s.bridge_id || '');
+      html += '<div class="session-row" data-detail-id="' + detailId + '" data-session-id="' + s.id + '" data-bridge-id="' + safeBridge + '" style="cursor:pointer;">';
       html += '<span>' + date + '</span>';
-      html += '<span style="color:#e8e6f0;">' + (s.car_name || s.car_class) + '</span>';
+      html += '<span style="color:#e8e6f0;">' + escapeHtml(s.car_name || s.car_class || '') + '</span>';
       html += '<span class="session-best" style="text-align:right;">' + best + '</span>';
       html += '<span style="text-align:right;">' + laps + '</span>';
-      html += '<span style="text-align:center;font-size:10px;color:' + typeColor + ';font-weight:600;">' + typeLabel + '</span>';
+      html += '<span style="text-align:center;font-size:10px;color:' + typeColor + ';font-weight:600;">' + escapeHtml(typeLabel) + '</span>';
       html += '</div>';
       // Expandable detail area
       html += '<div id="' + detailId + '" style="display:none;padding:12px 14px;background:rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.06);">';
@@ -760,6 +787,11 @@
       html += '</div>';
     });
     el.innerHTML = html;
+    el.querySelectorAll('.session-row[data-session-id]').forEach(row => {
+      row.addEventListener('click', () => {
+        window.toggleSessionDetail(row.dataset.detailId, parseInt(row.dataset.sessionId, 10), row.dataset.bridgeId || '');
+      });
+    });
   }
 
   window.toggleSessionDetail = function(detailId, sessionId, bridgeId) {
@@ -788,8 +820,8 @@
         let html = '';
         // Session summary
         html += '<div style="display:flex;gap:16px;margin-bottom:12px;font-size:11px;color:rgba(255,255,255,0.5);flex-wrap:wrap;">';
-        if (s.iracing_name) html += '<span>Driver: <b style="color:#e8e6f0;">' + s.iracing_name + '</b></span>';
-        if (conditions) html += '<span>Conditions: <b style="color:#e8e6f0;">' + conditions + '</b></span>';
+        if (s.iracing_name) html += '<span>Driver: <b style="color:#e8e6f0;">' + escapeHtml(s.iracing_name) + '</b></span>';
+        if (conditions) html += '<span>Conditions: <b style="color:#e8e6f0;">' + escapeHtml(conditions) + '</b></span>';
         if (s.sof) html += '<span>SOF: <b style="color:#e8e6f0;">' + (s.sof >= 1000 ? (s.sof/1000).toFixed(1) + 'k' : s.sof) + '</b></span>';
         if (s.finish_position) html += '<span>Finished: <b style="color:#e8e6f0;">P' + s.finish_position + '</b></span>';
         if (s.irating_change) html += '<span>iR: <b style="color:' + (s.irating_change > 0 ? '#3ecf8e' : '#f04438') + ';">' + (s.irating_change > 0 ? '+' : '') + s.irating_change + '</b></span>';

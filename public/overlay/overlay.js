@@ -277,6 +277,13 @@ function connectSSE() {
       return;
     }
 
+    // Cap the queue. A burst (gift-sub batch, reconnect replay, test storm)
+    // would otherwise grow unbounded since cards play one at a time.
+    const MAX_QUEUE = 50;
+    if (queue.length >= MAX_QUEUE) {
+      console.warn('[Overlay] Queue full (' + queue.length + '), dropping oldest event');
+      queue.shift();
+    }
     queue.push(data);
     if (!isPlaying) playNext();
   };

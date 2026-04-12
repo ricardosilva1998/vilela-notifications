@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const { client } = require('../discord');
+const db = require('../db');
 
 const router = Router();
 
@@ -8,7 +9,16 @@ router.use((req, res, next) => {
   next();
 });
 
-router.get('/guild/:guildId/channels', (req, res) => {
+// Streamer must have claimed the guild before they can read its channel/role list.
+function requireGuildOwnership(req, res, next) {
+  if (!/^\d{5,30}$/.test(req.params.guildId || '')) return res.status(400).json({ error: 'Bad guildId' });
+  if (!db.getGuildConfig(req.params.guildId, req.streamer.id)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  next();
+}
+
+router.get('/guild/:guildId/channels', requireGuildOwnership, (req, res) => {
   const guild = client.guilds.cache.get(req.params.guildId);
   if (!guild) return res.json([]);
 
@@ -20,7 +30,7 @@ router.get('/guild/:guildId/channels', (req, res) => {
   res.json(channels);
 });
 
-router.get('/guild/:guildId/roles', (req, res) => {
+router.get('/guild/:guildId/roles', requireGuildOwnership, (req, res) => {
   const guild = client.guilds.cache.get(req.params.guildId);
   if (!guild) return res.json([]);
 

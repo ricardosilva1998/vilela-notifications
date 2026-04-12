@@ -2008,13 +2008,24 @@ function renderSponsorList() {
     list.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px;">No sponsors yet</div>';
     return;
   }
-  list.innerHTML = sponsorImages.map((s, i) => `
+  // Sponsor display_name + filename are stored from upload — escape both
+  // when injecting into HTML, and encodeURIComponent the filename used in
+  // the image URL.
+  const _ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => _ESC[c]);
+  list.innerHTML = sponsorImages.map((s, i) => {
+    const displayName = s.display_name || 'Sponsor';
+    const safeName = esc(displayName);
+    const safeAlt = esc(s.display_name || '');
+    const filenameUrl = encodeURIComponent(s.filename || '');
+    const scale = s.image_scale != null ? s.image_scale : 1.0;
+    return `
     <div class="sp-item" draggable="true" data-id="${s.id}" data-index="${i}">
       <span class="sp-grip">&#x2807;</span>
       <div class="sp-thumb">
-        <img src="/sponsors/${STREAMER_ID}/${s.filename}" alt="${s.display_name || ''}" onerror="this.style.display='none'">
+        <img src="/sponsors/${STREAMER_ID}/${filenameUrl}" alt="${safeAlt}" onerror="this.style.display='none'">
       </div>
-      <span class="sp-name" title="${s.display_name || 'Sponsor'}">${s.display_name || 'Sponsor'}</span>
+      <span class="sp-name" title="${safeName}">${safeName}</span>
       <input type="number" class="sp-dur" value="${s.display_duration || 30}" min="5" max="300" step="5"
              title="Display duration (seconds)"
              onchange="updateSponsorDuration(${s.id}, this.value)">
@@ -2028,13 +2039,14 @@ function renderSponsorList() {
       </button>
       <div class="sp-scale-row" onmousedown="event.stopPropagation()" ondragstart="event.preventDefault(); event.stopPropagation();">
         <span>Scale</span>
-        <input type="range" min="0.3" max="1" step="0.05" value="${s.image_scale != null ? s.image_scale : 1.0}"
+        <input type="range" min="0.3" max="1" step="0.05" value="${scale}"
                draggable="false"
                oninput="this.nextElementSibling.textContent=Math.round(this.value*100)+'%'; updateSponsorScale(${s.id}, this.value)">
-        <span>${Math.round((s.image_scale != null ? s.image_scale : 1.0) * 100)}%</span>
+        <span>${Math.round(scale * 100)}%</span>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
   attachSponsorDragHandlers();
 }
 

@@ -4,26 +4,35 @@ const db = require('../db');
 let accessToken = null;
 let tokenExpiresAt = 0;
 
+// In-flight auth promise — multiple concurrent callers should share one fetch.
+// Without this, a cold start under load triggers N parallel /oauth2/token
+// requests that race and can clobber each other's tokens.
+let _authInFlight = null;
+
 // App-level auth (client credentials) — shared across all streamers
 async function authenticate() {
-  const params = new URLSearchParams({
-    client_id: config.twitch.clientId,
-    client_secret: config.twitch.clientSecret,
-    grant_type: 'client_credentials',
-  });
+  if (_authInFlight) return _authInFlight;
+  _authInFlight = (async () => {
+    const params = new URLSearchParams({
+      client_id: config.twitch.clientId,
+      client_secret: config.twitch.clientSecret,
+      grant_type: 'client_credentials',
+    });
 
-  const res = await fetch('https://id.twitch.tv/oauth2/token', {
-    method: 'POST',
-    body: params,
-  });
+    const res = await fetch('https://id.twitch.tv/oauth2/token', {
+      method: 'POST',
+      body: params,
+    });
 
-  if (!res.ok) {
-    throw new Error(`Twitch auth failed: ${res.status} ${await res.text()}`);
-  }
+    if (!res.ok) {
+      throw new Error(`Twitch auth failed: ${res.status} ${await res.text()}`);
+    }
 
-  const data = await res.json();
-  accessToken = data.access_token;
-  tokenExpiresAt = Date.now() + data.expires_in * 1000 - 60_000;
+    const data = await res.json();
+    accessToken = data.access_token;
+    tokenExpiresAt = Date.now() + data.expires_in * 1000 - 60_000;
+  })().finally(() => { _authInFlight = null; });
+  return _authInFlight;
 }
 
 async function apiCall(endpoint) {

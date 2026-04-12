@@ -78,7 +78,7 @@
             </div>
           </div>
           <% if (team.role === 'owner' && m.user_id !== racingUser.id) { %>
-            <form method="POST" action="/racing/teams/<%= team.team_id %>/kick/<%= m.user_id %>" style="margin:0;" onsubmit="return confirm('Remove <%= m.username %> from the team?')">
+            <form method="POST" action="/racing/teams/<%= team.team_id %>/kick/<%= m.user_id %>" style="margin:0;" data-confirm-username="<%= m.username %>" onsubmit="return confirm('Remove ' + this.dataset.confirmUsername + ' from the team?')">
               <button type="submit" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:4px 8px;border-radius:4px;transition:all 0.15s;" onmouseover="this.style.color='#f04438';this.style.background='rgba(240,68,56,0.1)'" onmouseout="this.style.color='var(--text-muted)';this.style.background='none'">&times; Remove</button>
             </form>
           <% } %>
@@ -199,27 +199,43 @@
         .then(users => {
           if (!users.length) { dropdown.style.display = 'none'; return; }
           selectedIdx = -1;
-          dropdown.innerHTML = users.map((u, i) =>
-            '<div class="ac-item" data-idx="' + i + '" data-username="' + u.username + '" style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,0.04);">' +
-              '<div style="flex:1;min-width:0;">' +
-                '<div style="font-size:13px;font-weight:600;color:var(--text-primary);">' + u.username + '</div>' +
-                (u.display_name || u.iracing_name ? '<div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (u.display_name ? u.display_name : '') + (u.display_name && u.iracing_name ? ' · ' : '') + (u.iracing_name ? u.iracing_name : '') + '</div>' : '') +
-              '</div>' +
-            '</div>'
-          ).join('');
-          dropdown.style.display = 'block';
-
-          dropdown.querySelectorAll('.ac-item').forEach(el => {
-            el.addEventListener('mousedown', function(e) {
+          // Build via DOM nodes — never assemble HTML strings from server data
+          // (a maliciously named teammate would otherwise XSS every searcher).
+          dropdown.replaceChildren();
+          users.forEach((u, i) => {
+            const item = document.createElement('div');
+            item.className = 'ac-item';
+            item.dataset.idx = String(i);
+            item.dataset.username = String(u.username || '');
+            item.style.cssText = 'padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,0.04);';
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'flex:1;min-width:0;';
+            const name = document.createElement('div');
+            name.style.cssText = 'font-size:13px;font-weight:600;color:var(--text-primary);';
+            name.textContent = u.username || '';
+            wrap.appendChild(name);
+            if (u.display_name || u.iracing_name) {
+              const sub = document.createElement('div');
+              sub.style.cssText = 'font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+              const parts = [];
+              if (u.display_name) parts.push(u.display_name);
+              if (u.iracing_name) parts.push(u.iracing_name);
+              sub.textContent = parts.join(' · ');
+              wrap.appendChild(sub);
+            }
+            item.appendChild(wrap);
+            item.addEventListener('mousedown', function(e) {
               e.preventDefault();
               input.value = this.dataset.username;
               dropdown.style.display = 'none';
             });
-            el.addEventListener('mouseover', function() {
+            item.addEventListener('mouseover', function() {
               selectedIdx = parseInt(this.dataset.idx);
               highlightItem();
             });
+            dropdown.appendChild(item);
           });
+          dropdown.style.display = 'block';
         })
         .catch(() => { dropdown.style.display = 'none'; });
     }, 200);

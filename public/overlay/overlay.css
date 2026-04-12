@@ -57,18 +57,19 @@ body {
   to   { transform: translateX(-50%); opacity: 1; }
 }
 
-/* Car track animations */
+/* Car track animations — uses transform (composited) instead of `left` to
+   avoid forced layout on every frame for the entire alert duration. */
 @keyframes carZoomLR {
-  0%   { left: -40px; opacity: 1; }
-  80%  { left: 105%;  opacity: 1; }
-  81%  { opacity: 0; left: -40px; }
-  100% { opacity: 0; left: -40px; }
+  0%   { transform: translateY(-50%) scaleX(-1) translateX(0); opacity: 1; }
+  80%  { transform: translateY(-50%) scaleX(-1) translateX(140vw); opacity: 1; }
+  81%  { transform: translateY(-50%) scaleX(-1) translateX(0); opacity: 0; }
+  100% { transform: translateY(-50%) scaleX(-1) translateX(0); opacity: 0; }
 }
 @keyframes carZoomRL {
-  0%   { left: calc(100% + 40px); opacity: 1; transform: translateY(-50%); }
-  80%  { left: -40px; opacity: 1; transform: translateY(-50%); }
-  81%  { opacity: 0; left: calc(100% + 40px); transform: translateY(-50%); }
-  100% { opacity: 0; left: calc(100% + 40px); transform: translateY(-50%); }
+  0%   { transform: translateY(-50%) translateX(0); opacity: 1; }
+  80%  { transform: translateY(-50%) translateX(-140vw); opacity: 1; }
+  81%  { transform: translateY(-50%) translateX(0); opacity: 0; }
+  100% { transform: translateY(-50%) translateX(0); opacity: 0; }
 }
 @keyframes carBounce {
   0%   { left: 50%; transform: translateY(-50%) scaleX(-1) translateX(0); }
@@ -148,18 +149,20 @@ body {
   animation: carZoomRTL 3.2s ease-in-out infinite;
 }
 
+/* Driven from `transform` (composited) so the animation doesn't trigger layout
+   on every frame for the full alert duration. */
 @keyframes carZoom {
-  0%   { left: -50px; opacity: 1; }
-  80%  { left: 105%;  opacity: 1; }
-  81%  { opacity: 0; left: -50px; }
-  100% { opacity: 0; left: -50px; }
+  0%   { transform: translate(0, -50%) scaleX(-1); opacity: 1; }
+  80%  { transform: translate(140vw, -50%) scaleX(-1); opacity: 1; }
+  81%  { transform: translate(0, -50%) scaleX(-1); opacity: 0; }
+  100% { transform: translate(0, -50%) scaleX(-1); opacity: 0; }
 }
 
 @keyframes carZoomRTL {
-  0%   { right: -50px; opacity: 1; }
-  15%  { right: 8%;    opacity: 1; }
-  70%  { right: 8%;    opacity: 1; }
-  100% { right: 110%;  opacity: 1; }
+  0%   { transform: translate(0, -50%); opacity: 1; }
+  15%  { transform: translate(-50px, -50%); opacity: 1; }
+  70%  { transform: translate(-50px, -50%); opacity: 1; }
+  100% { transform: translate(-140vw, -50%); opacity: 1; }
 }
 
 /* ─── Bottom bar animation variants ─── */
@@ -167,8 +170,9 @@ body {
 /* Equalizer bars */
 @keyframes eqBounce { 0%,100%{height:20%} 50%{height:90%} }
 
-/* Checkered flag scroll — full height */
-@keyframes checkerScroll { 0%{left:-300px} 100%{left:100%} }
+/* Checkered flag scroll — full height. Translates instead of animating `left`
+   so the bar doesn't force layout on every frame. */
+@keyframes checkerScroll { 0%{transform:translateX(-300px)} 100%{transform:translateX(100vw)} }
 
 /* ─── Full-card overlay animations ─── */
 .card-anim-overlay { position:absolute; inset:0; pointer-events:none; overflow:hidden; border-radius:inherit; z-index:6; }
@@ -185,8 +189,8 @@ body {
   100%{transform:translate(var(--sx),var(--sy)) scale(0);opacity:0}
 }
 
-/* Neon sweep across entire card */
-@keyframes neonSweepFull { 0%{left:-30%} 100%{left:130%} }
+/* Neon sweep across entire card — composited transform, no layout cost */
+@keyframes neonSweepFull { 0%{transform:translateX(-30%)} 100%{transform:translateX(130%)} }
 
 /* Lightning flash */
 @keyframes boltStrike {
@@ -198,8 +202,8 @@ body {
   12%{opacity:0}
 }
 
-/* ECG heartbeat pulse */
-@keyframes ecgSweep { 0%{left:-20%} 100%{left:120%} }
+/* ECG heartbeat pulse — composited transform, no layout cost */
+@keyframes ecgSweep { 0%{transform:translateX(-20%)} 100%{transform:translateX(120%)} }
 @keyframes ecgPulse { 0%,100%{opacity:0.3} 50%{opacity:0.7} }
 
 /* Speed dots (follow / donation) */
@@ -257,11 +261,11 @@ body {
 }
 
 @keyframes subShake {
-  0%   { margin-left: -1px; }
-  25%  { margin-left:  1px; }
-  50%  { margin-left: -1px; }
-  75%  { margin-left:  0px; }
-  100% { margin-left: -1px; }
+  0%   { transform: translateX(-1px); }
+  25%  { transform: translateX( 1px); }
+  50%  { transform: translateX(-1px); }
+  75%  { transform: translateX( 0px); }
+  100% { transform: translateX(-1px); }
 }
 
 /* ─── Raid crowd section ─────────────────────────────────────── */

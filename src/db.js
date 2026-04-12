@@ -11,6 +11,21 @@ if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
+// Perf pragmas: NORMAL is durable enough under WAL and 2-5x faster on writes;
+// 64MB cache + 256MB mmap give us a meaningful working set in RAM.
+db.pragma('synchronous = NORMAL');
+db.pragma('cache_size = -64000');
+db.pragma('temp_store = MEMORY');
+db.pragma('mmap_size = 268435456');
+
+// Helper for migration catches: log the error unless it's a noisy "this column
+// already exists" duplicate, which is expected on every reboot for ALTER TABLE
+// migrations that don't gate on a PRAGMA table_info check.
+function _migrationLog(label, err) {
+  const msg = String(err && err.message || err);
+  if (/duplicate column name|already exists/i.test(msg)) return;
+  console.error('[DB migration] ' + label + ':', msg);
+}
 
 // --- Migrations ---
 
@@ -1090,6 +1105,11 @@ db.exec(`
 `);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_bridge_logs_lookup ON bridge_logs (bridge_id, created_at)`);
 try { db.exec('ALTER TABLE bridge_logs ADD COLUMN iracing_name TEXT'); } catch(e) {}
+
+// Hot-path lookup indexes (poller iterates per-channel + tier check on every request).
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_subscriptions_streamer_status ON subscriptions(streamer_id, status)'); } catch(e) {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_watched_channels_username ON watched_channels(twitch_username)'); } catch(e) {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_watched_youtube_channels_channel ON watched_youtube_channels(youtube_channel_id)'); } catch(e) {}
 
 // --- Issues: screenshots + AI triage columns ---
 try { db.exec("ALTER TABLE issues ADD COLUMN screenshots TEXT"); } catch(e) {}
@@ -2667,8 +2687,10 @@ function updateModerationConfig(streamerId, config) {
   db.prepare(`UPDATE streamers SET ${fields.join(', ')} WHERE id = ?`).run(...values);
 }
 
+// Hot path: called on every chat message when banned-word filter is on.
+const _stmtGetBannedWords = db.prepare('SELECT * FROM banned_words WHERE streamer_id = ? ORDER BY created_at DESC');
 function getBannedWords(streamerId) {
-  return db.prepare('SELECT * FROM banned_words WHERE streamer_id = ? ORDER BY created_at DESC').all(streamerId);
+  return _stmtGetBannedWords.all(streamerId);
 }
 
 function addBannedWord(streamerId, word, isRegex) {
@@ -2713,9 +2735,10 @@ const DEFAULT_OVERLAY_LABELS = {
   yt_giftmember: { event_label: 'Gift Alert',          detail_text: '' },
 };
 
+// Hot path: called per overlay alert render.
+const _stmtGetOverlayDesign = db.prepare('SELECT * FROM overlay_designs WHERE streamer_id = ? AND event_type = ?');
 function getOverlayDesign(streamerId, eventType) {
-  return db.prepare('SELECT * FROM overlay_designs WHERE streamer_id = ? AND event_type = ?')
-    .get(streamerId, eventType) || null;
+  return _stmtGetOverlayDesign.get(streamerId, eventType) || null;
 }
 
 function getAllOverlayDesigns(streamerId) {
@@ -3171,11 +3194,14 @@ try { db.prepare("DELETE FROM vtuber_models WHERE is_bundled = 1 AND filename IN
   }
 }
 
+// Hot path: getEnabledSponsorImages runs on every sponsor rotation tick.
+const _stmtGetSponsorImages = db.prepare('SELECT * FROM sponsor_images WHERE streamer_id = ? ORDER BY sort_order, id');
+const _stmtGetEnabledSponsorImages = db.prepare('SELECT * FROM sponsor_images WHERE streamer_id = ? AND enabled = 1 ORDER BY sort_order, id');
 function getSponsorImages(streamerId) {
-  return db.prepare('SELECT * FROM sponsor_images WHERE streamer_id = ? ORDER BY sort_order, id').all(streamerId);
+  return _stmtGetSponsorImages.all(streamerId);
 }
 function getEnabledSponsorImages(streamerId) {
-  return db.prepare('SELECT * FROM sponsor_images WHERE streamer_id = ? AND enabled = 1 ORDER BY sort_order, id').all(streamerId);
+  return _stmtGetEnabledSponsorImages.all(streamerId);
 }
 function addSponsorImage(streamerId, filename, displayName, chatMessage, displayDuration) {
   return db.prepare('INSERT INTO sponsor_images (streamer_id, filename, display_name, chat_message, display_duration) VALUES (?, ?, ?, ?, ?)').run(streamerId, filename, displayName, chatMessage || null, displayDuration || 30);
@@ -3349,9 +3375,10 @@ function deleteCustomOverlay(id, streamerId) {
   _deleteCustomOverlay.run(id, streamerId);
 }
 
-// Moderation Log
+// Moderation Log — hot path: called per moderated chat message.
+const _stmtAddModLogEntry = db.prepare('INSERT INTO moderation_log (streamer_id, username, user_id, action, reason, message_text, platform) VALUES (?, ?, ?, ?, ?, ?, ?)');
 function addModLogEntry(streamerId, username, userId, action, reason, messageText, platform) {
-  db.prepare('INSERT INTO moderation_log (streamer_id, username, user_id, action, reason, message_text, platform) VALUES (?, ?, ?, ?, ?, ?, ?)').run(streamerId, username, userId, action, reason, messageText, platform || 'twitch');
+  _stmtAddModLogEntry.run(streamerId, username, userId, action, reason, messageText, platform || 'twitch');
 }
 
 function getModLog(streamerId, limit = 100) {
@@ -3383,8 +3410,10 @@ function getStreamerByUsername(username) {
 
 // --- Overlay Events ---
 
+// Hot path: called per overlay alert (follows, subs, bits, donations, raids).
+const _stmtLogOverlayEvent = db.prepare('INSERT INTO overlay_events (streamer_id, event_type, username, data) VALUES (?, ?, ?, ?)');
 function logOverlayEvent(streamerId, eventType, username, data) {
-  db.prepare('INSERT INTO overlay_events (streamer_id, event_type, username, data) VALUES (?, ?, ?, ?)').run(streamerId, eventType, username, data ? JSON.stringify(data) : null);
+  _stmtLogOverlayEvent.run(streamerId, eventType, username, data ? JSON.stringify(data) : null);
 }
 
 function getOverlayStats7d(streamerId) {

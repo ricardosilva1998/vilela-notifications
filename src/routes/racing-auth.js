@@ -6,6 +6,9 @@ const db = require('../db');
 const config = require('../config');
 const router = express.Router();
 
+const HTML_ESCAPE_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const escapeHtml = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => HTML_ESCAPE_MAP[c]);
+
 // Email transporter (lazy init)
 let _transporter = null;
 function getTransporter() {
@@ -177,8 +180,8 @@ router.get('/logout', (req, res) => {
 
 // GET /racing/auth/forgot — show forgot password form
 router.get('/forgot', (req, res) => {
-  const message = req.query.message || '';
-  const error = req.query.error || '';
+  const message = escapeHtml(req.query.message || '');
+  const error = escapeHtml(req.query.error || '');
   res.send(`
     <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title>Reset Password — Atleta Racing</title>
@@ -257,9 +260,13 @@ router.post('/forgot', express.urlencoded({ extended: true }), async (req, res) 
 // GET /racing/auth/reset — show reset password form
 router.get('/reset', (req, res) => {
   const token = req.query.token || '';
-  const error = req.query.error || '';
+  const error = escapeHtml(req.query.error || '');
 
-  if (!token) return res.redirect('/racing/auth/forgot?error=' + encodeURIComponent('Invalid reset link'));
+  // Token must look like a hex token before we even hit the DB; this also
+  // closes the XSS hole from interpolating it into the form below.
+  if (!token || !/^[a-f0-9]{32,128}$/.test(token)) {
+    return res.redirect('/racing/auth/forgot?error=' + encodeURIComponent('Invalid reset link'));
+  }
 
   const row = db.db.prepare('SELECT * FROM password_reset_tokens WHERE token = ? AND used = 0 AND expires_at > ?').get(token, Date.now());
   if (!row) return res.redirect('/racing/auth/forgot?error=' + encodeURIComponent('Reset link expired or already used'));

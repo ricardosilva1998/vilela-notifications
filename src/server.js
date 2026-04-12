@@ -178,8 +178,84 @@ app.get('/streamer', (req, res) => {
 // Bridge API — requires auth
 app.get('/api/bridge/config', (req, res) => {
   if (!req.streamer && !req.racingUser) return res.status(401).json({ error: 'Unauthorized' });
-  // TODO: migrate to server-side Whisper proxy to avoid exposing key
-  res.json({ openaiKey: process.env.OPENAI_API_KEY || '' });
+  // The OPENAI key used to ship in this response — that allowed any
+  // authenticated Bridge user to exfiltrate it and burn the API budget.
+  // Bridges now POST audio to /api/bridge/whisper instead and the key
+  // never leaves the server.
+  res.json({ whisperProxyEnabled: !!process.env.OPENAI_API_KEY });
+});
+
+// Server-side Whisper proxy. Bridges upload raw audio bytes here; the server
+// forwards to OpenAI Whisper and returns the transcription. Authenticated by
+// session cookie or by ?bridge_id= matching a known Racing user (same
+// pattern as /api/bridge/spotify).
+app.post('/api/bridge/whisper', (req, res) => {
+  let authed = !!(req.streamer || req.racingUser);
+  if (!authed && req.query.bridge_id && /^[a-f0-9-]{20,}$/i.test(req.query.bridge_id)) {
+    if (db.getRacingUserByBridgeId(req.query.bridge_id)) authed = true;
+  }
+  if (!authed) return res.status(401).json({ error: 'Unauthorized' });
+  if (!process.env.OPENAI_API_KEY) return res.status(503).json({ error: 'Whisper not configured' });
+
+  const MAX_BYTES = 5 * 1024 * 1024;
+  const declared = parseInt(req.headers['content-length'] || '0', 10);
+  if (declared && declared > MAX_BYTES) return res.status(413).json({ error: 'Audio too large' });
+
+  const chunks = [];
+  let received = 0;
+  let aborted = false;
+  req.on('data', (chunk) => {
+    if (aborted) return;
+    received += chunk.length;
+    if (received > MAX_BYTES) {
+      aborted = true;
+      try { req.destroy(); } catch (e) {}
+      res.status(413).json({ error: 'Audio too large' });
+      return;
+    }
+    chunks.push(chunk);
+  });
+  req.on('end', async () => {
+    if (aborted) return;
+    try {
+      const audio = Buffer.concat(chunks, received);
+      // Build multipart/form-data manually so we don't pull in a new dep.
+      const boundary = '----atleta-' + Math.random().toString(16).slice(2);
+      const head = Buffer.from(
+        `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="model"\r\n\r\nwhisper-1\r\n` +
+        `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="language"\r\n\r\nen\r\n` +
+        `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="file"; filename="speech.wav"\r\n` +
+        `Content-Type: audio/wav\r\n\r\n`
+      );
+      const tail = Buffer.from(`\r\n--${boundary}--\r\n`);
+      const body = Buffer.concat([head, audio, tail]);
+      const r = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + process.env.OPENAI_API_KEY,
+          'Content-Type': 'multipart/form-data; boundary=' + boundary,
+          'Content-Length': String(body.length),
+        },
+        body,
+      });
+      if (!r.ok) {
+        const text = await r.text().catch(() => '');
+        console.error('[Whisper proxy] OpenAI', r.status, text.slice(0, 200));
+        return res.status(502).json({ error: 'Transcription failed' });
+      }
+      const json = await r.json();
+      res.json({ text: (json.text || '').trim() });
+    } catch (e) {
+      console.error('[Whisper proxy]', e.message);
+      res.status(500).json({ error: 'Transcription failed' });
+    }
+  });
+  req.on('error', () => {
+    if (!aborted) res.status(400).json({ error: 'Bad request' });
+  });
 });
 
 // Spotify now playing — for Bridge overlay (polls every 3-5s)

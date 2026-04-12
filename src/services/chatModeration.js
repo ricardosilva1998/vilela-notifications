@@ -4,11 +4,37 @@ const db = require('../db');
 const config = require('../config');
 
 // ─── In-memory state ──────────────────────────────────────────────────────────
-const permits = new Map();
-const lastMessages = new Map();
-const offenseCounts = new Map();
-const followCache = new Map();
+// All keyed by `${channel}:${username}`. They grow forever in a long-lived
+// process unless we sweep — see the periodic cleanup below.
+const permits = new Map();          // value: expiry timestamp
+const lastMessages = new Map();     // value: { text, timestamp }
+const offenseCounts = new Map();    // value: { count, lastAt }
+const followCache = new Map();      // value: { age, fetchedAt }
 const raidProtectionTimers = new Map();
+
+// Sweep stale entries once a minute. Caps:
+//  - lastMessages: keep 5 min (only used for repetition window which defaults 30s)
+//  - permits:      drop expired
+//  - followCache:  keep 10 min (acts as a cache, not state)
+//  - offenseCounts: keep 24 h (escalation ladder must remember through a stream)
+const FIVE_MIN = 5 * 60 * 1000;
+const TEN_MIN = 10 * 60 * 1000;
+const ONE_DAY = 24 * 60 * 60 * 1000;
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of lastMessages) {
+    if (now - (v?.timestamp || 0) > FIVE_MIN) lastMessages.delete(k);
+  }
+  for (const [k, expiry] of permits) {
+    if (now >= expiry) permits.delete(k);
+  }
+  for (const [k, v] of followCache) {
+    if (now - (v?.cachedAt || 0) > TEN_MIN) followCache.delete(k);
+  }
+  for (const [k, v] of offenseCounts) {
+    if (now - (v?.lastOffense || 0) > ONE_DAY) offenseCounts.delete(k);
+  }
+}, 60 * 1000).unref?.();
 
 // ─── URL detection regex ──────────────────────────────────────────────────────
 const URL_REGEX = /(?:https?:\/\/|www\.)\S+|[\w-]+\.(?:com|net|org|io|gg|tv|co|me|info|xyz|live)\b/i;

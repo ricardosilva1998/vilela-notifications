@@ -1,7 +1,18 @@
 const express = require('express');
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const db = require('../db');
+const config = require('../config');
 const router = express.Router();
+
+const HTML_ESCAPE_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const escapeHtml = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => HTML_ESCAPE_MAP[c]);
+
+function backOr(req, fallback) {
+  // Express 5 dropped res.redirect('back'); compute it explicitly.
+  const ref = req.get('referer');
+  return ref || fallback;
+}
 
 // /racing — landing (if not logged in) or dashboard (if logged in)
 router.get('/', (req, res) => {
@@ -87,13 +98,13 @@ router.get('/pitwall/:teamId', (req, res) => {
 router.post('/notifications/:id/dismiss', (req, res) => {
   db.dismissNotification(parseInt(req.params.id), req.racingUser.id);
   if (req.is('json') || req.xhr) return res.json({ ok: true });
-  res.redirect('back');
+  res.redirect(backOr(req, '/racing'));
 });
 
 router.post('/notifications/dismiss-all', (req, res) => {
   db.dismissAllNotifications(req.racingUser.id);
   if (req.is('json') || req.xhr) return res.json({ ok: true });
-  res.redirect('back');
+  res.redirect(backOr(req, '/racing'));
 });
 
 router.post('/notifications/:id/read', (req, res) => {
@@ -140,12 +151,12 @@ router.post('/admin/reset-password/:id', (req, res) => {
   const userId = parseInt(req.params.id);
   const user = db.getRacingUserById(userId);
   if (!user) return res.redirect('/racing/admin');
-  const crypto = require('crypto');
-  const config = require('../config');
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
   db.db.prepare('INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)').run(userId, token, expiresAt);
   const resetUrl = config.app.url + '/racing/auth/reset?token=' + token;
+  const safeUsername = escapeHtml(user.username);
+  const safeUrl = escapeHtml(resetUrl);
   res.send(`
     <!DOCTYPE html><html><head><meta charset="UTF-8"><title>Reset Link</title>
     <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'DM Sans',sans-serif;background:#0c0d14;color:#e8e6f0;min-height:100vh;display:flex;align-items:center;justify-content:center}
@@ -155,11 +166,19 @@ router.post('/admin/reset-password/:id', (req, res) => {
     a{color:#9146ff;font-size:13px}</style></head><body>
     <div class="card">
       <h2>Password Reset Link</h2>
-      <p>Send this link to <strong>${user.username}</strong>. It expires in 24 hours.</p>
-      <div class="url">${resetUrl}</div>
-      <button onclick="navigator.clipboard.writeText('${resetUrl}');this.textContent='Copied!'" style="padding:8px 20px;background:#3ecf8e;color:#000;font-weight:700;border:none;border-radius:8px;cursor:pointer;font-size:13px;margin-bottom:16px;">Copy Link</button>
+      <p>Send this link to <strong>${safeUsername}</strong>. It expires in 24 hours.</p>
+      <div class="url" id="reset-url">${safeUrl}</div>
+      <button id="copy-btn" type="button" style="padding:8px 20px;background:#3ecf8e;color:#000;font-weight:700;border:none;border-radius:8px;cursor:pointer;font-size:13px;margin-bottom:16px;">Copy Link</button>
       <br><a href="/racing/admin">Back to Admin</a>
-    </div></body></html>
+    </div>
+    <script>
+      document.getElementById('copy-btn').addEventListener('click', function() {
+        var t = document.getElementById('reset-url').textContent;
+        navigator.clipboard.writeText(t);
+        this.textContent = 'Copied!';
+      });
+    </script>
+    </body></html>
   `);
 });
 

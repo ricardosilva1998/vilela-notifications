@@ -3,10 +3,13 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const https = require('https');
 const { spawn } = require('child_process');
 const { ipcMain } = require('electron');
 const { uIOhook, UiohookKey } = require('uiohook-napi');
 const { sendChatCommand, setChatKey } = require('./keyboardSim');
+
+const SERVER_URL = 'https://atletanotifications.com';
 
 const logPath = path.join(os.homedir(), 'atleta-bridge.log');
 function log(msg) {
@@ -37,26 +40,57 @@ let autoStopTimer = null;
 let settings = {};
 let getIracingStatus = null;
 
-// Speech Recognition via PowerShell SAPI (transcribes WAV files)
+// Speech Recognition: Whisper via server-side proxy, with Windows SAPI fallback
 let scriptPath = null;
-
-// Fetch shared API key from Atleta server (so users don't need their own)
-let serverApiKey = '';
+let whisperProxyEnabled = false;
 function fetchServerConfig() {
-  const https = require('https');
-  https.get('https://atletanotifications.com/api/bridge/config', { timeout: 5000 }, (res) => {
+  https.get(SERVER_URL + '/api/bridge/config', { timeout: 5000 }, (res) => {
     let body = '';
     res.on('data', (d) => { body += d; });
     res.on('end', () => {
       try {
         const config = JSON.parse(body);
-        if (config.openaiKey) {
-          serverApiKey = config.openaiKey;
-          log('[Speech] Got server API key');
-        }
+        whisperProxyEnabled = !!config.whisperProxyEnabled;
+        log('[Speech] Whisper proxy ' + (whisperProxyEnabled ? 'enabled' : 'disabled'));
       } catch(e) {}
     });
   }).on('error', () => {});
+}
+
+// Upload a WAV file to the server-side Whisper proxy. Resolves with the
+// transcribed text on success, or null on failure (caller falls back to SAPI).
+function transcribeViaProxy(wavPath, bridgeId) {
+  return new Promise((resolve) => {
+    let fileData;
+    try { fileData = fs.readFileSync(wavPath); } catch (e) { return resolve(null); }
+    const url = new URL(SERVER_URL + '/api/bridge/whisper' + (bridgeId ? '?bridge_id=' + encodeURIComponent(bridgeId) : ''));
+    const req = https.request({
+      method: 'POST',
+      hostname: url.hostname,
+      port: url.port || 443,
+      path: url.pathname + url.search,
+      headers: {
+        'Content-Type': 'audio/wav',
+        'Content-Length': fileData.length,
+      },
+      timeout: 15000,
+    }, (res) => {
+      let body = '';
+      res.on('data', (d) => { body += d; });
+      res.on('end', () => {
+        if (res.statusCode !== 200) {
+          log('[Speech] Proxy returned ' + res.statusCode + ': ' + body.slice(0, 200));
+          return resolve(null);
+        }
+        try { resolve(JSON.parse(body).text || ''); }
+        catch (e) { resolve(null); }
+      });
+    });
+    req.on('error', (e) => { log('[Speech] Proxy error: ' + e.message); resolve(null); });
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+    req.write(fileData);
+    req.end();
+  });
 }
 
 function findSpeechScript() {
@@ -76,15 +110,39 @@ function findSpeechScript() {
   return null;
 }
 
-function transcribeWav(wavPath) {
-  if (!scriptPath) { log('[Speech] No script'); return; }
-  // User's own key takes priority, then server-provided key
-  const apiKey = (settings.voiceChat && settings.voiceChat.openaiKey) || serverApiKey || '';
-  log('[Speech] Transcribing: ' + wavPath + (apiKey ? ' (Whisper API)' : ' (SAPI fallback)'));
+async function transcribeWav(wavPath) {
+  // Try the server-side Whisper proxy first; falls back to PowerShell SAPI
+  // if it isn't available. The OpenAI key never lives on disk in Bridge.
+  const userKey = (settings.voiceChat && settings.voiceChat.openaiKey) || '';
+  const bridgeId = (settings && settings.racingBridgeId) || (settings && settings.bridgeId) || '';
 
+  if (whisperProxyEnabled || userKey) {
+    log('[Speech] Transcribing via ' + (userKey ? 'user Whisper key' : 'server proxy') + ': ' + wavPath);
+    const text = userKey
+      ? await transcribeViaUserKey(wavPath, userKey)
+      : await transcribeViaProxy(wavPath, bridgeId);
+    try { fs.unlinkSync(wavPath); } catch(e) {}
+    if (text != null) {
+      log('[Speech] Done: "' + text + '"');
+      if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
+        voiceChatWindow.webContents.send('voice-transcript', text);
+      }
+      return;
+    }
+    log('[Speech] Proxy/key path failed, falling back to SAPI');
+  }
+
+  if (!scriptPath) {
+    log('[Speech] No script — cannot transcribe');
+    try { fs.unlinkSync(wavPath); } catch(e) {}
+    if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
+      voiceChatWindow.webContents.send('voice-transcript', '');
+    }
+    return;
+  }
+
+  log('[Speech] Transcribing via SAPI: ' + wavPath);
   const args = ['-ExecutionPolicy', 'Bypass', '-NoProfile', '-File', scriptPath, wavPath];
-  if (apiKey) args.push(apiKey);
-
   const proc = spawn('powershell', args, { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
 
   let stdout = '';
@@ -98,12 +156,56 @@ function transcribeWav(wavPath) {
 
   proc.on('exit', (code) => {
     const transcript = stdout.trim();
-    log('[Speech] Done (code ' + code + '): "' + transcript + '"');
+    log('[Speech] SAPI done (code ' + code + '): "' + transcript + '"');
     try { fs.unlinkSync(wavPath); } catch(e) {}
-
     if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
       voiceChatWindow.webContents.send('voice-transcript', transcript);
     }
+  });
+}
+
+// User-provided OpenAI key path — keeps backwards compat with the old
+// "bring your own key" setting.
+function transcribeViaUserKey(wavPath, apiKey) {
+  return new Promise((resolve) => {
+    let fileData;
+    try { fileData = fs.readFileSync(wavPath); } catch (e) { return resolve(null); }
+    const boundary = '----atleta-' + Math.random().toString(16).slice(2);
+    const head = Buffer.from(
+      `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="model"\r\n\r\nwhisper-1\r\n` +
+      `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="language"\r\n\r\nen\r\n` +
+      `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="file"; filename="speech.wav"\r\n` +
+      `Content-Type: audio/wav\r\n\r\n`
+    );
+    const tail = Buffer.from(`\r\n--${boundary}--\r\n`);
+    const body = Buffer.concat([head, fileData, tail]);
+    const req = https.request({
+      method: 'POST',
+      hostname: 'api.openai.com',
+      port: 443,
+      path: '/v1/audio/transcriptions',
+      headers: {
+        'Authorization': 'Bearer ' + apiKey,
+        'Content-Type': 'multipart/form-data; boundary=' + boundary,
+        'Content-Length': body.length,
+      },
+      timeout: 15000,
+    }, (res) => {
+      let respBody = '';
+      res.on('data', (d) => { respBody += d; });
+      res.on('end', () => {
+        if (res.statusCode !== 200) return resolve(null);
+        try { resolve(JSON.parse(respBody).text || ''); }
+        catch (e) { resolve(null); }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+    req.write(body);
+    req.end();
   });
 }
 

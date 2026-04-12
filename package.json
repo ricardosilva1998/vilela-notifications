@@ -1,6 +1,6 @@
 {
   "name": "atleta-notifications-helper",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Self-service Discord notification bot for streamers - Twitch live, clips, YouTube, welcome messages, and sub sync",
   "main": "src/index.js",
   "scripts": {
@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.87.0",
-    "@discordjs/voice": "^0.18.0",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.8.0",
     "cookie-parser": "^1.4.7",
@@ -24,10 +23,8 @@
     "fast-xml-parser": "^5.5.8",
     "helmet": "^8.1.0",
     "nodemailer": "^8.0.5",
-    "opusscript": "^0.0.8",
     "socket.io-client": "^2.5.0",
     "tmi.js": "^1.8.5",
-    "tweetnacl": "^1.0.3",
     "ws": "^8.20.0"
   },
   "devDependencies": {

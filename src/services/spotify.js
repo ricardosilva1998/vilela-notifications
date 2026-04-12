@@ -1,38 +1,51 @@
 const config = require('../config');
 const db = require('../db');
 
+// In-flight refresh per streamer — chat polling + Bridge polling can hit
+// /currently-playing simultaneously, and on token expiry that races N parallel
+// refresh requests, each invalidating the others.
+const _refreshInFlight = new Map();
+
 async function refreshSpotifyToken(streamer) {
   const { clientId, clientSecret } = config.spotify;
   if (!clientId || !clientSecret || !streamer.spotify_refresh_token) return null;
 
-  const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+  const existing = _refreshInFlight.get(streamer.id);
+  if (existing) return existing;
 
-  const res = await fetch('https://accounts.spotify.com/api/token', {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${auth}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: streamer.spotify_refresh_token,
-    }),
-  });
+  const promise = (async () => {
+    const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
-  if (!res.ok) {
-    console.error('[Spotify] Token refresh failed:', res.status);
-    return null;
-  }
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: streamer.spotify_refresh_token,
+      }),
+    });
 
-  const data = await res.json();
-  db.updateSpotifyTokens(
-    streamer.id,
-    data.access_token,
-    data.refresh_token || streamer.spotify_refresh_token,
-    Date.now() + data.expires_in * 1000 - 60000
-  );
+    if (!res.ok) {
+      console.error('[Spotify] Token refresh failed:', res.status);
+      return null;
+    }
 
-  return data.access_token;
+    const data = await res.json();
+    db.updateSpotifyTokens(
+      streamer.id,
+      data.access_token,
+      data.refresh_token || streamer.spotify_refresh_token,
+      Date.now() + data.expires_in * 1000 - 60000
+    );
+
+    return data.access_token;
+  })().finally(() => { _refreshInFlight.delete(streamer.id); });
+
+  _refreshInFlight.set(streamer.id, promise);
+  return promise;
 }
 
 async function getCurrentlyPlaying(streamer) {

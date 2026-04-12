@@ -24,8 +24,26 @@ router.get('/', (req, res) => {
   });
 });
 
+// GET /racing/teams/search?q=... (rate limited: 10 per minute per user)
+// MUST be defined before /:teamId so it isn't shadowed.
+const _searchCounts = new Map();
+setInterval(() => _searchCounts.clear(), 60000);
+router.get('/search', (req, res) => {
+  const uid = req.racingUser.id;
+  const count = (_searchCounts.get(uid) || 0) + 1;
+  _searchCounts.set(uid, count);
+  if (count > 10) return res.status(429).json({ error: 'Too many searches, try again in a minute' });
+  const q = (req.query.q || '').trim();
+  if (q.length < 2 || q.length > 40) return res.json([]);
+  const results = db.searchRacingUsers(q)
+    .filter(u => u.id !== req.racingUser.id)
+    .map(u => ({ username: u.username, display_name: u.display_name }));
+  res.json(results);
+});
+
 // GET /racing/teams/:teamId — team detail
 router.get('/:teamId', (req, res) => {
+  if (!/^\d+$/.test(req.params.teamId)) return res.redirect('/racing/teams');
   const teamId = parseInt(req.params.teamId);
   const membership = db.getTeamsForUser(req.racingUser.id).find(t => t.team_id === teamId);
   if (!membership) {
@@ -217,22 +235,6 @@ router.post('/:teamId/banner', express.json({ limit: '2mb' }), (req, res) => {
   }
   db.updateTeamBanner(teamId, banner);
   res.json({ ok: true });
-});
-
-// GET /racing/teams/search?q=... (rate limited: 10 per minute per user)
-const _searchCounts = new Map();
-setInterval(() => _searchCounts.clear(), 60000);
-router.get('/search', (req, res) => {
-  const uid = req.racingUser.id;
-  const count = (_searchCounts.get(uid) || 0) + 1;
-  _searchCounts.set(uid, count);
-  if (count > 10) return res.status(429).json({ error: 'Too many searches, try again in a minute' });
-  const q = (req.query.q || '').trim();
-  if (q.length < 2) return res.json([]);
-  const results = db.searchRacingUsers(q)
-    .filter(u => u.id !== req.racingUser.id)
-    .map(u => ({ username: u.username, display_name: u.display_name }));
-  res.json(results);
 });
 
 module.exports = router;

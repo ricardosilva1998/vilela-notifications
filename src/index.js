@@ -6,6 +6,16 @@ const commands = require('./commands');
 const welcome = require('./welcome');
 const { startAll } = require('./pollers/manager');
 
+// Long-running server: a single unhandled rejection / uncaught exception must
+// not take the process down. Log loudly and keep going — Railway will still
+// crash-restart on a real fatal, this just buys us a recovery window.
+process.on('unhandledRejection', (err) => {
+  console.error('[FATAL] unhandledRejection:', err && err.stack || err);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] uncaughtException:', err && err.stack || err);
+});
+
 client.once('ready', async () => {
   console.log(`Bot online as ${client.user.tag}`);
   console.log(`Serving ${client.guilds.cache.size} guilds`);

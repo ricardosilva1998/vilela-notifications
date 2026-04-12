@@ -1,5 +1,10 @@
 node_modules/
 data/
 .env
+.env.*
 .DS_Store
 .superpowers/
+.playwright-mcp/
+test-results/
+bridge/tests/test-results/
+*.tsbuildinfo

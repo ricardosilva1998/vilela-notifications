@@ -19,6 +19,37 @@ function getTierLimits(streamerId) {
   return { tier, limits: config.tiers[tier] || config.tiers.free };
 }
 
+// Read a raw body but enforce a hard byte cap up front (Content-Length header)
+// AND abort the stream if the client tries to send more than the cap. The
+// previous pattern accumulated chunks unconditionally and only checked size in
+// `end`, so a hostile client could RAM-bomb the process.
+function readBoundedBody(req, res, maxBytes) {
+  return new Promise((resolve, reject) => {
+    const declared = parseInt(req.headers['content-length'] || '0', 10);
+    if (declared && declared > maxBytes) {
+      res.status(413).json({ ok: false, error: 'File too large' });
+      try { req.destroy(); } catch (e) {}
+      return reject(new Error('content-length exceeds cap'));
+    }
+    const chunks = [];
+    let received = 0;
+    let aborted = false;
+    req.on('data', (chunk) => {
+      if (aborted) return;
+      received += chunk.length;
+      if (received > maxBytes) {
+        aborted = true;
+        try { req.destroy(); } catch (e) {}
+        if (!res.headersSent) res.status(413).json({ ok: false, error: 'File too large' });
+        return reject(new Error('body exceeds cap'));
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => { if (!aborted) resolve(Buffer.concat(chunks, received)); });
+    req.on('error', (err) => { if (!aborted) { aborted = true; reject(err); } });
+  });
+}
+
 // All dashboard routes require auth
 router.use((req, res, next) => {
   if (!req.streamer) return res.redirect('/auth/login');
@@ -80,34 +111,32 @@ router.get('/account', (req, res) => {
 });
 
 // Upload profile picture (raw body)
-router.post('/account/avatar', (req, res) => {
+router.post('/account/avatar', async (req, res) => {
   const allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
   const ext = (req.query.ext || 'png').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
   if (!allowed.includes(ext)) return res.status(400).json({ ok: false, error: 'Invalid file type' });
 
-  const chunks = [];
-  req.on('data', chunk => chunks.push(chunk));
-  req.on('end', () => {
-    const buf = Buffer.concat(chunks);
-    if (buf.length > 2 * 1024 * 1024) return res.status(400).json({ ok: false, error: 'File too large (max 2MB)' });
-    if (buf.length === 0) return res.status(400).json({ ok: false, error: 'Empty file' });
+  let buf;
+  try { buf = await readBoundedBody(req, res, 2 * 1024 * 1024); }
+  catch (e) { return; /* helper already responded */ }
+  if (buf.length === 0) return res.status(400).json({ ok: false, error: 'Empty file' });
 
-    const streamerId = req.streamer.id;
-    const avatarDir = path.join(__dirname, '..', '..', 'data', 'avatars', String(streamerId));
-    if (!fs.existsSync(avatarDir)) fs.mkdirSync(avatarDir, { recursive: true });
+  const streamerId = req.streamer.id;
+  const avatarDir = path.join(__dirname, '..', '..', 'data', 'avatars', String(streamerId));
+  try { await fs.promises.mkdir(avatarDir, { recursive: true }); } catch (e) {}
 
-    // Delete previous avatar file if exists
-    if (req.streamer.profile_picture) {
-      const old = path.join(avatarDir, req.streamer.profile_picture);
-      if (fs.existsSync(old)) fs.unlinkSync(old);
-    }
+  // Delete previous avatar file if exists
+  if (req.streamer.profile_picture) {
+    const old = path.join(avatarDir, req.streamer.profile_picture);
+    try { await fs.promises.unlink(old); } catch (e) {}
+  }
 
-    const filename = `avatar_${Date.now()}.${ext}`;
-    fs.writeFileSync(path.join(avatarDir, filename), buf);
-    db.updateProfilePicture(streamerId, filename);
-    console.log(`[Dashboard] ${req.streamer.discord_username} uploaded profile picture: ${filename}`);
-    res.json({ ok: true, url: `/avatars/${streamerId}/${filename}` });
-  });
+  const filename = `avatar_${Date.now()}.${ext}`;
+  try { await fs.promises.writeFile(path.join(avatarDir, filename), buf); }
+  catch (e) { return res.status(500).json({ ok: false, error: 'Write failed' }); }
+  db.updateProfilePicture(streamerId, filename);
+  console.log(`[Dashboard] ${req.streamer.discord_username} uploaded profile picture: ${filename}`);
+  res.json({ ok: true, url: `/avatars/${streamerId}/${filename}` });
 });
 
 // Remove profile picture
@@ -828,21 +857,19 @@ router.post('/overlay/test/:eventType', (req, res) => {
 });
 
 // Upload custom sound for an event type
-router.post('/overlay/sounds/:eventType', (req, res) => {
+router.post('/overlay/sounds/:eventType', async (req, res) => {
   const validTypes = ['follow', 'subscription', 'bits', 'donation', 'raid', 'yt_superchat', 'yt_member', 'yt_giftmember'];
   const type = req.params.eventType;
   if (!validTypes.includes(type)) return res.status(400).json({ error: 'Invalid event type' });
 
-  const chunks = [];
-  req.on('data', chunk => chunks.push(chunk));
-  req.on('end', () => {
-    const buf = Buffer.concat(chunks);
-    if (buf.length > 10 * 1024 * 1024) return res.status(413).json({ error: 'File too large (max 10MB)' });
-    const soundDir = path.join(__dirname, '..', '..', 'data', 'sounds');
-    if (!fs.existsSync(soundDir)) fs.mkdirSync(soundDir, { recursive: true });
-    fs.writeFileSync(path.join(soundDir, `${type}.mp3`), buf);
-    res.json({ ok: true });
-  });
+  let buf;
+  try { buf = await readBoundedBody(req, res, 10 * 1024 * 1024); }
+  catch (e) { return; }
+  const soundDir = path.join(__dirname, '..', '..', 'data', 'sounds');
+  try { await fs.promises.mkdir(soundDir, { recursive: true }); } catch (e) {}
+  try { await fs.promises.writeFile(path.join(soundDir, `${type}.mp3`), buf); }
+  catch (e) { return res.status(500).json({ error: 'Write failed' }); }
+  res.json({ ok: true });
 });
 
 // Delete custom sound
@@ -1348,7 +1375,7 @@ router.post('/report', (req, res) => {
 });
 
 // Upload screenshot for an issue (raw body, same pattern as sponsors/avatars)
-router.post('/report/:id/screenshot', (req, res) => {
+router.post('/report/:id/screenshot', async (req, res) => {
   const issueId = parseInt(req.params.id);
   const issue = db.getIssueById(issueId);
   if (!issue || issue.streamer_id !== req.streamer.id) {
@@ -1361,25 +1388,21 @@ router.post('/report/:id/screenshot', (req, res) => {
     return res.status(400).json({ ok: false, error: 'max_screenshots' });
   }
 
-  const chunks = [];
-  req.on('data', chunk => chunks.push(chunk));
-  req.on('end', () => {
-    const buf = Buffer.concat(chunks);
-    if (buf.length > 5 * 1024 * 1024) {
-      return res.status(400).json({ ok: false, error: 'file_too_large' });
-    }
+  let buf;
+  try { buf = await readBoundedBody(req, res, 5 * 1024 * 1024); }
+  catch (e) { return; }
 
-    const issueDir = path.join(__dirname, '..', '..', 'data', 'issues', String(issueId));
-    if (!fs.existsSync(issueDir)) fs.mkdirSync(issueDir, { recursive: true });
+  const issueDir = path.join(__dirname, '..', '..', 'data', 'issues', String(issueId));
+  try { await fs.promises.mkdir(issueDir, { recursive: true }); } catch (e) {}
 
-    const ext = (req.query.ext || 'png').replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'png';
-    const filename = `shot_${Date.now()}.${ext}`;
-    fs.writeFileSync(path.join(issueDir, filename), buf);
+  const ext = (req.query.ext || 'png').replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'png';
+  const filename = `shot_${Date.now()}.${ext}`;
+  try { await fs.promises.writeFile(path.join(issueDir, filename), buf); }
+  catch (e) { return res.status(500).json({ ok: false, error: 'write_failed' }); }
 
-    existing.push(filename);
-    db.updateIssueScreenshots(issueId, existing.join(','));
-    res.json({ ok: true, filename });
-  });
+  existing.push(filename);
+  db.updateIssueScreenshots(issueId, existing.join(','));
+  res.json({ ok: true, filename });
 });
 
 // Trigger AI analysis for an issue
@@ -1422,37 +1445,39 @@ router.get('/sponsors/list', (req, res) => {
 });
 
 // Upload sponsor image (raw body)
-router.post('/sponsors/upload', (req, res) => {
-  const chunks = [];
-  req.on('data', chunk => chunks.push(chunk));
-  req.on('end', () => {
-    const streamerId = req.streamer.id;
-    const sponsorDir = path.join(__dirname, '..', '..', 'data', 'sponsors', String(streamerId));
-    if (!fs.existsSync(sponsorDir)) fs.mkdirSync(sponsorDir, { recursive: true });
+router.post('/sponsors/upload', async (req, res) => {
+  const ext = (req.query.ext || 'png').replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'png';
+  if (!['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
+    return res.status(400).json({ error: 'Invalid file type. Allowed: png, jpg, gif, webp' });
+  }
 
-    const ext = (req.query.ext || 'png').replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'png';
-    if (!['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) return res.status(400).json({ error: 'Invalid file type. Allowed: png, jpg, gif, webp' });
-    const buf = Buffer.concat(chunks);
-    if (buf.length > 5 * 1024 * 1024) return res.status(413).json({ error: 'File too large (max 5MB)' });
-    const filename = `sponsor_${Date.now()}.${ext}`;
-    fs.writeFileSync(path.join(sponsorDir, filename), buf);
+  let buf;
+  try { buf = await readBoundedBody(req, res, 5 * 1024 * 1024); }
+  catch (e) { return; }
 
-    const displayName = req.query.name || 'Sponsor';
-    const displayDuration = parseInt(req.query.dur) || 30;
-    const result = db.addSponsorImage(streamerId, filename, displayName, null, displayDuration);
-    const newImage = db.getSponsorImages(streamerId).find(i => i.filename === filename);
-    res.json({ ok: true, filename, image: newImage });
-  });
+  const streamerId = req.streamer.id;
+  const sponsorDir = path.join(__dirname, '..', '..', 'data', 'sponsors', String(streamerId));
+  try { await fs.promises.mkdir(sponsorDir, { recursive: true }); } catch (e) {}
+
+  const filename = `sponsor_${Date.now()}.${ext}`;
+  try { await fs.promises.writeFile(path.join(sponsorDir, filename), buf); }
+  catch (e) { return res.status(500).json({ error: 'Write failed' }); }
+
+  const displayName = req.query.name || 'Sponsor';
+  const displayDuration = parseInt(req.query.dur) || 30;
+  db.addSponsorImage(streamerId, filename, displayName, null, displayDuration);
+  const newImage = db.getSponsorImages(streamerId).find(i => i.filename === filename);
+  res.json({ ok: true, filename, image: newImage });
 });
 
 // Delete sponsor image
-router.post('/sponsors/:id/delete', (req, res) => {
+router.post('/sponsors/:id/delete', async (req, res) => {
   const streamerId = req.streamer.id;
   const images = db.getSponsorImages(streamerId);
   const img = images.find(i => i.id === parseInt(req.params.id));
   if (img) {
     const filePath = path.join(__dirname, '..', '..', 'data', 'sponsors', String(streamerId), img.filename);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    try { await fs.promises.unlink(filePath); } catch (e) {}
     db.deleteSponsorImage(parseInt(req.params.id), streamerId);
   }
   res.json({ ok: true });
@@ -1660,26 +1685,22 @@ router.get('/api/vtuber/models', (req, res) => {
   res.json({ ok: true, models });
 });
 
-router.post('/api/vtuber/models', (req, res) => {
-  const contentLength = parseInt(req.headers['content-length'] || '0');
-  if (contentLength > 50 * 1024 * 1024) {
-    return res.status(413).json({ error: 'File too large (max 50MB)' });
-  }
-
+router.post('/api/vtuber/models', async (req, res) => {
   const originalName = (req.query.name || 'custom').replace(/[^a-zA-Z0-9_-]/g, '_');
   const filename = `${req.streamer.id}_${Date.now()}_${originalName}.vrm`;
   const modelDir = path.join(__dirname, '..', '..', 'data', 'vtuber-models', String(req.streamer.id));
 
-  if (!fs.existsSync(modelDir)) fs.mkdirSync(modelDir, { recursive: true });
+  let buf;
+  try { buf = await readBoundedBody(req, res, 50 * 1024 * 1024); }
+  catch (e) { return; }
 
-  const chunks = [];
-  req.on('data', chunk => chunks.push(chunk));
-  req.on('end', () => {
-    fs.writeFileSync(path.join(modelDir, filename), Buffer.concat(chunks));
-    const result = db.addVtuberModel(req.streamer.id, originalName, 'custom', filename);
-    const model = db.getVtuberModel(result.lastInsertRowid);
-    res.json({ ok: true, model });
-  });
+  try { await fs.promises.mkdir(modelDir, { recursive: true }); } catch (e) {}
+  try { await fs.promises.writeFile(path.join(modelDir, filename), buf); }
+  catch (e) { return res.status(500).json({ error: 'Write failed' }); }
+
+  const result = db.addVtuberModel(req.streamer.id, originalName, 'custom', filename);
+  const model = db.getVtuberModel(result.lastInsertRowid);
+  res.json({ ok: true, model });
 });
 
 router.delete('/api/vtuber/models/:id', (req, res) => {

@@ -126,27 +126,61 @@ router.get('/success', async (req, res) => {
 
   try {
     const intent = JSON.parse(intentStr);
-    const capture = await capturePayPalOrder(orderId);
 
-    if (capture.status === 'COMPLETED') {
-      const paymentId = capture.purchase_units?.[0]?.payments?.captures?.[0]?.id || orderId;
-
-      if (intent.discountCodeUsed) db.useDiscountCode(intent.discountCodeUsed);
-
-      const days = intent.durationDays || 365;
-      const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
-      db.createSubscription(req.streamer.id, intent.tier, paymentId, expiresAt);
-      db.createTransaction(req.streamer.id, null, intent.price, paymentId, intent.discountCodeUsed, intent.discountPercent);
-
-      console.log(`[Payment] ${intent.tier} subscription activated for ${req.streamer.discord_username} (${intent.price} EUR)`);
-
-      res.clearCookie('paypal_order_id');
-      res.clearCookie('payment_intent');
-      res.redirect('/dashboard/subscription?msg=activated');
-    } else {
-      console.error('[Payment] Capture failed:', JSON.stringify(capture));
-      res.redirect('/pricing?msg=payment_error');
+    // Recompute the expected price server-side from the tier + discount code
+    // we hold in the DB. NEVER trust intent.price/intent.tier from the cookie:
+    // a user could craft `{tier:"pro",price:0.01}` and get a Pro subscription
+    // for a penny. Validate the tier exists, recompute the price, and reject
+    // if the captured PayPal amount doesn't match.
+    const tierConfig = config.tiers[intent.tier];
+    if (!tierConfig || intent.tier === 'free') {
+      console.error('[Payment] Bogus tier in intent:', intent.tier);
+      return res.redirect('/pricing?msg=payment_error');
     }
+    let expectedPrice = tierConfig.price;
+    let discountPercent = 0;
+    let discountCodeUsed = null;
+    if (intent.discountCodeUsed) {
+      const code = db.getDiscountCode(intent.discountCodeUsed);
+      if (code) {
+        discountPercent = code.discount_percent;
+        discountCodeUsed = code.code;
+        expectedPrice = expectedPrice * (1 - discountPercent / 100);
+      }
+    }
+
+    const capture = await capturePayPalOrder(orderId);
+    if (capture.status !== 'COMPLETED') {
+      console.error('[Payment] Capture failed:', JSON.stringify(capture));
+      return res.redirect('/pricing?msg=payment_error');
+    }
+
+    // PayPal returns the amount as a string like "12.00". Compare to two
+    // decimal places to avoid floating-point drift.
+    const capturedAmount = parseFloat(
+      capture.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value
+      || capture.purchase_units?.[0]?.amount?.value
+      || '0'
+    );
+    if (Math.abs(capturedAmount - expectedPrice) > 0.01) {
+      console.error('[Payment] Amount mismatch — expected ' + expectedPrice.toFixed(2) +
+        ' EUR, captured ' + capturedAmount.toFixed(2) + ' EUR (orderId=' + orderId + ')');
+      return res.redirect('/pricing?msg=payment_error');
+    }
+
+    const paymentId = capture.purchase_units?.[0]?.payments?.captures?.[0]?.id || orderId;
+    if (discountCodeUsed) db.useDiscountCode(discountCodeUsed);
+
+    const days = 365;
+    const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+    db.createSubscription(req.streamer.id, intent.tier, paymentId, expiresAt);
+    db.createTransaction(req.streamer.id, null, expectedPrice, paymentId, discountCodeUsed, discountPercent);
+
+    console.log(`[Payment] ${intent.tier} subscription activated for ${req.streamer.discord_username} (${expectedPrice.toFixed(2)} EUR)`);
+
+    res.clearCookie('paypal_order_id');
+    res.clearCookie('payment_intent');
+    res.redirect('/dashboard/subscription?msg=activated');
   } catch (err) {
     console.error(`[Payment] Success handler error: ${err.message}`);
     res.redirect('/pricing?msg=payment_error');
