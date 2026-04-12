@@ -21,6 +21,7 @@ const settings = require('./settings');
 const { extractTrackFromIBT, geoKeyFromSessionInfo, loadCachedTrackByGeo, saveCachedTrackByGeo } = require('./trackExtractor');
 const sessionRecorder = require('./sessionRecorder');
 const pitwallUplink = require('./pitwallUplink');
+const { createIncidentTracker } = require('./incidentTracker');
 
 // Broadcast to local overlays + pitwall uplink
 function broadcastToChannel(channel, msg) {
@@ -193,6 +194,8 @@ let _recorderSessionStarted = false;
 
 // Pit time tracking — measure time lost per pit stop per class
 const pitTracking = new Map(); // carIdx -> { wasPitting, bestLapSnapshot, lapsSnapshot, waitingForLap, referenceLap }
+const incidentTracker = createIncidentTracker();
+let _showIncidents = true; // controlled by control-panel toggle via setIncidentCountersEnabled()
 let classPitDeltas = {};       // className -> { avgDelta, samples }
 const PIT_TIMES_FILE = path.join(require('os').homedir(), 'Documents', 'Atleta Bridge', 'pittimes.json');
 
@@ -709,8 +712,14 @@ async function startTelemetry(onStatusChange) {
               persistedDrivers.clear();
               qualifyBestByClass = {};
               raceSessionTotalTime = 0;
+              try {
+                incidentTracker.onSessionChange(newType);
+              } catch (e) { /* tracker errors must not affect session reset */ }
               log('[Session] Cleared all data: ' + prevType + ' → ' + newType);
             } else {
+              try {
+                incidentTracker.onSessionChange(newType);
+              } catch (e) { /* tracker errors must not affect session reset */ }
               log('[Session] Kept lap data, cleared pit data: ' + prevType + ' → ' + newType);
             }
           }
@@ -1057,6 +1066,7 @@ async function startTelemetry(onStatusChange) {
             country: d.LicCountryCode || '', license: d.LicString || '',
             iRating: d.IRating || 0,
           })),
+          incidents: _showIncidents ? (() => { try { return incidentTracker.getState(); } catch (e) { return null; } })() : null,
         }});
 
         // Read camera spectated car index (for replay/spectate)
@@ -1399,6 +1409,13 @@ async function startTelemetry(onStatusChange) {
               airTemp: airTemp,
               trackTemp: trackTemp,
             });
+            try {
+              incidentTracker.onLapComplete(
+                playerStanding.lapsCompleted,
+                playerStanding.lastLap,
+                true /* isValid — telemetry doesn't expose per-lap validity directly; tracker excludes pit/in-out laps via its own latch */
+              );
+            } catch (e) { /* tracker errors must not affect lap recording */ }
           }
         } catch(e) {}
 
@@ -1620,6 +1637,19 @@ async function startTelemetry(onStatusChange) {
         const playerSpeed = ir.get(VARS.SPEED)?.[0] || 0;
         const playerYaw = ir.get(VARS.YAW_NORTH)?.[0] || 0;
         const trackSurface = ir.get(VARS.PLAYER_TRACK_SURFACE)?.[0] || 0;
+        // Feed incident tracker — uses values telemetry already reads above
+        try {
+          incidentTracker.tick({
+            trackSurface,
+            incidentCount,
+            sessionFlags: (carIdxFlags && carIdxFlags[playerCarIdx]) || 0,
+            speed: playerSpeed,
+            onPitRoad: !!(onPitRoad && onPitRoad[playerCarIdx]),
+            lapDistPct: playerPct,
+            currentLap: currentLap || 0,
+            tNow: Date.now(),
+          });
+        } catch (e) { /* never let the tracker take down the poll loop */ }
         // iRacing TrackSurface: -1=NotInWorld, 0=OffTrack, 1=InPitStall, 2=ApproachPits, 3=OnTrack
         const isOnTrack = trackSurface >= 2; // Record on track + pit approach
 
@@ -1710,4 +1740,8 @@ function stopTelemetry() {
 }
 
 let playerIRacingName = '';
-module.exports = { startTelemetry, stopTelemetry, getStatus: () => ({ iracing: connected }), getPlayerName: () => playerIRacingName };
+function setIncidentCountersEnabled(enabled) {
+  _showIncidents = enabled !== false;
+}
+
+module.exports = { startTelemetry, stopTelemetry, getStatus: () => ({ iracing: connected }), getPlayerName: () => playerIRacingName, setIncidentCountersEnabled };

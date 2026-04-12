@@ -18,7 +18,7 @@ process.on('uncaughtException', (err) => {
 const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, screen, session, Notification } = require('electron');
 const path = require('path');
 const { startServer, stopServer, getClientInfo: getWsClients, getClientLog, clearClientLog, clearAllClientLogs } = require('./websocket');
-const { startTelemetry, stopTelemetry } = require('./telemetry');
+const { startTelemetry, stopTelemetry, setIncidentCountersEnabled } = require('./telemetry');
 const { load: loadSettings, save: saveSettings } = require('./settings');
 const { startVoiceInput, stopVoiceInput, setVoiceChatWindow } = require('./voiceInput');
 const { connectToChannel: connectTwitchChat, disconnect: disconnectTwitchChat } = require('./twitchChat');
@@ -97,6 +97,9 @@ app.on('ready', () => {
   // Load persisted settings
   settings = loadSettings();
   if (settings.autoHideOverlays !== undefined) autoHideOverlays = settings.autoHideOverlays;
+  try {
+    setIncidentCountersEnabled(settings.overlayCustom?.raceduration?.showIncidents !== false);
+  } catch (e) {}
 
   // Check if user is logged in — show login screen if not
   if (!settings.racingUsername) {
@@ -637,6 +640,10 @@ ipcMain.on('toggle-autohide', (event, enabled) => {
 ipcMain.on('save-overlay-settings', (event, overlayId, overlaySettings) => {
   if (!settings.overlayCustom) settings.overlayCustom = {};
   settings.overlayCustom[overlayId] = overlaySettings;
+
+  if (overlayId === 'raceduration') {
+    setIncidentCountersEnabled(overlaySettings.showIncidents !== false);
+  }
 
   // Sync position FIRST: capture current window position before reload
   if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
