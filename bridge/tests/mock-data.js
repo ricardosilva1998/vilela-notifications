@@ -177,6 +177,19 @@ function generateSession(trackName, eventType, timeRemain, driverCount) {
   };
 }
 
+function generateFlags(scenarioName) {
+  switch (scenarioName) {
+    case 'empty':
+      return { activeFlag: null, since: null, rawBits: 0 };
+    case 'minimal':
+      return { activeFlag: 'green', since: Date.now(), rawBits: 0x4 };
+    case 'extreme':
+      return { activeFlag: 'black', since: Date.now(), rawBits: 0x10000 };
+    default:
+      return { activeFlag: 'yellow', since: Date.now(), rawBits: 0x8 };
+  }
+}
+
 function generateFuel() {
   const avgPerLap = rand(1.8, 3.5);
   const fuelLevel = rand(15, 75);
@@ -269,6 +282,7 @@ function buildScenario(name) {
         relative: { playerCarIdx: 0, spectatedCarIdx: 0, cars: [], focusCar: null },
         trackmap: { trackPath: [], trackPathReady: false, cars: [], playerCarIdx: 0 },
         proximity: { carLeftRight: 0 },
+        flags: generateFlags('empty'),
       };
     }
     case 'deep-field': {
@@ -314,6 +328,7 @@ function buildScenario(name) {
     relative: generateRelative(standings, 0),
     trackmap: generateTrackmap(standings),
     proximity: { carLeftRight: rand(-0.3, 0.3) },
+    flags: generateFlags(name),
   };
 }
 
@@ -327,6 +342,7 @@ const OVERLAY_CHANNELS = {
   trackmap:     ['trackmap', 'wind'],
   weather:      ['session'],
   raceduration: ['session', 'standings'],
+  flags:        ['flags'],
   drivercard:   ['standings'],
   stintlaps:    ['standings', 'session'],
   livestats:    ['standings', 'session'],
