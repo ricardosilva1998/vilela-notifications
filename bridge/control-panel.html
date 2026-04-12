@@ -1178,6 +1178,8 @@
         el.classList.toggle('active', el.id === 'panel-' + panelId);
       });
       localStorage.setItem('bridge_panel', panelId);
+      // Re-render dynamic pages
+      if (panelId === 'favorites') renderFavoritesPage();
       // Start/stop log refresh
       if (panelId === 'logs') startLogRefresh();
       else stopLogRefresh();
@@ -1218,6 +1220,35 @@
       grid.innerHTML = overlays.map(renderOverlayCard).join('');
     }
     buildOverviewGrid();
+
+    // ─── Favorites page ──────────────────────────────────────
+    function renderFavoritesPage() {
+      const panel = document.getElementById('panel-favorites');
+      if (!panel) return;
+      const favIds = (uiState.uiFavorites || []).filter(id => overlays.find(o => o.id === id));
+      if (favIds.length === 0) {
+        panel.innerHTML = `
+          <div style="display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700;color:#e8e6f0;margin-bottom:6px;">
+            <span style="color:#f7c948;font-size:18px;">★</span> Favorites
+          </div>
+          <div style="font-size:11px;color:#5c5b6e;margin-bottom:18px;">Quick access to your starred overlays. Click ⚙ to open that overlay's settings.</div>
+          <div class="ov-empty">No favorites yet — star any overlay to add it here.</div>
+        `;
+        return;
+      }
+      const cards = favIds
+        .map(id => overlays.find(o => o.id === id))
+        .filter(Boolean)
+        .map(renderOverlayCard)
+        .join('');
+      panel.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700;color:#e8e6f0;margin-bottom:6px;">
+          <span style="color:#f7c948;font-size:18px;">★</span> Favorites
+        </div>
+        <div style="font-size:11px;color:#5c5b6e;margin-bottom:18px;">Quick access to your starred overlays. Click ⚙ to open that overlay's settings.</div>
+        <div class="overview-grid">${cards}</div>
+      `;
+    }
 
     // ─── Toggle Overlay ──────────────────────────────────────
     function toggleOverlay(id, enabled) {
