@@ -1299,6 +1299,75 @@
     }
     window.toggleFavorite = toggleFavorite;
 
+    // ─── Sidebar search filter ──────────────────────────────
+    function applySearchFilter(rawQuery) {
+      const query = (rawQuery || '').trim().toLowerCase();
+      const emptyEl = document.getElementById('sidebar-search-empty');
+      const groupNames = ['race', 'car', 'track', 'stream'];
+
+      if (!query) {
+        // Restore: clear all dim/hidden, restore each group to its persisted collapse state
+        document.querySelectorAll('.sidebar-item').forEach(el => {
+          el.classList.remove('search-dim', 'search-hidden');
+        });
+        document.querySelectorAll('.sidebar-group-label').forEach(el => {
+          el.classList.remove('search-hidden');
+        });
+        groupNames.forEach(name => {
+          const group = document.getElementById('group-' + name);
+          if (!group) return;
+          const collapsed = uiState.uiSidebarGroups && uiState.uiSidebarGroups[name] !== false;
+          group.classList.toggle('collapsed', collapsed);
+        });
+        if (emptyEl) emptyEl.style.display = 'none';
+        return;
+      }
+
+      // Build the set of overlay ids that match the query (by name OR id)
+      const matches = new Set(
+        overlays
+          .filter(o => o.name.toLowerCase().includes(query) || o.id.toLowerCase().includes(query))
+          .map(o => o.id)
+      );
+
+      // Apply per-group: expand groups with at least one match, hide groups with zero
+      let totalMatches = 0;
+      groupNames.forEach(name => {
+        const group = document.getElementById('group-' + name);
+        const label = group?.previousElementSibling;
+        if (!group || !label) return;
+        const items = group.querySelectorAll('.sidebar-item');
+        let groupMatches = 0;
+        items.forEach(item => {
+          const id = item.dataset.panel;
+          if (matches.has(id)) {
+            item.classList.remove('search-dim', 'search-hidden');
+            groupMatches += 1;
+          } else {
+            item.classList.add('search-hidden');
+            item.classList.remove('search-dim');
+          }
+        });
+        totalMatches += groupMatches;
+        if (groupMatches > 0) {
+          group.classList.remove('collapsed');
+          label.classList.remove('search-hidden');
+        } else {
+          label.classList.add('search-hidden');
+          group.classList.add('collapsed');
+        }
+      });
+
+      if (emptyEl) {
+        if (totalMatches === 0) {
+          emptyEl.textContent = `No overlays match "${rawQuery}"`;
+          emptyEl.style.display = '';
+        } else {
+          emptyEl.style.display = 'none';
+        }
+      }
+    }
+
     // ─── Toggle Overlay ──────────────────────────────────────
     function toggleOverlay(id, enabled) {
       ipcRenderer.send('toggle-overlay', id, enabled);
@@ -2257,6 +2326,36 @@
       });
       ipcRenderer.send('set-pitwall-broadcast', ids);
     };
+
+    // Search field interactions
+    (function () {
+      const input = document.getElementById('sidebar-search');
+      if (!input) return;
+      input.addEventListener('input', (e) => applySearchFilter(e.target.value));
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          if (input.value !== '') {
+            input.value = '';
+            applySearchFilter('');
+          } else {
+            input.blur();
+          }
+          e.preventDefault();
+        }
+      });
+    })();
+
+    // Global ⌘K / Ctrl+K → focus the sidebar search field
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        const input = document.getElementById('sidebar-search');
+        if (input) {
+          input.focus();
+          input.select();
+          e.preventDefault();
+        }
+      }
+    });
   </script>
 </body>
 </html>
