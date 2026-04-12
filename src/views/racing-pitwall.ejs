@@ -894,6 +894,7 @@
     // ── ESC key ─────────────────────────────────────────────────
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
+        if (isEditing) return; // Edit mode owns Escape — handled by the window-level listener
         var panel = document.getElementById('toggle-panel');
         if (panel.classList.contains('open')) {
           window.toggleSettingsPanel();
