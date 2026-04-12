@@ -54,6 +54,29 @@
     .sidebar-spacer { flex: 1; }
     .sidebar-footer { padding: 10px 12px; font-size: 9px; color: #3a3a4e; text-align: center; }
     .sidebar-footer a { color: #9146ff; text-decoration: none; }
+    .sidebar-search-wrap { padding: 8px 10px 4px; }
+    .sidebar-search-input {
+      width: 100%;
+      padding: 6px 10px;
+      background: #0c0d14;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 5px;
+      color: #c0bfd0;
+      font-size: 11px;
+      outline: none;
+      font-family: inherit;
+    }
+    .sidebar-search-input:focus { border-color: rgba(145,70,255,0.4); }
+    .sidebar-search-input::placeholder { color: #5c5b6e; }
+    .sidebar-search-empty {
+      font-size: 10px;
+      color: #5c5b6e;
+      padding: 6px 12px;
+      font-style: italic;
+    }
+    .sidebar-item.search-dim { opacity: 0.35; }
+    .sidebar-item.search-hidden { display: none; }
+    .sidebar-group-label.search-hidden { display: none; }
 
     /* ─── Content Area ────────────────────────────────────── */
     .content { flex: 1; overflow-y: auto; padding: 16px; }
@@ -296,12 +319,22 @@
 
     <!-- ─── Sidebar ─── -->
     <div class="sidebar">
+      <div class="sidebar-search-wrap">
+        <input type="search" id="sidebar-search" class="sidebar-search-input" placeholder="🔎 Search overlays…" autocomplete="off" spellcheck="false">
+        <div id="sidebar-search-empty" class="sidebar-search-empty" style="display:none;"></div>
+      </div>
       <div class="sidebar-item active" data-panel="overview" onclick="navigateTo('overview')">
         <span class="sidebar-icon">&#9638;</span> Overview
       </div>
+      <div class="sidebar-item" data-panel="favorites" onclick="navigateTo('favorites')">
+        <span class="sidebar-icon" style="color:#f7c948;">&#9733;</span> Favorites
+      </div>
+      <div class="sidebar-item" data-panel="recent" onclick="navigateTo('recent')">
+        <span class="sidebar-icon" style="color:#3ecf8e;">&#128340;</span> Recent
+      </div>
       <div class="sidebar-divider"></div>
-      <div class="sidebar-group-label" onclick="toggleSidebarGroup('race')">&#9660; Race</div>
-      <div class="sidebar-group" id="group-race">
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('race')">&#9654; Race</div>
+      <div class="sidebar-group collapsed" id="group-race">
         <div class="sidebar-item" data-panel="standings" onclick="navigateTo('standings')">
           <span class="sidebar-icon">&#127937;</span> Standings
         </div>
@@ -321,8 +354,8 @@
           <span class="sidebar-icon">&#128202;</span> Live Stats
         </div>
       </div>
-      <div class="sidebar-group-label" onclick="toggleSidebarGroup('car')">&#9660; Car</div>
-      <div class="sidebar-group" id="group-car">
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('car')">&#9654; Car</div>
+      <div class="sidebar-group collapsed" id="group-car">
         <div class="sidebar-item" data-panel="fuel" onclick="navigateTo('fuel')">
           <span class="sidebar-icon">&#9981;</span> Fuel
         </div>
@@ -339,8 +372,8 @@
           <span class="sidebar-icon">&#9201;</span> Pit Duration
         </div>
       </div>
-      <div class="sidebar-group-label" onclick="toggleSidebarGroup('track')">&#9660; Track</div>
-      <div class="sidebar-group" id="group-track">
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('track')">&#9654; Track</div>
+      <div class="sidebar-group collapsed" id="group-track">
         <div class="sidebar-item" data-panel="trackmap" onclick="navigateTo('trackmap')">
           <span class="sidebar-icon">&#127758;</span> Track Map
         </div>
@@ -354,8 +387,8 @@
           <span class="sidebar-icon">&#128663;</span> Proximity <span style="font-size:8px;color:#f79009;margin-left:2px;">Soon</span>
         </div>
       </div>
-      <div class="sidebar-group-label" onclick="toggleSidebarGroup('stream')">&#9660; Stream</div>
-      <div class="sidebar-group" id="group-stream">
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('stream')">&#9654; Stream</div>
+      <div class="sidebar-group collapsed" id="group-stream">
         <div class="sidebar-item" data-panel="chat" onclick="navigateTo('chat')">
           <span class="sidebar-icon">&#128172;</span> Stream Chat
         </div>
@@ -388,6 +421,12 @@
 
     <!-- ─── Content ─── -->
     <div class="content">
+
+      <!-- ═══ FAVORITES PANEL ═══ -->
+      <div class="content-panel" id="panel-favorites"></div>
+
+      <!-- ═══ RECENT PANEL ═══ -->
+      <div class="content-panel" id="panel-recent"></div>
 
       <!-- ═══ OVERVIEW PANEL ═══ -->
       <div class="content-panel active" id="panel-overview">
