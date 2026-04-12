@@ -60,9 +60,19 @@ app.use(express.static(path.join(__dirname, '..', 'public'), {
     }
   }
 }));
-// Serve Bridge overlay files for pitwall iframes
+// Serve Bridge overlay files for pitwall iframes.
+// HTML/JS must not cache so deploys are picked up immediately.
+// Static assets (flag SVGs, helmet PNGs, logos, CSS) cache for an hour —
+// without this, relative/standings rows re-render at 2Hz/1Hz and re-fetch
+// every flag per tick, producing a visible blink on the flag column.
 app.use('/pitwall/overlays', express.static(path.join(__dirname, '..', 'bridge', 'overlays'), {
-  setHeaders: (res) => { res.set('Cache-Control', 'no-cache, no-store, must-revalidate'); }
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html') || filePath.endsWith('.js')) {
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    } else {
+      res.set('Cache-Control', 'public, max-age=3600');
+    }
+  }
 }));
 // Serve custom sounds from persistent data volume (survives deploys)
 app.use('/overlay/sounds', express.static(path.join(__dirname, '..', 'data', 'sounds')));
