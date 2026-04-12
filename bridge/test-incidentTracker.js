@@ -25,6 +25,9 @@ test('reset() returns state to zeros', () => {
   t.reset();
   const s = t.getState();
   assert.equal(s.offtracks.count, 0);
+  assert.equal(s.offtracks.timeLost, 0);
   assert.equal(s.penalties.count, 0);
+  assert.equal(s.penalties.timeLost, 0);
   assert.equal(s.slowLaps.count, 0);
+  assert.equal(s.slowLaps.timeLost, 0);
 });

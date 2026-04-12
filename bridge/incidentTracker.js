@@ -27,13 +27,13 @@ function createIncidentTracker() {
 
       // Lap state
       cleanLaps: [],               // last 5 valid clean lap times (seconds)
-      lastLapTimeAt: 0,            // tNow of last completed lap (for soft-restart heuristic)
+      lastLapCompletedAt: 0,            // tNow of last completed lap (for soft-restart heuristic)
 
       // Session state
       currentSessionType: null,    // 'Practice' | 'Qualifying' | 'Race' | etc.
 
       // Stalled detection
-      stalledSince: 0,             // tNow when speed dropped below 1 m/s, 0 if moving
+      stalledSince: 0,             // tNow when speed dropped below 1 m/s; 0 = sentinel (not stalled)
     };
   }
 
