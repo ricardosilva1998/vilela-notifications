@@ -576,6 +576,7 @@
         float: true,
         disableOneColumnMode: true,
         removable: false,
+        maxRow: 10,
         resizable: { handles: 'n,e,s,w,ne,nw,se,sw' },
       }, '#pitwall-grid');
 
@@ -624,7 +625,18 @@
         var stored = localStorage.getItem(LAYOUT_KEY);
         if (stored) {
           var layout = JSON.parse(stored);
-          if (Array.isArray(layout) && layout.length > 0) return layout;
+          if (Array.isArray(layout) && layout.length > 0) {
+            // Clamp items whose dimensions would place them outside the 10-row viewport —
+            // recovers layouts saved before maxRow was enforced and any off-screen panels
+            // became unreachable.
+            layout.forEach(function(item) {
+              if (typeof item.h !== 'number' || item.h < 1) item.h = 1;
+              if (item.h > 10) item.h = 10;
+              if (typeof item.y !== 'number' || item.y < 0) item.y = 0;
+              if (item.y + item.h > 10) item.y = 10 - item.h;
+            });
+            return layout;
+          }
         }
       } catch(e) {}
       return JSON.parse(JSON.stringify(DEFAULT_LAYOUT));
