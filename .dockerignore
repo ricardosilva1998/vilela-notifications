@@ -3,7 +3,7 @@ node_modules
 .gitignore
 .github
 data
-bridge
+bridge/*
 docs
 tests
 test-results
@@ -17,3 +17,5 @@ test-results
 bun.lock
 public/vtuber
 public/screenshots/*.png
+!bridge/overlays
+!bridge/overlays/**
