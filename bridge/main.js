@@ -97,6 +97,20 @@ app.on('ready', () => {
   // Load persisted settings
   settings = loadSettings();
   if (settings.autoHideOverlays !== undefined) autoHideOverlays = settings.autoHideOverlays;
+
+  // One-shot migration: race-duration window grew in v3.23.1 to fit the
+  // new incidents footer. Anyone who saved with the old default of 80
+  // needs to be bumped to at least 170 or the footer is clipped.
+  try {
+    if (settings.overlayCustom && settings.overlayCustom.raceduration) {
+      const h = parseInt(settings.overlayCustom.raceduration.height);
+      if (h && h < 170) {
+        settings.overlayCustom.raceduration.height = '170';
+        saveSettings(settings);
+      }
+    }
+  } catch (e) {}
+
   try {
     setIncidentCountersEnabled(settings.overlayCustom?.raceduration?.showIncidents !== false);
   } catch (e) {}

@@ -1087,6 +1087,15 @@
         const panel = document.getElementById('panel-' + ov.id);
         if (!panel) return;
         const saved = JSON.parse(localStorage.getItem('overlay_' + ov.id) || '{}');
+
+        // One-shot migration: race-duration window grew in v3.23.1 to fit
+        // the new incidents footer. Anyone who saved with the old default
+        // of 80 needs to be bumped to at least 170 or the footer is clipped.
+        if (ov.id === 'raceduration' && saved.height != null && parseInt(saved.height) < 170) {
+          saved.height = '170';
+          localStorage.setItem('overlay_' + ov.id, JSON.stringify(saved));
+        }
+
         const fields = CUSTOMIZE_FIELDS[ov.id] || [];
         let html = '';
 
