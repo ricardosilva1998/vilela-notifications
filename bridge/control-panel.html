@@ -528,6 +528,36 @@
     .account-info-value { font-size: 11px; color: #e8e6f0; font-weight: 600; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .account-info-value.mono { font-family: Consolas, 'SF Mono', monospace; font-size: 10px; color: #8b8a9e; }
     .account-info-value.linked { color: #3ecf8e; }
+    .account-info-value-with-copy {
+      display: flex; align-items: center; gap: 8px;
+      min-width: 0;
+    }
+    .account-info-value-with-copy .account-info-value {
+      min-width: 0;
+      max-width: 220px;
+    }
+    .account-copy-btn {
+      flex-shrink: 0;
+      width: 24px; height: 24px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #8b8a9e;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+      padding: 0;
+    }
+    .account-copy-btn:hover {
+      background: rgba(145,70,255,0.18);
+      border-color: rgba(145,70,255,0.4);
+      color: #b48cff;
+    }
+    .account-copy-btn.copied {
+      background: rgba(62,207,142,0.18);
+      border-color: rgba(62,207,142,0.4);
+      color: #3ecf8e;
+    }
     .account-actions { display: flex; gap: 10px; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.05); }
     .account-btn-primary {
       flex: 1; padding: 9px 14px; border-radius: 6px;
@@ -805,7 +835,12 @@
               </div>
               <div class="account-info-row">
                 <div class="account-info-label">Bridge ID</div>
-                <div class="account-info-value mono" id="account-display-bridgeid">—</div>
+                <div class="account-info-value-with-copy">
+                  <div class="account-info-value mono" id="account-display-bridgeid">—</div>
+                  <button class="account-copy-btn" id="account-copy-bridgeid" onclick="copyBridgeId()" title="Copy Bridge ID">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  </button>
+                </div>
               </div>
             </div>
             <div class="account-actions">
@@ -980,13 +1015,6 @@
             Real-time telemetry overlays for standings, relative, fuel, wind, proximity, track map, voice chat, and more.
           </div>
           <a class="about-link" href="https://atletanotifications.com" target="_blank">atletanotifications.com</a>
-          <div style="margin-top:12px; padding:10px 12px; background:rgba(255,255,255,0.03); border-radius:8px; display:flex; align-items:center; justify-content:space-between;">
-            <div>
-              <div style="font-size:11px; color:#888; margin-bottom:2px;">Bridge ID</div>
-              <div id="bridge-id-display" style="font-size:11px; font-family:monospace; color:#ccc; user-select:all;"></div>
-            </div>
-            <button onclick="navigator.clipboard.writeText(document.getElementById('bridge-id-display').textContent); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy', 1500);" style="background:rgba(145,70,255,0.15); color:#9146ff; border:none; padding:4px 10px; border-radius:6px; font-size:11px; cursor:pointer;">Copy</button>
-          </div>
         </div>
       </div>
 
@@ -2429,15 +2457,6 @@
     document.getElementById('installed-version').textContent = 'v' + appVersion;
     document.getElementById('about-version').textContent = 'v' + appVersion;
 
-    // ─── Load and display Bridge ID ──────────────────────────
-    try {
-      const settings = require('./settings').load();
-      document.getElementById('bridge-id-display').textContent = settings.bridgeId || 'Not generated';
-    } catch(e) {
-      console.error('[Control Panel] Failed to load settings:', e.message);
-      document.getElementById('bridge-id-display').textContent = 'Error loading ID';
-    }
-
     // ─── Account Panel ───────────────────────────────────────
     function setText(id, value) {
       const el = document.getElementById(id);
@@ -2525,6 +2544,21 @@
 
     window.openAccountSettings = function() {
       try { require('electron').shell.openExternal('https://atletanotifications.com/racing/account'); } catch(e) {}
+    };
+
+    window.copyBridgeId = function() {
+      const el = document.getElementById('account-display-bridgeid');
+      const btn = document.getElementById('account-copy-bridgeid');
+      if (!el || !btn) return;
+      const text = el.textContent || '';
+      if (!text || text === '—') return;
+      try { navigator.clipboard.writeText(text); } catch(e) {}
+      btn.classList.add('copied');
+      btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+      }, 1400);
     };
 
     window.logoutAccount = function() {
