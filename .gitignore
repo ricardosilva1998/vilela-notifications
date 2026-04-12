@@ -8,3 +8,4 @@ data/
 test-results/
 bridge/tests/test-results/
 *.tsbuildinfo
+.worktrees/
