@@ -175,13 +175,13 @@ app.get('/streamer', (req, res) => {
   if (req.streamer) return res.redirect('/dashboard');
   res.render('streamer-landing', { streamer: null, racingUser: null });
 });
-// Bridge API — requires auth
+// Bridge feature-detect endpoint. The Bridge calls this without a session
+// cookie (raw https.get), so it must NOT require auth. The response is a
+// plain capability flag — no secrets — so the missing auth check is safe.
+// (Until v3.22.0 this endpoint returned process.env.OPENAI_API_KEY which IS
+// why it had auth in the first place; that has been moved server-side to
+// /api/bridge/whisper.)
 app.get('/api/bridge/config', (req, res) => {
-  if (!req.streamer && !req.racingUser) return res.status(401).json({ error: 'Unauthorized' });
-  // The OPENAI key used to ship in this response — that allowed any
-  // authenticated Bridge user to exfiltrate it and burn the API budget.
-  // Bridges now POST audio to /api/bridge/whisper instead and the key
-  // never leaves the server.
   res.json({ whisperProxyEnabled: !!process.env.OPENAI_API_KEY });
 });
 
@@ -191,11 +191,22 @@ app.get('/api/bridge/config', (req, res) => {
 // pattern as /api/bridge/spotify).
 app.post('/api/bridge/whisper', (req, res) => {
   let authed = !!(req.streamer || req.racingUser);
+  let authVia = authed ? 'session' : null;
   if (!authed && req.query.bridge_id && /^[a-f0-9-]{20,}$/i.test(req.query.bridge_id)) {
-    if (db.getRacingUserByBridgeId(req.query.bridge_id)) authed = true;
+    if (db.getRacingUserByBridgeId(req.query.bridge_id)) {
+      authed = true;
+      authVia = 'bridge_id';
+    }
   }
-  if (!authed) return res.status(401).json({ error: 'Unauthorized' });
-  if (!process.env.OPENAI_API_KEY) return res.status(503).json({ error: 'Whisper not configured' });
+  if (!authed) {
+    console.warn('[Whisper proxy] 401 — no session, bridge_id=' + (req.query.bridge_id || '(none)'));
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  if (!process.env.OPENAI_API_KEY) {
+    console.warn('[Whisper proxy] 503 — OPENAI_API_KEY not configured');
+    return res.status(503).json({ error: 'Whisper not configured' });
+  }
+  console.log('[Whisper proxy] auth=' + authVia + ' content-length=' + (req.headers['content-length'] || '0'));
 
   const MAX_BYTES = 5 * 1024 * 1024;
   const declared = parseInt(req.headers['content-length'] || '0', 10);

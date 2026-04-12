@@ -111,26 +111,26 @@ function findSpeechScript() {
 }
 
 async function transcribeWav(wavPath) {
-  // Try the server-side Whisper proxy first; falls back to PowerShell SAPI
-  // if it isn't available. The OpenAI key never lives on disk in Bridge.
+  // Always try Whisper first — user-supplied key, then server proxy, then
+  // SAPI fallback. The proxy probe at startup may not have completed yet
+  // (or may have hit a transient 401), so we don't gate on it; the proxy
+  // path returns null on failure and we fall through to SAPI.
   const userKey = (settings.voiceChat && settings.voiceChat.openaiKey) || '';
   const bridgeId = (settings && settings.racingBridgeId) || (settings && settings.bridgeId) || '';
 
-  if (whisperProxyEnabled || userKey) {
-    log('[Speech] Transcribing via ' + (userKey ? 'user Whisper key' : 'server proxy') + ': ' + wavPath);
-    const text = userKey
-      ? await transcribeViaUserKey(wavPath, userKey)
-      : await transcribeViaProxy(wavPath, bridgeId);
+  log('[Speech] Transcribing via ' + (userKey ? 'user Whisper key' : 'server proxy') + ': ' + wavPath);
+  const text = userKey
+    ? await transcribeViaUserKey(wavPath, userKey)
+    : await transcribeViaProxy(wavPath, bridgeId);
+  if (text != null) {
     try { fs.unlinkSync(wavPath); } catch(e) {}
-    if (text != null) {
-      log('[Speech] Done: "' + text + '"');
-      if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
-        voiceChatWindow.webContents.send('voice-transcript', text);
-      }
-      return;
+    log('[Speech] Done: "' + text + '"');
+    if (voiceChatWindow && !voiceChatWindow.isDestroyed()) {
+      voiceChatWindow.webContents.send('voice-transcript', text);
     }
-    log('[Speech] Proxy/key path failed, falling back to SAPI');
+    return;
   }
+  log('[Speech] Whisper path failed (bridgeId=' + (bridgeId ? 'present' : 'missing') + '), falling back to SAPI');
 
   if (!scriptPath) {
     log('[Speech] No script — cannot transcribe');
