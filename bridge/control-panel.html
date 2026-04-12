@@ -642,6 +642,9 @@
         <div class="sidebar-item" data-panel="raceduration" onclick="navigateTo('raceduration')">
           <span class="sidebar-icon">&#9201;</span> Duration
         </div>
+        <div class="sidebar-item" data-panel="flags" onclick="navigateTo('flags')">
+          <span class="sidebar-icon">&#128681;</span> Flags
+        </div>
         <div class="sidebar-item" data-panel="pitstrategy" onclick="navigateTo('pitstrategy')">
           <span class="sidebar-icon">&#9881;</span> Pit Strategy
         </div>
@@ -764,6 +767,7 @@
       <div class="content-panel" id="panel-voicechat"></div>
       <div class="content-panel" id="panel-inputs"></div>
       <div class="content-panel" id="panel-raceduration"></div>
+      <div class="content-panel" id="panel-flags"></div>
       <div class="content-panel" id="panel-drivercard"></div>
       <div class="content-panel" id="panel-stintlaps"></div>
       <div class="content-panel" id="panel-weather"></div>
@@ -1053,6 +1057,7 @@
       { id: 'voicechat', icon: '&#127908;', name: 'Voice Chat', width: 340, height: 400 },
       { id: 'inputs', icon: '&#127918;', name: 'Driver Inputs', width: 540, height: 150 },
       { id: 'raceduration', icon: '&#9201;', name: 'Race Duration', width: 280, height: 170 },
+      { id: 'flags', icon: '&#128681;', name: 'Flags', width: 180, height: 130 },
       { id: 'drivercard', icon: '&#127183;', name: 'Driver Card', width: 300, height: 180 },
       { id: 'stintlaps', icon: '&#128203;', name: 'Stint Laps', width: 320, height: 300 },
       { id: 'weather', icon: '&#9925;', name: 'Weather', width: 320, height: 195 },
@@ -1207,6 +1212,12 @@
         { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
         { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
         { key: 'showIncidents', label: 'Incident counters (off-tracks, penalties, slow laps)', type: 'checkbox', default: true },
+      ],
+      flags: [
+        { key: 'posX', label: 'Position X (px)', type: 'number', default: '0', min: -5000, max: 5000 },
+        { key: 'posY', label: 'Position Y (px)', type: 'number', default: '0', min: -3000, max: 3000 },
+        { key: 'autoHide', label: 'Auto-hide when iRacing closes', type: 'checkbox', default: true },
+        { key: 'showBlue', label: 'Show blue flag alerts', type: 'checkbox', default: true },
       ],
       pitstrategy: [
         { key: 'maxDrivers', label: 'Max cars to show', type: 'number', default: '5', min: 1, max: 15 },
