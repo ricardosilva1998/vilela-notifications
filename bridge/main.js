@@ -54,7 +54,7 @@ const OVERLAYS = [
   { id: 'trackmap', name: 'Track Map', width: 500, height: 500 },
   { id: 'voicechat', name: 'Voice Chat', width: 340, height: 400 },
   { id: 'inputs', name: 'Driver Inputs', width: 540, height: 150 },
-  { id: 'raceduration', name: 'Race Duration', width: 280, height: 80 },
+  { id: 'raceduration', name: 'Race Duration', width: 280, height: 170 },
   { id: 'drivercard', name: 'Driver Card', width: 300, height: 180 },
   { id: 'stintlaps', name: 'Stint Laps', width: 320, height: 300 },
   { id: 'weather', name: 'Weather', width: 320, height: 195 },
