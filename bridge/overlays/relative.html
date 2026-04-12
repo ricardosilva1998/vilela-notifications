@@ -360,12 +360,12 @@
 
       const rows = [];
       for (const d of ahead) {
-        const lapDiff = centerLaps > 0 ? (d.lapsCompleted || 0) - centerLaps : 0;
+        const lapDiff = _isRaceSession && centerLaps > 0 ? (d.lapsCompleted || 0) - centerLaps : 0;
         rows.push(buildRelativeRow(d, 'ahead', formatRelativeGap(-d.gap), false, lapDiff));
       }
       rows.push(buildRelativeRow(centerCar || { position: 0, classPosition: 0, carNumber: '', driverName: 'You', country: '', safetyRating: '', iRating: 0, carClassColor: '#fff' }, '', '', true, 0));
       for (const d of behind) {
-        const lapDiff = centerLaps > 0 ? (d.lapsCompleted || 0) - centerLaps : 0;
+        const lapDiff = _isRaceSession && centerLaps > 0 ? (d.lapsCompleted || 0) - centerLaps : 0;
         rows.push(buildRelativeRow(d, 'behind', formatRelativeGap(-d.gap), false, lapDiff));
       }
 
@@ -432,6 +432,7 @@
     let demoCleared = false;
 
     let _focusClass = '';
+    let _isRaceSession = false;
     const _relPrevPos = new Map();
     let _lastRenderTime = 0;
     let _pendingData = null;
@@ -525,6 +526,7 @@
 
     onData('session', data => {
       if (!data) return;
+      _isRaceSession = (data.eventType || '').toLowerCase().includes('race');
       const el = document.getElementById('session-header');
       if (!el || headerItems.length === 0) { if (el) el.style.display = 'none'; return; }
 
