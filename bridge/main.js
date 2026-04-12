@@ -393,13 +393,12 @@ function startBridge() {
     autoUpdater.on('error', (err) => {
       console.log('[Updater] Error:', err.message);
     });
-    // Check for updates after 5 seconds, then every 60 seconds
+    // Check for updates once, 5 seconds after startup. No periodic check —
+    // the per-minute interval was burning CPU and network on a running race
+    // machine for no practical benefit. Users see updates on next app launch.
     setTimeout(() => {
       try { autoUpdater.checkForUpdates(); } catch(e) {}
     }, 5000);
-    setInterval(() => {
-      try { autoUpdater.checkForUpdates(); } catch(e) {}
-    }, 60000);
   }
 
   console.log('[Bridge] Started');
