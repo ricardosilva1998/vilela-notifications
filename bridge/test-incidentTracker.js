@@ -131,3 +131,14 @@ test('penalty: first tick seeds lastSessionFlags without firing', () => {
   t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: FLAG_BLACK, speed: 30, onPitRoad: false, lapDistPct: 0.1, currentLap: 2, tNow: 1000 });
   assert.equal(t.getState().penalties.count, 0);
 });
+
+test('pit road: onPitRoadDuringLap latches across the lap', () => {
+  const t = createIncidentTracker();
+  t.init();
+  t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.1, currentLap: 2, tNow: 1000 });
+  t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: 0, speed: 5,  onPitRoad: true,  lapDistPct: 0.2, currentLap: 2, tNow: 1100 });
+  t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.3, currentLap: 2, tNow: 1200 });
+  // Latch is internal; we observe it via slow-lap exclusion in Task 5,
+  // but for this task we just verify it doesn't crash.
+  assert.equal(t.getState().offtracks.count, 0);
+});

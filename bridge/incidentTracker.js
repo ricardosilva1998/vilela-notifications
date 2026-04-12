@@ -97,6 +97,11 @@ function createIncidentTracker() {
       }
       state.lastSessionFlags = snapshot.sessionFlags;
     }
+
+    // Latch onPitRoad for the current lap; consumed by onLapComplete()
+    if (snapshot.onPitRoad) {
+      state.onPitRoadDuringLap = true;
+    }
   }
 
   function onLapComplete(_lapNum, _lapTime, _isValid) {}
