@@ -136,7 +136,7 @@ function createIncidentTracker() {
       const cleanMedian = median(state.cleanLaps);
       const lapLoss = lapTime - cleanMedian;
       if (lapLoss >= SLOW_LAP_ATTRIBUTION_FLOOR) {
-        const slowThreshold = Math.min(SLOW_LAP_MIN_LOSS_SEC, cleanMedian * SLOW_LAP_REL_THRESHOLD);
+        const slowThreshold = Math.max(SLOW_LAP_MIN_LOSS_SEC, cleanMedian * SLOW_LAP_REL_THRESHOLD);
         // Attribute loss using priority: penalty > offtrack > slow lap
         if (state.thisLapHadPenalty) {
           state.penalties.timeLost += lapLoss;

@@ -160,9 +160,9 @@ test('slow lap: time loss attributed = lap - median', () => {
   t.init();
   t.onLapComplete(2, 90.0, true);
   t.onLapComplete(3, 90.0, true);
-  t.onLapComplete(4, 93.0, true);  // +3.0
+  t.onLapComplete(4, 95.0, true);  // +5.0, above max(2.0, 90*0.05=4.5) threshold
   assert.equal(t.getState().slowLaps.count, 1);
-  assert.equal(t.getState().slowLaps.timeLost, 3.0);
+  assert.equal(t.getState().slowLaps.timeLost, 5.0);
 });
 
 test('slow lap: lap within threshold is NOT counted', () => {
