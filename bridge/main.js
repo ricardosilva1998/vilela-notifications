@@ -403,7 +403,7 @@ function startBridge() {
 
   console.log('[Bridge] Started');
 
-  // --- Remote Log Upload (every 60s) ---
+  // --- Remote Log Upload (every 5 min) ---
   const LOG_UPLOAD_URL = 'https://atletanotifications.com/api/bridge-logs';
   let lastLogOffset = 0;
 
@@ -456,7 +456,7 @@ function startBridge() {
     } catch(e) {} // never crash the app
   }
 
-  setInterval(uploadLogs, 60000);
+  setInterval(uploadLogs, 300000);
   // Upload initial logs after 10s
   setTimeout(uploadLogs, 10000);
 }
