@@ -123,6 +123,80 @@
     .overview-card-icon { font-size: 18px; }
     .overview-card-name { font-size: 11px; font-weight: 600; }
 
+    /* ─── Shared overlay card (Overview / Favorites / Recent) ─ */
+    .ov-card {
+      background: #141520;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      padding: 11px 13px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      transition: border-color 0.15s;
+    }
+    .ov-card:hover { border-color: rgba(145,70,255,0.3); }
+    .ov-card-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+    .ov-card-icon { font-size: 17px; flex-shrink: 0; }
+    .ov-card-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: #e8e6f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ov-card-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .ov-card-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 5px;
+      background: rgba(255,255,255,0.04);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #8b8a9e;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: none;
+      padding: 0;
+      font-family: inherit;
+    }
+    .ov-card-btn:hover { background: rgba(145,70,255,0.18); color: #c0bfd0; }
+    .ov-card-btn.gear:hover { color: #9146ff; }
+    .ov-card-btn.star { color: #3a3a4e; font-size: 14px; }
+    .ov-card-btn.star.filled { color: #f7c948; }
+    .ov-card-coming-soon {
+      font-size: 9px;
+      color: #f79009;
+      background: rgba(247,144,9,0.15);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      margin-left: 2px;
+    }
+    .ov-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: #5c5b6e;
+      font-size: 12px;
+      background: #141520;
+      border: 1px dashed rgba(255,255,255,0.06);
+      border-radius: 8px;
+    }
+
     /* ─── Settings form fields ────────────────────────────── */
     .enable-row {
       display: flex; align-items: center; justify-content: space-between;
@@ -1114,6 +1188,29 @@
     }
 
     // ─── Overview Grid ───────────────────────────────────────
+    // ─── Shared overlay card renderer (Overview / Favorites / Recent) ─
+    function renderOverlayCard(ov) {
+      const isProximity = ov.id === 'proximity';
+      const fav = uiState.uiFavorites && uiState.uiFavorites.indexOf(ov.id) !== -1;
+      return `
+        <div class="ov-card" data-overlay-id="${ov.id}">
+          <div class="ov-card-left">
+            <span class="ov-card-icon">${ov.icon}</span>
+            <span class="ov-card-name">${ov.name}</span>
+            ${isProximity ? '<span class="ov-card-coming-soon">Coming Soon</span>' : ''}
+          </div>
+          <div class="ov-card-actions">
+            <label class="toggle">
+              <input type="checkbox" id="toggle-${ov.id}" ${isProximity ? 'disabled' : ''} onclick="event.stopPropagation()" onchange="toggleOverlay('${ov.id}', this.checked)">
+              <span class="slider"></span>
+            </label>
+            <button class="ov-card-btn gear" title="Open settings" onclick="event.stopPropagation(); navigateTo('${ov.id}');">⚙</button>
+            <button class="ov-card-btn star ${fav ? 'filled' : ''}" title="${fav ? 'Remove from favorites' : 'Add to favorites'}" onclick="event.stopPropagation(); toggleFavorite('${ov.id}');">${fav ? '★' : '☆'}</button>
+          </div>
+        </div>
+      `;
+    }
+
     function buildOverviewGrid() {
       const grid = document.getElementById('overview-grid');
       grid.innerHTML = '';
