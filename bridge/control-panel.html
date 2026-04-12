@@ -196,6 +196,110 @@
       border: 1px dashed rgba(255,255,255,0.06);
       border-radius: 8px;
     }
+    /* ─── Team Broadcasting (📡 Broadcasting tab) ─────────── */
+    .tb-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #141520;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      font-size: 11px;
+      color: #8b8a9e;
+    }
+    .tb-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #3ecf8e;
+      box-shadow: 0 0 6px rgba(62,207,142,0.5);
+      flex-shrink: 0;
+    }
+    .tb-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .tb-card {
+      background: #141520;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      transition: border-color 0.15s;
+    }
+    .tb-card:hover { border-color: rgba(62,207,142,0.3); }
+    .tb-card.live { border-color: rgba(62,207,142,0.4); }
+    .tb-card-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+    .tb-card-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      background: rgba(62,207,142,0.12);
+      color: #3ecf8e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .tb-card-info {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .tb-card-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: #e8e6f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tb-card-status {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #5c5b6e;
+      font-weight: 600;
+    }
+    .tb-card.live .tb-card-status { color: #3ecf8e; }
+    .tb-toggle {
+      width: 36px;
+      height: 20px;
+      background: #1a1b2e;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      position: relative;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tb-toggle::after {
+      content: '';
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #fff;
+      top: 2px;
+      left: 2px;
+      transition: 0.2s;
+    }
+    .tb-toggle.on { background: #3ecf8e; border-color: #3ecf8e; }
+    .tb-toggle.on::after { left: 18px; }
 
     /* ─── Settings form fields ────────────────────────────── */
     .enable-row {
@@ -406,6 +510,9 @@
       <div class="sidebar-item" data-panel="recent" onclick="navigateTo('recent')">
         <span class="sidebar-icon" style="color:#3ecf8e;">&#128340;</span> Recent
       </div>
+      <div class="sidebar-item" data-panel="broadcast" onclick="navigateTo('broadcast')">
+        <span class="sidebar-icon" style="color:#3ecf8e;">&#128225;</span> Broadcasting
+      </div>
       <div class="sidebar-divider"></div>
       <div class="sidebar-group-label" onclick="toggleSidebarGroup('race')">&#9654; Race</div>
       <div class="sidebar-group collapsed" id="group-race">
@@ -502,6 +609,9 @@
       <!-- ═══ RECENT PANEL ═══ -->
       <div class="content-panel" id="panel-recent"></div>
 
+      <!-- ═══ BROADCASTING PANEL ═══ -->
+      <div class="content-panel" id="panel-broadcast"></div>
+
       <!-- ═══ OVERVIEW PANEL ═══ -->
       <div class="content-panel active" id="panel-overview">
         <div class="status-card">
@@ -514,14 +624,6 @@
 
         <div class="section-header">Overlays</div>
         <div class="overview-grid" id="overview-grid"></div>
-
-        <div class="section-header" style="margin-top:14px;">Team Broadcasting</div>
-        <div id="team-broadcast-section" style="margin-bottom:8px;">
-          <p style="font-size:11px;color:#5a5970;margin-bottom:8px;">Select which teams can see your telemetry on Pitwall:</p>
-          <div id="team-broadcast-list" style="display:flex;flex-direction:column;gap:4px;">
-            <p style="font-size:11px;color:#5a5970;font-style:italic;">Connecting...</p>
-          </div>
-        </div>
 
         <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#8b8a9e;margin-top:10px;cursor:pointer;">
           <input type="checkbox" id="autohide-check" checked onchange="toggleAutoHide(this.checked)" style="accent-color:#9146ff;">
@@ -1182,6 +1284,7 @@
       // Re-render dynamic pages
       if (panelId === 'favorites') renderFavoritesPage();
       if (panelId === 'recent') renderRecentPage();
+      if (panelId === 'broadcast') renderBroadcastPage();
       // Track overlay panels in Recent (skip utility pages and dynamic pages)
       const RECENT_EXCLUDE = new Set(['overview', 'favorites', 'recent', 'account', 'updates', 'logs', 'about']);
       if (!RECENT_EXCLUDE.has(panelId) && overlays.find(o => o.id === panelId)) {
@@ -1287,6 +1390,96 @@
         <div class="overview-grid">${cards}</div>
       `;
     }
+
+    // ─── Broadcasting page ───────────────────────────────────
+    function renderBroadcastPage() {
+      const panel = document.getElementById('panel-broadcast');
+      if (!panel) return;
+      let state;
+      try { state = ipcRenderer.sendSync('get-pitwall-teams'); }
+      catch (e) { state = { status: 'disabled', teams: [], broadcastIds: [] }; }
+
+      const header = `
+        <div style="display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700;color:#e8e6f0;margin-bottom:6px;">
+          <span style="color:#3ecf8e;font-size:18px;">📡</span> Team Broadcasting
+        </div>
+        <div style="font-size:11px;color:#5c5b6e;margin-bottom:18px;">Toggle which teams can see your live telemetry on Pitwall. Settings persist across restarts.</div>
+      `;
+
+      if (state.status === 'disabled') {
+        panel.innerHTML = header + '<div class="ov-empty">Pitwall not configured — log out and log back in to enable team broadcasting.</div>';
+        return;
+      }
+
+      const teams = Array.isArray(state.teams) ? state.teams : [];
+      const broadcastSet = new Set(state.broadcastIds || []);
+      const isConnected = state.status === 'connected';
+      const dotColor = isConnected ? '#3ecf8e' : '#f79009';
+      let statusText;
+      if (teams.length === 0) {
+        statusText = isConnected ? 'Connected to Pitwall · 0 teams' : 'Connecting to Pitwall…';
+      } else {
+        statusText = isConnected
+          ? `Connected to Pitwall · ${teams.length} team${teams.length === 1 ? '' : 's'} · ${broadcastSet.size} broadcasting`
+          : 'Reconnecting to Pitwall…';
+      }
+
+      const statusBar = `
+        <div class="tb-status">
+          <div class="tb-status-dot" style="background:${dotColor};box-shadow:0 0 6px ${dotColor}80;"></div>
+          <span>${statusText}</span>
+        </div>
+      `;
+
+      if (teams.length === 0) {
+        if (isConnected) {
+          panel.innerHTML = header + statusBar + '<div class="ov-empty">You\'re not in any teams yet — join one at <a href="#" id="tb-join-link" style="color:#3ecf8e;">atletanotifications.com/racing/teams</a></div>';
+          const link = document.getElementById('tb-join-link');
+          if (link) {
+            link.addEventListener('click', (e) => {
+              e.preventDefault();
+              try { require('electron').shell.openExternal('https://atletanotifications.com/racing/teams'); } catch (err) {}
+            });
+          }
+        } else {
+          panel.innerHTML = header + statusBar + '<div class="ov-empty" style="font-style:italic;color:#5c5b6e;">Loading…</div>';
+        }
+        return;
+      }
+
+      const escapeName = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const cards = teams.map(t => {
+        const on = broadcastSet.has(t.id);
+        return `
+          <div class="tb-card ${on ? 'live' : ''}">
+            <div class="tb-card-left">
+              <div class="tb-card-icon">📡</div>
+              <div class="tb-card-info">
+                <div class="tb-card-name">${escapeName(t.name)}</div>
+                <div class="tb-card-status">${on ? '● Broadcasting' : 'Off'}</div>
+              </div>
+            </div>
+            <div class="tb-toggle ${on ? 'on' : ''}" data-team-id="${t.id}" onclick="toggleTeamBroadcast(${t.id})"></div>
+          </div>
+        `;
+      }).join('');
+
+      panel.innerHTML = header + statusBar + `<div class="tb-grid">${cards}</div>`;
+    }
+
+    // ─── Toggle team broadcast (called from card toggle clicks) ─
+    function toggleTeamBroadcast(teamId) {
+      let state;
+      try { state = ipcRenderer.sendSync('get-pitwall-teams'); }
+      catch (e) { return; }
+      const current = new Set(state.broadcastIds || []);
+      if (current.has(teamId)) current.delete(teamId);
+      else current.add(teamId);
+      const newIds = Array.from(current);
+      try { ipcRenderer.send('set-pitwall-broadcast', newIds); } catch (e) {}
+      renderBroadcastPage();
+    }
+    window.toggleTeamBroadcast = toggleTeamBroadcast;
 
     // ─── Toggle favorite (called from card star buttons) ─────
     function toggleFavorite(overlayId) {
@@ -2287,45 +2480,8 @@
     if (savedPanel) navigateTo(savedPanel);
     if (currentPanel === 'logs') startLogRefresh();
 
-    // ── Team broadcast UI (via IPC to main process) ────────
-    function renderTeamBroadcast(teams, broadcastIds) {
-      const container = document.getElementById('team-broadcast-list');
-      if (!container) return;
-      if (!teams || teams.length === 0) {
-        container.innerHTML = '<p style="font-size:11px;color:#5a5970;font-style:italic;">No teams — join a team at atletanotifications.com/racing/teams</p>';
-        return;
-      }
-      const broadcastSet = new Set(broadcastIds || []);
-      container.innerHTML = teams.map(function(t) {
-        return '<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#c4c3d4;cursor:pointer;padding:4px 0;">' +
-          '<input type="checkbox" data-team-id="' + t.id + '" ' + (broadcastSet.has(t.id) ? 'checked' : '') + ' onchange="updateBroadcastTeams()" style="accent-color:#3ecf8e;">' +
-          '<span>' + (t.name||'').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>' +
-          (broadcastSet.has(t.id) ? '<span style="width:6px;height:6px;border-radius:50%;background:#3ecf8e;flex-shrink:0;"></span>' : '') +
-        '</label>';
-      }).join('');
-    }
-
-    // Get current state from main process
-    var pitwallState = ipcRenderer.sendSync('get-pitwall-teams');
-    if (pitwallState.status === 'disabled') {
-      document.getElementById('team-broadcast-list').innerHTML = '<p style="font-size:11px;color:#5a5970;font-style:italic;">Not configured — log out and log back in</p>';
-    } else if (pitwallState.teams && pitwallState.teams.length > 0) {
-      renderTeamBroadcast(pitwallState.teams, pitwallState.broadcastIds);
-    }
-
-    // Listen for updates from main process
-    ipcRenderer.on('pitwall-teams', function(event, data) {
-      renderTeamBroadcast(data.teams, data.broadcastIds);
-    });
-
-    window.updateBroadcastTeams = function() {
-      const checks = document.querySelectorAll('#team-broadcast-list input[type=checkbox]');
-      const ids = [];
-      checks.forEach(function(cb) {
-        if (cb.checked) ids.push(parseInt(cb.dataset.teamId));
-      });
-      ipcRenderer.send('set-pitwall-broadcast', ids);
-    };
+    // Server-pushed updates re-render the new Broadcasting tab
+    ipcRenderer.on('pitwall-teams', () => renderBroadcastPage());
 
     // Search field interactions
     (function () {
