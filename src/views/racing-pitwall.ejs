@@ -701,6 +701,8 @@
         if (iframe) {
           iframe.src = OVERLAY_BASE + '/' + OVERLAY_MAP[key] + '?pitwall=1&driver=' + driverId;
           iframe.style.display = 'block';
+          var label = iframe.parentNode && iframe.parentNode.querySelector('.panel-label');
+          if (label) label.style.display = 'none';
           iframe.onload = (function() {
             var iframeRef = iframe;
             return function() {
@@ -719,7 +721,12 @@
       for (var key in OVERLAY_MAP) {
         var iframe = document.getElementById('iframe-' + key);
         var placeholder = document.getElementById('placeholder-' + key);
-        if (iframe) { iframe.src = 'about:blank'; iframe.style.display = 'none'; }
+        if (iframe) {
+          iframe.src = 'about:blank';
+          iframe.style.display = 'none';
+          var label = iframe.parentNode && iframe.parentNode.querySelector('.panel-label');
+          if (label) label.style.display = '';
+        }
         if (placeholder) placeholder.style.display = 'flex';
       }
     }

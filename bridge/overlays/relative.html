@@ -159,6 +159,7 @@
     let ws = null;
     let bridgeConnected = false;
     let iracingConnected = false;
+    let _isRaceSession = false;
     const dataHandlers = {};
 
     const COUNTRY_TO_ISO = {
@@ -432,7 +433,6 @@
     let demoCleared = false;
 
     let _focusClass = '';
-    let _isRaceSession = false;
     const _relPrevPos = new Map();
     let _lastRenderTime = 0;
     let _pendingData = null;
