@@ -195,6 +195,7 @@ let _recorderSessionStarted = false;
 // Pit time tracking — measure time lost per pit stop per class
 const pitTracking = new Map(); // carIdx -> { wasPitting, bestLapSnapshot, lapsSnapshot, waitingForLap, referenceLap }
 const incidentTracker = createIncidentTracker();
+let _showIncidents = true; // controlled by control-panel toggle via setIncidentCountersEnabled()
 let classPitDeltas = {};       // className -> { avgDelta, samples }
 const PIT_TIMES_FILE = path.join(require('os').homedir(), 'Documents', 'Atleta Bridge', 'pittimes.json');
 
@@ -1065,7 +1066,7 @@ async function startTelemetry(onStatusChange) {
             country: d.LicCountryCode || '', license: d.LicString || '',
             iRating: d.IRating || 0,
           })),
-          incidents: (() => { try { return incidentTracker.getState(); } catch (e) { return null; } })(),
+          incidents: _showIncidents ? (() => { try { return incidentTracker.getState(); } catch (e) { return null; } })() : null,
         }});
 
         // Read camera spectated car index (for replay/spectate)
@@ -1739,4 +1740,8 @@ function stopTelemetry() {
 }
 
 let playerIRacingName = '';
-module.exports = { startTelemetry, stopTelemetry, getStatus: () => ({ iracing: connected }), getPlayerName: () => playerIRacingName };
+function setIncidentCountersEnabled(enabled) {
+  _showIncidents = enabled !== false;
+}
+
+module.exports = { startTelemetry, stopTelemetry, getStatus: () => ({ iracing: connected }), getPlayerName: () => playerIRacingName, setIncidentCountersEnabled };
