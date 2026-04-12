@@ -115,6 +115,13 @@ app.on('ready', () => {
     setIncidentCountersEnabled(settings.overlayCustom?.raceduration?.showIncidents !== false);
   } catch (e) {}
 
+  // Defaults for the v3.24 sidebar redesign — additive, no migration needed.
+  if (!Array.isArray(settings.uiFavorites)) settings.uiFavorites = [];
+  if (!Array.isArray(settings.uiRecent)) settings.uiRecent = [];
+  if (!settings.uiSidebarGroups || typeof settings.uiSidebarGroups !== 'object') {
+    settings.uiSidebarGroups = { race: true, car: true, track: true, stream: true };
+  }
+
   // Check if user is logged in — show login screen if not
   if (!settings.racingUsername) {
     showLoginWindow();
@@ -139,6 +146,27 @@ ipcMain.on('login-success', (event, data) => {
     loginWindow = null;
   }
   startBridge();
+});
+
+// UI state for the new sidebar (favorites, recent, group collapse)
+ipcMain.on('get-ui-state', (event) => {
+  event.returnValue = {
+    uiFavorites: Array.isArray(settings.uiFavorites) ? settings.uiFavorites : [],
+    uiRecent: Array.isArray(settings.uiRecent) ? settings.uiRecent : [],
+    uiSidebarGroups: (settings.uiSidebarGroups && typeof settings.uiSidebarGroups === 'object')
+      ? settings.uiSidebarGroups
+      : { race: true, car: true, track: true, stream: true },
+  };
+});
+
+ipcMain.on('save-ui-state', (event, patch) => {
+  if (!patch || typeof patch !== 'object') return;
+  if (Array.isArray(patch.uiFavorites)) settings.uiFavorites = patch.uiFavorites;
+  if (Array.isArray(patch.uiRecent)) settings.uiRecent = patch.uiRecent;
+  if (patch.uiSidebarGroups && typeof patch.uiSidebarGroups === 'object') {
+    settings.uiSidebarGroups = { ...(settings.uiSidebarGroups || {}), ...patch.uiSidebarGroups };
+  }
+  try { saveSettings(settings); } catch (e) { console.error('[main] save-ui-state error:', e); }
 });
 
 // Pitwall team broadcasting IPC
