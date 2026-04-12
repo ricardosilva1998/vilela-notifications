@@ -142,3 +142,79 @@ test('pit road: onPitRoadDuringLap latches across the lap', () => {
   // but for this task we just verify it doesn't crash.
   assert.equal(t.getState().offtracks.count, 0);
 });
+
+test('slow lap: needs at least 2 clean laps in median before firing', () => {
+  const t = createIncidentTracker();
+  t.init();
+  // First clean lap — no median yet
+  t.onLapComplete(2, 90.0, true);
+  // Second clean lap — median is now available (90.0 + 90.0)/2 = 90.0
+  t.onLapComplete(3, 90.0, true);
+  // Third lap is +5s — should fire
+  t.onLapComplete(4, 95.0, true);
+  assert.equal(t.getState().slowLaps.count, 1);
+});
+
+test('slow lap: time loss attributed = lap - median', () => {
+  const t = createIncidentTracker();
+  t.init();
+  t.onLapComplete(2, 90.0, true);
+  t.onLapComplete(3, 90.0, true);
+  t.onLapComplete(4, 93.0, true);  // +3.0
+  assert.equal(t.getState().slowLaps.count, 1);
+  assert.equal(t.getState().slowLaps.timeLost, 3.0);
+});
+
+test('slow lap: lap within threshold is NOT counted', () => {
+  const t = createIncidentTracker();
+  t.init();
+  t.onLapComplete(2, 90.0, true);
+  t.onLapComplete(3, 90.0, true);
+  // +1.5s loss — below max(2.0, 90*5%=4.5) threshold
+  t.onLapComplete(4, 91.5, true);
+  assert.equal(t.getState().slowLaps.count, 0);
+  assert.equal(t.getState().slowLaps.timeLost, 0);
+});
+
+test('slow lap: in/out laps excluded from median and not counted', () => {
+  const t = createIncidentTracker();
+  t.init();
+  t.onLapComplete(2, 90.0, true);
+  t.onLapComplete(3, 90.0, true);
+  // Pit-in lap: latch pit-road during this lap via tick()
+  t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: 0, speed: 30, onPitRoad: false, lapDistPct: 0.5, currentLap: 4, tNow: 1000 });
+  t.tick({ trackSurface: 3, incidentCount: 0, sessionFlags: 0, speed: 5,  onPitRoad: true,  lapDistPct: 0.95, currentLap: 4, tNow: 2000 });
+  t.onLapComplete(4, 120.0, true);  // huge loss but in-lap — must NOT count
+  assert.equal(t.getState().slowLaps.count, 0);
+  assert.equal(t.getState().slowLaps.timeLost, 0);
+});
+
+test('slow lap: invalid lap excluded from median but still counted as slow', () => {
+  const t = createIncidentTracker();
+  t.init();
+  t.onLapComplete(2, 90.0, true);
+  t.onLapComplete(3, 90.0, true);
+  // Cut lap, isValid=false, big loss — excluded from median but DOES count as slow
+  t.onLapComplete(4, 95.0, false);
+  assert.equal(t.getState().slowLaps.count, 1);
+  assert.equal(t.getState().slowLaps.timeLost, 5.0);
+  // Verify median isn't polluted: next lap with same time wouldn't be slow
+  t.onLapComplete(5, 90.0, true);
+  assert.equal(t.getState().slowLaps.count, 1);
+});
+
+test('slow lap: rolling median caps at 5 laps', () => {
+  const t = createIncidentTracker();
+  t.init();
+  t.onLapComplete(2, 90.0, true);
+  t.onLapComplete(3, 90.0, true);
+  t.onLapComplete(4, 90.0, true);
+  t.onLapComplete(5, 90.0, true);
+  t.onLapComplete(6, 90.0, true);
+  // Sixth clean lap evicts the first — median still 90.0
+  t.onLapComplete(7, 90.0, true);
+  // Now feed a much-slower lap; should fire on a clean median of 90.0
+  t.onLapComplete(8, 96.0, true);
+  assert.equal(t.getState().slowLaps.count, 1);
+  assert.equal(t.getState().slowLaps.timeLost, 6.0);
+});
