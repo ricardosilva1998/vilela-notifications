@@ -1341,27 +1341,36 @@ async function startTelemetry(onStatusChange) {
         lastStandings = standings;
         lastSofByClass = sofByClass;
 
-        // Deferred session recorder start — fires once trackName + driver data is available
-        if (_recorderNeedsStart >= 0 && !_recorderSessionStarted && trackName && standings.length > 0) {
+        // Helper to start (or restart) recording for the current session — used by deferred
+        // first-session start AND as a backstop when a lap is detected but we're not recording
+        // (e.g., after a disconnect/reconnect that left _recorderSessionStarted stale).
+        function startRecorderSession(sessNum) {
+          if (!trackName || standings.length === 0) return false;
           try {
             const si = ir.getSessionInfo('SessionInfo');
-            const sType_raw = si?.Sessions?.[_recorderNeedsStart]?.SessionType || '';
+            const sType_raw = si?.Sessions?.[sessNum]?.SessionType || '';
             const _stMap = { Practice: 'practice', 'Offline Testing': 'practice', 'Lone Qualify': 'qualify', 'Open Qualify': 'qualify', Race: 'race' };
             const sType = _stMap[sType_raw] || (sType_raw.toLowerCase().includes('qualify') ? 'qualify' : sType_raw.toLowerCase().includes('race') ? 'race' : 'practice');
             const playerDriver = drivers.find(d => d.CarIdx === playerCarIdx);
             sessionRecorder.setIdentity(playerIRacingName || '');
             sessionRecorder.onSessionStart(
-              _recorderNeedsStart, trackName,
+              sessNum, trackName,
               playerDriver?.CarClassShortName || '',
               playerDriver?.CarScreenNameShort || playerDriver?.CarScreenName || '',
               sType,
-              { airTemp: airTemp, trackTemp: trackTemp, humidity: humidity, skies: skies || '', windSpeed: windSpeed || 0 },
+              { airTemp, trackTemp, humidity, skies: skies || '', windSpeed: ir.get(VARS.WIND_VEL)?.[0] || 0 },
               sofByClass && playerDriver ? (sofByClass[playerDriver.CarClassShortName] || 0) : 0,
               standings.length
             );
             _recorderSessionStarted = true;
             _recorderNeedsStart = -1;
-          } catch(e) {}
+            return true;
+          } catch(e) { return false; }
+        }
+
+        // Deferred session recorder start — fires once trackName + driver data is available
+        if (_recorderNeedsStart >= 0 && !_recorderSessionStarted) {
+          startRecorderSession(_recorderNeedsStart);
         }
 
         // Detect player lap completion for session recorder
@@ -1372,6 +1381,12 @@ async function startTelemetry(onStatusChange) {
             log('[SessionRec] Debug: player carIdx=' + playerStanding.carIdx + ' lastLap=' + playerStanding.lastLap + ' lapsCompleted=' + playerStanding.lapsCompleted + ' recorderLastLap=' + _recorderLastLap + ' isRecording=' + sessionRecorder.isRecording() + ' recLastLapNum=' + sessionRecorder.getLastLapNumber());
           }
           if (playerStanding && playerStanding.lastLap > 0 && playerStanding.lastLap !== _recorderLastLap) {
+            // Backstop: if a lap was detected but we're not recording (deferred start lost the
+            // race, or reconnect left state stale), auto-start before processing the lap.
+            if (!sessionRecorder.isRecording()) {
+              const started = startRecorderSession(lastSessionNum);
+              if (started) log('[SessionRec] Auto-started session at lap detection (was not recording)');
+            }
             _recorderLastLap = playerStanding.lastLap;
             sessionRecorder.onLapComplete({
               lapNumber: playerStanding.lapsCompleted,
