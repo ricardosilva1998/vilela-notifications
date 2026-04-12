@@ -808,6 +808,31 @@ ipcMain.on('get-overlay-states', (event) => {
   event.reply('overlay-states', states);
 });
 
+ipcMain.on('get-visibility', (event) => {
+  event.returnValue = {
+    visibility: settings.overlayVisibility || {},
+    currentMode,
+  };
+});
+
+ipcMain.on('set-visibility', (event, payload) => {
+  if (!payload || typeof payload !== 'object') return;
+  const { overlayId, mode, value } = payload;
+  if (!overlayId || !mode) return;
+  try {
+    settings.overlayVisibility = toggleVisibility(settings.overlayVisibility, overlayId, mode, value);
+  } catch (e) {
+    return; // unknown mode
+  }
+  saveSettings(settings);
+  applyVisibilityForMode(currentMode);
+  if (controlWindow && !controlWindow.isDestroyed()) {
+    try {
+      controlWindow.webContents.send('visibility-changed', { overlayId, mode, value: !!value });
+    } catch (e) {}
+  }
+});
+
 ipcMain.on('get-overlay-settings', (event, overlayId) => {
   const overlaySettings = settings.overlayCustom && settings.overlayCustom[overlayId];
   if (overlaySettings) {
