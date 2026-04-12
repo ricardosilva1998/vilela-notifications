@@ -787,6 +787,7 @@
 
   <script>
     const { ipcRenderer } = require('electron');
+    const { pushRecent: _pushRecentPure, toggleFavorite: _toggleFavoritePure, pruneStaleIds: _pruneStaleIds, isFavorite: _isFavorite } = require('./sidebarState');
     let appVersion = '--';
     // ─── UI state (favorites, recent, sidebar groups) ────────
     let uiState = { uiFavorites: [], uiRecent: [], uiSidebarGroups: { race: true, car: true, track: true, stream: true } };
@@ -1180,6 +1181,13 @@
       localStorage.setItem('bridge_panel', panelId);
       // Re-render dynamic pages
       if (panelId === 'favorites') renderFavoritesPage();
+      if (panelId === 'recent') renderRecentPage();
+      // Track overlay panels in Recent (skip utility pages and dynamic pages)
+      const RECENT_EXCLUDE = new Set(['overview', 'favorites', 'recent', 'account', 'updates', 'logs', 'about']);
+      if (!RECENT_EXCLUDE.has(panelId) && overlays.find(o => o.id === panelId)) {
+        uiState.uiRecent = _pushRecentPure(uiState.uiRecent || [], panelId);
+        saveUiState({ uiRecent: uiState.uiRecent });
+      }
       // Start/stop log refresh
       if (panelId === 'logs') startLogRefresh();
       else stopLogRefresh();
@@ -1246,6 +1254,36 @@
           <span style="color:#f7c948;font-size:18px;">★</span> Favorites
         </div>
         <div style="font-size:11px;color:#5c5b6e;margin-bottom:18px;">Quick access to your starred overlays. Click ⚙ to open that overlay's settings.</div>
+        <div class="overview-grid">${cards}</div>
+      `;
+    }
+
+    // ─── Recent page ─────────────────────────────────────────
+    function renderRecentPage() {
+      const panel = document.getElementById('panel-recent');
+      if (!panel) return;
+      const validIds = overlays.map(o => o.id);
+      const recent = _pruneStaleIds(uiState.uiRecent || [], validIds);
+      if (recent.length === 0) {
+        panel.innerHTML = `
+          <div style="display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700;color:#e8e6f0;margin-bottom:6px;">
+            <span style="color:#3ecf8e;font-size:18px;">🕒</span> Recent
+          </div>
+          <div style="font-size:11px;color:#5c5b6e;margin-bottom:18px;">Last 5 overlays you opened.</div>
+          <div class="ov-empty">Nothing here yet — open an overlay's settings to start tracking.</div>
+        `;
+        return;
+      }
+      const cards = recent
+        .map(id => overlays.find(o => o.id === id))
+        .filter(Boolean)
+        .map(renderOverlayCard)
+        .join('');
+      panel.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700;color:#e8e6f0;margin-bottom:6px;">
+          <span style="color:#3ecf8e;font-size:18px;">🕒</span> Recent
+        </div>
+        <div style="font-size:11px;color:#5c5b6e;margin-bottom:18px;">Last 5 overlays you opened.</div>
         <div class="overview-grid">${cards}</div>
       `;
     }
