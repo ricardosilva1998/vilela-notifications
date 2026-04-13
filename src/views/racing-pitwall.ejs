@@ -344,7 +344,6 @@
       align-items: center;
       gap: 5px;
       z-index: 4;
-      cursor: move;
       pointer-events: none;
       user-select: none;
     }
@@ -546,6 +545,7 @@
     var HIDDEN_KEY = 'pitwall-hidden-v2';
 
     var grid = null;
+    var saveLayoutTimer = null;
     var ws = null;
     var reconnectTimer = null;
     var selectedDriverId = null;
@@ -590,8 +590,18 @@
       grid.enableMove(false);
       grid.enableResize(false);
 
-      // Save on change
-      grid.on('change', function() { saveCurrentLayout(); });
+      // Save on change — trailing-edge debounced. Gridstack fires `change`
+      // multiple times per drag (once per intermediate position, per affected
+      // panel). Without the debounce a single multi-panel reflow can trigger
+      // 20+ localStorage writes. 200ms is short enough to feel instant and
+      // long enough to coalesce a whole drag/resize gesture into one save.
+      grid.on('change', function() {
+        if (saveLayoutTimer) clearTimeout(saveLayoutTimer);
+        saveLayoutTimer = setTimeout(function() {
+          saveLayoutTimer = null;
+          saveCurrentLayout();
+        }, 200);
+      });
 
       // Resize handler
       window.addEventListener('resize', function() {
@@ -650,6 +660,16 @@
       });
       localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout));
     }
+
+    // Flush any pending debounced save on tab close so a drag-drop-close
+    // within the 200ms debounce window still persists.
+    window.addEventListener('pagehide', function() {
+      if (saveLayoutTimer && grid) {
+        clearTimeout(saveLayoutTimer);
+        saveLayoutTimer = null;
+        try { saveCurrentLayout(); } catch(e) {}
+      }
+    });
 
     // ── Toggle / Settings Panel ─────────────────────────────────
     function buildSettingsPanel() {

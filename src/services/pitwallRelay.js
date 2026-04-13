@@ -22,6 +22,7 @@ const THROTTLE = {
   trackmap: 150,
   inputs: 50,
   session: 250,
+  flags: 500,
 };
 
 const AUTH_TIMEOUT_MS = 10000;

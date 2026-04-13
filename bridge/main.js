@@ -256,21 +256,15 @@ function showLoginWindow() {
 }
 
 function startBridge() {
-  // Load tray icon — reuse APP_ICON_PATH if available, otherwise scan
-  // the same dev-mode fallback paths (resolveIconPath may have returned
-  // the .ico directly, which we downsize to 16x16 for the tray).
+  // Load tray icon — APP_ICON_PATH was resolved at module load from the same
+  // candidate list we'd scan here, so there's no separate fallback scan.
+  // Resize to 16x16 for the Windows system tray.
   try {
     let trayIcon = nativeImage.createEmpty();
-    const iconPaths = [
-      APP_ICON_PATH,
-      process.resourcesPath ? path.join(process.resourcesPath, 'atleta.png') : null,
-      path.join(__dirname, 'build', 'atleta.ico'),
-      path.join(__dirname, 'build', 'atleta.png'),
-    ].filter(Boolean);
-    for (const p of iconPaths) {
+    if (APP_ICON_PATH) {
       try {
-        const img = nativeImage.createFromPath(p);
-        if (!img.isEmpty()) { trayIcon = img.resize({ width: 16, height: 16 }); break; }
+        const img = nativeImage.createFromPath(APP_ICON_PATH);
+        if (!img.isEmpty()) trayIcon = img.resize({ width: 16, height: 16 });
       } catch(e) {}
     }
     tray = new Tray(trayIcon);

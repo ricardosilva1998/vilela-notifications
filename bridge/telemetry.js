@@ -198,6 +198,7 @@ const pitTracking = new Map(); // carIdx -> { wasPitting, bestLapSnapshot, lapsS
 const incidentTracker = createIncidentTracker();
 const flagState = createFlagState();
 let _showIncidents = true; // controlled by control-panel toggle via setIncidentCountersEnabled()
+let _lastFlagStateKey = null; // change-detection for the flags channel broadcast
 let classPitDeltas = {};       // className -> { avgDelta, samples }
 const PIT_TIMES_FILE = path.join(require('./settings').getSettingsDir(), 'pittimes.json');
 
@@ -1071,9 +1072,21 @@ async function startTelemetry(onStatusChange) {
           })),
           incidents: _showIncidents ? (() => { try { return incidentTracker.getState(); } catch (e) { return null; } })() : null,
         }});
-        broadcastToChannel('flags', { type: 'data', channel: 'flags', data: (() => {
-          try { return flagState.getState(); } catch (e) { return null; }
-        })() });
+        // Broadcast flags only when state actually changes OR every ~1s as a
+        // heartbeat so new subscribers see the current state within a second.
+        // Without this gate we'd pay 30 JSON.stringify + send calls/sec for a
+        // channel that rarely changes (flag transitions are minutes apart).
+        try {
+          const _fState = flagState.getState();
+          // Key on activeFlag only — rawBits can flap on SDK sector flags that
+          // the state machine already filters out, so they'd re-trigger broadcasts
+          // without any visible state change.
+          const _fKey = _fState ? (_fState.activeFlag || 'none') : 'null';
+          if (_fKey !== _lastFlagStateKey || pollCount % 30 === 0) {
+            _lastFlagStateKey = _fKey;
+            broadcastToChannel('flags', { type: 'data', channel: 'flags', data: _fState });
+          }
+        } catch (e) {}
 
         // Read camera spectated car index (for replay/spectate)
         let camCarIdx = playerCarIdx;

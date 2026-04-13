@@ -10,8 +10,14 @@ const LEGACY_DIR = path.join(os.homedir(), 'Documents', 'Atleta Bridge');
 const SETTINGS_FILE = path.join(SETTINGS_DIR, 'settings.json');
 
 // One-shot rename of the legacy "Atleta Bridge" directory to "Atleta Racing".
-// Runs on every load() but is a no-op after the first successful rename.
+// Called from load() and getSettingsDir(), which in turn are called repeatedly
+// by every overlay on load. After the first invocation in the process lifetime
+// we short-circuit — the rename either already happened or the legacy dir
+// didn't exist at startup, and either way we don't need more fs.existsSync calls.
+let _migrated = false;
 function migrateLegacyDir() {
+  if (_migrated) return;
+  _migrated = true;
   try {
     if (fs.existsSync(SETTINGS_DIR)) return;
     if (!fs.existsSync(LEGACY_DIR)) return;
