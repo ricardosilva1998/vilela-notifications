@@ -162,6 +162,7 @@ bridge/                     # Atleta Racing (formerly "Atleta Bridge") — Elect
     ├── flags.html         # Flags — animated waving SVG for green/yellow/blue/white/black/checkered with priority ladder + blue throttle
     ├── chat.html          # Streaming chat — Twitch channel overlay
     ├── voicechat.html     # Voice chat — Whisper API transcription, push-to-talk, gamepad support
+    ├── combined.html      # Single-window mode host (v3.28.0+) — fullscreen iframe container, opt-in via settings.singleWindowMode
     ├── overlay-utils.js   # Shared overlay utilities — header toggle, drag, click-through, CSS scale (single source for all overlays)
     └── helmets/           # Racing helmet PNG icons (2 styles) for driver card
 ├── tests/                  # Overlay UI/UX test infrastructure
