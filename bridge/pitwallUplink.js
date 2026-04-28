@@ -8,6 +8,24 @@ const RECONNECT_BASE = 5000;
 const RECONNECT_MAX = 60000;
 const HEARTBEAT_INTERVAL = 30000;
 
+// Per-channel rate limit (ms between sends). Mirrors the server-side relay's THROTTLE
+// map in src/services/pitwallRelay.js. Anything we send faster than this is discarded
+// server-side, so JSON.stringify + ws.send for those packets is pure waste — and on a
+// jittery WAN connection the buffer pressure can stall the main thread, which surfaces
+// as in-game stutter for the driver. Keep these in sync with the server map.
+const THROTTLE = {
+  standings: 250,
+  relative: 150,
+  fuel: 250,
+  wind: 150,
+  trackmap: 150,
+  inputs: 50,
+  session: 250,
+  flags: 500,
+  proximity: 150,
+};
+const _lastSentByChannel = new Map();
+
 let ws = null;
 let reconnectTimer = null;
 let heartbeatTimer = null;
@@ -132,6 +150,18 @@ function startHeartbeat() {
 
 function sendTelemetry(channel, data) {
   if (!isConnected) return;
+  // No teams selected — skip the uplink entirely instead of streaming to nobody.
+  // Saves a JSON.stringify + ws.send + GC allocation per channel per poll.
+  if (broadcastTeamIds.length === 0) return;
+  // Per-channel rate limit (mirrors server-side throttle). Cuts ~85% of uplink work
+  // when broadcasting is active without changing what viewers see.
+  const limit = THROTTLE[channel];
+  if (limit) {
+    const now = Date.now();
+    const last = _lastSentByChannel.get(channel) || 0;
+    if (now - last < limit) return;
+    _lastSentByChannel.set(channel, now);
+  }
   trySend({ type: 'telemetry', channel, data });
 }
 

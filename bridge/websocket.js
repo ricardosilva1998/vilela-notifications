@@ -81,9 +81,13 @@ function logToClient(clientId, entry) {
 
 function broadcastToChannel(channel, data) {
   if (!wss) return;
+  // Always capture status first so newly-connecting clients see the latest state.
   if (data && data.type === 'status' && data.iracing !== undefined) {
     currentIracingStatus = data.iracing;
   }
+  // No clients connected → skip JSON.stringify allocation. Saves GC pressure when the
+  // bridge is running but no overlays are open (iRacing loading screens, between sessions).
+  if (clients.size === 0) return;
   const msg = JSON.stringify(data);
   const size = msg.length;
   clients.forEach((meta, ws) => {

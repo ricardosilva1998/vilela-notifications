@@ -40,6 +40,27 @@ const overlayWindows = {};
 let autoHideOverlays = true;
 let quitting = false;
 
+// Single shared timer that re-asserts always-on-top for every open overlay every 2s.
+// Replaces N per-overlay setIntervals — same effect, one timer instead of N.
+let _globalTopInterval = null;
+function ensureGlobalTopInterval() {
+  if (_globalTopInterval) return;
+  _globalTopInterval = setInterval(() => {
+    for (const id in overlayWindows) {
+      const w = overlayWindows[id];
+      if (w && !w.isDestroyed()) {
+        try { w.setAlwaysOnTop(true, 'screen-saver'); } catch(e) {}
+      }
+    }
+  }, 2000);
+}
+function maybeStopGlobalTopInterval() {
+  if (_globalTopInterval && Object.keys(overlayWindows).length === 0) {
+    clearInterval(_globalTopInterval);
+    _globalTopInterval = null;
+  }
+}
+
 // Persisted settings
 let settings = {};
 
@@ -570,11 +591,8 @@ function createOverlayWindow(overlayId) {
   // Use highest z-level to stay on top of fullscreen games like iRacing
   win.setAlwaysOnTop(true, 'screen-saver');
 
-  // Periodically re-assert always-on-top (games can steal focus)
-  const topInterval = setInterval(() => {
-    if (win.isDestroyed()) { clearInterval(topInterval); return; }
-    try { win.setAlwaysOnTop(true, 'screen-saver'); } catch(e) {}
-  }, 2000);
+  // Single shared timer re-asserts always-on-top for every overlay (games can steal focus).
+  ensureGlobalTopInterval();
 
   win.loadFile(path.join(__dirname, 'overlays', `${overlayId}.html`));
 
@@ -584,8 +602,8 @@ function createOverlayWindow(overlayId) {
   win.on('resized', () => saveOverlayPosition(overlayId, win));
 
   win.on('closed', () => {
-    clearInterval(topInterval);
     delete overlayWindows[overlayId];
+    maybeStopGlobalTopInterval();
     if (overlayId === 'voicechat') {
       setVoiceChatWindow(null);
     }

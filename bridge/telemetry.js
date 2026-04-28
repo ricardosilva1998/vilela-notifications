@@ -24,11 +24,42 @@ const pitwallUplink = require('./pitwallUplink');
 const { createIncidentTracker } = require('./incidentTracker');
 const { createFlagState } = require('./flagState');
 
+// Per-channel rate limit (ms) for LOCAL overlays. The poll loop runs at 30Hz which
+// is needed for the inputs trace graph but wasteful for slower-changing UIs like
+// standings or fuel. Throttling here cuts main-thread JSON.stringify + ws.send work
+// without visible quality loss. inputs is uncapped; relative is already gated to 6Hz
+// at its broadcast site (pollCount % 5); flags only fires on state changes; status
+// events bypass entirely. Pitwall has its own independent throttle in pitwallUplink.js
+// because the server's accepted rates differ from what local overlays need.
+const LOCAL_THROTTLE = {
+  standings: 250,
+  fuel: 500,
+  wind: 100,
+  trackmap: 100,
+  session: 250,
+  proximity: 100,
+};
+const _localLastSent = new Map();
+
 // Broadcast to local overlays + pitwall uplink
 function broadcastToChannel(channel, msg) {
-  _broadcastLocal(channel, msg);
-  // Forward telemetry to pitwall server (skip internal broadcasts)
-  if (msg && msg.type === 'data' && msg.channel && msg.data) {
+  const isData = !!(msg && msg.type === 'data' && msg.channel);
+
+  let skipLocal = false;
+  if (isData) {
+    const limit = LOCAL_THROTTLE[msg.channel];
+    if (limit) {
+      const now = Date.now();
+      const last = _localLastSent.get(msg.channel) || 0;
+      if (now - last < limit) skipLocal = true;
+      else _localLastSent.set(msg.channel, now);
+    }
+  }
+
+  if (!skipLocal) _broadcastLocal(channel, msg);
+
+  // Pitwall path runs independently; sendTelemetry has its own throttle and team gate.
+  if (isData && msg.data) {
     pitwallUplink.sendTelemetry(msg.channel, msg.data);
   }
 }
