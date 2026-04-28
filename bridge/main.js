@@ -52,13 +52,133 @@ function ensureGlobalTopInterval() {
         try { w.setAlwaysOnTop(true, 'screen-saver'); } catch(e) {}
       }
     }
+    if (combinedWindow && !combinedWindow.isDestroyed()) {
+      try { combinedWindow.setAlwaysOnTop(true, 'screen-saver'); } catch(e) {}
+    }
   }, 2000);
 }
 function maybeStopGlobalTopInterval() {
-  if (_globalTopInterval && Object.keys(overlayWindows).length === 0) {
+  const noClassic = Object.keys(overlayWindows).length === 0;
+  const noCombined = !combinedWindow || combinedWindow.isDestroyed();
+  if (_globalTopInterval && noClassic && noCombined) {
     clearInterval(_globalTopInterval);
     _globalTopInterval = null;
   }
+}
+
+// ── Single-window mode (v3.28.0+) ──────────────────────────────────
+// Experimental: instead of creating one transparent BrowserWindow per overlay
+// (~50-150MB renderer process each), host all overlays as iframes inside one
+// fullscreen click-through window. Single renderer process for the lot. Trades
+// drag-to-reposition (must use control panel X/Y in v1) for substantial RAM
+// savings. Enabled by setting `singleWindowMode: true` in settings.json. Voice
+// chat still creates its own classic window because voiceInput.js holds a
+// reference to it.
+let combinedWindow = null;
+let combinedWindowReady = false;
+const _pendingCombinedOps = [];
+
+function isSingleWindowMode() {
+  return !!settings.singleWindowMode;
+}
+
+function combinedSend(channel /* , ...args */) {
+  const args = Array.prototype.slice.call(arguments, 1);
+  if (combinedWindow && !combinedWindow.isDestroyed() && combinedWindowReady) {
+    combinedWindow.webContents.send.apply(combinedWindow.webContents, [channel].concat(args));
+  } else {
+    _pendingCombinedOps.push({ channel, args });
+  }
+}
+
+function flushCombinedQueue() {
+  if (!combinedWindow || combinedWindow.isDestroyed()) return;
+  while (_pendingCombinedOps.length) {
+    const op = _pendingCombinedOps.shift();
+    combinedWindow.webContents.send.apply(combinedWindow.webContents, [op.channel].concat(op.args));
+  }
+}
+
+function createCombinedWindow() {
+  if (combinedWindow && !combinedWindow.isDestroyed()) return combinedWindow;
+  const display = screen.getPrimaryDisplay();
+  const { width: w, height: h } = display.workAreaSize;
+  combinedWindow = new BrowserWindow({
+    width: w,
+    height: h,
+    x: 0,
+    y: 0,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    hasShadow: false,
+    focusable: false,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+      // Iframes need Node access too (overlay-utils.js uses require('electron')).
+      nodeIntegrationInSubFrames: true,
+      backgroundThrottling: false,
+    },
+  });
+  combinedWindow.setAlwaysOnTop(true, 'screen-saver');
+  // Default click-through: each iframe's overlay-utils.js flips this off when
+  // the cursor enters its visible panel via `set-ignore-mouse` IPC. With
+  // forward:true the renderer still gets mousemove for hit-testing.
+  combinedWindow.setIgnoreMouseEvents(true, { forward: true });
+  combinedWindowReady = false;
+  combinedWindow.loadFile(path.join(__dirname, 'overlays', 'combined.html'));
+  combinedWindow.on('closed', () => {
+    combinedWindow = null;
+    combinedWindowReady = false;
+    _pendingCombinedOps.length = 0;
+    maybeStopGlobalTopInterval();
+  });
+  ensureGlobalTopInterval();
+  return combinedWindow;
+}
+
+function destroyCombinedWindow() {
+  if (combinedWindow && !combinedWindow.isDestroyed()) {
+    combinedWindow.destroy();
+  }
+  combinedWindow = null;
+  combinedWindowReady = false;
+  _pendingCombinedOps.length = 0;
+}
+
+// Compute (x, y, width, height) for a given overlay from baseConfig + settings.
+// Used by both classic (BrowserWindow bounds) and single-window (iframe div bounds) paths.
+function computeOverlayConfig(overlayId, baseConfig) {
+  let config = { ...baseConfig };
+  if (settings.overlayCustom && settings.overlayCustom[overlayId]) {
+    const cw = parseInt(settings.overlayCustom[overlayId].width);
+    const ch = parseInt(settings.overlayCustom[overlayId].height);
+    if (cw > 0) config.width = cw;
+    if (ch > 0) config.height = ch;
+  }
+  if (overlayId === 'trackmap') {
+    if (settings.overlayCustom && settings.overlayCustom.trackmap) {
+      const sizeMap = { small: 300, medium: 500, large: 700 };
+      const sizeVal = settings.overlayCustom.trackmap.overlaySize;
+      const size = sizeMap[sizeVal] || parseInt(sizeVal) || config.width;
+      config.width = size;
+      config.height = size;
+    }
+    if (settings.overlayBounds) delete settings.overlayBounds.trackmap;
+  }
+  const overlaySettings = settings.overlayCustom && settings.overlayCustom[overlayId];
+  const savedBounds = settings.overlayBounds && settings.overlayBounds[overlayId];
+  const posX = overlaySettings && overlaySettings.posX !== undefined ? parseInt(overlaySettings.posX) : NaN;
+  const posY = overlaySettings && overlaySettings.posY !== undefined ? parseInt(overlaySettings.posY) : NaN;
+  const x = !isNaN(posX) ? posX : (savedBounds ? savedBounds.x : 0);
+  const y = !isNaN(posY) ? posY : (savedBounds ? savedBounds.y : 0);
+  return { x, y, width: config.width, height: config.height };
 }
 
 // Persisted settings
@@ -319,8 +439,10 @@ function startBridge() {
     if (autoHideOverlays) {
       if (status.iracing) {
         Object.values(overlayWindows).forEach(w => { if (w && !w.isDestroyed()) w.show(); });
+        if (combinedWindow && !combinedWindow.isDestroyed()) combinedWindow.show();
       } else {
         Object.values(overlayWindows).forEach(w => { if (w && !w.isDestroyed()) w.hide(); });
+        if (combinedWindow && !combinedWindow.isDestroyed()) combinedWindow.hide();
       }
     }
   });
@@ -350,6 +472,7 @@ function startBridge() {
     if (autoHideOverlays) {
       setTimeout(() => {
         Object.values(overlayWindows).forEach(w => { if (w && !w.isDestroyed()) w.hide(); });
+        if (combinedWindow && !combinedWindow.isDestroyed()) combinedWindow.hide();
       }, 200);
     }
   }
@@ -480,7 +603,10 @@ function startBridge() {
 function persistSettings() {
   if (quitting) return;
   settings.autoHideOverlays = autoHideOverlays;
-  settings.enabledOverlays = Object.keys(overlayWindows);
+  // Union of classic-window overlays and combined-mode iframe overlays.
+  // Without combined entries here, settings.enabledOverlays would silently
+  // forget every overlay hosted in single-window mode on next save.
+  settings.enabledOverlays = [...new Set([...Object.keys(overlayWindows), ...combinedOverlayIds])];
   // Preserve pitwall broadcast team selection across updates
   settings.pitwallBroadcastTeamIds = pitwallUplink.getBroadcastTeamIds();
   // Persist overlay positions/sizes
@@ -531,44 +657,32 @@ function showControlWindow() {
   });
 }
 
+// In-memory set of overlay IDs currently shown as iframes inside combinedWindow.
+// Source of truth for "is enabled" remains settings.enabledOverlays — this Set
+// just tracks which path (classic window vs combined iframe) hosts each open overlay.
+const combinedOverlayIds = new Set();
+
 function createOverlayWindow(overlayId) {
   const baseConfig = OVERLAYS.find(o => o.id === overlayId);
-  if (!baseConfig || overlayWindows[overlayId]) return;
-  let config = { ...baseConfig };
+  if (!baseConfig) return;
 
-  const display = screen.getPrimaryDisplay();
-  const { width: screenW } = display.workAreaSize;
-
-  // Apply custom width/height from settings
-  if (settings.overlayCustom && settings.overlayCustom[overlayId]) {
-    const cw = parseInt(settings.overlayCustom[overlayId].width);
-    const ch = parseInt(settings.overlayCustom[overlayId].height);
-    if (cw > 0) config.width = cw;
-    if (ch > 0) config.height = ch;
+  // Single-window path: host as iframe in the shared combined window. Voice chat
+  // always falls through to the classic per-window path because voiceInput.js
+  // holds a window reference and uses it for global hotkey + audio routing.
+  if (isSingleWindowMode() && overlayId !== 'voicechat') {
+    if (combinedOverlayIds.has(overlayId)) return;
+    if (!combinedWindow || combinedWindow.isDestroyed()) createCombinedWindow();
+    const cfg = computeOverlayConfig(overlayId, baseConfig);
+    combinedSend('add-overlay', overlayId, cfg.x, cfg.y, cfg.width, cfg.height);
+    combinedOverlayIds.add(overlayId);
+    persistSettings();
+    return;
   }
 
-  // Trackmap: always square, size from settings, ignore saved bounds
-  if (overlayId === 'trackmap') {
-    if (settings.overlayCustom && settings.overlayCustom.trackmap) {
-      const sizeMap = { small: 300, medium: 500, large: 700 };
-      const sizeVal = settings.overlayCustom.trackmap.overlaySize;
-      const size = sizeMap[sizeVal] || parseInt(sizeVal) || config.width;
-      config.width = size;
-      config.height = size;
-    }
-    // Clear saved bounds — trackmap size always comes from settings
-    if (settings.overlayBounds) delete settings.overlayBounds.trackmap;
-  }
-  // Use saved position but always use config size (no free resize)
-  // Position: use saved settings posX/posY > saved bounds > default (0,0)
-  const overlaySettings = settings.overlayCustom && settings.overlayCustom[overlayId];
-  const savedBounds = settings.overlayBounds && settings.overlayBounds[overlayId];
-  const posX = overlaySettings && overlaySettings.posX !== undefined ? parseInt(overlaySettings.posX) : NaN;
-  const posY = overlaySettings && overlaySettings.posY !== undefined ? parseInt(overlaySettings.posY) : NaN;
-  const x = !isNaN(posX) ? posX : (savedBounds ? savedBounds.x : 0);
-  const y = !isNaN(posY) ? posY : (savedBounds ? savedBounds.y : 0);
-  const width = config.width;
-  const height = config.height;
+  if (overlayWindows[overlayId]) return;
+
+  const cfg = computeOverlayConfig(overlayId, baseConfig);
+  const { x, y, width, height } = cfg;
 
   const win = new BrowserWindow({
     width,
@@ -624,10 +738,25 @@ function createOverlayWindow(overlayId) {
 }
 
 function closeOverlayWindow(overlayId) {
+  if (combinedOverlayIds.has(overlayId)) {
+    combinedSend('remove-overlay', overlayId);
+    combinedOverlayIds.delete(overlayId);
+    persistSettings();
+    // If no overlays remain in single-window mode, also close the combined
+    // host window to drop the renderer process entirely until next overlay.
+    if (combinedOverlayIds.size === 0 && combinedWindow && !combinedWindow.isDestroyed()) {
+      destroyCombinedWindow();
+    }
+    if (controlWindow && !controlWindow.isDestroyed()) {
+      controlWindow.webContents.send('overlay-closed', overlayId);
+    }
+    return;
+  }
   if (overlayWindows[overlayId]) {
     overlayWindows[overlayId].destroy();
     delete overlayWindows[overlayId];
     persistSettings();
+    maybeStopGlobalTopInterval();
   }
 }
 
@@ -652,6 +781,15 @@ ipcMain.on('toggle-overlay', (event, overlayId, enabled) => {
   }
 });
 
+// Helper: true when an IPC event was sent from inside the combined window
+// (top frame OR any overlay iframe). Iframes still surface event.sender as
+// the parent webContents under nodeIntegrationInSubFrames, so this comparison
+// catches both cases.
+function isFromCombinedWindow(event) {
+  if (!combinedWindow || combinedWindow.isDestroyed()) return false;
+  return event && event.sender === combinedWindow.webContents;
+}
+
 // Overlays call this when mouse enters/leaves visible content
 ipcMain.on('set-ignore-mouse', (event, ignore) => {
   const win = BrowserWindow.fromWebContents(event.sender);
@@ -661,6 +799,11 @@ ipcMain.on('set-ignore-mouse', (event, ignore) => {
 });
 
 ipcMain.on('drag-overlay', (event, dx, dy) => {
+  // In single-window mode, drag IPCs come from inside iframes — moving the
+  // host window would shift every overlay at once. v1: ignore. User repositions
+  // via control panel X/Y inputs. v2 will forward to combined.html to move the
+  // specific iframe container.
+  if (isFromCombinedWindow(event)) return;
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win && !win.isDestroyed()) {
     const bounds = win.getBounds();
@@ -669,6 +812,14 @@ ipcMain.on('drag-overlay', (event, dx, dy) => {
 });
 
 ipcMain.on('get-overlay-position', (event, overlayId) => {
+  if (combinedOverlayIds.has(overlayId)) {
+    // Position lives in settings.overlayCustom for combined-mode overlays.
+    const oc = settings.overlayCustom && settings.overlayCustom[overlayId];
+    const x = oc && oc.posX !== undefined ? parseInt(oc.posX) : 0;
+    const y = oc && oc.posY !== undefined ? parseInt(oc.posY) : 0;
+    event.reply('overlay-position', overlayId, x, y);
+    return;
+  }
   if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
     const bounds = overlayWindows[overlayId].getBounds();
     event.reply('overlay-position', overlayId, bounds.x, bounds.y);
@@ -676,6 +827,12 @@ ipcMain.on('get-overlay-position', (event, overlayId) => {
 });
 
 ipcMain.on('resize-overlay-height', (event, overlayId, height) => {
+  if (combinedOverlayIds.has(overlayId)) {
+    const oc = settings.overlayCustom && settings.overlayCustom[overlayId];
+    const w = (oc && parseInt(oc.width)) || 300;
+    combinedSend('resize-overlay-in-window', overlayId, w, Math.round(height));
+    return;
+  }
   if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
     const bounds = overlayWindows[overlayId].getBounds();
     overlayWindows[overlayId].setBounds({ x: bounds.x, y: bounds.y, width: bounds.width, height: Math.round(height) });
@@ -683,6 +840,9 @@ ipcMain.on('resize-overlay-height', (event, overlayId, height) => {
 });
 
 ipcMain.on('auto-resize-height', (event, h) => {
+  // Sent by overlay-utils.js scale logic. In single-window mode this would
+  // resize the host window (covers entire screen) — wrong target. Skip.
+  if (isFromCombinedWindow(event)) return;
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win) {
     const [w] = win.getSize();
@@ -691,6 +851,10 @@ ipcMain.on('auto-resize-height', (event, h) => {
 });
 
 ipcMain.on('move-overlay', (event, overlayId, x, y) => {
+  if (combinedOverlayIds.has(overlayId)) {
+    combinedSend('move-overlay-in-window', overlayId, Math.round(x), Math.round(y));
+    return;
+  }
   if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
     const bounds = overlayWindows[overlayId].getBounds();
     overlayWindows[overlayId].setBounds({ x: Math.round(x), y: Math.round(y), width: bounds.width, height: bounds.height });
@@ -698,6 +862,10 @@ ipcMain.on('move-overlay', (event, overlayId, x, y) => {
 });
 
 ipcMain.on('resize-overlay', (event, overlayId, width, height) => {
+  if (combinedOverlayIds.has(overlayId)) {
+    combinedSend('resize-overlay-in-window', overlayId, Math.round(width), Math.round(height));
+    return;
+  }
   if (overlayWindows[overlayId] && !overlayWindows[overlayId].isDestroyed()) {
     const bounds = overlayWindows[overlayId].getBounds();
     overlayWindows[overlayId].setBounds({ x: bounds.x, y: bounds.y, width: Math.round(width), height: Math.round(height) });
@@ -706,8 +874,26 @@ ipcMain.on('resize-overlay', (event, overlayId, width, height) => {
 
 // Resize from overlay grip (aspect-ratio locked)
 ipcMain.on('resize-overlay-wh', (event, w, h) => {
+  // Same reason as auto-resize-height — host window covers the whole screen.
+  if (isFromCombinedWindow(event)) return;
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win && !win.isDestroyed()) win.setSize(Math.round(w), Math.round(h));
+});
+
+// combined.html signals it's ready to receive add-overlay messages.
+ipcMain.on('combined-window-ready', () => {
+  combinedWindowReady = true;
+  flushCombinedQueue();
+});
+
+// combined.html persists position when an iframe is dragged (v2 — currently unused).
+ipcMain.on('combined-overlay-moved', (event, overlayId, x, y) => {
+  if (!isFromCombinedWindow(event)) return;
+  if (!settings.overlayCustom) settings.overlayCustom = {};
+  if (!settings.overlayCustom[overlayId]) settings.overlayCustom[overlayId] = {};
+  settings.overlayCustom[overlayId].posX = String(Math.round(x));
+  settings.overlayCustom[overlayId].posY = String(Math.round(y));
+  saveSettings(settings);
 });
 
 // Get current window size (sync)
@@ -732,6 +918,30 @@ ipcMain.on('save-overlay-settings', (event, overlayId, overlaySettings) => {
 
   if (overlayId === 'raceduration') {
     setIncidentCountersEnabled(overlaySettings.showIncidents !== false);
+  }
+
+  // Combined-mode path: position lives in settings only (no window bounds to
+  // capture). Apply size/position straight to the iframe container then reload
+  // the iframe so it re-reads its settings on next mount.
+  if (combinedOverlayIds.has(overlayId)) {
+    const setW = parseInt(overlaySettings.width);
+    const setH = parseInt(overlaySettings.height);
+    const oc = settings.overlayCustom[overlayId] || {};
+    const px = oc.posX !== undefined ? parseInt(oc.posX) : 0;
+    const py = oc.posY !== undefined ? parseInt(oc.posY) : 0;
+    persistSettings();
+    if (setW > 0 || setH > 0) {
+      // Use existing iframe size as fallback when only one dim is set.
+      combinedSend('resize-overlay-in-window', overlayId,
+        setW > 0 ? setW : (parseInt(oc.width) || 300),
+        setH > 0 ? setH : (parseInt(oc.height) || 300));
+    }
+    combinedSend('move-overlay-in-window', overlayId, px, py);
+    combinedSend('reload-overlay-in-window', overlayId);
+    if (overlayId === 'chat' && overlaySettings.twitchChannel !== undefined) {
+      connectTwitchChat(overlaySettings.twitchChannel);
+    }
+    return;
   }
 
   // Sync position FIRST: capture current window position before reload
@@ -787,6 +997,13 @@ ipcMain.on('reset-overlay', (event, overlayId) => {
   // Reset custom settings
   if (settings.overlayCustom) delete settings.overlayCustom[overlayId];
   saveSettings(settings);
+  // Combined-mode: re-apply default bounds to iframe, no center/setSize on a window.
+  if (combinedOverlayIds.has(overlayId)) {
+    combinedSend('resize-overlay-in-window', overlayId, ov.width, ov.height);
+    combinedSend('move-overlay-in-window', overlayId, 0, 0);
+    combinedSend('reload-overlay-in-window', overlayId);
+    return;
+  }
   // Reset window size to default and center it
   const win = overlayWindows[overlayId];
   if (win && !win.isDestroyed()) {
@@ -797,7 +1014,9 @@ ipcMain.on('reset-overlay', (event, overlayId) => {
 
 ipcMain.on('get-overlay-states', (event) => {
   const states = {};
-  OVERLAYS.forEach(o => { states[o.id] = !!overlayWindows[o.id]; });
+  OVERLAYS.forEach(o => {
+    states[o.id] = !!overlayWindows[o.id] || combinedOverlayIds.has(o.id);
+  });
   event.reply('overlay-states', states);
   event.reply('autohide-state', autoHideOverlays);
 });

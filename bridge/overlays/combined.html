@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Atleta Racing — Combined Overlays</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  /* Each overlay lives in its own absolutely-positioned container. The container
+     defaults to no pointer events so transparent gaps pass clicks through to the
+     game beneath; the iframe inside takes its own pointer events because the
+     overlay's panel content uses `set-ignore-mouse` IPC to flip the window-level
+     ignoreMouseEvents only when the cursor is over the visible panel. */
+  .ov-container {
+    position: absolute;
+    pointer-events: none;
+  }
+  .ov-container > iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: transparent;
+    pointer-events: auto;
+  }
+</style>
+</head>
+<body>
+<script>
+'use strict';
+
+const { ipcRenderer } = require('electron');
+
+// overlayId -> { div, iframe, x, y, width, height }
+const containers = {};
+
+function ensureContainer(overlayId) {
+  if (containers[overlayId]) return containers[overlayId];
+  const div = document.createElement('div');
+  div.className = 'ov-container';
+  div.id = 'ov-' + overlayId;
+  const iframe = document.createElement('iframe');
+  iframe.allowtransparency = 'true';
+  iframe.allow = 'autoplay';
+  div.appendChild(iframe);
+  document.body.appendChild(div);
+  const c = { div, iframe, x: 0, y: 0, width: 0, height: 0 };
+  containers[overlayId] = c;
+  return c;
+}
+
+function applyBounds(c, x, y, width, height) {
+  c.x = x; c.y = y; c.width = width; c.height = height;
+  c.div.style.left = x + 'px';
+  c.div.style.top = y + 'px';
+  c.div.style.width = width + 'px';
+  c.div.style.height = height + 'px';
+}
+
+function addOverlay(overlayId, x, y, width, height) {
+  const c = ensureContainer(overlayId);
+  applyBounds(c, x, y, width, height);
+  // Always (re)assign src to make the iframe fully reload — guarantees the
+  // overlay re-reads settings.json from disk and rebuilds its UI from scratch.
+  c.iframe.src = overlayId + '.html';
+}
+
+function removeOverlay(overlayId) {
+  const c = containers[overlayId];
+  if (!c) return;
+  c.div.remove();
+  delete containers[overlayId];
+}
+
+function moveOverlay(overlayId, x, y) {
+  const c = containers[overlayId];
+  if (!c) return;
+  applyBounds(c, x, y, c.width, c.height);
+}
+
+function resizeOverlay(overlayId, width, height) {
+  const c = containers[overlayId];
+  if (!c) return;
+  applyBounds(c, c.x, c.y, width, height);
+}
+
+function reloadOverlay(overlayId) {
+  const c = containers[overlayId];
+  if (!c) return;
+  // Force reload by re-setting src (contentWindow.location.reload may be cross-origin restricted).
+  c.iframe.src = overlayId + '.html?_t=' + Date.now();
+}
+
+function moveOverlayBy(overlayId, dx, dy) {
+  const c = containers[overlayId];
+  if (!c) return;
+  const x = c.x + dx;
+  const y = c.y + dy;
+  applyBounds(c, x, y, c.width, c.height);
+  // Persist via main process.
+  ipcRenderer.send('combined-overlay-moved', overlayId, x, y);
+}
+
+ipcRenderer.on('add-overlay', (_e, overlayId, x, y, width, height) => addOverlay(overlayId, x, y, width, height));
+ipcRenderer.on('remove-overlay', (_e, overlayId) => removeOverlay(overlayId));
+ipcRenderer.on('move-overlay-in-window', (_e, overlayId, x, y) => moveOverlay(overlayId, x, y));
+ipcRenderer.on('resize-overlay-in-window', (_e, overlayId, width, height) => resizeOverlay(overlayId, width, height));
+ipcRenderer.on('reload-overlay-in-window', (_e, overlayId) => reloadOverlay(overlayId));
+ipcRenderer.on('move-overlay-by', (_e, overlayId, dx, dy) => moveOverlayBy(overlayId, dx, dy));
+
+// Tell main we're ready to receive overlay add commands.
+ipcRenderer.send('combined-window-ready');
+</script>
+</body>
+</html>
