@@ -1,5 +1,10 @@
 {
   "enabledPlugins": {
     "railway@claude-plugins-official": true
+  },
+  "sandbox": {
+    "network": {
+      "allowedDomains": ["atletanotifications.com"]
+    }
   }
 }
