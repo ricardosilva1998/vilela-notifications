@@ -328,3 +328,20 @@ Automated UI/UX test infrastructure in `bridge/tests/`:
 - **Screen effects:** Direction-based effects (up/down/left/right) must work in both the builder preview (`renderScreenEffect()` in overlay-builder.ejs) and the OBS overlay (`spawnEffects()` in overlay.js). CSS classes for effects must NOT hardcode positional properties (`top`, `left`, etc.) — positions are set dynamically by JS based on direction.
 - **Design application:** `applyCustomDesign()` in overlay.js and `updatePreview()` in overlay-builder.ejs must apply the same visual properties (colors, fonts, sizes, border-radius, animations, side icons).
 - **When adding/changing any visual property:** Update all three rendering paths — builder preview, OBS overlay `generateCardHTML()`/`applyCustomDesign()`, and the EVENT_DEFAULTS in the builder.
+
+
+## Team Activity Log
+
+This section is the shared coordination surface for the dev team (team-leader + frontend-dev + backend-dev + team-security + team-qa + team-ux + team-deployment). Every team member reads the last few entries before working and appends one entry after.
+
+Format per entry:
+
+```
+### YYYY-MM-DD HH:MM — <role>
+**Task:** <one line>
+**Files:** <comma-separated paths or "none">
+**Decisions:** <2-4 bullets the next teammate needs to know>
+**Open:** <followups, or "none">
+```
+
+(No entries yet — the next `/dev-team` round will append here.)

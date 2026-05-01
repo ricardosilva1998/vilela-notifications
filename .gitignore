@@ -9,3 +9,8 @@ test-results/
 bridge/tests/test-results/
 *.tsbuildinfo
 .worktrees/
+
+# session screenshot artifacts at root
+/relative-before.png
+/relative-lap-diff-preview.png
+/smart-window-test.png

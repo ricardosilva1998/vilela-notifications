@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bridge Overlay Playground</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0d0e14; color: #e8e6f0; font-family: 'Segoe UI', -apple-system, sans-serif; display: flex; height: 100vh; overflow: hidden; }
+
+    /* Sidebar */
+    .sidebar { width: 280px; min-width: 280px; background: #13141c; border-right: 1px solid rgba(255,255,255,0.06); padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+    .sidebar h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+    .sidebar h2 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.4); margin-bottom: 8px; }
+
+    .control-group { display: flex; flex-direction: column; gap: 6px; }
+    .control-row { display: flex; align-items: center; gap: 8px; }
+    .control-row label { font-size: 11px; color: rgba(255,255,255,0.6); min-width: 70px; }
+    .control-row select, .control-row input[type=range] { flex: 1; }
+    .control-row .value { font-size: 11px; font-family: monospace; color: #f7c948; min-width: 36px; text-align: right; }
+
+    select { background: #1a1b25; color: #e8e6f0; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 4px 8px; font-size: 11px; }
+    input[type=range] { accent-color: #9146ff; }
+    button { background: #9146ff; color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 11px; font-weight: 600; cursor: pointer; }
+    button:hover { background: #a35aff; }
+    button.secondary { background: rgba(255,255,255,0.06); }
+    button.secondary:hover { background: rgba(255,255,255,0.12); }
+
+    .status-bar { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: auto; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); }
+    .status-bar .ok { color: #3ecf8e; }
+    .status-bar .warn { color: #f04438; }
+
+    /* Grid */
+    .grid-area { flex: 1; overflow-y: auto; padding: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; }
+
+    .overlay-card { background: #13141c; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; overflow: hidden; }
+    .overlay-card.overflow { border-color: #f04438; box-shadow: 0 0 8px rgba(240,68,56,0.3); }
+    .overlay-card-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .overlay-card-header .name { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+    .overlay-card-header .badges { display: flex; gap: 6px; font-size: 9px; }
+    .overlay-card-header .badge { padding: 2px 6px; border-radius: 3px; font-weight: 600; }
+    .badge.ok { background: rgba(62,207,142,0.15); color: #3ecf8e; }
+    .badge.overflow-badge { background: rgba(240,68,56,0.15); color: #f04438; }
+    .badge.size-badge { background: rgba(145,70,255,0.15); color: #b18cff; }
+    .overlay-frame-wrap { background: #000; position: relative; min-height: 60px; }
+    .overlay-frame-wrap iframe { border: none; width: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h1>Bridge Playground</h1>
+
+    <div class="control-group">
+      <h2>Scenario</h2>
+      <div class="control-row">
+        <select id="scenario" style="width:100%;">
+          <option value="normal">Normal (30 drivers, 3 classes)</option>
+          <option value="extreme">Extreme (52 drivers, 5 classes, long names)</option>
+          <option value="minimal">Minimal (3 drivers, 1 class)</option>
+          <option value="empty">Empty (no data)</option>
+        </select>
+      </div>
+      <button onclick="loadScenario()">Apply Scenario</button>
+    </div>
+
+    <div class="control-group">
+      <h2>Global Settings</h2>
+      <div class="control-row">
+        <label>Scale</label>
+        <input type="range" id="scale" min="40" max="200" value="100" step="10">
+        <span class="value" id="scale-val">100%</span>
+      </div>
+      <div class="control-row">
+        <label>Font Size</label>
+        <input type="range" id="fontSize" min="8" max="20" value="11" step="1">
+        <span class="value" id="fontSize-val">11px</span>
+      </div>
+      <div class="control-row">
+        <label>Show Header</label>
+        <select id="showHeader"><option value="true">Yes</option><option value="false">No</option></select>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <h2>Actions</h2>
+      <button onclick="reloadAll()">Reload All Overlays</button>
+      <button class="secondary" onclick="checkBounds()">Check Bounds</button>
+      <button class="secondary" onclick="runAutoTest()">Auto-Test All Scales</button>
+    </div>
+
+    <div class="control-group">
+      <h2>Filter</h2>
+      <div class="control-row">
+        <select id="filter" style="width:100%;">
+          <option value="all">All Overlays</option>
+          <option value="data">Data Overlays Only</option>
+          <option value="single">Single Overlay...</option>
+        </select>
+      </div>
+      <div class="control-row" id="single-select-row" style="display:none;">
+        <select id="singleOverlay" style="width:100%;"></select>
+      </div>
+    </div>
+
+    <div id="auto-test-results" style="display:none;" class="control-group">
+      <h2>Auto-Test Results</h2>
+      <div id="test-output" style="font-size:10px; font-family:monospace; max-height:200px; overflow-y:auto; background:#0d0e14; padding:8px; border-radius:4px;"></div>
+    </div>
+
+    <div class="status-bar" id="status-bar">Ready</div>
+  </div>
+
+  <div class="grid-area">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <script>
+    const BASE = window.location.origin;
+    const OVERLAYS = [
+      'standings', 'relative', 'fuel', 'wind', 'inputs', 'trackmap',
+      'weather', 'raceduration', 'drivercard', 'stintlaps', 'livestats',
+      'pitstrategy', 'pittimer', 'lapcompare', 'proximity',
+      'chat', 'voicechat', 'discord',
+    ];
+    const DATA_OVERLAYS = [
+      'standings', 'relative', 'fuel', 'wind', 'inputs', 'trackmap',
+      'weather', 'raceduration', 'drivercard', 'stintlaps', 'livestats',
+      'pitstrategy', 'pittimer', 'lapcompare', 'proximity',
+    ];
+    const overflowState = {};
+
+    // Populate single overlay dropdown
+    const singleSel = document.getElementById('singleOverlay');
+    OVERLAYS.forEach(name => {
+      const o = document.createElement('option');
+      o.value = name; o.textContent = name;
+      singleSel.appendChild(o);
+    });
+    document.getElementById('filter').addEventListener('change', (e) => {
+      document.getElementById('single-select-row').style.display = e.target.value === 'single' ? 'flex' : 'none';
+      renderGrid();
+    });
+    document.getElementById('singleOverlay').addEventListener('change', renderGrid);
+
+    // Slider labels
+    document.getElementById('scale').addEventListener('input', (e) => {
+      document.getElementById('scale-val').textContent = e.target.value + '%';
+    });
+    document.getElementById('fontSize').addEventListener('input', (e) => {
+      document.getElementById('fontSize-val').textContent = e.target.value + 'px';
+    });
+
+    // Listen for overlay resize messages from iframes
+    window.addEventListener('message', (e) => {
+      if (e.data && e.data.type === 'overlay-resize') {
+        const badge = document.getElementById('size-' + e.data.id);
+        if (badge) badge.textContent = e.data.w + 'x' + e.data.h;
+      }
+    });
+
+    function getVisibleOverlays() {
+      const filter = document.getElementById('filter').value;
+      if (filter === 'data') return DATA_OVERLAYS;
+      if (filter === 'single') return [document.getElementById('singleOverlay').value];
+      return OVERLAYS;
+    }
+
+    function buildOverlayUrl(name) {
+      const scale = document.getElementById('scale').value;
+      const showHeader = document.getElementById('showHeader').value;
+      const fontSize = document.getElementById('fontSize').value;
+      let url = `${BASE}/overlays/${name}.html?showHeader=${showHeader}`;
+      if (scale !== '100') url += `&scale=${scale}`;
+      if (fontSize !== '11') url += `&fontSize=${fontSize}`;
+      return url;
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('grid');
+      const overlays = getVisibleOverlays();
+      grid.innerHTML = '';
+      overlays.forEach(name => {
+        const card = document.createElement('div');
+        card.className = 'overlay-card';
+        card.id = 'card-' + name;
+        card.innerHTML = `
+          <div class="overlay-card-header">
+            <span class="name">${name}</span>
+            <div class="badges">
+              <span class="badge size-badge" id="size-${name}">--</span>
+              <span class="badge ok" id="bounds-${name}">OK</span>
+            </div>
+          </div>
+          <div class="overlay-frame-wrap">
+            <iframe id="frame-${name}" src="${buildOverlayUrl(name)}" style="height:400px;"></iframe>
+          </div>`;
+        grid.appendChild(card);
+      });
+      setStatus('Loaded ' + overlays.length + ' overlays');
+    }
+
+    function reloadAll() {
+      getVisibleOverlays().forEach(name => {
+        const frame = document.getElementById('frame-' + name);
+        if (frame) frame.src = buildOverlayUrl(name);
+      });
+      setStatus('Reloaded all overlays');
+    }
+
+    async function loadScenario() {
+      const name = document.getElementById('scenario').value;
+      try {
+        await fetch(`${BASE}/api/scenario/${name}`, { method: 'POST' });
+        setStatus(`Scenario "${name}" loaded`);
+      } catch(e) {
+        setStatus('Error loading scenario: ' + e.message, true);
+      }
+    }
+
+    function checkBounds() {
+      let issues = 0;
+      getVisibleOverlays().forEach(name => {
+        const frame = document.getElementById('frame-' + name);
+        const card = document.getElementById('card-' + name);
+        const badge = document.getElementById('bounds-' + name);
+        if (!frame || !frame.contentDocument) return;
+        try {
+          const panel = frame.contentDocument.querySelector('.overlay-panel');
+          if (!panel) { badge.textContent = 'N/A'; badge.className = 'badge size-badge'; return; }
+          const hOver = panel.scrollWidth > panel.clientWidth + 2;
+          const vOver = panel.scrollHeight > panel.clientHeight + 2;
+          if (hOver || vOver) {
+            badge.textContent = 'OVERFLOW';
+            badge.className = 'badge overflow-badge';
+            card.className = 'overlay-card overflow';
+            issues++;
+            overflowState[name] = { hOver, vOver, sw: panel.scrollWidth, sh: panel.scrollHeight, cw: panel.clientWidth, ch: panel.clientHeight };
+          } else {
+            badge.textContent = 'OK';
+            badge.className = 'badge ok';
+            card.className = 'overlay-card';
+            delete overflowState[name];
+          }
+        } catch(e) {
+          badge.textContent = 'ERR'; badge.className = 'badge overflow-badge';
+        }
+      });
+      setStatus(issues ? `${issues} overlay(s) have overflow!` : 'All overlays within bounds', issues > 0);
+    }
+
+    async function runAutoTest() {
+      const results = document.getElementById('auto-test-results');
+      const output = document.getElementById('test-output');
+      results.style.display = 'block';
+      output.innerHTML = '';
+      const scales = [40, 60, 80, 100, 120, 150, 200];
+      const scenarios = ['normal', 'extreme', 'minimal'];
+      let totalIssues = 0;
+
+      for (const scenario of scenarios) {
+        log(output, `\n--- Scenario: ${scenario} ---`);
+        await fetch(`${BASE}/api/scenario/${scenario}`, { method: 'POST' });
+        await sleep(500);
+
+        for (const scale of scales) {
+          document.getElementById('scale').value = scale;
+          document.getElementById('scale-val').textContent = scale + '%';
+          reloadAll();
+          await sleep(1500); // Wait for overlays to render + receive data
+
+          let scaleIssues = 0;
+          getVisibleOverlays().forEach(name => {
+            const frame = document.getElementById('frame-' + name);
+            if (!frame || !frame.contentDocument) return;
+            try {
+              const panel = frame.contentDocument.querySelector('.overlay-panel');
+              if (!panel) return;
+              const hOver = panel.scrollWidth > panel.clientWidth + 2;
+              const vOver = panel.scrollHeight > panel.clientHeight + 2;
+              if (hOver || vOver) {
+                const detail = `scroll=${panel.scrollWidth}x${panel.scrollHeight} client=${panel.clientWidth}x${panel.clientHeight}`;
+                log(output, `  FAIL ${name} @ ${scale}% (${detail})`, true);
+                scaleIssues++;
+              }
+            } catch(e) {}
+          });
+          if (scaleIssues === 0) {
+            log(output, `  PASS all overlays @ ${scale}%`);
+          }
+          totalIssues += scaleIssues;
+        }
+      }
+      log(output, `\n=== Done: ${totalIssues} total issue(s) ===`, totalIssues > 0);
+      setStatus(`Auto-test complete: ${totalIssues} issue(s)`, totalIssues > 0);
+    }
+
+    function log(el, text, isError) {
+      const line = document.createElement('div');
+      line.textContent = text;
+      if (isError) line.style.color = '#f04438';
+      else if (text.includes('PASS')) line.style.color = '#3ecf8e';
+      el.appendChild(line);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function setStatus(msg, isWarn) {
+      const bar = document.getElementById('status-bar');
+      bar.innerHTML = `<span class="${isWarn ? 'warn' : 'ok'}">${msg}</span>`;
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    // Initial load
+    renderGrid();
+    setTimeout(loadScenario, 500);
+  </script>
+</body>
+</html>
