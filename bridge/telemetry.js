@@ -245,7 +245,7 @@ function loadPitTimes() {
       return data;
     }
   } catch(e) { log('[PitTimes] Load error: ' + e.message); }
-  return { _version: 3 };
+  return { _version: 4 };
 }
 function savePitTimes(data) {
   try {
